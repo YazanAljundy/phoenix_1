@@ -1,0 +1,9 @@
+node_modules/
+.env
+npm-debug.log
+*.log
+.DS_Store
+
+# Temporary local file storage (Section 15/6-2) - not for production, see
+# middlewares/upload.middleware.js for the R2 migration TODO.
+uploads/

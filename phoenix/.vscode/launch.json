@@ -1,0 +1,20 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Phoenix (Chrome, local backend)",
+      "type": "dart",
+      "request": "launch",
+      "program": "lib/main.dart",
+      "deviceId": "chrome",
+      "args": ["--dart-define=API_BASE_URL=http://localhost:4000/api"]
+    },
+    {
+      "name": "Phoenix (Android emulator, local backend)",
+      "type": "dart",
+      "request": "launch",
+      "program": "lib/main.dart",
+      "args": ["--dart-define=API_BASE_URL=http://10.0.2.2:4000/api"]
+    }
+  ]
+}

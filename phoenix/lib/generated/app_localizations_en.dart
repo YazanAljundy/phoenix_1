@@ -1,0 +1,530 @@
+// ignore: unused_import
+import 'package:intl/intl.dart' as intl;
+import 'app_localizations.dart';
+
+// ignore_for_file: type=lint
+
+/// The translations for English (`en`).
+class AppLocalizationsEn extends AppLocalizations {
+  AppLocalizationsEn([String locale = 'en']) : super(locale);
+
+  @override
+  String get appName => 'Phoenix';
+
+  @override
+  String get login => 'Login';
+
+  @override
+  String get logout => 'Logout';
+
+  @override
+  String get email => 'Email';
+
+  @override
+  String get password => 'Password';
+
+  @override
+  String get settings => 'Settings';
+
+  @override
+  String get language => 'Language';
+
+  @override
+  String get theme => 'Theme';
+
+  @override
+  String get light => 'Light';
+
+  @override
+  String get dark => 'Dark';
+
+  @override
+  String get system => 'System';
+
+  @override
+  String get save => 'Save';
+
+  @override
+  String get cancel => 'Cancel';
+
+  @override
+  String get welcome => 'Welcome';
+
+  @override
+  String get home => 'Home';
+
+  @override
+  String get profile => 'Profile';
+
+  @override
+  String get registrationTitle => 'Create your pharmacy account';
+
+  @override
+  String get registrationSubtitle => 'Fill in your details to get started';
+
+  @override
+  String get fullNameLabel => 'Full name';
+
+  @override
+  String get pharmacyNameLabel => 'Pharmacy name';
+
+  @override
+  String get phoneLabel => 'Phone number';
+
+  @override
+  String get addressLabel => 'Address';
+
+  @override
+  String get verificationPhotoLabel => 'Pharmacy photo';
+
+  @override
+  String get verificationPhotoHint =>
+      'A photo of your pharmacy\'s storefront or sign';
+
+  @override
+  String get choosePhotoButton => 'Choose photo';
+
+  @override
+  String get changePhotoButton => 'Change photo';
+
+  @override
+  String get photoRequired => 'Please add a photo of your pharmacy.';
+
+  @override
+  String get confirmPasswordLabel => 'Confirm password';
+
+  @override
+  String get passwordTooShort => 'Password must be at least 6 characters.';
+
+  @override
+  String get passwordMismatch => 'Passwords do not match.';
+
+  @override
+  String get alreadyHaveAccountLink =>
+      'Already have an account? Log in with password';
+
+  @override
+  String get sendCodeButton => 'Send verification code';
+
+  @override
+  String get passwordLoginTitle => 'Log in with password';
+
+  @override
+  String get passwordLoginSubtitle => 'Enter your phone number and password';
+
+  @override
+  String get backToRegistrationLink => 'New here? Create an account';
+
+  @override
+  String get otpTitle => 'Enter verification code';
+
+  @override
+  String otpInstructions(String phone) {
+    return 'We sent a 6-digit code by SMS to $phone';
+  }
+
+  @override
+  String get otpCodeLabel => 'Verification code';
+
+  @override
+  String get verifyButton => 'Verify';
+
+  @override
+  String get resendCodeButton => 'Resend code';
+
+  @override
+  String get codeResent => 'A new code has been sent.';
+
+  @override
+  String get approvalPendingTitle => 'Your account is under review';
+
+  @override
+  String get approvalPendingMessage =>
+      'We\'re reviewing your registration. You\'ll be able to order as soon as it\'s approved.';
+
+  @override
+  String get approvalPendingBlockedTitle => 'Account blocked';
+
+  @override
+  String get approvalPendingBlockedMessage =>
+      'This account has been blocked. Please contact support for help.';
+
+  @override
+  String get refreshStatusButton => 'Check status';
+
+  @override
+  String get contactSupportButton => 'Contact support';
+
+  @override
+  String get contactSupportDialogTitle => 'Contact support';
+
+  @override
+  String get contactSupportDialogMessage =>
+      'For help with your account, please contact Al-Najah Warehouse support.';
+
+  @override
+  String get fieldRequired => 'This field is required.';
+
+  @override
+  String get invalidPhoneNumber => 'Please enter a valid phone number.';
+
+  @override
+  String get invalidOtpCode => 'Please enter the 6-digit code.';
+
+  @override
+  String get close => 'Close';
+
+  @override
+  String get errorState => 'Something went wrong.';
+
+  @override
+  String get warehouseSelectionTitle => 'Choose a warehouse';
+
+  @override
+  String get selectWarehouseButton => 'Select';
+
+  @override
+  String get noWarehousesAvailable => 'No warehouses available yet.';
+
+  @override
+  String warehouseSelectedMessage(String name) {
+    return '$name selected. The product catalog is coming soon.';
+  }
+
+  @override
+  String get searchProductsHint => 'Search by name or manufacturer';
+
+  @override
+  String get allCategories => 'All';
+
+  @override
+  String get addToCartButton => 'Add';
+
+  @override
+  String get unavailableLabel => 'Unavailable';
+
+  @override
+  String get noProductsFound => 'No products found.';
+
+  @override
+  String get currencySuffix => 'SYP';
+
+  @override
+  String addedToCartMessage(String name) {
+    return '$name added to cart.';
+  }
+
+  @override
+  String get cartTitle => 'Cart';
+
+  @override
+  String get cartEmptyMessage => 'Your cart is empty.';
+
+  @override
+  String get notesLabel => 'Notes (optional)';
+
+  @override
+  String get subtotalLabel => 'Subtotal';
+
+  @override
+  String get submitOrderButton => 'Submit order';
+
+  @override
+  String get submitOrderTitle => 'Submit order?';
+
+  @override
+  String submitOrderConfirmation(String warehouseName) {
+    return 'Send this order to $warehouseName?';
+  }
+
+  @override
+  String get orderSubmittedTitle => 'Order submitted';
+
+  @override
+  String orderSubmittedMessage(String orderNumber) {
+    return 'Your order #$orderNumber has been submitted.';
+  }
+
+  @override
+  String get removeItemTitle => 'Remove item?';
+
+  @override
+  String removeItemConfirmation(String name) {
+    return 'Remove $name from your cart?';
+  }
+
+  @override
+  String get removeButton => 'Remove';
+
+  @override
+  String get cartConflictTitle => 'Start a new cart?';
+
+  @override
+  String cartConflictMessage(String name) {
+    return 'Your cart has items from $name. Adding this item will clear it and start a new order.';
+  }
+
+  @override
+  String get cartConflictConfirmButton => 'Start new cart';
+
+  @override
+  String get cartIconTooltip => 'Cart';
+
+  @override
+  String get errorInvalidRequest =>
+      'Something about this request wasn\'t valid. Please try again.';
+
+  @override
+  String get errorPharmacyNotFound =>
+      'We couldn\'t find your pharmacy profile. Please contact support.';
+
+  @override
+  String get errorWarehouseNotFound => 'This warehouse is no longer available.';
+
+  @override
+  String get errorStockCheckFailedGeneric =>
+      'Some items in your cart are no longer available as requested.';
+
+  @override
+  String errorInsufficientStock(String quantity, String name) {
+    return 'Only $quantity of $name is currently available.';
+  }
+
+  @override
+  String errorProductUnavailable(String name) {
+    return '$name is currently unavailable.';
+  }
+
+  @override
+  String errorProductNotFound(String name) {
+    return '$name is no longer available.';
+  }
+
+  @override
+  String get thisItemFallback => 'This item';
+
+  @override
+  String get loading => 'Loading...';
+
+  @override
+  String get orderTrackingTitle => 'Order Tracking';
+
+  @override
+  String orderNumberLabel(String number) {
+    return 'Order #$number';
+  }
+
+  @override
+  String get stageSent => 'Sent';
+
+  @override
+  String get stageUnderReview => 'Under review';
+
+  @override
+  String get stagePreparing => 'Preparing';
+
+  @override
+  String get stageOutForDelivery => 'Out for delivery';
+
+  @override
+  String get stageDelivered => 'Delivered';
+
+  @override
+  String get stageCancelled => 'Cancelled';
+
+  @override
+  String get statusHistoryTitle => 'Status history';
+
+  @override
+  String get cancelOrderTitle => 'Cancel order?';
+
+  @override
+  String get cancelOrderConfirmation =>
+      'Are you sure you want to cancel this order?';
+
+  @override
+  String get cancelOrderButton => 'Cancel order';
+
+  @override
+  String get orderCancelledMessage => 'This order has been cancelled.';
+
+  @override
+  String get contactWarehouseForChanges =>
+      'For any changes now, please contact the warehouse directly.';
+
+  @override
+  String get errorOrderNotFound => 'This order could not be found.';
+
+  @override
+  String get errorOrderNotCancellable =>
+      'This order can no longer be cancelled from the app.';
+
+  @override
+  String get myOrdersTitle => 'My Orders';
+
+  @override
+  String get noOrdersYet => 'You haven\'t placed any orders yet.';
+
+  @override
+  String get invoiceTitle => 'Order items';
+
+  @override
+  String get discountLabel => 'Discount';
+
+  @override
+  String get invoiceTotalLabel => 'Total';
+
+  @override
+  String get returnsTitle => 'Returns';
+
+  @override
+  String get noReturnsYet => 'You haven\'t requested any returns yet.';
+
+  @override
+  String get requestReturnTitle => 'Request a return';
+
+  @override
+  String get requestReturnButton => 'Submit return request';
+
+  @override
+  String get returnQuantityLabel => 'Quantity';
+
+  @override
+  String get returnReasonLabel => 'Reason';
+
+  @override
+  String get reasonDamaged => 'Damaged';
+
+  @override
+  String get reasonWrongItem => 'Wrong item';
+
+  @override
+  String get reasonOther => 'Other';
+
+  @override
+  String get customReasonLabel => 'Please specify';
+
+  @override
+  String get returnSubmittedTitle => 'Return requested';
+
+  @override
+  String get returnSubmittedMessage =>
+      'Your return request has been submitted. The warehouse will review it.';
+
+  @override
+  String get returnStatusPending => 'Pending review';
+
+  @override
+  String get returnStatusApproved => 'Approved';
+
+  @override
+  String get returnStatusRejected => 'Rejected';
+
+  @override
+  String get returnPickItemsLabel => 'Select the items you\'re returning';
+
+  @override
+  String get returnRejectionNoteLabel => 'Rejection reason';
+
+  @override
+  String get viewReplacementOrderButton => 'View replacement order';
+
+  @override
+  String get editButton => 'Edit';
+
+  @override
+  String get deleteReturnButton => 'Delete';
+
+  @override
+  String get deleteReturnConfirmTitle => 'Delete return request?';
+
+  @override
+  String get deleteReturnConfirmMessage =>
+      'Are you sure you want to delete this return request?';
+
+  @override
+  String get returnApprovedBanner =>
+      'Return approved — a replacement order has been created';
+
+  @override
+  String get returnPendingReviewBanner =>
+      'Return submitted, awaiting the warehouse\'s review';
+
+  @override
+  String get returnRejectedBanner => 'Return rejected';
+
+  @override
+  String get errorOrderNotDelivered => 'This order hasn\'t been delivered yet.';
+
+  @override
+  String get errorOrderItemNotFound =>
+      'This item could not be found in the order.';
+
+  @override
+  String get errorReturnQuantityExceeded =>
+      'The return quantity exceeds what\'s available to return for this item.';
+
+  @override
+  String get errorCustomReasonRequired =>
+      'Please describe the reason for this return.';
+
+  @override
+  String get errorTooManyReturnPhotos => 'You can attach up to 5 photos.';
+
+  @override
+  String get errorInvalidReturnPhoto =>
+      'One of the attached photos is not a valid image.';
+
+  @override
+  String get errorReturnAlreadyExists =>
+      'A return request has already been submitted for this order.';
+
+  @override
+  String get errorReturnNotEditable =>
+      'This return request has already been decided and can no longer be changed.';
+
+  @override
+  String get errorReturnItemsEmpty =>
+      'Please select at least one item to return.';
+
+  @override
+  String get errorDuplicateReturnItem =>
+      'Each item can only appear once in a return request.';
+
+  @override
+  String get errorRejectionNoteRequired =>
+      'Please explain why this return is being rejected.';
+
+  @override
+  String get returnPhotosLabel => 'Photos (optional)';
+
+  @override
+  String get returnPhotosHint =>
+      'Add photos of the item to help the warehouse verify the reason';
+
+  @override
+  String get addPhotoButton => 'Add photo';
+
+  @override
+  String get navWarehouses => 'Warehouses';
+
+  @override
+  String get profileTitle => 'Profile';
+
+  @override
+  String get logoutConfirmTitle => 'Log out?';
+
+  @override
+  String get logoutConfirmMessage => 'Are you sure you want to log out?';
+
+  @override
+  String get yourRatingTitle => 'Your rating';
+
+  @override
+  String get noRatingsYet => 'No warehouse has rated you yet.';
+
+  @override
+  String ratingSummary(String average, String count) {
+    return '$average average ($count ratings)';
+  }
+}

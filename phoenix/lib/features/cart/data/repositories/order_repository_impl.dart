@@ -1,0 +1,73 @@
+import 'package:dio/dio.dart';
+import 'package:phoenix/core/error/failure.dart';
+import 'package:phoenix/core/network/api_client.dart';
+import 'package:phoenix/core/network/endpoints.dart';
+import 'package:phoenix/features/cart/data/models/cart_item.dart';
+import 'package:phoenix/features/cart/data/models/order_model.dart';
+
+import 'order_repository.dart';
+
+class OrderRepositoryImpl implements OrderRepository {
+  OrderRepositoryImpl({required ApiClient apiClient}) : _apiClient = apiClient;
+
+  final ApiClient _apiClient;
+
+  @override
+  Future<OrderModel> submitOrder({
+    required String warehouseId,
+    required List<CartItem> items,
+    String? notes,
+  }) async {
+    try {
+      final response = await _apiClient.dio.post(
+        Endpoints.orders,
+        data: {
+          'warehouseId': warehouseId,
+          'items': items
+              .map((item) => {'productId': item.productId, 'quantity': item.quantity})
+              .toList(),
+          if (notes != null && notes.isNotEmpty) 'notes': notes,
+        },
+      );
+      final data = response.data as Map<String, dynamic>;
+      return OrderModel.fromJson(data['order'] as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw ServerFailure.fromDioError(e);
+    }
+  }
+
+  @override
+  Future<OrderModel> getOrder(String orderId) async {
+    try {
+      final response = await _apiClient.dio.get(Endpoints.orderDetail(orderId));
+      final data = response.data as Map<String, dynamic>;
+      return OrderModel.fromJson(data['order'] as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw ServerFailure.fromDioError(e);
+    }
+  }
+
+  @override
+  Future<OrderModel> cancelOrder(String orderId) async {
+    try {
+      final response = await _apiClient.dio.post(Endpoints.cancelOrder(orderId));
+      final data = response.data as Map<String, dynamic>;
+      return OrderModel.fromJson(data['order'] as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw ServerFailure.fromDioError(e);
+    }
+  }
+
+  @override
+  Future<List<OrderModel>> getOrders() async {
+    try {
+      final response = await _apiClient.dio.get(Endpoints.orders);
+      final data = response.data as Map<String, dynamic>;
+      return (data['orders'] as List)
+          .map((e) => OrderModel.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } on DioException catch (e) {
+      throw ServerFailure.fromDioError(e);
+    }
+  }
+}

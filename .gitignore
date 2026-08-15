@@ -1,0 +1,16 @@
+# Claude Code local settings
+.claude/
+**/.claude/
+
+# Dependencies
+**/node_modules/
+
+# Environment variables (keep .env.example tracked)
+**/.env
+!**/.env.example
+
+# Build output
+**/build/
+
+# Flutter/Dart
+**/.dart_tool/

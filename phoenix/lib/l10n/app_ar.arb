@@ -1,0 +1,237 @@
+{
+  "@@locale": "ar",
+
+  "appName": "فينيكس",
+  "login": "تسجيل الدخول",
+  "logout": "تسجيل الخروج",
+  "email": "البريد الإلكتروني",
+  "password": "كلمة المرور",
+  "settings": "الإعدادات",
+  "language": "اللغة",
+  "theme": "المظهر",
+  "light": "فاتح",
+  "dark": "داكن",
+  "system": "النظام",
+  "save": "حفظ",
+  "cancel": "إلغاء",
+  "welcome": "مرحباً",
+  "home": "الرئيسية",
+  "profile": "الملف الشخصي",
+
+  "registrationTitle": "إنشاء حساب الصيدلية",
+  "registrationSubtitle": "أدخل بياناتك للبدء",
+  "fullNameLabel": "الاسم الكامل",
+  "pharmacyNameLabel": "اسم الصيدلية",
+  "phoneLabel": "رقم الهاتف",
+  "addressLabel": "العنوان",
+  "verificationPhotoLabel": "صورة الصيدلية",
+  "verificationPhotoHint": "صورة لواجهة أو لافتة صيدليتك",
+  "choosePhotoButton": "اختر صورة",
+  "changePhotoButton": "تغيير الصورة",
+  "photoRequired": "يرجى إضافة صورة لصيدليتك.",
+  "confirmPasswordLabel": "تأكيد كلمة المرور",
+  "passwordTooShort": "يجب أن تتكون كلمة المرور من 6 أحرف على الأقل.",
+  "passwordMismatch": "كلمتا المرور غير متطابقتين.",
+  "alreadyHaveAccountLink": "عندك حساب؟ سجّل دخول بكلمة السر",
+  "sendCodeButton": "إرسال رمز التحقق",
+
+  "passwordLoginTitle": "تسجيل الدخول بكلمة السر",
+  "passwordLoginSubtitle": "أدخل رقم هاتفك وكلمة السر",
+  "backToRegistrationLink": "جديد هون؟ أنشئ حساب",
+
+  "otpTitle": "أدخل رمز التحقق",
+  "otpInstructions": "أرسلنا رمزاً مكوناً من 6 أرقام عبر رسالة نصية إلى {phone}",
+  "@otpInstructions": {
+    "placeholders": {
+      "phone": { "type": "String" }
+    }
+  },
+  "otpCodeLabel": "رمز التحقق",
+  "verifyButton": "تحقق",
+  "resendCodeButton": "إعادة إرسال الرمز",
+  "codeResent": "تم إرسال رمز جديد.",
+
+  "approvalPendingTitle": "حسابك قيد المراجعة",
+  "approvalPendingMessage": "نقوم بمراجعة تسجيلك حالياً. ستتمكن من الطلب فور الموافقة على حسابك.",
+  "approvalPendingBlockedTitle": "الحساب محظور",
+  "approvalPendingBlockedMessage": "تم حظر هذا الحساب. يرجى التواصل مع الدعم للمساعدة.",
+  "refreshStatusButton": "تحقق من الحالة",
+  "contactSupportButton": "تواصل مع الدعم",
+  "contactSupportDialogTitle": "تواصل مع الدعم",
+  "contactSupportDialogMessage": "للمساعدة بخصوص حسابك، يرجى التواصل مع دعم مستودع النجاح.",
+
+  "fieldRequired": "هذا الحقل مطلوب.",
+  "invalidPhoneNumber": "يرجى إدخال رقم هاتف صحيح.",
+  "invalidOtpCode": "يرجى إدخال الرمز المكون من 6 أرقام.",
+  "close": "إغلاق",
+
+  "errorState": "حدث خطأ ما.",
+  "warehouseSelectionTitle": "اختر المستودع",
+  "selectWarehouseButton": "اختيار",
+  "noWarehousesAvailable": "لا توجد مستودعات متاحة حالياً.",
+  "warehouseSelectedMessage": "تم اختيار {name}. كتالوج المنتجات قادم قريباً.",
+  "@warehouseSelectedMessage": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+
+  "searchProductsHint": "ابحث بالاسم أو الشركة المصنعة",
+  "allCategories": "الكل",
+  "addToCartButton": "إضافة",
+  "unavailableLabel": "غير متوفر",
+  "noProductsFound": "لم يتم العثور على منتجات.",
+  "currencySuffix": "ل.س",
+  "addedToCartMessage": "تمت إضافة {name} إلى السلة.",
+  "@addedToCartMessage": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+
+  "cartTitle": "السلة",
+  "cartEmptyMessage": "سلتك فارغة.",
+  "notesLabel": "ملاحظات (اختياري)",
+  "subtotalLabel": "المجموع",
+  "submitOrderButton": "إرسال الطلب",
+  "submitOrderTitle": "إرسال الطلب؟",
+  "submitOrderConfirmation": "إرسال هذا الطلب إلى {warehouseName}؟",
+  "@submitOrderConfirmation": {
+    "placeholders": {
+      "warehouseName": { "type": "String" }
+    }
+  },
+  "orderSubmittedTitle": "تم إرسال الطلب",
+  "orderSubmittedMessage": "تم إرسال طلبك رقم {orderNumber}.",
+  "@orderSubmittedMessage": {
+    "placeholders": {
+      "orderNumber": { "type": "String" }
+    }
+  },
+  "removeItemTitle": "إزالة العنصر؟",
+  "removeItemConfirmation": "إزالة {name} من سلتك؟",
+  "@removeItemConfirmation": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "removeButton": "إزالة",
+  "cartConflictTitle": "بدء سلة جديدة؟",
+  "cartConflictMessage": "سلتك تحتوي على عناصر من {name}. إضافة هذا العنصر ستفرغ السلة وتبدأ طلباً جديداً.",
+  "@cartConflictMessage": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "cartConflictConfirmButton": "بدء سلة جديدة",
+  "cartIconTooltip": "السلة",
+
+  "errorInvalidRequest": "هناك خطأ في هذا الطلب. يرجى المحاولة مرة أخرى.",
+  "errorPharmacyNotFound": "لم نتمكن من العثور على ملف صيدليتك. يرجى التواصل مع الدعم.",
+  "errorWarehouseNotFound": "هذا المستودع لم يعد متاحاً.",
+  "errorStockCheckFailedGeneric": "بعض العناصر في سلتك لم تعد متاحة كما طُلب.",
+  "errorInsufficientStock": "يتوفر فقط {quantity} من {name} حالياً.",
+  "@errorInsufficientStock": {
+    "placeholders": {
+      "quantity": { "type": "String" },
+      "name": { "type": "String" }
+    }
+  },
+  "errorProductUnavailable": "{name} غير متوفر حالياً.",
+  "@errorProductUnavailable": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "errorProductNotFound": "{name} لم يعد متوفراً.",
+  "@errorProductNotFound": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "thisItemFallback": "هذا العنصر",
+  "loading": "جارِ التحميل...",
+
+  "orderTrackingTitle": "تتبع الطلب",
+  "orderNumberLabel": "الطلب رقم {number}",
+  "@orderNumberLabel": {
+    "placeholders": {
+      "number": { "type": "String" }
+    }
+  },
+  "stageSent": "تم الإرسال",
+  "stageUnderReview": "قيد المراجعة",
+  "stagePreparing": "قيد التحضير",
+  "stageOutForDelivery": "قيد التوصيل",
+  "stageDelivered": "تم التوصيل",
+  "stageCancelled": "ملغى",
+  "statusHistoryTitle": "سجل الحالة",
+  "cancelOrderTitle": "إلغاء الطلب؟",
+  "cancelOrderConfirmation": "هل أنت متأكد من إلغاء هذا الطلب؟",
+  "cancelOrderButton": "إلغاء الطلب",
+  "orderCancelledMessage": "تم إلغاء هذا الطلب.",
+  "contactWarehouseForChanges": "لأي تغييرات الآن، يرجى التواصل مع المستودع مباشرة.",
+  "errorOrderNotFound": "تعذر العثور على هذا الطلب.",
+  "errorOrderNotCancellable": "لم يعد بالإمكان إلغاء هذا الطلب من التطبيق.",
+
+  "myOrdersTitle": "طلباتي",
+  "noOrdersYet": "لم تقم بأي طلبات بعد.",
+  "invoiceTitle": "أصناف الطلب",
+  "discountLabel": "الخصم",
+  "invoiceTotalLabel": "الإجمالي",
+
+  "returnsTitle": "المرتجعات",
+  "noReturnsYet": "لم تقدّم أي طلب إرجاع بعد.",
+  "requestReturnTitle": "طلب إرجاع",
+  "requestReturnButton": "إرسال طلب الإرجاع",
+  "returnQuantityLabel": "الكمية",
+  "returnReasonLabel": "السبب",
+  "reasonDamaged": "تالف",
+  "reasonWrongItem": "منتج خاطئ",
+  "reasonOther": "سبب آخر",
+  "customReasonLabel": "يرجى التوضيح",
+  "returnSubmittedTitle": "تم إرسال الطلب",
+  "returnSubmittedMessage": "تم إرسال طلب الإرجاع. سيقوم المستودع بمراجعته.",
+  "returnStatusPending": "قيد المراجعة",
+  "returnStatusApproved": "تمت الموافقة",
+  "returnStatusRejected": "مرفوض",
+  "returnPickItemsLabel": "اختر الأصناف يلي بدك ترجعها",
+  "returnRejectionNoteLabel": "سبب الرفض",
+  "viewReplacementOrderButton": "عرض طلب الاستبدال",
+  "editButton": "تعديل",
+  "deleteReturnButton": "حذف",
+  "deleteReturnConfirmTitle": "حذف طلب الإرجاع؟",
+  "deleteReturnConfirmMessage": "هل أنت متأكد من حذف طلب الإرجاع؟",
+  "returnApprovedBanner": "تمت الموافقة على المرتجع — تم إنشاء طلب استبدال",
+  "returnPendingReviewBanner": "تم إرسال طلب الإرجاع، بانتظار مراجعة المستودع",
+  "returnRejectedBanner": "تم رفض المرتجع",
+  "errorOrderNotDelivered": "لم يتم توصيل هذا الطلب بعد.",
+  "errorOrderItemNotFound": "تعذر العثور على هذا الصنف ضمن الطلب.",
+  "errorReturnQuantityExceeded": "كمية الإرجاع تتجاوز الكمية المتاحة لإرجاعها لهذا الصنف.",
+  "errorCustomReasonRequired": "يرجى وصف سبب الإرجاع.",
+  "errorTooManyReturnPhotos": "ممكن ترفق حتى 5 صور.",
+  "errorInvalidReturnPhoto": "إحدى الصور المرفقة مش صورة صالحة.",
+  "errorReturnAlreadyExists": "تم إرسال طلب إرجاع لهذا الطلب من قبل.",
+  "errorReturnNotEditable": "تم اتخاذ قرار بخصوص طلب الإرجاع هذا ولم يعد بالإمكان تعديله.",
+  "errorReturnItemsEmpty": "يرجى اختيار صنف واحد على الأقل للإرجاع.",
+  "errorDuplicateReturnItem": "كل صنف ممكن يظهر مرة وحدة بس بطلب الإرجاع.",
+  "errorRejectionNoteRequired": "يرجى توضيح سبب رفض هذا المرتجع.",
+  "returnPhotosLabel": "صور (اختياري)",
+  "returnPhotosHint": "أضف صور للمنتج تساعد المستودع يتحقق من السبب",
+  "addPhotoButton": "إضافة صورة",
+
+  "navWarehouses": "المستودعات",
+  "profileTitle": "البروفايل",
+  "logoutConfirmTitle": "تسجيل الخروج؟",
+  "logoutConfirmMessage": "هل أنت متأكد من تسجيل الخروج؟",
+
+  "yourRatingTitle": "تقييمك",
+  "noRatingsYet": "ما في مستودع قيّمك لهلق.",
+  "ratingSummary": "{average} بالمعدل ({count} تقييم)",
+  "@ratingSummary": {
+    "placeholders": {
+      "average": { "type": "String" },
+      "count": { "type": "String" }
+    }
+  }
+}

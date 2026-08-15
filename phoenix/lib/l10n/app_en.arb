@@ -1,0 +1,237 @@
+{
+  "@@locale": "en",
+
+  "appName": "Phoenix",
+  "login": "Login",
+  "logout": "Logout",
+  "email": "Email",
+  "password": "Password",
+  "settings": "Settings",
+  "language": "Language",
+  "theme": "Theme",
+  "light": "Light",
+  "dark": "Dark",
+  "system": "System",
+  "save": "Save",
+  "cancel": "Cancel",
+  "welcome": "Welcome",
+  "home": "Home",
+  "profile": "Profile",
+
+  "registrationTitle": "Create your pharmacy account",
+  "registrationSubtitle": "Fill in your details to get started",
+  "fullNameLabel": "Full name",
+  "pharmacyNameLabel": "Pharmacy name",
+  "phoneLabel": "Phone number",
+  "addressLabel": "Address",
+  "verificationPhotoLabel": "Pharmacy photo",
+  "verificationPhotoHint": "A photo of your pharmacy's storefront or sign",
+  "choosePhotoButton": "Choose photo",
+  "changePhotoButton": "Change photo",
+  "photoRequired": "Please add a photo of your pharmacy.",
+  "confirmPasswordLabel": "Confirm password",
+  "passwordTooShort": "Password must be at least 6 characters.",
+  "passwordMismatch": "Passwords do not match.",
+  "alreadyHaveAccountLink": "Already have an account? Log in with password",
+  "sendCodeButton": "Send verification code",
+
+  "passwordLoginTitle": "Log in with password",
+  "passwordLoginSubtitle": "Enter your phone number and password",
+  "backToRegistrationLink": "New here? Create an account",
+
+  "otpTitle": "Enter verification code",
+  "otpInstructions": "We sent a 6-digit code by SMS to {phone}",
+  "@otpInstructions": {
+    "placeholders": {
+      "phone": { "type": "String" }
+    }
+  },
+  "otpCodeLabel": "Verification code",
+  "verifyButton": "Verify",
+  "resendCodeButton": "Resend code",
+  "codeResent": "A new code has been sent.",
+
+  "approvalPendingTitle": "Your account is under review",
+  "approvalPendingMessage": "We're reviewing your registration. You'll be able to order as soon as it's approved.",
+  "approvalPendingBlockedTitle": "Account blocked",
+  "approvalPendingBlockedMessage": "This account has been blocked. Please contact support for help.",
+  "refreshStatusButton": "Check status",
+  "contactSupportButton": "Contact support",
+  "contactSupportDialogTitle": "Contact support",
+  "contactSupportDialogMessage": "For help with your account, please contact Al-Najah Warehouse support.",
+
+  "fieldRequired": "This field is required.",
+  "invalidPhoneNumber": "Please enter a valid phone number.",
+  "invalidOtpCode": "Please enter the 6-digit code.",
+  "close": "Close",
+
+  "errorState": "Something went wrong.",
+  "warehouseSelectionTitle": "Choose a warehouse",
+  "selectWarehouseButton": "Select",
+  "noWarehousesAvailable": "No warehouses available yet.",
+  "warehouseSelectedMessage": "{name} selected. The product catalog is coming soon.",
+  "@warehouseSelectedMessage": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+
+  "searchProductsHint": "Search by name or manufacturer",
+  "allCategories": "All",
+  "addToCartButton": "Add",
+  "unavailableLabel": "Unavailable",
+  "noProductsFound": "No products found.",
+  "currencySuffix": "SYP",
+  "addedToCartMessage": "{name} added to cart.",
+  "@addedToCartMessage": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+
+  "cartTitle": "Cart",
+  "cartEmptyMessage": "Your cart is empty.",
+  "notesLabel": "Notes (optional)",
+  "subtotalLabel": "Subtotal",
+  "submitOrderButton": "Submit order",
+  "submitOrderTitle": "Submit order?",
+  "submitOrderConfirmation": "Send this order to {warehouseName}?",
+  "@submitOrderConfirmation": {
+    "placeholders": {
+      "warehouseName": { "type": "String" }
+    }
+  },
+  "orderSubmittedTitle": "Order submitted",
+  "orderSubmittedMessage": "Your order #{orderNumber} has been submitted.",
+  "@orderSubmittedMessage": {
+    "placeholders": {
+      "orderNumber": { "type": "String" }
+    }
+  },
+  "removeItemTitle": "Remove item?",
+  "removeItemConfirmation": "Remove {name} from your cart?",
+  "@removeItemConfirmation": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "removeButton": "Remove",
+  "cartConflictTitle": "Start a new cart?",
+  "cartConflictMessage": "Your cart has items from {name}. Adding this item will clear it and start a new order.",
+  "@cartConflictMessage": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "cartConflictConfirmButton": "Start new cart",
+  "cartIconTooltip": "Cart",
+
+  "errorInvalidRequest": "Something about this request wasn't valid. Please try again.",
+  "errorPharmacyNotFound": "We couldn't find your pharmacy profile. Please contact support.",
+  "errorWarehouseNotFound": "This warehouse is no longer available.",
+  "errorStockCheckFailedGeneric": "Some items in your cart are no longer available as requested.",
+  "errorInsufficientStock": "Only {quantity} of {name} is currently available.",
+  "@errorInsufficientStock": {
+    "placeholders": {
+      "quantity": { "type": "String" },
+      "name": { "type": "String" }
+    }
+  },
+  "errorProductUnavailable": "{name} is currently unavailable.",
+  "@errorProductUnavailable": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "errorProductNotFound": "{name} is no longer available.",
+  "@errorProductNotFound": {
+    "placeholders": {
+      "name": { "type": "String" }
+    }
+  },
+  "thisItemFallback": "This item",
+  "loading": "Loading...",
+
+  "orderTrackingTitle": "Order Tracking",
+  "orderNumberLabel": "Order #{number}",
+  "@orderNumberLabel": {
+    "placeholders": {
+      "number": { "type": "String" }
+    }
+  },
+  "stageSent": "Sent",
+  "stageUnderReview": "Under review",
+  "stagePreparing": "Preparing",
+  "stageOutForDelivery": "Out for delivery",
+  "stageDelivered": "Delivered",
+  "stageCancelled": "Cancelled",
+  "statusHistoryTitle": "Status history",
+  "cancelOrderTitle": "Cancel order?",
+  "cancelOrderConfirmation": "Are you sure you want to cancel this order?",
+  "cancelOrderButton": "Cancel order",
+  "orderCancelledMessage": "This order has been cancelled.",
+  "contactWarehouseForChanges": "For any changes now, please contact the warehouse directly.",
+  "errorOrderNotFound": "This order could not be found.",
+  "errorOrderNotCancellable": "This order can no longer be cancelled from the app.",
+
+  "myOrdersTitle": "My Orders",
+  "noOrdersYet": "You haven't placed any orders yet.",
+  "invoiceTitle": "Order items",
+  "discountLabel": "Discount",
+  "invoiceTotalLabel": "Total",
+
+  "returnsTitle": "Returns",
+  "noReturnsYet": "You haven't requested any returns yet.",
+  "requestReturnTitle": "Request a return",
+  "requestReturnButton": "Submit return request",
+  "returnQuantityLabel": "Quantity",
+  "returnReasonLabel": "Reason",
+  "reasonDamaged": "Damaged",
+  "reasonWrongItem": "Wrong item",
+  "reasonOther": "Other",
+  "customReasonLabel": "Please specify",
+  "returnSubmittedTitle": "Return requested",
+  "returnSubmittedMessage": "Your return request has been submitted. The warehouse will review it.",
+  "returnStatusPending": "Pending review",
+  "returnStatusApproved": "Approved",
+  "returnStatusRejected": "Rejected",
+  "returnPickItemsLabel": "Select the items you're returning",
+  "returnRejectionNoteLabel": "Rejection reason",
+  "viewReplacementOrderButton": "View replacement order",
+  "editButton": "Edit",
+  "deleteReturnButton": "Delete",
+  "deleteReturnConfirmTitle": "Delete return request?",
+  "deleteReturnConfirmMessage": "Are you sure you want to delete this return request?",
+  "returnApprovedBanner": "Return approved — a replacement order has been created",
+  "returnPendingReviewBanner": "Return submitted, awaiting the warehouse's review",
+  "returnRejectedBanner": "Return rejected",
+  "errorOrderNotDelivered": "This order hasn't been delivered yet.",
+  "errorOrderItemNotFound": "This item could not be found in the order.",
+  "errorReturnQuantityExceeded": "The return quantity exceeds what's available to return for this item.",
+  "errorCustomReasonRequired": "Please describe the reason for this return.",
+  "errorTooManyReturnPhotos": "You can attach up to 5 photos.",
+  "errorInvalidReturnPhoto": "One of the attached photos is not a valid image.",
+  "errorReturnAlreadyExists": "A return request has already been submitted for this order.",
+  "errorReturnNotEditable": "This return request has already been decided and can no longer be changed.",
+  "errorReturnItemsEmpty": "Please select at least one item to return.",
+  "errorDuplicateReturnItem": "Each item can only appear once in a return request.",
+  "errorRejectionNoteRequired": "Please explain why this return is being rejected.",
+  "returnPhotosLabel": "Photos (optional)",
+  "returnPhotosHint": "Add photos of the item to help the warehouse verify the reason",
+  "addPhotoButton": "Add photo",
+
+  "navWarehouses": "Warehouses",
+  "profileTitle": "Profile",
+  "logoutConfirmTitle": "Log out?",
+  "logoutConfirmMessage": "Are you sure you want to log out?",
+
+  "yourRatingTitle": "Your rating",
+  "noRatingsYet": "No warehouse has rated you yet.",
+  "ratingSummary": "{average} average ({count} ratings)",
+  "@ratingSummary": {
+    "placeholders": {
+      "average": { "type": "String" },
+      "count": { "type": "String" }
+    }
+  }
+}

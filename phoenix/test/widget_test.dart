@@ -1,0 +1,45 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import 'package:phoenix/core/network/api_client.dart';
+import 'package:phoenix/core/services/secure_storage_service.dart';
+import 'package:phoenix/core/services/storage_service.dart';
+import 'package:phoenix/features/auth/data/repositories/auth_repository_impl.dart';
+import 'package:phoenix/features/cart/data/repositories/order_repository_impl.dart';
+import 'package:phoenix/features/catalog/data/repositories/catalog_repository_impl.dart';
+import 'package:phoenix/features/returns/data/repositories/return_repository_impl.dart';
+import 'package:phoenix/features/reviews/data/repositories/review_repository_impl.dart';
+import 'package:phoenix/features/settings/presentation/managers/settings_state.dart';
+import 'package:phoenix/features/warehouse_selection/data/repositories/warehouse_repository_impl.dart';
+import 'package:phoenix/main.dart';
+
+void main() {
+  testWidgets('App boots to the splash screen', (WidgetTester tester) async {
+    SharedPreferences.setMockInitialValues({});
+    final storageService = StorageService(await SharedPreferences.getInstance());
+    final secureStorage = SecureStorageService();
+    final apiClient = ApiClient(secureStorage: secureStorage);
+    final authRepository = AuthRepositoryImpl(apiClient: apiClient);
+    final warehouseRepository = WarehouseRepositoryImpl(apiClient: apiClient);
+    final catalogRepository = CatalogRepositoryImpl(apiClient: apiClient);
+    final orderRepository = OrderRepositoryImpl(apiClient: apiClient);
+    final returnRepository = ReturnRepositoryImpl(apiClient: apiClient);
+    final reviewRepository = ReviewRepositoryImpl(apiClient: apiClient);
+
+    await tester.pumpWidget(
+      MyApp(
+        initialState: const SettingsState(),
+        storageService: storageService,
+        secureStorage: secureStorage,
+        authRepository: authRepository,
+        warehouseRepository: warehouseRepository,
+        catalogRepository: catalogRepository,
+        orderRepository: orderRepository,
+        returnRepository: returnRepository,
+        reviewRepository: reviewRepository,
+      ),
+    );
+
+    expect(find.text('Phoenix'), findsOneWidget);
+  });
+}
