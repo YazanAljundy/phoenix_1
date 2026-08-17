@@ -41,8 +41,14 @@ async function request(path, { method = 'GET', body } = {}) {
 }
 
 export const api = {
+  // TODO(re-enable-otp): unused by the current login flow - kept for a
+  // future re-enable. The backend routes are still live.
   sendOtp: (phone) => request('/auth/otp/send', { method: 'POST', body: { phone } }),
   login: (phone, otpCode) => request('/auth/login', { method: 'POST', body: { phone, otpCode } }),
+  // Section 6-2/3: the only login mechanism while OTP is disabled - used by
+  // both admin and warehouse accounts (this panel serves both).
+  loginWithPassword: (phone, password) =>
+    request('/auth/login-password', { method: 'POST', body: { phone, password } }),
   me: () => request('/auth/me'),
   pendingAccounts: () => request('/admin/pending-accounts'),
   approveAccount: (userId) => request(`/admin/accounts/${userId}/approve`, { method: 'POST' }),
@@ -72,4 +78,8 @@ export const api = {
   updateAdminProduct: (productId, changes) =>
     request(`/admin/products/${productId}`, { method: 'PATCH', body: changes }),
   deleteAdminProduct: (productId) => request(`/admin/products/${productId}`, { method: 'DELETE' }),
+  exchangeRate: () => request('/exchange-rate'),
+  adminExchangeRate: () => request('/admin/exchange-rate'),
+  setExchangeRate: (usdToSyp) => request('/admin/exchange-rate', { method: 'PATCH', body: { usdToSyp } }),
+  resetExchangeRate: () => request('/admin/exchange-rate/reset', { method: 'PATCH' }),
 };

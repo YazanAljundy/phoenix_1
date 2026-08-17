@@ -1,3 +1,5 @@
+const mongoose = require('mongoose');
+const { ApiError } = require('../utils/ApiError');
 const Review = require('../models/review.model');
 const Order = require('../models/order.model');
 const Warehouse = require('../models/warehouse.model');
@@ -29,4 +31,47 @@ async function listReviewsForPharmacy(pharmacyId) {
   return { reviews: rows, averageRating };
 }
 
-module.exports = { listReviewsForPharmacy };
+function validateRating(rating) {
+  if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+    throw ApiError.badRequest('Rating must be a whole number from 1 to 5.', undefined, 'INVALID_RATING');
+  }
+}
+
+// Section 13b's mirror: the pharmacy rates the warehouse once per delivered
+// order. Unlike the reverse direction, this starts hidden (isVisible: false)
+// and does NOT fold into Warehouse.averageRating/reviewsCount yet - both
+// happen together, once, when the not-yet-built one-month cron job flips
+// isVisible to true (see review.model.js).
+async function createWarehouseReview(pharmacyId, userId, { orderId, rating, comment }) {
+  if (typeof orderId !== 'string' || !mongoose.Types.ObjectId.isValid(orderId)) {
+    throw ApiError.notFound('Order not found.', 'ORDER_NOT_FOUND');
+  }
+  const order = await Order.findOne({ _id: orderId, pharmacyId });
+  if (!order) {
+    throw ApiError.notFound('Order not found.', 'ORDER_NOT_FOUND');
+  }
+  if (order.status !== 'delivered') {
+    throw ApiError.badRequest('This order has not been delivered yet.', undefined, 'ORDER_NOT_DELIVERED');
+  }
+
+  validateRating(rating);
+
+  const existing = await Review.findOne({ orderId: order._id, reviewerType: 'pharmacy' });
+  if (existing) {
+    throw ApiError.conflict('This order has already been rated.', 'ALREADY_REVIEWED');
+  }
+
+  const review = await Review.create({
+    orderId: order._id,
+    pharmacyId,
+    warehouseId: order.warehouseId,
+    reviewerType: 'pharmacy',
+    rating,
+    comment: typeof comment === 'string' && comment.trim() ? comment.trim() : null,
+    isVisible: false,
+  });
+
+  return review;
+}
+
+module.exports = { listReviewsForPharmacy, createWarehouseReview };

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api/client';
+import { ExchangeRateCard } from '../components/ExchangeRateCard';
 
 function accountName(account) {
   return account.pharmacy?.nameEn || account.warehouse?.nameEn || account.user.name;
@@ -16,6 +17,7 @@ export function PendingAccountsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [busyId, setBusyId] = useState(null);
+  const [exchangeRate, setExchangeRate] = useState(null);
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -30,9 +32,19 @@ export function PendingAccountsPage() {
     }
   }, []);
 
+  const loadExchangeRate = useCallback(async () => {
+    try {
+      const data = await api.adminExchangeRate();
+      setExchangeRate(data.exchangeRate);
+    } catch {
+      // Non-critical for this page - the card just stays hidden.
+    }
+  }, []);
+
   useEffect(() => {
     load();
-  }, [load]);
+    loadExchangeRate();
+  }, [load, loadExchangeRate]);
 
   const handleDecision = async (account, action) => {
     const confirmed = window.confirm(
@@ -58,6 +70,8 @@ export function PendingAccountsPage() {
 
   return (
     <div>
+      {exchangeRate && <ExchangeRateCard rate={exchangeRate} onChanged={loadExchangeRate} />}
+
       {error && <p className="error-text">{error}</p>}
 
       {isLoading ? (

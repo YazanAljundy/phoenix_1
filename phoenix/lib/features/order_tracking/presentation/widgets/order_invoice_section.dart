@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:phoenix/core/constants/app_colors.dart';
 import 'package:phoenix/core/constants/app_sizes.dart';
 import 'package:phoenix/core/extensions/build_context_extensions.dart';
+import 'package:phoenix/core/utils/currency_formatter.dart';
 import 'package:phoenix/core/widgets/custom_card.dart';
+import 'package:phoenix/core/widgets/secondary_price_hint.dart';
 import 'package:phoenix/features/cart/data/models/order_line_item.dart';
+import 'package:phoenix/features/exchange_rate/presentation/managers/exchange_rate_cubit.dart';
 
 // Section 6.8: the digital invoice - full line items plus the same
 // totalPrice -> discountAmount -> finalPrice breakdown computed at order
@@ -126,13 +130,28 @@ class _TotalsRow extends StatelessWidget {
         ? context.textTheme.titleMedium?.copyWith(color: AppColors.primaryOf(context))
         : context.textTheme.bodyMedium;
 
+    // The USD hint only makes sense on the grand total - a per-row
+    // conversion for the subtotal/discount lines above it would be noise,
+    // not useful context.
+    final usdToSyp = emphasized ? context.watch<ExchangeRateCubit>().state.usdToSyp : null;
+    final usdText = emphasized ? formatUsdApprox(amount, usdToSyp) : null;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(label, style: style),
-          Text('$amount ${l10n.currencySuffix}', style: style),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('$amount ${l10n.currencySuffix}', style: style),
+              if (usdText != null) ...[
+                const SizedBox(width: AppSizes.spacingXSmall),
+                SecondaryPriceHint(text: usdText),
+              ],
+            ],
+          ),
         ],
       ),
     );

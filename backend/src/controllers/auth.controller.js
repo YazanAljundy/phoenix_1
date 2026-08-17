@@ -24,6 +24,9 @@ function requirePassword(value, message) {
   return password;
 }
 
+// TODO(re-enable-otp): route stays live and fully working, but no current
+// client calls it - registration/login are password-only for now. See the
+// TODO in auth.service.js's registerOrLogin.
 const sendOtp = asyncHandler(async (req, res) => {
   const phone = normalizePhone(req.body.phone);
   if (!isValidPhone(phone)) {
@@ -51,7 +54,6 @@ const register = asyncHandler(async (req, res) => {
     const name = requireNonEmptyString(req.body.name, 'Full name is required.');
     const pharmacyName = requireNonEmptyString(req.body.pharmacyName, 'Pharmacy name is required.');
     const address = requireNonEmptyString(req.body.address, 'Address is required.');
-    const otpCode = requireNonEmptyString(req.body.otpCode, 'Verification code is required.');
     const password = requirePassword(req.body.password, 'Password is required.');
     const confirmPassword = requireNonEmptyString(
       req.body.confirmPassword,
@@ -74,7 +76,6 @@ const register = asyncHandler(async (req, res) => {
       pharmacyName,
       phone,
       address,
-      otpCode,
       password,
       verificationPhotoUrl,
     });
@@ -90,6 +91,7 @@ const register = asyncHandler(async (req, res) => {
   }
 });
 
+// TODO(re-enable-otp): kept fully working, but no current client calls this.
 const login = asyncHandler(async (req, res) => {
   const phone = normalizePhone(req.body.phone);
   if (!isValidPhone(phone)) {
@@ -106,10 +108,10 @@ const login = asyncHandler(async (req, res) => {
   });
 });
 
-// Section 6-2: an alternative to the OTP flow for returning users only - the
-// pharmacist app's registration screen offers both paths from the same
-// screen. Password is set once, at initial registration (see `register`
-// above); this endpoint never touches OTP at all.
+// Section 6-2/3: the only login mechanism while OTP is disabled (see the TODO
+// on `sendOtp`/`login` above) - used by the pharmacy app, the warehouse React
+// panel, and admin alike. Password is set once, at initial registration (see
+// `register` above) or via scripts/create-admin.js for admin accounts.
 const loginWithPassword = asyncHandler(async (req, res) => {
   const phone = normalizePhone(req.body.phone);
   if (!isValidPhone(phone)) {

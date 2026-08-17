@@ -28,7 +28,6 @@ class AuthRepositoryImpl implements AuthRepository {
     required String pharmacyName,
     required String phone,
     required String address,
-    required String otpCode,
     required String password,
     required XFile verificationPhoto,
   }) async {
@@ -39,7 +38,6 @@ class AuthRepositoryImpl implements AuthRepository {
         'pharmacyName': pharmacyName,
         'phone': phone,
         'address': address,
-        'otpCode': otpCode,
         'password': password,
         'confirmPassword': password,
         'verificationPhoto': MultipartFile.fromBytes(

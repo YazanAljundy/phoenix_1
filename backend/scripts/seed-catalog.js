@@ -11,9 +11,13 @@
 // other code needs to change, the client already renders a placeholder for
 // a null image.
 //
-// Usage: npm run seed-catalog -- 0900000001
+// Usage: npm run seed-catalog -- 0900000001 <password>
+// <password> is optional - when given (or when the account has none yet),
+// it's set/updated so the warehouse can log in with phone + password
+// (Section 6-2/3 - OTP is temporarily disabled, see auth.service.js).
 require('dotenv').config();
 const mongoose = require('mongoose');
+const bcrypt = require('bcrypt');
 const env = require('../src/config/env');
 const User = require('../src/models/user.model');
 const Warehouse = require('../src/models/warehouse.model');
@@ -42,15 +46,31 @@ async function findOrCreateProduct(data) {
 
 async function main() {
   const phone = process.argv[2] || '0900000001';
+  const password = process.argv[3];
 
   await mongoose.connect(env.mongodbUri);
 
-  let user = await User.findOne({ phone });
+  let user = await User.findOne({ phone }).select('+password');
   if (!user) {
-    user = await User.create({ name: 'Al-Najah Warehouse Owner', phone, role: 'warehouse', status: 'active' });
+    if (!password) {
+      console.error('No account exists for this phone yet - a password is required to create one.');
+      console.error('Usage: npm run seed-catalog -- <phone> <password>');
+      process.exitCode = 1;
+      return;
+    }
+    user = await User.create({
+      name: 'Al-Najah Warehouse Owner',
+      phone,
+      role: 'warehouse',
+      status: 'active',
+      password: await bcrypt.hash(password, 10),
+    });
   } else {
     user.role = 'warehouse';
     user.status = 'active';
+    if (password) {
+      user.password = await bcrypt.hash(password, 10);
+    }
     await user.save();
   }
 
@@ -73,68 +93,70 @@ async function main() {
     categories[c.nameEn] = await findOrCreateCategory(c);
   }
 
+  // Section: USD-first catalog pricing - `price` below is USD (see
+  // product.model.js), not the old SYP figures this script used to seed.
   const products = [
     {
       categoryId: categories['Pain Relief']._id,
       nameAr: 'باراسيتامول 500 ملغ', nameEn: 'Paracetamol 500mg',
       manufacturerAr: 'شركة الأدوية الوطنية', manufacturerEn: 'National Pharma',
       unitAr: 'علبة', unitEn: 'Box',
-      price: 5000, stockQuantity: 120, manuallyDisabled: false,
+      price: 3.5, manuallyDisabled: false,
     },
     {
       categoryId: categories['Pain Relief']._id,
       nameAr: 'إيبوبروفين 400 ملغ', nameEn: 'Ibuprofen 400mg',
       manufacturerAr: 'شركة الشرق للأدوية', manufacturerEn: 'Al-Sharq Pharma',
       unitAr: 'علبة', unitEn: 'Box',
-      price: 6500, stockQuantity: 80, manuallyDisabled: false,
+      price: 4.5, manuallyDisabled: false,
     },
     {
       categoryId: categories['Antibiotics']._id,
       nameAr: 'أموكسيسيلين 500 ملغ', nameEn: 'Amoxicillin 500mg',
       manufacturerAr: 'شركة الأدوية الوطنية', manufacturerEn: 'National Pharma',
       unitAr: 'علبة', unitEn: 'Box',
-      price: 9000, stockQuantity: 45, manuallyDisabled: false,
+      price: 6, manuallyDisabled: false,
     },
     {
       categoryId: categories['Antibiotics']._id,
       nameAr: 'أزيثروميسين 250 ملغ', nameEn: 'Azithromycin 250mg',
       manufacturerAr: 'شركة الفا للأدوية', manufacturerEn: 'Alpha Pharma',
       unitAr: 'علبة', unitEn: 'Box',
-      price: 12000, stockQuantity: 0, manuallyDisabled: false, // out of stock -> auto-unavailable
+      price: 8, manuallyDisabled: false,
     },
     {
       categoryId: categories['Vitamins']._id,
       nameAr: 'فيتامين د 1000 وحدة', nameEn: 'Vitamin D 1000 IU',
       manufacturerAr: 'شركة الحياة للأدوية', manufacturerEn: 'Al-Hayat Pharma',
       unitAr: 'علبة', unitEn: 'Box',
-      price: 7000, stockQuantity: 200, manuallyDisabled: false,
+      price: 5, manuallyDisabled: false,
     },
     {
       categoryId: categories['Vitamins']._id,
       nameAr: 'فيتامين سي 500 ملغ', nameEn: 'Vitamin C 500mg',
       manufacturerAr: 'شركة الحياة للأدوية', manufacturerEn: 'Al-Hayat Pharma',
       unitAr: 'علبة', unitEn: 'Box',
-      price: 4500, stockQuantity: 150, manuallyDisabled: true, // manually paused -> dimmed, stays unavailable regardless of stock
+      price: 3, manuallyDisabled: true, // manually paused -> dimmed, stays unavailable
     },
     {
       categoryId: categories['Skin Care']._id,
       nameAr: 'كريم مرطب', nameEn: 'Moisturizing Cream',
       manufacturerAr: 'شركة الشرق للأدوية', manufacturerEn: 'Al-Sharq Pharma',
       unitAr: 'أنبوب', unitEn: 'Tube',
-      price: 8000, stockQuantity: 60, manuallyDisabled: false,
+      price: 5.5, manuallyDisabled: false,
     },
     {
       categoryId: categories['Skin Care']._id,
       nameAr: 'واقي شمس SPF 50', nameEn: 'Sunscreen SPF 50',
       manufacturerAr: 'شركة الفا للأدوية', manufacturerEn: 'Alpha Pharma',
       unitAr: 'أنبوب', unitEn: 'Tube',
-      price: 11000, stockQuantity: 30, manuallyDisabled: false,
+      price: 7.5, manuallyDisabled: false,
     },
   ];
 
   const createdProducts = [];
   for (const p of products) {
-    const isAvailable = !p.manuallyDisabled && p.stockQuantity > 0;
+    const isAvailable = !p.manuallyDisabled;
     const product = await findOrCreateProduct({
       ...p,
       warehouseId: warehouse._id,

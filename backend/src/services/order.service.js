@@ -7,7 +7,9 @@ const OrderItem = require('../models/orderItem.model');
 const Warehouse = require('../models/warehouse.model');
 const Counter = require('../models/counter.model');
 const Return = require('../models/return.model');
+const Review = require('../models/review.model');
 const { isWarehouseAvailable } = require('./warehouse.service');
+const { getRate } = require('./exchangeRate.service');
 
 // Section 6.7/7: the five tracked stages, in order - 'cancelled' is
 // deliberately excluded, since it's a special status shown outside the
@@ -36,11 +38,13 @@ async function nextOrderNumber() {
   return counter.seq;
 }
 
-// Section 7/8: the stock check runs against isAvailable and stockQuantity as
-// they stand right now at submission - not whatever was shown when the
-// pharmacist added the item to their cart, since both can drift in the
-// meantime. Every failure is collected (not just the first) so the pharmacist
-// can fix the whole cart in one pass instead of resubmitting repeatedly.
+// Section 7/8: the availability check runs against isAvailable as it stands
+// right now at submission - not whatever was shown when the pharmacist added
+// the item to their cart, since it can drift in the meantime. Every failure
+// is collected (not just the first) so the pharmacist can fix the whole cart
+// in one pass instead of resubmitting repeatedly.
+// TODO(re-enable-stock): also compared requested quantity against
+// stockQuantity here (INSUFFICIENT_STOCK) - see the TODO on product.model.js.
 //
 // No multi-document transaction here: the dev/local MongoDB is a standalone
 // instance (Mongoose transactions require a replica set, which Railway/Atlas
@@ -84,19 +88,29 @@ async function createOrder({ userId, pharmacyId, warehouseId, items, notes, isRe
     if (!product.isAvailable) {
       problems.push({ code: 'PRODUCT_UNAVAILABLE', productId: item.productId });
       fallbackText.push(`${product.nameEn} is currently unavailable.`);
-    } else if (item.quantity > product.stockQuantity) {
-      problems.push({
-        code: 'INSUFFICIENT_STOCK',
-        productId: item.productId,
-        availableQuantity: product.stockQuantity,
-      });
-      fallbackText.push(`Only ${product.stockQuantity} of ${product.nameEn} is currently available.`);
     }
   }
 
   if (problems.length > 0) {
     throw ApiError.badRequest(fallbackText.join(' '), { problems }, 'STOCK_CHECK_FAILED');
   }
+
+  // Section: USD-first catalog pricing - product.price is USD, but orders/
+  // invoices stay SYP (locked in at purchase time, same as any real
+  // invoice). The live rate is fetched once here and applied to every line
+  // below, rather than per-item, so a single order is never priced against
+  // two different rates. No rate at all (API never configured, no admin
+  // manual entry) means there's nothing to charge in SYP - fail clearly
+  // rather than order at a made-up rate.
+  const rate = await getRate();
+  if (!rate) {
+    throw ApiError.badRequest(
+      'Exchange rate is not available yet - orders cannot be priced.',
+      undefined,
+      'EXCHANGE_RATE_UNAVAILABLE'
+    );
+  }
+  const usdToSyp = rate.usdToSyp;
 
   const now = new Date();
   const offers = await Offer.find({
@@ -112,7 +126,9 @@ async function createOrder({ userId, pharmacyId, warehouseId, items, notes, isRe
   const orderItemsData = merged.map((item) => {
     const product = productById.get(item.productId);
     const offer = offerByProductId.get(item.productId);
-    const unitPrice = product.price;
+    // product.price is USD - converted to SYP here, at order time, using
+    // today's rate (see comment above).
+    const unitPrice = Math.round(product.price * usdToSyp);
     // Section 4: the product-level offer (if any) applies first, at the item
     // level - the platform discount/commission below applies afterward, to
     // the order total. A replacement order (Section 6.9) is always
@@ -183,12 +199,17 @@ async function getOrderForPharmacy(orderId, pharmacyId) {
   if (!order) {
     throw ApiError.notFound('Order not found.', 'ORDER_NOT_FOUND');
   }
-  const [warehouse, items, returnRequest] = await Promise.all([
+  // myReview: this pharmacy's own rating of the warehouse for this order, if
+  // it's submitted one already (Section 8/13c) - fetched regardless of
+  // isVisible, since the pharmacist should see their own pending-visibility
+  // review even though nobody else can yet.
+  const [warehouse, items, returnRequest, myReview] = await Promise.all([
     Warehouse.findById(order.warehouseId),
     OrderItem.find({ orderId: order._id }),
     Return.findOne({ orderId: order._id }),
+    Review.findOne({ orderId: order._id, reviewerType: 'pharmacy' }),
   ]);
-  return { order, warehouse, items, returnRequest };
+  return { order, warehouse, items, returnRequest, myReview };
 }
 
 // Section 6.8: "my orders" list - every status included (delivered/cancelled

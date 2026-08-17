@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:phoenix/core/constants/app_colors.dart';
 import 'package:phoenix/core/constants/app_radius.dart';
 import 'package:phoenix/core/constants/app_sizes.dart';
 import 'package:phoenix/core/extensions/build_context_extensions.dart';
+import 'package:phoenix/core/utils/currency_formatter.dart';
 import 'package:phoenix/core/widgets/custom_card.dart';
+import 'package:phoenix/core/widgets/secondary_price_hint.dart';
 import 'package:phoenix/features/catalog/data/models/product_model.dart';
+import 'package:phoenix/features/exchange_rate/presentation/managers/exchange_rate_cubit.dart';
 
 class ProductCard extends StatelessWidget {
   const ProductCard({super.key, required this.product, required this.onAdd});
@@ -91,13 +95,26 @@ class _PriceDisplay extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final offer = product.offer;
+    final usdToSyp = context.watch<ExchangeRateCubit>().state.usdToSyp;
+    final sypText = formatSypApprox(
+      offer?.discountPriceUsd ?? product.priceUsd,
+      usdToSyp,
+      l10n.currencySuffix,
+    );
 
     if (offer == null) {
-      return Text(
-        '${product.price} ${l10n.currencySuffix}',
-        style: context.textTheme.titleMedium?.copyWith(
-          color: AppColors.primaryOf(context),
-        ),
+      return Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: AppSizes.spacingXSmall,
+        children: [
+          Text(
+            '\$${product.priceUsd}',
+            style: context.textTheme.titleMedium?.copyWith(
+              color: AppColors.primaryOf(context),
+            ),
+          ),
+          if (sypText != null) SecondaryPriceHint(text: sypText),
+        ],
       );
     }
 
@@ -106,7 +123,7 @@ class _PriceDisplay extends StatelessWidget {
       spacing: AppSizes.spacingSmall,
       children: [
         Text(
-          '${product.price} ${l10n.currencySuffix}',
+          '\$${product.priceUsd}',
           style: TextStyle(
             decoration: TextDecoration.lineThrough,
             color: AppColors.textSecondaryOf(context),
@@ -114,13 +131,14 @@ class _PriceDisplay extends StatelessWidget {
           ),
         ),
         Text(
-          '${offer.discountPrice} ${l10n.currencySuffix}',
+          '\$${offer.discountPriceUsd}',
           style: TextStyle(
             color: AppColors.secondaryOf(context),
             fontWeight: FontWeight.bold,
             fontSize: 16,
           ),
         ),
+        if (sypText != null) SecondaryPriceHint(text: sypText),
       ],
     );
   }

@@ -3,9 +3,9 @@ import 'package:phoenix/generated/app_localizations.dart';
 
 // Renders order.service.js's STOCK_CHECK_FAILED `details.problems` into a
 // localized, human-readable sentence. The server only sends { code,
-// productId, availableQuantity? } - no product name - because the client
-// already knows every cart item's localized name (it's the one that put
-// them there); this just looks it up locally instead of round-tripping it.
+// productId } - no product name - because the client already knows every
+// cart item's localized name (it's the one that put them there); this just
+// looks it up locally instead of round-tripping it.
 String describeStockProblems(
   AppLocalizations l10n,
   bool isArabic,
@@ -20,9 +20,6 @@ String describeStockProblems(
         : l10n.thisItemFallback;
 
     switch (problem['code']) {
-      case 'INSUFFICIENT_STOCK':
-        final quantity = problem['availableQuantity'];
-        return l10n.errorInsufficientStock('$quantity', name);
       case 'PRODUCT_UNAVAILABLE':
         return l10n.errorProductUnavailable(name);
       case 'PRODUCT_NOT_FOUND':

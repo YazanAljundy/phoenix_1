@@ -7,8 +7,11 @@ import {
   productAvailabilityLabel,
   productFormFromProduct,
 } from '../components/ProductFormModal';
+import { useExchangeRate } from '../context/ExchangeRateContext';
+import { formatPriceWithSyp } from '../utils/currency';
 
 export function WarehouseProductsPage() {
+  const usdToSyp = useExchangeRate();
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -66,7 +69,6 @@ export function WarehouseProductsPage() {
                 <th>Name</th>
                 <th>Category</th>
                 <th>Price</th>
-                <th>Stock</th>
                 <th>Status</th>
                 <th></th>
               </tr>
@@ -79,8 +81,7 @@ export function WarehouseProductsPage() {
                     <div className="product-manufacturer">{product.manufacturerEn}</div>
                   </td>
                   <td>{categoryName(product.categoryId)}</td>
-                  <td>{product.price} SYP</td>
-                  <td>{product.stockQuantity}</td>
+                  <td>{formatPriceWithSyp(product.priceUsd, usdToSyp)}</td>
                   <td>
                     <span className={`availability-badge ${productAvailabilityClass(product)}`}>
                       {productAvailabilityLabel(product)}
@@ -103,6 +104,7 @@ export function WarehouseProductsPage() {
           mode={modal.mode}
           initialForm={modal.mode === 'create' ? EMPTY_PRODUCT_FORM : productFormFromProduct(modal.product)}
           categories={categories}
+          usdToSyp={usdToSyp}
           onClose={() => setModal(null)}
           onSaved={handleSaved}
           onSubmit={(payload) =>

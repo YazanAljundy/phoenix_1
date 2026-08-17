@@ -30,14 +30,14 @@ export function AuthProvider({ children }) {
       });
   }, []);
 
-  const login = useCallback(async (phone, otpCode) => {
-    const data = await api.login(phone, otpCode);
-    // The backend's /auth/login is role-agnostic - it's shared with the
-    // pharmacy/warehouse OTP flow (Section 13b). This panel serves admin and
-    // warehouse accounts (Section 13b: one React app, menus by role) - a
-    // pharmacy account has no business here. The role check below is a UX
-    // gate; the actual security boundary is each route's own authorize(...)
-    // on the server.
+  // Section 6-2/3: phone + password, no OTP - the only login mechanism while
+  // OTP is disabled. Role-agnostic on the backend (shared with the pharmacy
+  // app); this panel serves admin and warehouse accounts only (Section 13b:
+  // one React app, menus by role) - a pharmacy account has no business here.
+  // The role check below is a UX gate; the actual security boundary is each
+  // route's own authorize(...) on the server.
+  const login = useCallback(async (phone, password) => {
+    const data = await api.loginWithPassword(phone, password);
     if (!PANEL_ROLES.includes(data.user.role)) {
       throw new Error('This panel is for admin and warehouse accounts only.');
     }

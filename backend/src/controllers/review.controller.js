@@ -18,4 +18,14 @@ const list = asyncHandler(async (req, res) => {
   res.json({ success: true, ...reviewViewModel.toReviewsResponse(result) });
 });
 
-module.exports = { list };
+const create = asyncHandler(async (req, res) => {
+  const pharmacy = await loadPharmacyOrThrow(req.user._id);
+  const review = await reviewService.createWarehouseReview(pharmacy._id, req.user._id, req.body);
+  res.status(201).json({
+    success: true,
+    message: 'Rating submitted.',
+    ...reviewViewModel.toCreatedReviewResponse(review),
+  });
+});
+
+module.exports = { list, create };

@@ -25,17 +25,22 @@ async function loadProfile(user) {
   return { pharmacy: null, warehouse: null };
 }
 
+// TODO(re-enable-otp): OTP phone verification is temporarily disabled for
+// registration (project owner's decision) - admin's manual approval is the
+// verification step for now instead of a confirmed phone number. otpService
+// and the /auth/otp/send + /auth/login routes are deliberately left fully
+// intact (not deleted) so this can be restored later by re-adding the
+// otpService.verifyOtp(phone, otpCode) call this function used to make.
+//
 // The registration screen (Section 6.2) is the app's only entry point - there is
 // no separate "log back in" screen in the 10-screen MVP. So a phone that already
-// has an account is treated as a re-entry: the OTP logs the existing account back
-// in and the freshly typed name/pharmacyName/address are discarded rather than
-// rejected with a conflict error. This also gracefully covers JWT expiry (7 days)
-// and reinstalls, without adding a screen the spec doesn't call for. The same
-// discard applies to password/verificationPhotoUrl (Section 6-2 update): both are
-// only ever captured once, at the account's actual creation.
-async function registerOrLogin({ name, pharmacyName, phone, address, otpCode, password, verificationPhotoUrl }) {
-  await otpService.verifyOtp(phone, otpCode);
-
+// has an account is treated as a re-entry: registering again logs the existing
+// account back in and the freshly typed name/pharmacyName/address are discarded
+// rather than rejected with a conflict error. This also gracefully covers JWT
+// expiry (7 days) and reinstalls, without adding a screen the spec doesn't call
+// for. The same discard applies to password/verificationPhotoUrl (Section 6-2
+// update): both are only ever captured once, at the account's actual creation.
+async function registerOrLogin({ name, pharmacyName, phone, address, password, verificationPhotoUrl }) {
   const existingUser = await User.findOne({ phone });
   if (existingUser) {
     if (existingUser.status === 'blocked') {
@@ -73,6 +78,8 @@ async function registerOrLogin({ name, pharmacyName, phone, address, otpCode, pa
   return { user, pharmacy, warehouse: null, token: issueToken(user) };
 }
 
+// TODO(re-enable-otp): kept fully working, but no current client calls this -
+// they use loginWithPassword below instead. See the TODO on registerOrLogin.
 async function login({ phone, otpCode }) {
   await otpService.verifyOtp(phone, otpCode);
 
@@ -88,14 +95,14 @@ async function login({ phone, otpCode }) {
   return { user, pharmacy, warehouse, token: issueToken(user) };
 }
 
-// Section 6-2: the alternative to OTP for returning users - phone + password,
-// no SMS round-trip. Deliberately restricted to role='pharmacy' only, even
-// though warehouse/admin accounts also have a `password` field in the schema
-// (unused by them today) - this login path is scoped to the pharmacist app,
-// not a general replacement for the warehouse/admin OTP flow.
+// Section 6-2/3: phone + password, no OTP - now the ONLY login mechanism for
+// all three roles (pharmacy, warehouse, admin) while OTP is disabled (see the
+// TODO on registerOrLogin above). Previously scoped to role='pharmacy' only;
+// generalized here since the warehouse React panel and admin now use this
+// same endpoint instead of their own OTP flow.
 async function loginWithPassword({ phone, password }) {
   const user = await User.findOne({ phone }).select('+password');
-  if (!user || user.role !== 'pharmacy') {
+  if (!user) {
     throw ApiError.notFound('No account found for this phone number. Please register first.');
   }
   if (user.status === 'blocked') {

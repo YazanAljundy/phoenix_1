@@ -1,6 +1,7 @@
 import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider, useAuth } from './auth/AuthContext';
 import { LoginPage } from './auth/LoginPage';
+import { ExchangeRateProvider } from './context/ExchangeRateContext';
 import { AdminPanel } from './pages/AdminPanel';
 import { WarehousePanel } from './pages/WarehousePanel';
 
@@ -25,10 +26,18 @@ function Gate() {
   }
 
   if (user?.role === 'warehouse') {
-    return <WarehousePanel />;
+    return (
+      <ExchangeRateProvider>
+        <WarehousePanel />
+      </ExchangeRateProvider>
+    );
   }
 
-  return <AdminPanel />;
+  return (
+    <ExchangeRateProvider>
+      <AdminPanel />
+    </ExchangeRateProvider>
+  );
 }
 
 export default function App() {

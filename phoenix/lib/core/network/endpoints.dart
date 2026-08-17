@@ -19,4 +19,5 @@ class Endpoints {
   static const String returns = '/returns';
   static String returnDetail(String returnId) => '/returns/$returnId';
   static const String reviews = '/reviews';
+  static const String exchangeRate = '/exchange-rate';
 }

@@ -34,6 +34,7 @@
   "passwordMismatch": "Passwords do not match.",
   "alreadyHaveAccountLink": "Already have an account? Log in with password",
   "sendCodeButton": "Send verification code",
+  "createAccountButton": "Create account",
 
   "passwordLoginTitle": "Log in with password",
   "passwordLoginSubtitle": "Enter your phone number and password",
@@ -129,14 +130,8 @@
   "errorInvalidRequest": "Something about this request wasn't valid. Please try again.",
   "errorPharmacyNotFound": "We couldn't find your pharmacy profile. Please contact support.",
   "errorWarehouseNotFound": "This warehouse is no longer available.",
+  "errorExchangeRateUnavailable": "Prices can't be confirmed right now. Please try again shortly.",
   "errorStockCheckFailedGeneric": "Some items in your cart are no longer available as requested.",
-  "errorInsufficientStock": "Only {quantity} of {name} is currently available.",
-  "@errorInsufficientStock": {
-    "placeholders": {
-      "quantity": { "type": "String" },
-      "name": { "type": "String" }
-    }
-  },
   "errorProductUnavailable": "{name} is currently unavailable.",
   "@errorProductUnavailable": {
     "placeholders": {
@@ -233,5 +228,18 @@
       "average": { "type": "String" },
       "count": { "type": "String" }
     }
-  }
+  },
+
+  "rateWarehouseTitle": "Rate the warehouse",
+  "rateWarehouseCommentLabel": "Comment (optional)",
+  "submitReviewButton": "Submit rating",
+  "submitReviewConfirmTitle": "Submit rating?",
+  "submitReviewConfirmMessage": "You won't be able to change this rating after sending it. Continue?",
+  "reviewThankYouTitle": "Thanks — you rated this order {rating} stars",
+  "@reviewThankYouTitle": {
+    "placeholders": {
+      "rating": { "type": "String" }
+    }
+  },
+  "errorAlreadyReviewed": "This order has already been rated."
 }

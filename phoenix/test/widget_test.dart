@@ -7,6 +7,7 @@ import 'package:phoenix/core/services/storage_service.dart';
 import 'package:phoenix/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:phoenix/features/cart/data/repositories/order_repository_impl.dart';
 import 'package:phoenix/features/catalog/data/repositories/catalog_repository_impl.dart';
+import 'package:phoenix/features/exchange_rate/data/repositories/exchange_rate_repository_impl.dart';
 import 'package:phoenix/features/returns/data/repositories/return_repository_impl.dart';
 import 'package:phoenix/features/reviews/data/repositories/review_repository_impl.dart';
 import 'package:phoenix/features/settings/presentation/managers/settings_state.dart';
@@ -22,6 +23,7 @@ void main() {
     final authRepository = AuthRepositoryImpl(apiClient: apiClient);
     final warehouseRepository = WarehouseRepositoryImpl(apiClient: apiClient);
     final catalogRepository = CatalogRepositoryImpl(apiClient: apiClient);
+    final exchangeRateRepository = ExchangeRateRepositoryImpl(apiClient: apiClient);
     final orderRepository = OrderRepositoryImpl(apiClient: apiClient);
     final returnRepository = ReturnRepositoryImpl(apiClient: apiClient);
     final reviewRepository = ReviewRepositoryImpl(apiClient: apiClient);
@@ -34,6 +36,7 @@ void main() {
         authRepository: authRepository,
         warehouseRepository: warehouseRepository,
         catalogRepository: catalogRepository,
+        exchangeRateRepository: exchangeRateRepository,
         orderRepository: orderRepository,
         returnRepository: returnRepository,
         reviewRepository: reviewRepository,

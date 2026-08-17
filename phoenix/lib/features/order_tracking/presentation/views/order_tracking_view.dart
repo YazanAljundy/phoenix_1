@@ -9,10 +9,12 @@ import 'package:phoenix/core/error/error_translator.dart';
 import 'package:phoenix/core/extensions/build_context_extensions.dart';
 import 'package:phoenix/core/widgets/app_dialog.dart';
 import 'package:phoenix/core/widgets/app_loading.dart';
+import 'package:phoenix/core/widgets/app_text_field.dart';
 import 'package:phoenix/core/widgets/custom_card.dart';
 import 'package:phoenix/core/widgets/error_view.dart';
 import 'package:phoenix/core/widgets/primary_button.dart';
 import 'package:phoenix/core/widgets/secondary_button.dart';
+import 'package:phoenix/core/widgets/whatsapp_button.dart';
 import 'package:phoenix/features/cart/data/models/order_model.dart';
 import 'package:phoenix/features/order_tracking/presentation/managers/order_tracking_cubit.dart';
 import 'package:phoenix/features/order_tracking/presentation/managers/order_tracking_state.dart';
@@ -150,11 +152,19 @@ class _OrderTrackingViewState extends State<OrderTrackingView> {
                 ),
                 if (warehouseName != null) ...[
                   const SizedBox(height: AppSizes.spacingXSmall),
-                  Text(
-                    warehouseName,
-                    style: context.textTheme.bodyMedium?.copyWith(
-                      color: AppColors.textSecondaryOf(context),
-                    ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          warehouseName,
+                          style: context.textTheme.bodyMedium?.copyWith(
+                            color: AppColors.textSecondaryOf(context),
+                          ),
+                        ),
+                      ),
+                      if (state.warehousePhone != null)
+                        WhatsAppButton(phone: state.warehousePhone!),
+                    ],
                   ),
                 ],
                 const SizedBox(height: AppSizes.spacingXLarge),
@@ -186,6 +196,11 @@ class _OrderTrackingViewState extends State<OrderTrackingView> {
                     onDelete: order.linkedReturn == null
                         ? null
                         : () => _deleteReturn(order.linkedReturn!.id),
+                  ),
+                  const SizedBox(height: AppSizes.spacingMedium),
+                  _WarehouseReviewSection(
+                    myReview: order.myReview,
+                    isSubmitting: state.isSubmittingReview,
                   ),
                 ],
                 if (order.isCancellable) ...[
@@ -315,6 +330,127 @@ class _ReturnStatusSection extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+}
+
+// Section 8/13c: rates the warehouse for this delivered order. Shows the
+// interactive form (stars + optional comment) when the pharmacy hasn't
+// reviewed this order yet, or a static "already rated" display when it has -
+// same one-or-the-other pattern as _ReturnStatusSection above, just without
+// the "in progress" middle state (a rating, once sent, can't be edited).
+class _WarehouseReviewSection extends StatefulWidget {
+  const _WarehouseReviewSection({required this.myReview, required this.isSubmitting});
+
+  final MyReviewModel? myReview;
+  final bool isSubmitting;
+
+  @override
+  State<_WarehouseReviewSection> createState() => _WarehouseReviewSectionState();
+}
+
+class _WarehouseReviewSectionState extends State<_WarehouseReviewSection> {
+  int _rating = 0;
+  late final TextEditingController _commentController;
+
+  @override
+  void initState() {
+    super.initState();
+    _commentController = TextEditingController();
+  }
+
+  @override
+  void dispose() {
+    _commentController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _confirmSubmit() async {
+    final l10n = context.l10n;
+    final cubit = context.read<OrderTrackingCubit>();
+    final rating = _rating;
+    final comment = _commentController.text.trim();
+
+    await AppDialog.show(
+      context: context,
+      title: l10n.submitReviewConfirmTitle,
+      content: l10n.submitReviewConfirmMessage,
+      actionLabel: l10n.submitReviewButton,
+      onAction: () {
+        Navigator.pop(context);
+        cubit.submitReview(rating: rating, comment: comment.isEmpty ? null : comment);
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final myReview = widget.myReview;
+
+    if (myReview != null) {
+      return CustomCard(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(l10n.reviewThankYouTitle(myReview.rating.toString()), style: context.textTheme.titleMedium),
+            const SizedBox(height: AppSizes.spacingSmall),
+            _StarRatingRow(rating: myReview.rating),
+            if (myReview.comment != null && myReview.comment!.isNotEmpty) ...[
+              const SizedBox(height: AppSizes.spacingSmall),
+              Text(myReview.comment!),
+            ],
+          ],
+        ),
+      );
+    }
+
+    return CustomCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(l10n.rateWarehouseTitle, style: context.textTheme.titleMedium),
+          const SizedBox(height: AppSizes.spacingSmall),
+          _StarRatingRow(rating: _rating, onRatingChanged: (r) => setState(() => _rating = r)),
+          const SizedBox(height: AppSizes.spacingMedium),
+          AppTextField(label: l10n.rateWarehouseCommentLabel, controller: _commentController),
+          const SizedBox(height: AppSizes.spacingMedium),
+          PrimaryButton(
+            label: l10n.submitReviewButton,
+            isLoading: widget.isSubmitting,
+            onPressed: _rating > 0 ? _confirmSubmit : () {},
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StarRatingRow extends StatelessWidget {
+  const _StarRatingRow({required this.rating, this.onRatingChanged});
+
+  final int rating;
+  final ValueChanged<int>? onRatingChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(5, (index) {
+        final starValue = index + 1;
+        final filled = starValue <= rating;
+        final icon = Icon(
+          filled ? Icons.star : Icons.star_border,
+          size: 32,
+          color: filled ? AppColors.primaryOf(context) : AppColors.borderOf(context),
+        );
+        if (onRatingChanged == null) return icon;
+        return InkWell(
+          onTap: () => onRatingChanged!(starValue),
+          borderRadius: BorderRadius.circular(20),
+          child: icon,
+        );
+      }),
     );
   }
 }

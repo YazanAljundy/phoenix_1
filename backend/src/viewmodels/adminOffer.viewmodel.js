@@ -9,7 +9,7 @@ function serializePendingOffer({ offer, product, warehouse }) {
     createdAt: offer.createdAt,
     productNameAr: product ? product.nameAr : null,
     productNameEn: product ? product.nameEn : null,
-    productPrice: product ? product.price : null,
+    productPriceUsd: product ? product.price : null,
     warehouseNameAr: warehouse ? warehouse.nameAr : null,
     warehouseNameEn: warehouse ? warehouse.nameEn : null,
   };

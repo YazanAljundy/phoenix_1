@@ -13,7 +13,6 @@ import 'package:phoenix/core/utils/validators.dart';
 import 'package:phoenix/core/widgets/app_snackbar.dart';
 import 'package:phoenix/core/widgets/app_text_field.dart';
 import 'package:phoenix/core/widgets/primary_button.dart';
-import 'package:phoenix/features/auth/data/models/registration_draft.dart';
 import 'package:phoenix/features/auth/presentation/managers/auth_cubit.dart';
 import 'package:phoenix/features/auth/presentation/managers/auth_state.dart';
 import 'package:phoenix/routes/route_names.dart';
@@ -60,6 +59,8 @@ class _RegistrationViewState extends State<RegistrationView> {
     });
   }
 
+  // Section 6-2/3: registers and routes directly by the resulting
+  // sessionStatus - no OTP hop (temporarily disabled, see AuthCubit.register).
   Future<void> _submit() async {
     context.unfocus();
     final l10n = context.l10n;
@@ -69,21 +70,27 @@ class _RegistrationViewState extends State<RegistrationView> {
     });
     if (!formValid || _verificationPhoto == null) return;
 
-    final phone = _phoneController.text.trim();
-    final sent = await context.read<AuthCubit>().sendOtp(phone);
-    if (!sent || !mounted) return;
-
-    context.pushNamed(
-      RouteNames.otp,
-      extra: RegistrationDraft(
-        name: _nameController.text.trim(),
-        pharmacyName: _pharmacyNameController.text.trim(),
-        phone: phone,
-        address: _addressController.text.trim(),
-        password: _passwordController.text,
-        verificationPhoto: _verificationPhoto!,
-      ),
+    final cubit = context.read<AuthCubit>();
+    final registered = await cubit.register(
+      name: _nameController.text.trim(),
+      pharmacyName: _pharmacyNameController.text.trim(),
+      phone: _phoneController.text.trim(),
+      address: _addressController.text.trim(),
+      password: _passwordController.text,
+      verificationPhoto: _verificationPhoto!,
     );
+    if (!registered || !mounted) return;
+
+    switch (cubit.state.sessionStatus) {
+      case SessionStatus.pendingApproval:
+      case SessionStatus.blocked:
+        context.goNamed(RouteNames.approvalPending);
+      case SessionStatus.active:
+        context.goNamed(RouteNames.warehouseSelection);
+      case SessionStatus.unknown:
+      case SessionStatus.unauthenticated:
+        break;
+    }
   }
 
   @override
@@ -249,7 +256,7 @@ class _RegistrationViewState extends State<RegistrationView> {
                     buildWhen: (previous, current) =>
                         previous.isSubmitting != current.isSubmitting,
                     builder: (context, state) => PrimaryButton(
-                      label: l10n.sendCodeButton,
+                      label: l10n.createAccountButton,
                       isLoading: state.isSubmitting,
                       onPressed: _submit,
                     ),

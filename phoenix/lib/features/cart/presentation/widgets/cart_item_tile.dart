@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:phoenix/core/constants/app_colors.dart';
 import 'package:phoenix/core/constants/app_radius.dart';
 import 'package:phoenix/core/constants/app_sizes.dart';
 import 'package:phoenix/core/extensions/build_context_extensions.dart';
+import 'package:phoenix/core/utils/currency_formatter.dart';
 import 'package:phoenix/core/widgets/custom_card.dart';
+import 'package:phoenix/core/widgets/secondary_price_hint.dart';
 import 'package:phoenix/features/cart/data/models/cart_item.dart';
+import 'package:phoenix/features/exchange_rate/presentation/managers/exchange_rate_cubit.dart';
 
 class CartItemTile extends StatelessWidget {
   const CartItemTile({
@@ -25,6 +29,8 @@ class CartItemTile extends StatelessWidget {
     final l10n = context.l10n;
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
     final name = isArabic ? item.nameAr : item.nameEn;
+    final usdToSyp = context.watch<ExchangeRateCubit>().state.usdToSyp;
+    final sypText = formatSypApprox(item.discountPriceUsd, usdToSyp, l10n.currencySuffix);
 
     return CustomCard(
       child: Row(
@@ -49,7 +55,7 @@ class CartItemTile extends StatelessWidget {
                     spacing: AppSizes.spacingSmall,
                     children: [
                       Text(
-                        '${item.unitPrice} ${l10n.currencySuffix}',
+                        '\$${item.unitPriceUsd}',
                         style: TextStyle(
                           decoration: TextDecoration.lineThrough,
                           color: AppColors.textSecondaryOf(context),
@@ -57,21 +63,29 @@ class CartItemTile extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        '${item.discountPrice} ${l10n.currencySuffix}',
+                        '\$${item.discountPriceUsd}',
                         style: TextStyle(
                           color: AppColors.secondaryOf(context),
                           fontWeight: FontWeight.bold,
                         ),
                       ),
+                      if (sypText != null) SecondaryPriceHint(text: sypText),
                     ],
                   )
                 else
-                  Text(
-                    '${item.discountPrice} ${l10n.currencySuffix}',
-                    style: TextStyle(
-                      color: AppColors.primaryOf(context),
-                      fontWeight: FontWeight.bold,
-                    ),
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: AppSizes.spacingXSmall,
+                    children: [
+                      Text(
+                        '\$${item.discountPriceUsd}',
+                        style: TextStyle(
+                          color: AppColors.primaryOf(context),
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      if (sypText != null) SecondaryPriceHint(text: sypText),
+                    ],
                   ),
                 const SizedBox(height: AppSizes.spacingSmall),
                 Row(
@@ -86,10 +100,7 @@ class CartItemTile extends StatelessWidget {
                         child: Text('${item.quantity}', style: context.textTheme.titleMedium),
                       ),
                     ),
-                    _QuantityButton(
-                      icon: Icons.add,
-                      onTap: item.quantity < item.stockQuantity ? onIncrement : null,
-                    ),
+                    _QuantityButton(icon: Icons.add, onTap: onIncrement),
                     const Spacer(),
                     IconButton(
                       icon: Icon(Icons.delete_outline, color: AppColors.errorOf(context)),

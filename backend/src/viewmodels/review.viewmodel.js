@@ -18,4 +18,16 @@ function toReviewsResponse({ reviews, averageRating }) {
   };
 }
 
-module.exports = { toReviewsResponse };
+function toCreatedReviewResponse(review) {
+  return {
+    review: {
+      id: review._id,
+      orderId: review.orderId,
+      rating: review.rating,
+      comment: review.comment,
+      createdAt: review.createdAt,
+    },
+  };
+}
+
+module.exports = { toReviewsResponse, toCreatedReviewResponse };

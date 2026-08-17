@@ -13,10 +13,11 @@ const REQUIRED_STRING_FIELDS = [
 ];
 
 // Section 8: isAvailable is never set directly - it's always derived from
-// these two, recomputed on every create/update (Section 7: an item is
-// orderable only when it both has stock AND hasn't been manually paused).
-function computeIsAvailable(manuallyDisabled, stockQuantity) {
-  return !manuallyDisabled && stockQuantity > 0;
+// this, recomputed on every create/update.
+// TODO(re-enable-stock): was also gated on stockQuantity > 0 - see the TODO
+// on product.model.js. Restore that AND-condition when stock tracking returns.
+function computeIsAvailable(manuallyDisabled) {
+  return !manuallyDisabled;
 }
 
 async function validateCategoryId(categoryId) {
@@ -29,15 +30,16 @@ async function validateCategoryId(categoryId) {
   }
 }
 
-function validatePrice(price) {
-  if (typeof price !== 'number' || !Number.isFinite(price) || price <= 0) {
+// `price` on the Product doc is USD (Section: USD-first catalog pricing) -
+// kept as the Mongoose field name to avoid a schema migration, but every
+// request/response boundary spells it out as `priceUsd` so it's never
+// mistaken for the old SYP-denominated value. See
+// backend/scripts/migrate-prices-to-usd.js for the one-time conversion of
+// pre-existing data, and order.service.js for how SYP is derived from this
+// at order time.
+function validatePrice(priceUsd) {
+  if (typeof priceUsd !== 'number' || !Number.isFinite(priceUsd) || priceUsd <= 0) {
     throw ApiError.badRequest('Invalid price.', undefined, 'INVALID_PRICE');
-  }
-}
-
-function validateStockQuantity(stockQuantity) {
-  if (!Number.isInteger(stockQuantity) || stockQuantity < 0) {
-    throw ApiError.badRequest('Invalid stock quantity.', undefined, 'INVALID_STOCK_QUANTITY');
   }
 }
 
@@ -64,8 +66,7 @@ async function listProductsForWarehouse(warehouseId) {
 async function createProduct(warehouseId, data) {
   validateRequiredStrings(data);
   await validateCategoryId(data.categoryId);
-  validatePrice(data.price);
-  validateStockQuantity(data.stockQuantity);
+  validatePrice(data.priceUsd);
 
   const manuallyDisabled = data.manuallyDisabled === true;
 
@@ -80,10 +81,9 @@ async function createProduct(warehouseId, data) {
     unitEn: data.unitEn.trim(),
     description: typeof data.description === 'string' && data.description.trim() ? data.description.trim() : null,
     image: typeof data.image === 'string' && data.image.trim() ? data.image.trim() : null,
-    price: data.price,
-    stockQuantity: data.stockQuantity,
+    price: data.priceUsd,
     manuallyDisabled,
-    isAvailable: computeIsAvailable(manuallyDisabled, data.stockQuantity),
+    isAvailable: computeIsAvailable(manuallyDisabled),
     lastPriceUpdate: new Date(),
   });
 }
@@ -101,10 +101,10 @@ async function findOwnedProductOrThrow(productId, warehouseId) {
   return product;
 }
 
-// Section 7/13c: every price change is recorded (old/new/who/when) - stock
-// and manuallyDisabled changes recompute isAvailable, never written
-// directly. All fields are optional here (partial update) but validated if
-// present. Shared by the warehouse's own update (below) and the admin's
+// Section 7/13c: every price change is recorded (old/new/who/when) -
+// manuallyDisabled changes recompute isAvailable, never written directly.
+// All fields are optional here (partial update) but validated if present.
+// Shared by the warehouse's own update (below) and the admin's
 // (adminProduct.service.js) - only how the target product is found differs
 // (owned-by-me vs any product), not what happens to it once found.
 async function applyProductUpdate(product, userId, changes) {
@@ -134,30 +134,25 @@ async function applyProductUpdate(product, userId, changes) {
       : null;
   }
 
-  if (changes.price !== undefined) {
-    validatePrice(changes.price);
-    if (changes.price !== product.price) {
+  if (changes.priceUsd !== undefined) {
+    validatePrice(changes.priceUsd);
+    if (changes.priceUsd !== product.price) {
       product.priceHistory.push({
         oldPrice: product.price,
-        newPrice: changes.price,
+        newPrice: changes.priceUsd,
         changedBy: userId,
         changedAt: new Date(),
       });
-      product.price = changes.price;
+      product.price = changes.priceUsd;
       product.lastPriceUpdate = new Date();
     }
-  }
-
-  if (changes.stockQuantity !== undefined) {
-    validateStockQuantity(changes.stockQuantity);
-    product.stockQuantity = changes.stockQuantity;
   }
 
   if (changes.manuallyDisabled !== undefined) {
     product.manuallyDisabled = changes.manuallyDisabled === true;
   }
 
-  product.isAvailable = computeIsAvailable(product.manuallyDisabled, product.stockQuantity);
+  product.isAvailable = computeIsAvailable(product.manuallyDisabled);
 
   await product.save();
   return product;

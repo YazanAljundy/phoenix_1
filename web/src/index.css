@@ -339,9 +339,14 @@ input {
 
 .order-card-header {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
   gap: 10px;
+}
+
+.order-card-header > div:first-child {
+  min-width: 0;
 }
 
 .order-card-header h2 {
@@ -460,6 +465,70 @@ input {
   font-size: 14px;
   font-weight: 400;
   color: var(--color-text);
+}
+
+/* --- Exchange rate card --- */
+
+.exchange-rate-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 14px;
+  padding: 18px;
+  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.exchange-rate-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.exchange-rate-header h2 {
+  font-size: 17px;
+}
+
+.exchange-rate-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-navy);
+}
+
+.exchange-rate-warning {
+  color: var(--color-error);
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.exchange-rate-disclaimer {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  direction: rtl;
+}
+
+.exchange-rate-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.exchange-rate-form input {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--color-border);
+  font-size: 14px;
+  width: 140px;
+}
+
+.exchange-rate-form button {
+  width: auto;
+  margin-top: 0;
+  padding: 10px 16px;
 }
 
 .table-row-actions {

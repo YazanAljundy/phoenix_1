@@ -24,4 +24,34 @@ class ReviewRepositoryImpl implements ReviewRepository {
       throw ServerFailure.fromDioError(e);
     }
   }
+
+  @override
+  Future<({String id, int rating, String? comment, DateTime createdAt})> submitWarehouseReview({
+    required String orderId,
+    required String warehouseId,
+    required int rating,
+    String? comment,
+  }) async {
+    try {
+      final response = await _apiClient.dio.post(
+        Endpoints.reviews,
+        data: {
+          'orderId': orderId,
+          'warehouseId': warehouseId,
+          'rating': rating,
+          if (comment != null && comment.isNotEmpty) 'comment': comment,
+        },
+      );
+      final data = response.data as Map<String, dynamic>;
+      final review = data['review'] as Map<String, dynamic>;
+      return (
+        id: review['id'] as String,
+        rating: review['rating'] as int,
+        comment: review['comment'] as String?,
+        createdAt: DateTime.parse(review['createdAt'] as String),
+      );
+    } on DioException catch (e) {
+      throw ServerFailure.fromDioError(e);
+    }
+  }
 }

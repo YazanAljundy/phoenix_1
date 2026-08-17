@@ -1,3 +1,7 @@
+// TODO(re-enable-otp): this whole module is fully functional but currently
+// unused - registration/login are password-only for now (project owner's
+// decision, see auth.service.js). Left intact deliberately for a future
+// re-enable, not deleted.
 const crypto = require('crypto');
 const env = require('../config/env');
 const { ApiError } = require('../utils/ApiError');

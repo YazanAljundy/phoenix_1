@@ -34,6 +34,11 @@ class _OtpVerificationViewState extends State<OtpVerificationView> {
     super.dispose();
   }
 
+  // TODO(re-enable-otp): this whole view is currently unreachable (no route
+  // pushes here anymore - see registration_view.dart, which now calls
+  // cubit.register() directly). Kept compiling, not deleted, for when OTP
+  // comes back: AuthCubit.register() will need an otpCode param again, and
+  // _codeController.text should be passed through here as before.
   Future<void> _verify() async {
     context.unfocus();
     if (!_formKey.currentState!.validate()) return;
@@ -44,7 +49,6 @@ class _OtpVerificationViewState extends State<OtpVerificationView> {
       pharmacyName: widget.draft.pharmacyName,
       phone: widget.draft.phone,
       address: widget.draft.address,
-      otpCode: _codeController.text.trim(),
       password: widget.draft.password,
       verificationPhoto: widget.draft.verificationPhoto,
     );

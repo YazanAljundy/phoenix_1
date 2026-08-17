@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api/client';
+import { useExchangeRate } from '../context/ExchangeRateContext';
+import { formatPriceWithSyp } from '../utils/currency';
 
 const EMPTY_FORM = {
   productId: '',
@@ -14,7 +16,7 @@ function statusLabel(offer) {
   return offer.status === 'approved' ? 'Approved' : 'Pending review';
 }
 
-function CreateOfferModal({ products, onClose, onCreated }) {
+function CreateOfferModal({ products, usdToSyp, onClose, onCreated }) {
   const [form, setForm] = useState(EMPTY_FORM);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -70,7 +72,7 @@ function CreateOfferModal({ products, onClose, onCreated }) {
               </option>
               {products.map((product) => (
                 <option key={product.id} value={product.id}>
-                  {product.nameEn} ({product.price} SYP)
+                  {product.nameEn} ({formatPriceWithSyp(product.priceUsd, usdToSyp)})
                 </option>
               ))}
             </select>
@@ -139,6 +141,7 @@ function CreateOfferModal({ products, onClose, onCreated }) {
 }
 
 export function WarehouseOffersPage() {
+  const usdToSyp = useExchangeRate();
   const [offers, setOffers] = useState([]);
   const [products, setProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -211,7 +214,12 @@ export function WarehouseOffersPage() {
       )}
 
       {showCreate && (
-        <CreateOfferModal products={products} onClose={() => setShowCreate(false)} onCreated={handleCreated} />
+        <CreateOfferModal
+          products={products}
+          usdToSyp={usdToSyp}
+          onClose={() => setShowCreate(false)}
+          onCreated={handleCreated}
+        />
       )}
     </div>
   );

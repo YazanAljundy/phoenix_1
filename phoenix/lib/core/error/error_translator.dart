@@ -23,6 +23,8 @@ String translateErrorCode(AppLocalizations l10n, String? code, String fallbackMe
       return l10n.errorPharmacyNotFound;
     case 'WAREHOUSE_NOT_FOUND':
       return l10n.errorWarehouseNotFound;
+    case 'EXCHANGE_RATE_UNAVAILABLE':
+      return l10n.errorExchangeRateUnavailable;
     case 'STOCK_CHECK_FAILED':
       return l10n.errorStockCheckFailedGeneric;
     case 'ORDER_NOT_FOUND':
@@ -55,6 +57,10 @@ String translateErrorCode(AppLocalizations l10n, String? code, String fallbackMe
       return l10n.errorRejectionNoteRequired;
     case 'RETURN_NOT_FOUND':
       return l10n.errorInvalidRequest;
+    case 'INVALID_RATING':
+      return l10n.errorInvalidRequest;
+    case 'ALREADY_REVIEWED':
+      return l10n.errorAlreadyReviewed;
     default:
       return fallbackMessage;
   }

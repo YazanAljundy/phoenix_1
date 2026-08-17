@@ -6,12 +6,15 @@ import {
   productAvailabilityLabel,
   productFormFromProduct,
 } from '../components/ProductFormModal';
+import { useExchangeRate } from '../context/ExchangeRateContext';
+import { formatPriceWithSyp } from '../utils/currency';
 
 // Section 13c: admin oversight across every warehouse's catalog - edit or
 // deactivate only, never create (creating a product stays exclusively the
 // warehouse's own job). Reuses the exact same form the warehouse itself
 // edits with; only where the submission goes differs.
 export function AdminProductsPage() {
+  const usdToSyp = useExchangeRate();
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [warehouseFilter, setWarehouseFilter] = useState('');
@@ -112,7 +115,6 @@ export function AdminProductsPage() {
                 <th>Warehouse</th>
                 <th>Category</th>
                 <th>Price</th>
-                <th>Stock</th>
                 <th>Status</th>
                 <th></th>
               </tr>
@@ -126,8 +128,7 @@ export function AdminProductsPage() {
                   </td>
                   <td>{product.warehouseNameEn}</td>
                   <td>{categoryName(product.categoryId)}</td>
-                  <td>{product.price} SYP</td>
-                  <td>{product.stockQuantity}</td>
+                  <td>{formatPriceWithSyp(product.priceUsd, usdToSyp)}</td>
                   <td>
                     {product.isActive ? (
                       <span className={`availability-badge ${productAvailabilityClass(product)}`}>
@@ -165,6 +166,7 @@ export function AdminProductsPage() {
           mode="edit"
           initialForm={productFormFromProduct(editingProduct)}
           categories={categories}
+          usdToSyp={usdToSyp}
           onClose={() => setEditingProduct(null)}
           onSaved={handleSaved}
           onSubmit={(payload) => api.updateAdminProduct(editingProduct.id, payload)}

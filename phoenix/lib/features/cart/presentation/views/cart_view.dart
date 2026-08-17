@@ -6,15 +6,18 @@ import 'package:phoenix/core/constants/app_padding.dart';
 import 'package:phoenix/core/constants/app_sizes.dart';
 import 'package:phoenix/core/error/error_translator.dart';
 import 'package:phoenix/core/extensions/build_context_extensions.dart';
+import 'package:phoenix/core/utils/currency_formatter.dart';
 import 'package:phoenix/core/widgets/app_dialog.dart';
 import 'package:phoenix/core/widgets/app_text_field.dart';
 import 'package:phoenix/core/widgets/empty_view.dart';
 import 'package:phoenix/core/widgets/primary_button.dart';
+import 'package:phoenix/core/widgets/secondary_price_hint.dart';
 import 'package:phoenix/features/cart/data/models/cart_item.dart';
 import 'package:phoenix/features/cart/presentation/managers/cart_cubit.dart';
 import 'package:phoenix/features/cart/presentation/managers/cart_state.dart';
 import 'package:phoenix/features/cart/presentation/utils/cart_error_translator.dart';
 import 'package:phoenix/features/cart/presentation/widgets/cart_item_tile.dart';
+import 'package:phoenix/features/exchange_rate/presentation/managers/exchange_rate_cubit.dart';
 import 'package:phoenix/routes/route_names.dart';
 
 class CartView extends StatefulWidget {
@@ -161,11 +164,28 @@ class _CartViewState extends State<CartView> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(l10n.subtotalLabel, style: context.textTheme.titleMedium),
-                    Text(
-                      '${state.subtotal} ${l10n.currencySuffix}',
-                      style: context.textTheme.titleMedium?.copyWith(
-                        color: AppColors.primaryOf(context),
-                      ),
+                    Builder(
+                      builder: (context) {
+                        final usdToSyp = context.watch<ExchangeRateCubit>().state.usdToSyp;
+                        final sypText = formatSypApprox(
+                          state.subtotalUsd,
+                          usdToSyp,
+                          l10n.currencySuffix,
+                        );
+                        return Wrap(
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: AppSizes.spacingXSmall,
+                          children: [
+                            Text(
+                              '\$${state.subtotalUsd}',
+                              style: context.textTheme.titleMedium?.copyWith(
+                                color: AppColors.primaryOf(context),
+                              ),
+                            ),
+                            if (sypText != null) SecondaryPriceHint(text: sypText),
+                          ],
+                        );
+                      },
                     ),
                   ],
                 ),

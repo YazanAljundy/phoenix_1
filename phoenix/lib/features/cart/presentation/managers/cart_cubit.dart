@@ -30,9 +30,8 @@ class CartCubit extends Cubit<CartState> {
     final List<CartItem> updated;
     if (existingIndex >= 0) {
       final existing = state.items[existingIndex];
-      final newQuantity = (existing.quantity + 1).clamp(1, product.stockQuantity);
       updated = List.of(state.items)
-        ..[existingIndex] = existing.copyWith(quantity: newQuantity);
+        ..[existingIndex] = existing.copyWith(quantity: existing.quantity + 1);
     } else {
       updated = [...state.items, CartItem.fromProduct(product, quantity: 1)];
     }
@@ -65,7 +64,7 @@ class CartCubit extends Cubit<CartState> {
   void updateQuantity(String productId, int quantity) {
     final updated = state.items.map((item) {
       if (item.productId != productId) return item;
-      return item.copyWith(quantity: quantity.clamp(1, item.stockQuantity));
+      return item.copyWith(quantity: quantity < 1 ? 1 : quantity);
     }).toList();
     emit(state.copyWith(items: updated));
   }
@@ -81,10 +80,10 @@ class CartCubit extends Cubit<CartState> {
 
   void updateNotes(String notes) => emit(state.copyWith(notes: notes));
 
-  // Client-side stock snapshots (taken when items were added) can go stale by
-  // the time the pharmacist actually submits - the server re-checks
-  // isAvailable/stockQuantity for real (Section 7/8) and this surfaces
-  // whatever human-readable message it returns.
+  // Client-side availability snapshots (taken when items were added) can go
+  // stale by the time the pharmacist actually submits - the server re-checks
+  // isAvailable for real (Section 7/8) and this surfaces whatever
+  // human-readable message it returns.
   Future<OrderModel?> submitOrder() async {
     if (state.items.isEmpty || state.warehouseId == null) return null;
 

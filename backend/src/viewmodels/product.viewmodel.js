@@ -14,8 +14,7 @@ function serializeProductWithOffer({ product, offer }) {
     image: product.image,
     unitAr: product.unitAr,
     unitEn: product.unitEn,
-    price: product.price,
-    stockQuantity: product.stockQuantity,
+    priceUsd: product.price,
     isAvailable: product.isAvailable,
     offer: null,
   };
@@ -25,7 +24,7 @@ function serializeProductWithOffer({ product, offer }) {
       titleAr: offer.titleAr,
       titleEn: offer.titleEn,
       discountPercentage: offer.discountPercentage,
-      discountPrice: Math.round(product.price * (1 - offer.discountPercentage / 100)),
+      discountPriceUsd: Math.round(product.price * (1 - offer.discountPercentage / 100) * 100) / 100,
     };
   }
 

@@ -45,6 +45,8 @@ class AuthCubit extends Cubit<AuthState> {
     }
   }
 
+  // TODO(re-enable-otp): unused by the current registration flow - kept for
+  // a future re-enable. The backend route is still live.
   Future<bool> sendOtp(String phone) async {
     emit(state.copyWith(isSubmitting: true, clearError: true));
     try {
@@ -57,15 +59,15 @@ class AuthCubit extends Cubit<AuthState> {
     }
   }
 
-  // Also serves as the returning-user re-entry path: if `phone` already has an
-  // account, the backend logs it back in and ignores
-  // name/pharmacyName/address/password/verificationPhoto.
+  // Section 6-2/3: registers and saves directly - no OTP step (temporarily
+  // disabled, see auth_repository.dart). Also serves as the returning-user
+  // re-entry path: if `phone` already has an account, the backend logs it
+  // back in and ignores name/pharmacyName/address/password/verificationPhoto.
   Future<bool> register({
     required String name,
     required String pharmacyName,
     required String phone,
     required String address,
-    required String otpCode,
     required String password,
     required XFile verificationPhoto,
   }) async {
@@ -76,7 +78,6 @@ class AuthCubit extends Cubit<AuthState> {
         pharmacyName: pharmacyName,
         phone: phone,
         address: address,
-        otpCode: otpCode,
         password: password,
         verificationPhoto: verificationPhoto,
       );

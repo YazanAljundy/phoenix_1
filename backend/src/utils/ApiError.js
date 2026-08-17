@@ -1,4 +1,4 @@
-// `code` is a stable machine-readable identifier (e.g. 'INSUFFICIENT_STOCK')
+// `code` is a stable machine-readable identifier (e.g. 'PRODUCT_UNAVAILABLE')
 // that the Flutter client maps to a localized string via its .arb files -
 // `message` stays as the English fallback for logs and any endpoint that
 // hasn't been migrated to pass a code yet (see errorHandler.js). It's

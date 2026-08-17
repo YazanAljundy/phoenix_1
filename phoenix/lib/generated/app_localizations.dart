@@ -290,6 +290,12 @@ abstract class AppLocalizations {
   /// **'Send verification code'**
   String get sendCodeButton;
 
+  /// No description provided for @createAccountButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Create account'**
+  String get createAccountButton;
+
   /// No description provided for @passwordLoginTitle.
   ///
   /// In en, this message translates to:
@@ -602,17 +608,17 @@ abstract class AppLocalizations {
   /// **'This warehouse is no longer available.'**
   String get errorWarehouseNotFound;
 
+  /// No description provided for @errorExchangeRateUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Prices can\'t be confirmed right now. Please try again shortly.'**
+  String get errorExchangeRateUnavailable;
+
   /// No description provided for @errorStockCheckFailedGeneric.
   ///
   /// In en, this message translates to:
   /// **'Some items in your cart are no longer available as requested.'**
   String get errorStockCheckFailedGeneric;
-
-  /// No description provided for @errorInsufficientStock.
-  ///
-  /// In en, this message translates to:
-  /// **'Only {quantity} of {name} is currently available.'**
-  String errorInsufficientStock(String quantity, String name);
 
   /// No description provided for @errorProductUnavailable.
   ///
@@ -1039,6 +1045,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{average} average ({count} ratings)'**
   String ratingSummary(String average, String count);
+
+  /// No description provided for @rateWarehouseTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Rate the warehouse'**
+  String get rateWarehouseTitle;
+
+  /// No description provided for @rateWarehouseCommentLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Comment (optional)'**
+  String get rateWarehouseCommentLabel;
+
+  /// No description provided for @submitReviewButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit rating'**
+  String get submitReviewButton;
+
+  /// No description provided for @submitReviewConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit rating?'**
+  String get submitReviewConfirmTitle;
+
+  /// No description provided for @submitReviewConfirmMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'You won\'t be able to change this rating after sending it. Continue?'**
+  String get submitReviewConfirmMessage;
+
+  /// No description provided for @reviewThankYouTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Thanks — you rated this order {rating} stars'**
+  String reviewThankYouTitle(String rating);
+
+  /// No description provided for @errorAlreadyReviewed.
+  ///
+  /// In en, this message translates to:
+  /// **'This order has already been rated.'**
+  String get errorAlreadyReviewed;
 }
 
 class _AppLocalizationsDelegate

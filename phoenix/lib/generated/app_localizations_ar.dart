@@ -106,6 +106,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get sendCodeButton => 'إرسال رمز التحقق';
 
   @override
+  String get createAccountButton => 'إنشاء الحساب';
+
+  @override
   String get passwordLoginTitle => 'تسجيل الدخول بكلمة السر';
 
   @override
@@ -281,13 +284,12 @@ class AppLocalizationsAr extends AppLocalizations {
   String get errorWarehouseNotFound => 'هذا المستودع لم يعد متاحاً.';
 
   @override
-  String get errorStockCheckFailedGeneric =>
-      'بعض العناصر في سلتك لم تعد متاحة كما طُلب.';
+  String get errorExchangeRateUnavailable =>
+      'تعذّر تأكيد الأسعار حالياً. يرجى المحاولة بعد قليل.';
 
   @override
-  String errorInsufficientStock(String quantity, String name) {
-    return 'يتوفر فقط $quantity من $name حالياً.';
-  }
+  String get errorStockCheckFailedGeneric =>
+      'بعض العناصر في سلتك لم تعد متاحة كما طُلب.';
 
   @override
   String errorProductUnavailable(String name) {
@@ -518,4 +520,28 @@ class AppLocalizationsAr extends AppLocalizations {
   String ratingSummary(String average, String count) {
     return '$average بالمعدل ($count تقييم)';
   }
+
+  @override
+  String get rateWarehouseTitle => 'قيّم المستودع';
+
+  @override
+  String get rateWarehouseCommentLabel => 'تعليق (اختياري)';
+
+  @override
+  String get submitReviewButton => 'إرسال التقييم';
+
+  @override
+  String get submitReviewConfirmTitle => 'إرسال التقييم؟';
+
+  @override
+  String get submitReviewConfirmMessage =>
+      'لن تتمكن من تعديل هذا التقييم بعد إرساله. متابعة؟';
+
+  @override
+  String reviewThankYouTitle(String rating) {
+    return 'شكراً — قيّمت هذا الطلب بـ $rating نجوم';
+  }
+
+  @override
+  String get errorAlreadyReviewed => 'تم تقييم هذا الطلب من قبل.';
 }

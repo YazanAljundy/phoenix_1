@@ -11,8 +11,7 @@ class ProductModel {
     this.image,
     required this.unitAr,
     required this.unitEn,
-    required this.price,
-    required this.stockQuantity,
+    required this.priceUsd,
     required this.isAvailable,
     this.offer,
   });
@@ -27,8 +26,11 @@ class ProductModel {
   final String? image;
   final String unitAr;
   final String unitEn;
-  final num price;
-  final int stockQuantity;
+  // USD, not SYP - see backend/src/models/product.model.js. SYP is derived
+  // live from ExchangeRateCubit wherever it's shown (see
+  // core/utils/currency_formatter.dart), except in order/invoice history
+  // which stays SYP-native (locked in at order time).
+  final num priceUsd;
   final bool isAvailable;
   final ProductOfferModel? offer;
 
@@ -42,8 +44,7 @@ class ProductModel {
     image: json['image'] as String?,
     unitAr: json['unitAr'] as String,
     unitEn: json['unitEn'] as String,
-    price: json['price'] as num,
-    stockQuantity: json['stockQuantity'] as int,
+    priceUsd: json['priceUsd'] as num,
     isAvailable: json['isAvailable'] as bool,
     offer: json['offer'] != null
         ? ProductOfferModel.fromJson(json['offer'] as Map<String, dynamic>)

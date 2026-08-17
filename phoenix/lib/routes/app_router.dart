@@ -22,6 +22,7 @@ import 'package:phoenix/features/returns/presentation/managers/my_returns_cubit.
 import 'package:phoenix/features/returns/presentation/views/my_returns_view.dart';
 import 'package:phoenix/features/reviews/data/repositories/review_repository.dart';
 import 'package:phoenix/features/reviews/presentation/managers/pharmacy_reviews_cubit.dart';
+import 'package:phoenix/features/warehouse_selection/data/repositories/warehouse_repository.dart';
 import 'package:phoenix/features/warehouse_selection/presentation/views/warehouse_selection_view.dart';
 
 import 'route_names.dart';
@@ -94,6 +95,8 @@ class AppRouter {
           return BlocProvider(
             create: (context) => OrderTrackingCubit(
               orderRepository: context.read<OrderRepository>(),
+              reviewRepository: context.read<ReviewRepository>(),
+              warehouseRepository: context.read<WarehouseRepository>(),
               orderId: orderId,
             ),
             child: const OrderTrackingView(),

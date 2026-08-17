@@ -4,6 +4,7 @@ import 'package:phoenix/core/constants/app_radius.dart';
 import 'package:phoenix/core/constants/app_sizes.dart';
 import 'package:phoenix/core/extensions/build_context_extensions.dart';
 import 'package:phoenix/core/widgets/custom_card.dart';
+import 'package:phoenix/core/widgets/whatsapp_button.dart';
 import 'package:phoenix/features/warehouse_selection/data/models/warehouse_model.dart';
 
 class WarehouseCard extends StatelessWidget {
@@ -22,50 +23,62 @@ class WarehouseCard extends StatelessWidget {
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
     final name = isArabic ? warehouse.nameAr : warehouse.nameEn;
 
-    return CustomCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return Stack(
+      children: [
+        CustomCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              _Logo(url: warehouse.logo),
-              const SizedBox(width: AppSizes.spacingMedium),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(name, style: context.textTheme.titleMedium),
-                    const SizedBox(height: AppSizes.spacingXSmall),
-                    _IconLine(
-                      icon: Icons.location_on_outlined,
-                      text: warehouse.city,
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _Logo(url: warehouse.logo),
+                  const SizedBox(width: AppSizes.spacingMedium),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(name, style: context.textTheme.titleMedium),
+                        const SizedBox(height: AppSizes.spacingXSmall),
+                        _IconLine(
+                          icon: Icons.location_on_outlined,
+                          text: warehouse.city,
+                        ),
+                        const SizedBox(height: AppSizes.spacingXSmall),
+                        _IconLine(icon: Icons.phone_outlined, text: warehouse.phone),
+                      ],
                     ),
-                    const SizedBox(height: AppSizes.spacingXSmall),
-                    _IconLine(icon: Icons.phone_outlined, text: warehouse.phone),
-                  ],
+                  ),
+                  // Reserves the WhatsApp button's width so the name/city/phone
+                  // column above never renders under it.
+                  const SizedBox(width: AppSizes.iconSizeLarge),
+                ],
+              ),
+              const SizedBox(height: AppSizes.spacingMedium),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: onSelect,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.primaryOf(context),
+                    foregroundColor: Colors.white,
+                    shape: const RoundedRectangleBorder(
+                      borderRadius: AppRadius.medium,
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  child: Text(l10n.selectWarehouseButton),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: AppSizes.spacingMedium),
-          SizedBox(
-            width: double.infinity,
-            child: FilledButton(
-              onPressed: onSelect,
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.primaryOf(context),
-                foregroundColor: Colors.white,
-                shape: const RoundedRectangleBorder(
-                  borderRadius: AppRadius.medium,
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-              ),
-              child: Text(l10n.selectWarehouseButton),
-            ),
-          ),
-        ],
-      ),
+        ),
+        PositionedDirectional(
+          top: 4,
+          end: 4,
+          child: WhatsAppButton(phone: warehouse.phone),
+        ),
+      ],
     );
   }
 }

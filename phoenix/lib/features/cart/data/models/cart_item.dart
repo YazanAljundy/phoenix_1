@@ -14,9 +14,8 @@ class CartItem {
     this.image,
     required this.unitAr,
     required this.unitEn,
-    required this.unitPrice,
-    required this.discountPrice,
-    required this.stockQuantity,
+    required this.unitPriceUsd,
+    required this.discountPriceUsd,
     required this.quantity,
   });
 
@@ -28,13 +27,12 @@ class CartItem {
   final String? image;
   final String unitAr;
   final String unitEn;
-  final num unitPrice;
-  final num discountPrice;
-  final int stockQuantity;
+  final num unitPriceUsd;
+  final num discountPriceUsd;
   final int quantity;
 
-  bool get hasOffer => discountPrice != unitPrice;
-  num get lineTotal => discountPrice * quantity;
+  bool get hasOffer => discountPriceUsd != unitPriceUsd;
+  num get lineTotalUsd => discountPriceUsd * quantity;
 
   factory CartItem.fromProduct(ProductModel product, {required int quantity}) {
     return CartItem(
@@ -46,9 +44,8 @@ class CartItem {
       image: product.image,
       unitAr: product.unitAr,
       unitEn: product.unitEn,
-      unitPrice: product.price,
-      discountPrice: product.offer?.discountPrice ?? product.price,
-      stockQuantity: product.stockQuantity,
+      unitPriceUsd: product.priceUsd,
+      discountPriceUsd: product.offer?.discountPriceUsd ?? product.priceUsd,
       quantity: quantity,
     );
   }
@@ -63,9 +60,8 @@ class CartItem {
       image: image,
       unitAr: unitAr,
       unitEn: unitEn,
-      unitPrice: unitPrice,
-      discountPrice: discountPrice,
-      stockQuantity: stockQuantity,
+      unitPriceUsd: unitPriceUsd,
+      discountPriceUsd: discountPriceUsd,
       quantity: quantity ?? this.quantity,
     );
   }

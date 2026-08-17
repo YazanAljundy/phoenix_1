@@ -13,12 +13,16 @@ import 'package:phoenix/features/cart/data/repositories/order_repository_impl.da
 import 'package:phoenix/features/cart/presentation/managers/cart_cubit.dart';
 import 'package:phoenix/features/catalog/data/repositories/catalog_repository.dart';
 import 'package:phoenix/features/catalog/data/repositories/catalog_repository_impl.dart';
+import 'package:phoenix/features/exchange_rate/data/repositories/exchange_rate_repository.dart';
+import 'package:phoenix/features/exchange_rate/data/repositories/exchange_rate_repository_impl.dart';
+import 'package:phoenix/features/exchange_rate/presentation/managers/exchange_rate_cubit.dart';
 import 'package:phoenix/features/returns/data/repositories/return_repository.dart';
 import 'package:phoenix/features/returns/data/repositories/return_repository_impl.dart';
 import 'package:phoenix/features/reviews/data/repositories/review_repository.dart';
 import 'package:phoenix/features/reviews/data/repositories/review_repository_impl.dart';
 import 'package:phoenix/features/settings/presentation/managers/settings_cubit.dart';
 import 'package:phoenix/features/settings/presentation/managers/settings_state.dart';
+import 'package:phoenix/features/warehouse_selection/data/repositories/warehouse_repository.dart';
 import 'package:phoenix/features/warehouse_selection/data/repositories/warehouse_repository_impl.dart';
 import 'package:phoenix/features/warehouse_selection/presentation/managers/warehouse_selection_cubit.dart';
 import 'package:phoenix/generated/app_localizations.dart';
@@ -37,6 +41,7 @@ Future<void> main() async {
   final authRepository = AuthRepositoryImpl(apiClient: apiClient);
   final warehouseRepository = WarehouseRepositoryImpl(apiClient: apiClient);
   final catalogRepository = CatalogRepositoryImpl(apiClient: apiClient);
+  final exchangeRateRepository = ExchangeRateRepositoryImpl(apiClient: apiClient);
   final orderRepository = OrderRepositoryImpl(apiClient: apiClient);
   final returnRepository = ReturnRepositoryImpl(apiClient: apiClient);
   final reviewRepository = ReviewRepositoryImpl(apiClient: apiClient);
@@ -49,6 +54,7 @@ Future<void> main() async {
       authRepository: authRepository,
       warehouseRepository: warehouseRepository,
       catalogRepository: catalogRepository,
+      exchangeRateRepository: exchangeRateRepository,
       orderRepository: orderRepository,
       returnRepository: returnRepository,
       reviewRepository: reviewRepository,
@@ -94,6 +100,7 @@ class MyApp extends StatelessWidget {
     required this.authRepository,
     required this.warehouseRepository,
     required this.catalogRepository,
+    required this.exchangeRateRepository,
     required this.orderRepository,
     required this.returnRepository,
     required this.reviewRepository,
@@ -106,6 +113,7 @@ class MyApp extends StatelessWidget {
   final AuthRepositoryImpl authRepository;
   final WarehouseRepositoryImpl warehouseRepository;
   final CatalogRepositoryImpl catalogRepository;
+  final ExchangeRateRepositoryImpl exchangeRateRepository;
   final OrderRepositoryImpl orderRepository;
   final ReturnRepositoryImpl returnRepository;
   final ReviewRepositoryImpl reviewRepository;
@@ -118,6 +126,8 @@ class MyApp extends StatelessWidget {
         RepositoryProvider<OrderRepository>.value(value: orderRepository),
         RepositoryProvider<ReturnRepository>.value(value: returnRepository),
         RepositoryProvider<ReviewRepository>.value(value: reviewRepository),
+        RepositoryProvider<WarehouseRepository>.value(value: warehouseRepository),
+        RepositoryProvider<ExchangeRateRepository>.value(value: exchangeRateRepository),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -140,6 +150,10 @@ class MyApp extends StatelessWidget {
           ),
           BlocProvider(
             create: (context) => CartCubit(orderRepository: orderRepository),
+          ),
+          BlocProvider(
+            create: (context) =>
+                ExchangeRateCubit(exchangeRateRepository: exchangeRateRepository),
           ),
         ],
         child: Builder(

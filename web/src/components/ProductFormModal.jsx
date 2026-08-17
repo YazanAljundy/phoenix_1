@@ -9,7 +9,6 @@ export const EMPTY_PRODUCT_FORM = {
   unitAr: '',
   unitEn: '',
   price: '',
-  stockQuantity: '',
   description: '',
   image: '',
   manuallyDisabled: false,
@@ -24,29 +23,25 @@ export function productFormFromProduct(product) {
     categoryId: product.categoryId,
     unitAr: product.unitAr,
     unitEn: product.unitEn,
-    price: String(product.price),
-    stockQuantity: String(product.stockQuantity),
+    price: String(product.priceUsd),
     description: product.description ?? '',
     image: product.image ?? '',
     manuallyDisabled: product.manuallyDisabled,
   };
 }
 
-// Section 7: isAvailable is derived (stock > 0 AND not manually paused) -
-// the badge reflects that, but "Paused" is called out distinctly from
-// "Out of stock" since they're different decisions with different fixes
-// (restock vs. un-pause). Shared by the warehouse's own product table and
-// the admin's cross-warehouse one.
+// Section 7: isAvailable is derived (not manually paused) - the badge
+// reflects that. Shared by the warehouse's own product table and the
+// admin's cross-warehouse one.
+// TODO(re-enable-stock): was also gated on stock > 0, with "Out of stock"
+// called out distinctly from "Paused" - quantity tracking is on hold, see
+// backend/src/models/product.model.js.
 export function productAvailabilityLabel(product) {
-  if (product.manuallyDisabled) return 'Paused';
-  if (product.stockQuantity <= 0) return 'Out of stock';
-  return 'Available';
+  return product.manuallyDisabled ? 'Paused' : 'Available';
 }
 
 export function productAvailabilityClass(product) {
-  if (product.isAvailable) return 'availability-available';
-  if (product.manuallyDisabled) return 'availability-paused';
-  return 'availability-out';
+  return product.isAvailable ? 'availability-available' : 'availability-paused';
 }
 
 // The form itself is identical whether a warehouse is creating/editing its
@@ -54,7 +49,7 @@ export function productAvailabilityClass(product) {
 // edits/deletes, it never creates) - only WHERE the submission goes differs,
 // so that's left entirely to the caller via onSubmit rather than hardcoded
 // here.
-export function ProductFormModal({ mode, initialForm, categories, onClose, onSaved, onSubmit }) {
+export function ProductFormModal({ mode, initialForm, categories, usdToSyp, onClose, onSaved, onSubmit }) {
   const [form, setForm] = useState(initialForm);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -73,13 +68,8 @@ export function ProductFormModal({ mode, initialForm, categories, onClose, onSav
       return;
     }
     const price = Number(form.price);
-    const stockQuantity = Number(form.stockQuantity);
     if (!Number.isFinite(price) || price <= 0) {
       setError('Price must be a positive number.');
-      return;
-    }
-    if (!Number.isInteger(stockQuantity) || stockQuantity < 0) {
-      setError('Stock quantity must be a whole number, 0 or more.');
       return;
     }
 
@@ -91,8 +81,7 @@ export function ProductFormModal({ mode, initialForm, categories, onClose, onSav
       categoryId: form.categoryId,
       unitAr: form.unitAr.trim(),
       unitEn: form.unitEn.trim(),
-      price,
-      stockQuantity,
+      priceUsd: price,
       description: form.description.trim() || undefined,
       image: form.image.trim() || undefined,
       manuallyDisabled: form.manuallyDisabled,
@@ -184,29 +173,20 @@ export function ProductFormModal({ mode, initialForm, categories, onClose, onSav
               </select>
             </label>
           </div>
-          <div className="form-row">
-            <label>
-              Price (SYP)
-              <input
-                type="number"
-                min="1"
-                value={form.price}
-                onChange={(e) => setField('price', e.target.value)}
-                required
-              />
-            </label>
-            <label>
-              Stock quantity
-              <input
-                type="number"
-                min="0"
-                step="1"
-                value={form.stockQuantity}
-                onChange={(e) => setField('stockQuantity', e.target.value)}
-                required
-              />
-            </label>
-          </div>
+          <label>
+            Price (USD)
+            <input
+              type="number"
+              min="0.01"
+              step="0.01"
+              value={form.price}
+              onChange={(e) => setField('price', e.target.value)}
+              required
+            />
+          </label>
+          {usdToSyp != null && Number(form.price) > 0 && (
+            <p className="hint">≈ {Math.round(Number(form.price) * usdToSyp).toLocaleString()} SYP</p>
+          )}
           <label>
             Description (optional)
             <textarea
@@ -225,7 +205,7 @@ export function ProductFormModal({ mode, initialForm, categories, onClose, onSav
               checked={form.manuallyDisabled}
               onChange={(e) => setField('manuallyDisabled', e.target.checked)}
             />
-            Temporarily paused (hidden from pharmacies regardless of stock)
+            Temporarily paused (hidden from pharmacies)
           </label>
 
           {error && <p className="error-text">{error}</p>}

@@ -65,13 +65,13 @@ const list = asyncHandler(async (req, res) => {
 
 const getOne = asyncHandler(async (req, res) => {
   const pharmacy = await loadPharmacyOrThrow(req.user._id);
-  const { order, warehouse, items, returnRequest } = await orderService.getOrderForPharmacy(
+  const { order, warehouse, items, returnRequest, myReview } = await orderService.getOrderForPharmacy(
     req.params.id,
     pharmacy._id
   );
   res.json({
     success: true,
-    ...orderViewModel.toOrderDetailResponse(order, warehouse, items, returnRequest),
+    ...orderViewModel.toOrderDetailResponse(order, warehouse, items, returnRequest, myReview),
   });
 });
 

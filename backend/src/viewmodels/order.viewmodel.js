@@ -8,6 +8,7 @@ function serializeOrder(order) {
     commissionAmount: order.commissionAmount,
     finalPrice: order.finalPrice,
     notes: order.notes,
+    warehouseId: order.warehouseId,
   };
 }
 
@@ -35,7 +36,20 @@ function serializeLinkedReturn(returnRequest) {
   };
 }
 
-function toOrderDetailResponse(order, warehouse, items = [], returnRequest = null) {
+// Section 8/13c: the pharmacy's own rating of the warehouse for this order,
+// if submitted - just enough for the tracking screen to show "already
+// rated" and skip the form, not the full review list shape used elsewhere.
+function serializeMyReview(review) {
+  if (!review) return null;
+  return {
+    id: review._id,
+    rating: review.rating,
+    comment: review.comment,
+    createdAt: review.createdAt,
+  };
+}
+
+function toOrderDetailResponse(order, warehouse, items = [], returnRequest = null, myReview = null) {
   return {
     order: {
       ...serializeOrder(order),
@@ -60,6 +74,7 @@ function toOrderDetailResponse(order, warehouse, items = [], returnRequest = nul
         lineTotal: item.discountPrice * item.quantity,
       })),
       linkedReturn: serializeLinkedReturn(returnRequest),
+      myReview: serializeMyReview(myReview),
     },
   };
 }

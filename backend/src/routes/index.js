@@ -14,6 +14,8 @@ const warehouseReturnRoutes = require('./warehouseReturn.routes');
 const warehouseReviewRoutes = require('./warehouseReview.routes');
 const reviewRoutes = require('./review.routes');
 const adminProductRoutes = require('./adminProduct.routes');
+const exchangeRateRoutes = require('./exchangeRate.routes');
+const adminExchangeRateRoutes = require('./adminExchangeRate.routes');
 
 const router = Router();
 
@@ -22,6 +24,8 @@ router.use('/auth', authRoutes);
 router.use('/admin', adminRoutes);
 router.use('/admin/offers', adminOfferRoutes);
 router.use('/admin/products', adminProductRoutes);
+router.use('/admin/exchange-rate', adminExchangeRateRoutes);
+router.use('/exchange-rate', exchangeRateRoutes);
 router.use('/warehouses', warehouseRoutes);
 router.use('/categories', categoryRoutes);
 router.use('/orders', orderRoutes);

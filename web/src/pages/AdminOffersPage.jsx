@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api/client';
+import { useExchangeRate } from '../context/ExchangeRateContext';
+import { formatPriceWithSyp } from '../utils/currency';
 
 export function AdminOffersPage() {
+  const usdToSyp = useExchangeRate();
   const [offers, setOffers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -62,7 +65,7 @@ export function AdminOffersPage() {
                 <span className="account-role-badge">{offer.warehouseNameEn}</span>
                 <h2>{offer.titleEn}</h2>
                 <p>
-                  {offer.productNameEn} &middot; {offer.productPrice} SYP
+                  {offer.productNameEn} &middot; {formatPriceWithSyp(offer.productPriceUsd, usdToSyp)}
                 </p>
                 <p>{offer.discountPercentage}% off</p>
                 <p>

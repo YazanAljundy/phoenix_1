@@ -8,6 +8,7 @@ import 'package:phoenix/core/extensions/build_context_extensions.dart';
 import 'package:phoenix/core/widgets/app_loading.dart';
 import 'package:phoenix/core/widgets/empty_view.dart';
 import 'package:phoenix/core/widgets/error_view.dart';
+import 'package:phoenix/features/exchange_rate/presentation/managers/exchange_rate_cubit.dart';
 import 'package:phoenix/features/warehouse_selection/data/models/warehouse_model.dart';
 import 'package:phoenix/features/warehouse_selection/presentation/managers/warehouse_selection_cubit.dart';
 import 'package:phoenix/features/warehouse_selection/presentation/managers/warehouse_selection_state.dart';
@@ -27,6 +28,13 @@ class _WarehouseSelectionViewState extends State<WarehouseSelectionView> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       context.read<WarehouseSelectionCubit>().loadWarehouses();
+      // This screen is the one guaranteed landing point after every
+      // successful auth path (splash/login/register/approval-pending all
+      // navigate here) - fetching the session-wide exchange rate here once,
+      // rather than in each of those views, satisfies "once per app
+      // session, not per screen" (see exchange_rate_cubit.dart) without
+      // duplicating the call site.
+      context.read<ExchangeRateCubit>().load();
     });
   }
 
@@ -59,14 +67,16 @@ class _WarehouseSelectionViewState extends State<WarehouseSelectionView> {
             case WarehouseListStatus.error:
               return ErrorView(
                 message: state.errorMessage ?? l10n.errorState,
-                onRetry: () => context.read<WarehouseSelectionCubit>().loadWarehouses(),
+                onRetry: () =>
+                    context.read<WarehouseSelectionCubit>().loadWarehouses(),
               );
             case WarehouseListStatus.loaded:
               if (state.warehouses.isEmpty) {
                 return EmptyView(message: l10n.noWarehousesAvailable);
               }
               return RefreshIndicator(
-                onRefresh: () => context.read<WarehouseSelectionCubit>().loadWarehouses(),
+                onRefresh: () =>
+                    context.read<WarehouseSelectionCubit>().loadWarehouses(),
                 child: LayoutBuilder(
                   builder: (context, constraints) {
                     // Tablet support via LayoutBuilder, not fixed dimensions

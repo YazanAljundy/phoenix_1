@@ -35,4 +35,5 @@ module.exports = {
     endpoint: process.env.R2_ENDPOINT || '',
   },
   imageApiKey: process.env.IMAGE_API_KEY || '',
+  exchangeRateApiKey: process.env.EXCHANGE_RATE_API_KEY || '',
 };

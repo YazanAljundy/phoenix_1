@@ -9,7 +9,8 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "create-admin": "node scripts/create-admin.js",
-    "seed-catalog": "node scripts/seed-catalog.js"
+    "seed-catalog": "node scripts/seed-catalog.js",
+    "migrate-prices-to-usd": "node scripts/migrate-prices-to-usd.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",

@@ -107,6 +107,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sendCodeButton => 'Send verification code';
 
   @override
+  String get createAccountButton => 'Create account';
+
+  @override
   String get passwordLoginTitle => 'Log in with password';
 
   @override
@@ -282,13 +285,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get errorWarehouseNotFound => 'This warehouse is no longer available.';
 
   @override
-  String get errorStockCheckFailedGeneric =>
-      'Some items in your cart are no longer available as requested.';
+  String get errorExchangeRateUnavailable =>
+      'Prices can\'t be confirmed right now. Please try again shortly.';
 
   @override
-  String errorInsufficientStock(String quantity, String name) {
-    return 'Only $quantity of $name is currently available.';
-  }
+  String get errorStockCheckFailedGeneric =>
+      'Some items in your cart are no longer available as requested.';
 
   @override
   String errorProductUnavailable(String name) {
@@ -527,4 +529,28 @@ class AppLocalizationsEn extends AppLocalizations {
   String ratingSummary(String average, String count) {
     return '$average average ($count ratings)';
   }
+
+  @override
+  String get rateWarehouseTitle => 'Rate the warehouse';
+
+  @override
+  String get rateWarehouseCommentLabel => 'Comment (optional)';
+
+  @override
+  String get submitReviewButton => 'Submit rating';
+
+  @override
+  String get submitReviewConfirmTitle => 'Submit rating?';
+
+  @override
+  String get submitReviewConfirmMessage =>
+      'You won\'t be able to change this rating after sending it. Continue?';
+
+  @override
+  String reviewThankYouTitle(String rating) {
+    return 'Thanks — you rated this order $rating stars';
+  }
+
+  @override
+  String get errorAlreadyReviewed => 'This order has already been rated.';
 }

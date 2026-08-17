@@ -26,7 +26,7 @@ class CartState {
   final String? errorCode;
   final Map<String, dynamic>? errorDetails;
 
-  num get subtotal => items.fold<num>(0, (sum, item) => sum + item.lineTotal);
+  num get subtotalUsd => items.fold<num>(0, (sum, item) => sum + item.lineTotalUsd);
   int get itemCount => items.fold<int>(0, (sum, item) => sum + item.quantity);
   bool get isEmpty => items.isEmpty;
 

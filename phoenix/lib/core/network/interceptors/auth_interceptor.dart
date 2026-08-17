@@ -2,8 +2,6 @@ import 'package:dio/dio.dart';
 import 'package:phoenix/core/constants/storage_keys.dart';
 import 'package:phoenix/core/services/secure_storage_service.dart';
 
-// Attaches the stored JWT to every outgoing request. The token is written to
-// secure storage by AuthCubit on successful register/login.
 class AuthInterceptor extends Interceptor {
   AuthInterceptor({required SecureStorageService secureStorage})
     : _secureStorage = secureStorage;

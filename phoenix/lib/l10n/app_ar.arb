@@ -34,6 +34,7 @@
   "passwordMismatch": "كلمتا المرور غير متطابقتين.",
   "alreadyHaveAccountLink": "عندك حساب؟ سجّل دخول بكلمة السر",
   "sendCodeButton": "إرسال رمز التحقق",
+  "createAccountButton": "إنشاء الحساب",
 
   "passwordLoginTitle": "تسجيل الدخول بكلمة السر",
   "passwordLoginSubtitle": "أدخل رقم هاتفك وكلمة السر",
@@ -129,14 +130,8 @@
   "errorInvalidRequest": "هناك خطأ في هذا الطلب. يرجى المحاولة مرة أخرى.",
   "errorPharmacyNotFound": "لم نتمكن من العثور على ملف صيدليتك. يرجى التواصل مع الدعم.",
   "errorWarehouseNotFound": "هذا المستودع لم يعد متاحاً.",
+  "errorExchangeRateUnavailable": "تعذّر تأكيد الأسعار حالياً. يرجى المحاولة بعد قليل.",
   "errorStockCheckFailedGeneric": "بعض العناصر في سلتك لم تعد متاحة كما طُلب.",
-  "errorInsufficientStock": "يتوفر فقط {quantity} من {name} حالياً.",
-  "@errorInsufficientStock": {
-    "placeholders": {
-      "quantity": { "type": "String" },
-      "name": { "type": "String" }
-    }
-  },
   "errorProductUnavailable": "{name} غير متوفر حالياً.",
   "@errorProductUnavailable": {
     "placeholders": {
@@ -233,5 +228,18 @@
       "average": { "type": "String" },
       "count": { "type": "String" }
     }
-  }
+  },
+
+  "rateWarehouseTitle": "قيّم المستودع",
+  "rateWarehouseCommentLabel": "تعليق (اختياري)",
+  "submitReviewButton": "إرسال التقييم",
+  "submitReviewConfirmTitle": "إرسال التقييم؟",
+  "submitReviewConfirmMessage": "لن تتمكن من تعديل هذا التقييم بعد إرساله. متابعة؟",
+  "reviewThankYouTitle": "شكراً — قيّمت هذا الطلب بـ {rating} نجوم",
+  "@reviewThankYouTitle": {
+    "placeholders": {
+      "rating": { "type": "String" }
+    }
+  },
+  "errorAlreadyReviewed": "تم تقييم هذا الطلب من قبل."
 }
