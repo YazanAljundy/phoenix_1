@@ -3,6 +3,7 @@ const { ApiError } = require('../utils/ApiError');
 const Warehouse = require('../models/warehouse.model');
 const warehouseProductService = require('../services/warehouseProduct.service');
 const warehouseProductViewModel = require('../viewmodels/warehouseProduct.viewmodel');
+const productCatalogService = require('../services/productCatalog.service');
 
 async function loadWarehouseOrThrow(userId) {
   const warehouse = await Warehouse.findOne({ userId });
@@ -43,4 +44,24 @@ const update = asyncHandler(async (req, res) => {
   });
 });
 
-module.exports = { list, create, update };
+const downloadTemplate = asyncHandler(async (req, res) => {
+  const buffer = await productCatalogService.generateWarehouseTemplateBuffer();
+  res.setHeader(
+    'Content-Type',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+  );
+  res.setHeader('Content-Disposition', 'attachment; filename="my-products-template.xlsx"');
+  res.send(buffer);
+});
+
+const importExcel = asyncHandler(async (req, res) => {
+  const warehouse = await loadWarehouseOrThrow(req.user._id);
+  const report = await warehouseProductService.importProductsFromExcel(
+    warehouse._id,
+    req.user._id,
+    req.file
+  );
+  res.json({ success: true, ...report });
+});
+
+module.exports = { list, create, update, downloadTemplate, importExcel };

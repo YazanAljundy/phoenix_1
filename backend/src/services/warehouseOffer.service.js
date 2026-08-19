@@ -2,6 +2,7 @@ const { ApiError } = require('../utils/ApiError');
 const Offer = require('../models/offer.model');
 const Product = require('../models/product.model');
 const { findOwnedProductOrThrow } = require('./warehouseProduct.service');
+const { applyResolvedIdentity } = require('./productCatalog.service');
 
 function validateTitle(value, field) {
   if (typeof value !== 'string' || !value.trim()) {
@@ -29,6 +30,10 @@ function parseDate(value) {
 // offer live.
 async function createOffer(warehouseId, data) {
   const product = await findOwnedProductOrThrow(data.productId, warehouseId);
+  // Read-only from here on (never saved) - safe to resolve for the response,
+  // see the Section 14 Part 2 note in adminProduct.service.js.
+  await product.populate('masterProductId');
+  applyResolvedIdentity(product);
 
   validateTitle(data.titleAr, 'titleAr');
   validateTitle(data.titleEn, 'titleEn');
@@ -59,7 +64,8 @@ async function listOffersForWarehouse(warehouseId) {
   if (offers.length === 0) return [];
 
   const productIds = [...new Set(offers.map((o) => o.productId.toString()))];
-  const products = await Product.find({ _id: { $in: productIds } });
+  const products = await Product.find({ _id: { $in: productIds } }).populate('masterProductId');
+  products.forEach(applyResolvedIdentity);
   const productById = new Map(products.map((p) => [p._id.toString(), p]));
 
   return offers.map((offer) => ({

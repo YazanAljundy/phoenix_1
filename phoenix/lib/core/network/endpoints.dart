@@ -11,6 +11,8 @@ class Endpoints {
   static const String categories = '/categories';
 
   static String warehouseProducts(String warehouseId) => '/warehouses/$warehouseId/products';
+  static String warehouseManufacturers(String warehouseId) => '/warehouses/$warehouseId/manufacturers';
+  static String warehouseProfile(String warehouseId) => '/warehouses/$warehouseId/profile';
 
   static const String orders = '/orders';
   static String orderDetail(String orderId) => '/orders/$orderId';
@@ -20,4 +22,7 @@ class Endpoints {
   static String returnDetail(String returnId) => '/returns/$returnId';
   static const String reviews = '/reviews';
   static const String exchangeRate = '/exchange-rate';
+
+  static const String debts = '/pharmacy/debts';
+  static String debtDetail(String warehouseId) => '/pharmacy/debts/$warehouseId';
 }

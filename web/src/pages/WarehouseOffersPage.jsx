@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api/client';
 import { useExchangeRate } from '../context/ExchangeRateContext';
 import { formatPriceWithSyp } from '../utils/currency';
+import { withArFallback } from '../utils/displayName';
 
 const EMPTY_FORM = {
   productId: '',
@@ -72,7 +73,8 @@ function CreateOfferModal({ products, usdToSyp, onClose, onCreated }) {
               </option>
               {products.map((product) => (
                 <option key={product.id} value={product.id}>
-                  {product.nameEn} ({formatPriceWithSyp(product.priceUsd, usdToSyp)})
+                  {withArFallback(product.nameEn, product.nameAr)} (
+                  {formatPriceWithSyp(product.priceUsd, usdToSyp)})
                 </option>
               ))}
             </select>
@@ -194,7 +196,7 @@ export function WarehouseOffersPage() {
             <div className="order-card" key={offer.id}>
               <div className="order-card-header">
                 <div>
-                  <h2>{offer.productNameEn}</h2>
+                  <h2>{withArFallback(offer.productNameEn, offer.productNameAr)}</h2>
                   <p>{offer.titleEn}</p>
                 </div>
                 <span

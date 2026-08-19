@@ -8,12 +8,12 @@ class CartItem {
   const CartItem({
     required this.productId,
     required this.nameAr,
-    required this.nameEn,
+    this.nameEn,
     required this.manufacturerAr,
-    required this.manufacturerEn,
+    this.manufacturerEn,
     this.image,
-    required this.unitAr,
-    required this.unitEn,
+    this.unitAr,
+    this.unitEn,
     required this.unitPriceUsd,
     required this.discountPriceUsd,
     required this.quantity,
@@ -21,12 +21,12 @@ class CartItem {
 
   final String productId;
   final String nameAr;
-  final String nameEn;
+  final String? nameEn;
   final String manufacturerAr;
-  final String manufacturerEn;
+  final String? manufacturerEn;
   final String? image;
-  final String unitAr;
-  final String unitEn;
+  final String? unitAr;
+  final String? unitEn;
   final num unitPriceUsd;
   final num discountPriceUsd;
   final int quantity;
@@ -45,7 +45,7 @@ class CartItem {
       unitAr: product.unitAr,
       unitEn: product.unitEn,
       unitPriceUsd: product.priceUsd,
-      discountPriceUsd: product.offer?.discountPriceUsd ?? product.priceUsd,
+      discountPriceUsd: product.discountPriceUsd,
       quantity: quantity,
     );
   }

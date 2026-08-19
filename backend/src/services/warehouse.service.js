@@ -1,6 +1,8 @@
 const mongoose = require('mongoose');
+const { ApiError } = require('../utils/ApiError');
 const User = require('../models/user.model');
 const Warehouse = require('../models/warehouse.model');
+const { listReviewsForWarehouse } = require('./warehouseReview.service');
 
 // Section 7: a warehouse only appears to pharmacists once its user has been
 // admin-approved (users.status = 'active'), and warehouses.isActive lets an
@@ -27,4 +29,31 @@ async function isWarehouseAvailable(warehouseId) {
   return Boolean(user);
 }
 
-module.exports = { listAvailableWarehouses, isWarehouseAvailable };
+// Section 17: the pharmacist's read-only "about this warehouse" screen -
+// delivery info/hours (display only, never enforced against an actual
+// order) plus the same visible reviews the warehouse's own web panel sees
+// (warehouseReview.service.js), just capped to the 5 most recent.
+// Warehouse.averageRating/reviewsCount aren't used here - they're not kept
+// up to date yet (see review.service.js's createWarehouseReview comment),
+// so the rating shown here is computed live from the actual visible
+// reviews, same as listReviewsForWarehouse already does for the panel.
+async function getWarehouseProfile(warehouseId) {
+  const available = await isWarehouseAvailable(warehouseId);
+  if (!available) {
+    throw ApiError.notFound('Warehouse not found.', 'WAREHOUSE_NOT_FOUND');
+  }
+
+  const [warehouse, { reviews, averageRating }] = await Promise.all([
+    Warehouse.findById(warehouseId),
+    listReviewsForWarehouse(warehouseId),
+  ]);
+
+  return {
+    warehouse,
+    averageRating,
+    reviewsCount: reviews.length,
+    recentReviews: reviews.slice(0, 5).map((row) => row.review),
+  };
+}
+
+module.exports = { listAvailableWarehouses, isWarehouseAvailable, getWarehouseProfile };

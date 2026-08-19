@@ -31,61 +31,78 @@ class ApprovalPendingView extends StatelessWidget {
     return BlocListener<AuthCubit, AuthState>(
       listenWhen: (previous, current) =>
           current.sessionStatus == SessionStatus.active,
-      listener: (context, state) => context.goNamed(RouteNames.warehouseSelection),
+      listener: (context, state) =>
+          context.goNamed(RouteNames.warehouseSelection),
       child: BlocBuilder<AuthCubit, AuthState>(
         builder: (context, state) {
           final isBlocked = state.sessionStatus == SessionStatus.blocked;
 
           return Scaffold(
             body: SafeArea(
-              child: Padding(
-                padding: AppPadding.screen,
-                child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        isBlocked
-                            ? Icons.block_rounded
-                            : Icons.hourglass_top_rounded,
-                        color: isBlocked
-                            ? AppColors.errorOf(context)
-                            : AppColors.primaryOf(context),
-                        size: 72,
+              // Unlike the other auth screens (registration/OTP/login), this
+              // one has no text input, so it never had a scroll wrapper -
+              // but the icon + two messages + up to two buttons can still
+              // exceed the viewport height in landscape, or with a larger
+              // accessibility text scale. LayoutBuilder + a min-height
+              // ConstrainedBox keeps it centered when it fits and scrollable
+              // instead of overflowing when it doesn't.
+              child: LayoutBuilder(
+                builder: (context, constraints) {
+                  return SingleChildScrollView(
+                    padding: AppPadding.screen,
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: constraints.maxHeight,
                       ),
-                      const SizedBox(height: AppSizes.spacingLarge),
-                      Text(
-                        isBlocked
-                            ? l10n.approvalPendingBlockedTitle
-                            : l10n.approvalPendingTitle,
-                        style: context.textTheme.titleLarge,
-                        textAlign: TextAlign.center,
-                      ),
-                      const SizedBox(height: AppSizes.spacingSmall),
-                      Text(
-                        isBlocked
-                            ? l10n.approvalPendingBlockedMessage
-                            : l10n.approvalPendingMessage,
-                        style: context.textTheme.bodyMedium?.copyWith(
-                          color: AppColors.textSecondaryOf(context),
+                      child: Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              isBlocked
+                                  ? Icons.block_rounded
+                                  : Icons.hourglass_top_rounded,
+                              color: isBlocked
+                                  ? AppColors.errorOf(context)
+                                  : AppColors.primaryOf(context),
+                              size: 72,
+                            ),
+                            const SizedBox(height: AppSizes.spacingLarge),
+                            Text(
+                              isBlocked
+                                  ? l10n.approvalPendingBlockedTitle
+                                  : l10n.approvalPendingTitle,
+                              style: context.textTheme.titleLarge,
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: AppSizes.spacingSmall),
+                            Text(
+                              isBlocked
+                                  ? l10n.approvalPendingBlockedMessage
+                                  : l10n.approvalPendingMessage,
+                              style: context.textTheme.bodyMedium?.copyWith(
+                                color: AppColors.textSecondaryOf(context),
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: AppSizes.spacingXLarge),
+                            if (!isBlocked)
+                              PrimaryButton(
+                                label: l10n.refreshStatusButton,
+                                onPressed: () =>
+                                    context.read<AuthCubit>().checkSession(),
+                              ),
+                            const SizedBox(height: AppSizes.spacingMedium),
+                            SecondaryButton(
+                              label: l10n.contactSupportButton,
+                              onPressed: () => _contactSupport(context),
+                            ),
+                          ],
                         ),
-                        textAlign: TextAlign.center,
                       ),
-                      const SizedBox(height: AppSizes.spacingXLarge),
-                      if (!isBlocked)
-                        PrimaryButton(
-                          label: l10n.refreshStatusButton,
-                          onPressed: () =>
-                              context.read<AuthCubit>().checkSession(),
-                        ),
-                      const SizedBox(height: AppSizes.spacingMedium),
-                      SecondaryButton(
-                        label: l10n.contactSupportButton,
-                        onPressed: () => _contactSupport(context),
-                      ),
-                    ],
-                  ),
-                ),
+                    ),
+                  );
+                },
               ),
             ),
           );

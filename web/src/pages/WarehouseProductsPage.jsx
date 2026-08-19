@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from '../api/client';
 import {
   EMPTY_PRODUCT_FORM,
@@ -9,6 +9,7 @@ import {
 } from '../components/ProductFormModal';
 import { useExchangeRate } from '../context/ExchangeRateContext';
 import { formatPriceWithSyp } from '../utils/currency';
+import { withArFallback } from '../utils/displayName';
 
 export function WarehouseProductsPage() {
   const usdToSyp = useExchangeRate();
@@ -17,6 +18,9 @@ export function WarehouseProductsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [modal, setModal] = useState(null); // null | { mode: 'create' } | { mode: 'edit', product }
+  const [isImporting, setIsImporting] = useState(false);
+  const [importReport, setImportReport] = useState(null);
+  const fileInputRef = useRef(null);
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -47,13 +51,78 @@ export function WarehouseProductsPage() {
     load();
   };
 
+  const handleDownloadTemplate = async () => {
+    setError(null);
+    try {
+      const blob = await api.downloadWarehouseProductTemplate();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'my-products-template.xlsx';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const handleFilePicked = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    setIsImporting(true);
+    setError(null);
+    setImportReport(null);
+    try {
+      const report = await api.importWarehouseProducts(file);
+      setImportReport(report);
+      await load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsImporting(false);
+    }
+  };
+
   return (
     <div>
-      <div className="section-toolbar">
+      <div className="section-toolbar section-toolbar-start">
+        <button className="btn-secondary" onClick={handleDownloadTemplate}>
+          Download template
+        </button>
+        <button
+          className="btn-secondary"
+          disabled={isImporting}
+          onClick={() => fileInputRef.current?.click()}
+        >
+          {isImporting ? 'Importing...' : 'Import Excel'}
+        </button>
+        <input ref={fileInputRef} type="file" accept=".xlsx" hidden onChange={handleFilePicked} />
         <button className="btn-primary" onClick={() => setModal({ mode: 'create' })}>
           Add product
         </button>
       </div>
+
+      {importReport && (
+        <div className="exchange-rate-card">
+          <p>
+            Added {importReport.added}, updated {importReport.updated}
+            {importReport.errors.length > 0 && `, ${importReport.errors.length} failed`}.
+          </p>
+          {importReport.errors.length > 0 && (
+            <ul>
+              {importReport.errors.map((e, index) => (
+                <li key={index} className="error-text">
+                  Row {e.row}: {e.reason}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
 
       {error && <p className="error-text">{error}</p>}
 
@@ -77,8 +146,10 @@ export function WarehouseProductsPage() {
               {products.map((product) => (
                 <tr key={product.id}>
                   <td>
-                    <div className="product-name">{product.nameEn}</div>
-                    <div className="product-manufacturer">{product.manufacturerEn}</div>
+                    <div className="product-name">{withArFallback(product.nameEn, product.nameAr)}</div>
+                    <div className="product-manufacturer">
+                      {withArFallback(product.manufacturerEn, product.manufacturerAr)}
+                    </div>
                   </td>
                   <td>{categoryName(product.categoryId)}</td>
                   <td>{formatPriceWithSyp(product.priceUsd, usdToSyp)}</td>

@@ -216,7 +216,7 @@ class _RegistrationViewState extends State<RegistrationView> {
                     ),
                   ),
                   if (_photoError != null) ...[
-                    const SizedBox(height: 4),
+                    const SizedBox(height: AppSizes.spacingXSmall),
                     Text(
                       _photoError!,
                       style: context.textTheme.bodySmall?.copyWith(

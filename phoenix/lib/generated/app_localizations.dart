@@ -452,6 +452,72 @@ abstract class AppLocalizations {
   /// **'{name} selected. The product catalog is coming soon.'**
   String warehouseSelectedMessage(String name);
 
+  /// No description provided for @noManufacturersFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No manufacturers available for this warehouse.'**
+  String get noManufacturersFound;
+
+  /// No description provided for @warehouseProfileTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Warehouse info'**
+  String get warehouseProfileTooltip;
+
+  /// No description provided for @deliveryInfoTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivery Information'**
+  String get deliveryInfoTitle;
+
+  /// No description provided for @deliveryHoursValue.
+  ///
+  /// In en, this message translates to:
+  /// **'From {start} to {end}'**
+  String deliveryHoursValue(String start, String end);
+
+  /// No description provided for @deliveryHoursNotSet.
+  ///
+  /// In en, this message translates to:
+  /// **'Not specified'**
+  String get deliveryHoursNotSet;
+
+  /// No description provided for @deliveryTypeSelfLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivered by the warehouse itself'**
+  String get deliveryTypeSelfLabel;
+
+  /// No description provided for @deliveryTypeThirdPartyLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivered by a third-party courier'**
+  String get deliveryTypeThirdPartyLabel;
+
+  /// No description provided for @deliveryInfoDisclaimer.
+  ///
+  /// In en, this message translates to:
+  /// **'This information is for display only and doesn\'t prevent placing an order.'**
+  String get deliveryInfoDisclaimer;
+
+  /// No description provided for @warehouseReviewsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reviews'**
+  String get warehouseReviewsTitle;
+
+  /// No description provided for @noWarehouseReviewsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No reviews yet.'**
+  String get noWarehouseReviewsYet;
+
+  /// No description provided for @browseWarehouseProductsButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse this warehouse\'s products'**
+  String get browseWarehouseProductsButton;
+
   /// No description provided for @searchProductsHint.
   ///
   /// In en, this message translates to:
@@ -770,6 +836,18 @@ abstract class AppLocalizations {
   /// **'Total'**
   String get invoiceTotalLabel;
 
+  /// No description provided for @youSavedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'💰 You saved {amount}'**
+  String youSavedLabel(String amount);
+
+  /// No description provided for @totalSavingsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'💰 Total savings: {amount} (including offer discounts and manufacturer discount)'**
+  String totalSavingsLabel(String amount);
+
   /// No description provided for @returnsTitle.
   ///
   /// In en, this message translates to:
@@ -1045,6 +1123,60 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{average} average ({count} ratings)'**
   String ratingSummary(String average, String count);
+
+  /// No description provided for @myDebtsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'My Debts'**
+  String get myDebtsTitle;
+
+  /// No description provided for @noDebtsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No debts right now.'**
+  String get noDebtsYet;
+
+  /// No description provided for @totalOrdersLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Total orders'**
+  String get totalOrdersLabel;
+
+  /// No description provided for @totalPaidLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Total paid'**
+  String get totalPaidLabel;
+
+  /// No description provided for @currentBalanceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Current balance'**
+  String get currentBalanceLabel;
+
+  /// No description provided for @creditBalanceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Credit balance'**
+  String get creditBalanceLabel;
+
+  /// No description provided for @deliveredOrdersTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivered orders'**
+  String get deliveredOrdersTitle;
+
+  /// No description provided for @paymentsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Payments'**
+  String get paymentsTitle;
+
+  /// No description provided for @noPaymentsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No payments recorded yet.'**
+  String get noPaymentsYet;
 
   /// No description provided for @rateWarehouseTitle.
   ///

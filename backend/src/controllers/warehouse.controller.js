@@ -7,4 +7,9 @@ const list = asyncHandler(async (req, res) => {
   res.json({ success: true, ...warehouseViewModel.toWarehouseListResponse(warehouses) });
 });
 
-module.exports = { list };
+const profile = asyncHandler(async (req, res) => {
+  const data = await warehouseService.getWarehouseProfile(req.params.warehouseId);
+  res.json({ success: true, ...warehouseViewModel.toWarehouseProfileResponse(data) });
+});
+
+module.exports = { list, profile };

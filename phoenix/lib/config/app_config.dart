@@ -1,13 +1,17 @@
+import 'package:flutter/foundation.dart';
+
 // Override at build/run time with:
-// flutter run --dart-define=API_BASE_URL=http://localhost:4000/api
-// The default targets the Android emulator's alias for the host machine's
-// localhost. Use http://localhost:4000/api for iOS simulator/desktop, or the
-// machine's LAN IP for a physical device.
+// flutter run --dart-define=API_BASE_URL=http://localhost:5000/api
+// Web and desktop default to localhost; Android emulator uses 10.0.2.2.
+// For a physical device use the machine's LAN IP, for example
+// http://192.168.1.10:5000/api.
 class AppConfig {
   const AppConfig._();
 
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: 'http://10.0.2.2:5000/api',
+    defaultValue: kIsWeb
+        ? 'http://localhost:5000/api'
+        : 'http://10.0.2.2:5000/api',
   );
 }

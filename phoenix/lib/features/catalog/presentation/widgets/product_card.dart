@@ -8,20 +8,28 @@ import 'package:phoenix/core/utils/currency_formatter.dart';
 import 'package:phoenix/core/widgets/custom_card.dart';
 import 'package:phoenix/core/widgets/secondary_price_hint.dart';
 import 'package:phoenix/features/catalog/data/models/product_model.dart';
+import 'package:phoenix/features/catalog/presentation/widgets/quantity_picker_sheet.dart';
 import 'package:phoenix/features/exchange_rate/presentation/managers/exchange_rate_cubit.dart';
 
 class ProductCard extends StatelessWidget {
   const ProductCard({super.key, required this.product, required this.onAdd});
 
   final ProductModel product;
-  final VoidCallback onAdd;
+  final ValueChanged<int> onAdd;
+
+  Future<void> _handleAddTap(BuildContext context) async {
+    final quantity = await showQuantityPickerSheet(context);
+    if (quantity != null) {
+      onAdd(quantity);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
-    final name = isArabic ? product.nameAr : product.nameEn;
-    final manufacturer = isArabic ? product.manufacturerAr : product.manufacturerEn;
+    final name = isArabic ? product.nameAr : (product.nameEn ?? product.nameAr);
+    final manufacturer = isArabic ? product.manufacturerAr : (product.manufacturerEn ?? product.manufacturerAr);
 
     return Opacity(
       opacity: product.isAvailable ? 1.0 : 0.55,
@@ -67,7 +75,7 @@ class ProductCard extends StatelessWidget {
             SizedBox(
               width: double.infinity,
               child: FilledButton.icon(
-                onPressed: product.isAvailable ? onAdd : null,
+                onPressed: product.isAvailable ? () => _handleAddTap(context) : null,
                 icon: const Icon(Icons.add, size: 18),
                 label: Text(l10n.addToCartButton),
                 style: FilledButton.styleFrom(
@@ -94,21 +102,22 @@ class _PriceDisplay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final offer = product.offer;
+    // Section 15: discountPriceUsd already has any active product Offer AND
+    // the warehouse's manufacturer discount stacked in server-side (see
+    // product.viewmodel.js). The two-price (struck-through original +
+    // discounted) treatment is reserved for an active Offer specifically -
+    // a manufacturer-discount-only price (no Offer) shows as a single plain
+    // number with no indication it was discounted at all.
     final usdToSyp = context.watch<ExchangeRateCubit>().state.usdToSyp;
-    final sypText = formatSypApprox(
-      offer?.discountPriceUsd ?? product.priceUsd,
-      usdToSyp,
-      l10n.currencySuffix,
-    );
+    final sypText = formatSypApprox(product.discountPriceUsd, usdToSyp, l10n.currencySuffix);
 
-    if (offer == null) {
+    if (!product.hasActiveOffer) {
       return Wrap(
         crossAxisAlignment: WrapCrossAlignment.center,
         spacing: AppSizes.spacingXSmall,
         children: [
           Text(
-            '\$${product.priceUsd}',
+            '\$${product.discountPriceUsd}',
             style: context.textTheme.titleMedium?.copyWith(
               color: AppColors.primaryOf(context),
             ),
@@ -131,7 +140,7 @@ class _PriceDisplay extends StatelessWidget {
           ),
         ),
         Text(
-          '\$${offer.discountPriceUsd}',
+          '\$${product.discountPriceUsd}',
           style: TextStyle(
             color: AppColors.secondaryOf(context),
             fontWeight: FontWeight.bold,

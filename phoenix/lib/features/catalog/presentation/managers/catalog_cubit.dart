@@ -9,19 +9,27 @@ class CatalogCubit extends Cubit<CatalogState> {
   CatalogCubit({
     required CatalogRepository catalogRepository,
     required String warehouseId,
+    required String manufacturer,
   }) : _catalogRepository = catalogRepository,
        _warehouseId = warehouseId,
+       _manufacturer = manufacturer,
        super(const CatalogState());
 
   final CatalogRepository _catalogRepository;
   final String _warehouseId;
+  // Section 16: the catalog is now always scoped to one manufacturer, chosen
+  // on ManufacturersView just before this screen - never cleared from here.
+  final String _manufacturer;
   final Debouncer _searchDebouncer = Debouncer(duration: const Duration(milliseconds: 400));
 
   Future<void> initialize() async {
     emit(state.copyWith(status: CatalogStatus.loading));
     try {
       final categories = await _catalogRepository.getCategories();
-      final products = await _catalogRepository.getProducts(warehouseId: _warehouseId);
+      final products = await _catalogRepository.getProducts(
+        warehouseId: _warehouseId,
+        manufacturer: _manufacturer,
+      );
       emit(
         state.copyWith(
           status: CatalogStatus.loaded,
@@ -51,6 +59,7 @@ class CatalogCubit extends Cubit<CatalogState> {
     try {
       final products = await _catalogRepository.getProducts(
         warehouseId: _warehouseId,
+        manufacturer: _manufacturer,
         search: state.searchQuery.trim().isEmpty ? null : state.searchQuery.trim(),
         categoryId: state.selectedCategoryId,
       );

@@ -4,6 +4,7 @@ const ExchangeRate = require('../models/exchangeRate.model');
 
 const SINGLETON_ID = 'singleton';
 const REFRESH_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24h
+const DAILY_REFRESH_HOUR = 9; // 09:00 server-local time
 
 function validateUsdToSyp(usdToSyp) {
   if (typeof usdToSyp !== 'number' || !Number.isFinite(usdToSyp) || usdToSyp <= 0) {
@@ -60,12 +61,38 @@ async function refreshFromApi() {
   }
 }
 
-// Runs once at boot (so a rate exists as soon as possible) and then every
-// 24h - a plain setInterval rather than a cron dependency, since a fixed
-// daily period is all this needs.
-function startScheduledRefresh() {
-  refreshFromApi();
-  setInterval(refreshFromApi, REFRESH_INTERVAL_MS);
+// Milliseconds until the next 09:00 server-local time (today if it hasn't
+// passed yet, tomorrow otherwise).
+function msUntilNextDailyRefresh() {
+  const now = new Date();
+  const next = new Date();
+  next.setHours(DAILY_REFRESH_HOUR, 0, 0, 0);
+  if (next <= now) next.setDate(next.getDate() + 1);
+  return { delayMs: next.getTime() - now.getTime(), next };
+}
+
+// Runs once a day at a fixed clock time (09:00) rather than 24h from
+// whenever the server happened to last boot - no cron dependency needed for
+// a single fixed daily time: a setTimeout to the first 09:00, then a plain
+// 24h setInterval from there on.
+//
+// Boot itself only triggers an immediate fetch when the collection is
+// genuinely empty (first-ever boot) - once a rate exists, a restart just
+// waits for the next scheduled tick instead of spending an extra API call.
+async function startScheduledRefresh() {
+  const existing = await getRate();
+  if (!existing) {
+    await refreshFromApi();
+  }
+
+  const { delayMs, next } = msUntilNextDailyRefresh();
+  // eslint-disable-next-line no-console
+  console.log(`Next rate update scheduled for 09:00 on ${next.toDateString()}.`);
+
+  setTimeout(() => {
+    refreshFromApi();
+    setInterval(refreshFromApi, REFRESH_INTERVAL_MS);
+  }, delayMs);
 }
 
 async function setManualRate(usdToSyp) {

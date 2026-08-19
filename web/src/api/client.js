@@ -40,6 +40,32 @@ async function request(path, { method = 'GET', body } = {}) {
   return data;
 }
 
+// Bypass `request()` - it always sends/expects JSON, which doesn't fit a
+// binary file download or a multipart upload.
+async function requestBlob(path) {
+  const token = getToken();
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  const response = await fetch(`${API_BASE_URL}${path}`, { headers });
+  if (!response.ok) {
+    const data = await response.json().catch(() => null);
+    throw new ApiError(data?.message ?? 'Download failed. Please try again.', response.status);
+  }
+  return response.blob();
+}
+
+async function requestUpload(path, file) {
+  const token = getToken();
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  const formData = new FormData();
+  formData.append('file', file);
+  const response = await fetch(`${API_BASE_URL}${path}`, { method: 'POST', headers, body: formData });
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new ApiError(data?.message ?? 'Import failed. Please try again.', response.status);
+  }
+  return data;
+}
+
 export const api = {
   // TODO(re-enable-otp): unused by the current login flow - kept for a
   // future re-enable. The backend routes are still live.
@@ -82,4 +108,25 @@ export const api = {
   adminExchangeRate: () => request('/admin/exchange-rate'),
   setExchangeRate: (usdToSyp) => request('/admin/exchange-rate', { method: 'PATCH', body: { usdToSyp } }),
   resetExchangeRate: () => request('/admin/exchange-rate/reset', { method: 'PATCH' }),
+  adminCatalog: (search) =>
+    request(`/admin/catalog${search ? `?q=${encodeURIComponent(search)}` : ''}`),
+  downloadCatalogTemplate: () => requestBlob('/admin/catalog/template'),
+  importCatalogExcel: (file) => requestUpload('/admin/catalog/import', file),
+  updateCatalogItem: (id, changes) => request(`/admin/catalog/${id}`, { method: 'PATCH', body: changes }),
+  deactivateCatalogItem: (id) => request(`/admin/catalog/${id}`, { method: 'DELETE' }),
+  warehouseCatalogSearch: (q) =>
+    request(`/warehouse/catalog/search${q ? `?q=${encodeURIComponent(q)}` : ''}`),
+  downloadWarehouseProductTemplate: () => requestBlob('/warehouse/products/template'),
+  importWarehouseProducts: (file) => requestUpload('/warehouse/products/import', file),
+  warehouseDiscounts: () => request('/warehouse/discounts'),
+  createWarehouseDiscount: (data) => request('/warehouse/discounts', { method: 'POST', body: data }),
+  updateWarehouseDiscount: (id, changes) =>
+    request(`/warehouse/discounts/${id}`, { method: 'PATCH', body: changes }),
+  deleteWarehouseDiscount: (id) => request(`/warehouse/discounts/${id}`, { method: 'DELETE' }),
+  warehouseManufacturers: () => request('/warehouse/manufacturers'),
+  warehouseBalances: () => request('/warehouse/balances'),
+  warehouseBalanceDetail: (pharmacyId) => request(`/warehouse/balances/${pharmacyId}`),
+  createPayment: (data) => request('/warehouse/payments', { method: 'POST', body: data }),
+  updatePayment: (id, changes) => request(`/warehouse/payments/${id}`, { method: 'PATCH', body: changes }),
+  deletePayment: (id) => request(`/warehouse/payments/${id}`, { method: 'DELETE' }),
 };

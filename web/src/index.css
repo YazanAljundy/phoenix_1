@@ -400,6 +400,28 @@ input {
   background: var(--color-primary);
 }
 
+/* Section 16: a pharmacy's running balance - red while it owes the
+   warehouse money, green once it's paid ahead (a credit). */
+.balance-amount {
+  font-weight: 700;
+}
+
+.balance-amount.is-debt {
+  color: var(--color-error);
+}
+
+.balance-amount.is-credit {
+  color: var(--color-secondary);
+}
+
+.clickable-row {
+  cursor: pointer;
+}
+
+.clickable-row:hover {
+  background: var(--color-surface);
+}
+
 /* --- Warehouse panel shell (tabs) --- */
 
 .panel-header-left {
@@ -447,6 +469,14 @@ input {
 .section-toolbar-start {
   justify-content: flex-start;
   align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.section-toolbar-start button {
+  width: auto;
+  margin-top: 0;
+  padding: 10px 18px;
 }
 
 .inline-filter {
@@ -458,7 +488,8 @@ input {
   color: var(--color-text-secondary);
 }
 
-.inline-filter select {
+.inline-filter select,
+.inline-filter input[type='text'] {
   padding: 8px 12px;
   border-radius: 8px;
   border: 1px solid var(--color-border);
@@ -702,6 +733,55 @@ input {
   justify-content: flex-end;
   gap: 10px;
   margin-top: 4px;
+}
+
+/* --- Catalog search (Section 14 Part 2) --- */
+
+.catalog-search-results {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+}
+
+.catalog-search-results li + li {
+  border-top: 1px solid var(--color-border);
+}
+
+.catalog-search-results button {
+  width: 100%;
+  text-align: right;
+  background: none;
+  border: none;
+  padding: 10px 12px;
+  font: inherit;
+  cursor: pointer;
+  color: var(--color-text);
+}
+
+.catalog-search-results button:hover {
+  background: var(--color-surface);
+}
+
+.catalog-selected-display {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+
+.catalog-selected-display p {
+  margin: 0;
+}
+
+.catalog-selected-display .btn-secondary {
+  width: auto;
+  margin-top: 8px;
+  padding: 6px 14px;
+  font-size: 13px;
 }
 
 .modal-actions button {

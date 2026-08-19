@@ -40,6 +40,8 @@ class OrderListTile extends StatelessWidget {
                     style: context.textTheme.bodyMedium?.copyWith(
                       color: AppColors.textSecondaryOf(context),
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
                 if (order.createdAt != null) ...[
@@ -95,7 +97,10 @@ class _StatusBadge extends StatelessWidget {
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSizes.spacingSmall, vertical: 4),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSizes.spacingSmall,
+        vertical: AppSizes.spacingXSmall,
+      ),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
         borderRadius: AppRadius.full,

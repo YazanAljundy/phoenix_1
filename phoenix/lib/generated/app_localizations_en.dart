@@ -195,6 +195,45 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get noManufacturersFound =>
+      'No manufacturers available for this warehouse.';
+
+  @override
+  String get warehouseProfileTooltip => 'Warehouse info';
+
+  @override
+  String get deliveryInfoTitle => 'Delivery Information';
+
+  @override
+  String deliveryHoursValue(String start, String end) {
+    return 'From $start to $end';
+  }
+
+  @override
+  String get deliveryHoursNotSet => 'Not specified';
+
+  @override
+  String get deliveryTypeSelfLabel => 'Delivered by the warehouse itself';
+
+  @override
+  String get deliveryTypeThirdPartyLabel =>
+      'Delivered by a third-party courier';
+
+  @override
+  String get deliveryInfoDisclaimer =>
+      'This information is for display only and doesn\'t prevent placing an order.';
+
+  @override
+  String get warehouseReviewsTitle => 'Reviews';
+
+  @override
+  String get noWarehouseReviewsYet => 'No reviews yet.';
+
+  @override
+  String get browseWarehouseProductsButton =>
+      'Browse this warehouse\'s products';
+
+  @override
   String get searchProductsHint => 'Search by name or manufacturer';
 
   @override
@@ -377,6 +416,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get invoiceTotalLabel => 'Total';
 
   @override
+  String youSavedLabel(String amount) {
+    return '💰 You saved $amount';
+  }
+
+  @override
+  String totalSavingsLabel(String amount) {
+    return '💰 Total savings: $amount (including offer discounts and manufacturer discount)';
+  }
+
+  @override
   String get returnsTitle => 'Returns';
 
   @override
@@ -529,6 +578,33 @@ class AppLocalizationsEn extends AppLocalizations {
   String ratingSummary(String average, String count) {
     return '$average average ($count ratings)';
   }
+
+  @override
+  String get myDebtsTitle => 'My Debts';
+
+  @override
+  String get noDebtsYet => 'No debts right now.';
+
+  @override
+  String get totalOrdersLabel => 'Total orders';
+
+  @override
+  String get totalPaidLabel => 'Total paid';
+
+  @override
+  String get currentBalanceLabel => 'Current balance';
+
+  @override
+  String get creditBalanceLabel => 'Credit balance';
+
+  @override
+  String get deliveredOrdersTitle => 'Delivered orders';
+
+  @override
+  String get paymentsTitle => 'Payments';
+
+  @override
+  String get noPaymentsYet => 'No payments recorded yet.';
 
   @override
   String get rateWarehouseTitle => 'Rate the warehouse';

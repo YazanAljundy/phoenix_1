@@ -140,7 +140,7 @@ class _RequestReturnSheetBodyState extends State<_RequestReturnSheetBody> {
                 const SizedBox(height: AppSizes.spacingSmall),
                 ...state.orderItems.map((item) {
                   final selected = state.selectedItemIds.contains(item.id);
-                  final name = isArabic ? item.productNameAr : item.productNameEn;
+                  final name = isArabic ? item.productNameAr : (item.productNameEn ?? item.productNameAr);
                   return _ReturnItemTile(
                     item: item,
                     name: name,
@@ -242,7 +242,10 @@ class _ReturnItemTile extends StatelessWidget {
 
     return Container(
       margin: const EdgeInsets.only(bottom: AppSizes.spacingSmall),
-      padding: const EdgeInsets.symmetric(horizontal: AppSizes.spacingSmall, vertical: 4),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSizes.spacingSmall,
+        vertical: AppSizes.spacingXSmall,
+      ),
       decoration: BoxDecoration(
         borderRadius: AppRadius.medium,
         border: Border.all(
@@ -363,8 +366,8 @@ class _PhotoThumbnailFrame extends StatelessWidget {
       children: [
         ClipRRect(borderRadius: AppRadius.small, child: child),
         PositionedDirectional(
-          top: -4,
-          end: -4,
+          top: -AppSizes.spacingXSmall,
+          end: -AppSizes.spacingXSmall,
           child: InkWell(
             onTap: onRemove,
             child: Container(

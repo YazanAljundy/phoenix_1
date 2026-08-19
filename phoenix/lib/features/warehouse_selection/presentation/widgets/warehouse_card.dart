@@ -12,10 +12,14 @@ class WarehouseCard extends StatelessWidget {
     super.key,
     required this.warehouse,
     required this.onSelect,
+    required this.onViewProfile,
   });
 
   final WarehouseModel warehouse;
   final VoidCallback onSelect;
+  // Section 17: a separate entry point from "Select" - opens the read-only
+  // warehouse profile instead of continuing to /manufacturers.
+  final VoidCallback onViewProfile;
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +42,19 @@ class WarehouseCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(name, style: context.textTheme.titleMedium),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                name,
+                                style: context.textTheme.titleMedium,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            _InfoButton(onTap: onViewProfile),
+                          ],
+                        ),
                         const SizedBox(height: AppSizes.spacingXSmall),
                         _IconLine(
                           icon: Icons.location_on_outlined,
@@ -74,8 +90,8 @@ class WarehouseCard extends StatelessWidget {
           ),
         ),
         PositionedDirectional(
-          top: 4,
-          end: 4,
+          top: AppSizes.spacingXSmall,
+          end: AppSizes.spacingXSmall,
           child: WhatsAppButton(phone: warehouse.phone),
         ),
       ],
@@ -114,6 +130,25 @@ class _Logo extends StatelessWidget {
   }
 }
 
+class _InfoButton extends StatelessWidget {
+  const _InfoButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      onPressed: onTap,
+      tooltip: context.l10n.warehouseProfileTooltip,
+      icon: Icon(Icons.info_outline, color: AppColors.textSecondaryOf(context)),
+      iconSize: AppSizes.iconSizeSmall,
+      visualDensity: VisualDensity.compact,
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(),
+    );
+  }
+}
+
 class _IconLine extends StatelessWidget {
   const _IconLine({required this.icon, required this.text});
 
@@ -132,6 +167,8 @@ class _IconLine extends StatelessWidget {
             style: context.textTheme.bodyMedium?.copyWith(
               color: AppColors.textSecondaryOf(context),
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
       ],

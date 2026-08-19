@@ -194,6 +194,43 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String get noManufacturersFound =>
+      'لا توجد شركات مصنّعة متاحة بهذا المستودع.';
+
+  @override
+  String get warehouseProfileTooltip => 'معلومات المستودع';
+
+  @override
+  String get deliveryInfoTitle => 'معلومات التوصيل';
+
+  @override
+  String deliveryHoursValue(String start, String end) {
+    return 'من $start إلى $end';
+  }
+
+  @override
+  String get deliveryHoursNotSet => 'غير محدّدة';
+
+  @override
+  String get deliveryTypeSelfLabel => 'توصيل خاص بالمستودع';
+
+  @override
+  String get deliveryTypeThirdPartyLabel => 'شركة توصيل خارجية';
+
+  @override
+  String get deliveryInfoDisclaimer =>
+      'هذه المعلومات للعرض فقط، ولا تمنع تقديم الطلب.';
+
+  @override
+  String get warehouseReviewsTitle => 'التقييمات';
+
+  @override
+  String get noWarehouseReviewsYet => 'لا تقييمات بعد.';
+
+  @override
+  String get browseWarehouseProductsButton => 'تصفح منتجات هذا المستودع';
+
+  @override
   String get searchProductsHint => 'ابحث بالاسم أو الشركة المصنعة';
 
   @override
@@ -375,6 +412,16 @@ class AppLocalizationsAr extends AppLocalizations {
   String get invoiceTotalLabel => 'الإجمالي';
 
   @override
+  String youSavedLabel(String amount) {
+    return '💰 وفّرت $amount';
+  }
+
+  @override
+  String totalSavingsLabel(String amount) {
+    return '💰 إجمالي التوفير: $amount (شامل خصم العروض وحسم الشركة المصنّعة)';
+  }
+
+  @override
   String get returnsTitle => 'المرتجعات';
 
   @override
@@ -520,6 +567,33 @@ class AppLocalizationsAr extends AppLocalizations {
   String ratingSummary(String average, String count) {
     return '$average بالمعدل ($count تقييم)';
   }
+
+  @override
+  String get myDebtsTitle => 'ديوني';
+
+  @override
+  String get noDebtsYet => 'لا توجد ديون حالياً.';
+
+  @override
+  String get totalOrdersLabel => 'إجمالي الطلبات';
+
+  @override
+  String get totalPaidLabel => 'إجمالي المدفوع';
+
+  @override
+  String get currentBalanceLabel => 'الدين الحالي';
+
+  @override
+  String get creditBalanceLabel => 'رصيد لصالحك';
+
+  @override
+  String get deliveredOrdersTitle => 'الطلبات المسلّمة';
+
+  @override
+  String get paymentsTitle => 'الدفعات';
+
+  @override
+  String get noPaymentsYet => 'لا توجد دفعات مسجّلة.';
 
   @override
   String get rateWarehouseTitle => 'قيّم المستودع';

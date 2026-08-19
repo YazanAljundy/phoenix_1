@@ -4,6 +4,7 @@ const Order = require('../models/order.model');
 const OrderItem = require('../models/orderItem.model');
 const Pharmacy = require('../models/pharmacy.model');
 const Review = require('../models/review.model');
+const { recomputeBalance } = require('./pharmacyBalance.service');
 
 // Section 7/13b: the warehouse only ever moves an order forward through this
 // fixed sequence, one stage at a time - no skipping, no picking an arbitrary
@@ -86,6 +87,19 @@ async function advanceOrderStatus(orderId, warehouseId, userId) {
   order.status = next;
   order.statusHistory.push({ status: next, changedBy: userId, changedAt: now });
   await order.save();
+
+  // Section 16: a delivered order is what actually creates the debt - the
+  // balance cache is rebuilt right away so it never has to wait on a
+  // payment or another trigger to catch up. Never lets a cache hiccup block
+  // the order transition itself, which already succeeded above.
+  if (next === 'delivered') {
+    try {
+      await recomputeBalance(order.pharmacyId, order.warehouseId);
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to update pharmacy balance after delivery.', err.message);
+    }
+  }
 
   return order;
 }

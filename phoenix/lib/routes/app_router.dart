@@ -9,9 +9,16 @@ import 'package:phoenix/features/auth/presentation/views/registration_view.dart'
 import 'package:phoenix/features/auth/presentation/views/splash_view.dart';
 import 'package:phoenix/features/cart/data/repositories/order_repository.dart';
 import 'package:phoenix/features/cart/presentation/views/cart_view.dart';
+import 'package:phoenix/features/catalog/data/models/catalog_route_args.dart';
 import 'package:phoenix/features/catalog/data/repositories/catalog_repository.dart';
 import 'package:phoenix/features/catalog/presentation/managers/catalog_cubit.dart';
+import 'package:phoenix/features/catalog/presentation/managers/manufacturers_cubit.dart';
 import 'package:phoenix/features/catalog/presentation/views/catalog_view.dart';
+import 'package:phoenix/features/catalog/presentation/views/manufacturers_view.dart';
+import 'package:phoenix/features/debts/data/repositories/debt_repository.dart';
+import 'package:phoenix/features/debts/presentation/managers/debt_detail_cubit.dart';
+import 'package:phoenix/features/debts/presentation/managers/debts_cubit.dart';
+import 'package:phoenix/features/debts/presentation/views/debt_detail_view.dart';
 import 'package:phoenix/features/my_orders/presentation/managers/my_orders_cubit.dart';
 import 'package:phoenix/features/my_orders/presentation/views/my_orders_view.dart';
 import 'package:phoenix/features/order_tracking/presentation/managers/order_tracking_cubit.dart';
@@ -23,6 +30,8 @@ import 'package:phoenix/features/returns/presentation/views/my_returns_view.dart
 import 'package:phoenix/features/reviews/data/repositories/review_repository.dart';
 import 'package:phoenix/features/reviews/presentation/managers/pharmacy_reviews_cubit.dart';
 import 'package:phoenix/features/warehouse_selection/data/repositories/warehouse_repository.dart';
+import 'package:phoenix/features/warehouse_selection/presentation/managers/warehouse_profile_cubit.dart';
+import 'package:phoenix/features/warehouse_selection/presentation/views/warehouse_profile_view.dart';
 import 'package:phoenix/features/warehouse_selection/presentation/views/warehouse_selection_view.dart';
 
 import 'route_names.dart';
@@ -68,17 +77,52 @@ class AppRouter {
         builder: (context, state) => const ApprovalPendingView(),
       ),
       GoRoute(
-        name: RouteNames.catalog,
-        path: RoutePaths.catalog,
+        name: RouteNames.warehouseProfile,
+        path: RoutePaths.warehouseProfile,
         builder: (context, state) {
           final warehouseId = state.pathParameters['warehouseId']!;
           final warehouseName = state.extra is String ? state.extra as String : '';
           return BlocProvider(
+            create: (context) => WarehouseProfileCubit(
+              warehouseRepository: context.read<WarehouseRepository>(),
+              warehouseId: warehouseId,
+            )..load(),
+            child: WarehouseProfileView(warehouseId: warehouseId, warehouseName: warehouseName),
+          );
+        },
+      ),
+      GoRoute(
+        name: RouteNames.manufacturers,
+        path: RoutePaths.manufacturers,
+        builder: (context, state) {
+          final warehouseId = state.pathParameters['warehouseId']!;
+          final warehouseName = state.extra is String ? state.extra as String : '';
+          return BlocProvider(
+            create: (context) => ManufacturersCubit(
+              catalogRepository: context.read<CatalogRepository>(),
+              warehouseId: warehouseId,
+            )..loadManufacturers(),
+            child: ManufacturersView(warehouseId: warehouseId, warehouseName: warehouseName),
+          );
+        },
+      ),
+      GoRoute(
+        name: RouteNames.catalog,
+        path: RoutePaths.catalog,
+        builder: (context, state) {
+          final warehouseId = state.pathParameters['warehouseId']!;
+          final args = state.extra is CatalogRouteArgs ? state.extra as CatalogRouteArgs : null;
+          return BlocProvider(
             create: (context) => CatalogCubit(
               catalogRepository: context.read<CatalogRepository>(),
               warehouseId: warehouseId,
+              manufacturer: args?.manufacturer ?? '',
             )..initialize(),
-            child: CatalogView(warehouseId: warehouseId, warehouseName: warehouseName),
+            child: CatalogView(
+              warehouseId: warehouseId,
+              warehouseName: args?.warehouseName ?? '',
+              manufacturer: args?.manufacturer ?? '',
+            ),
           );
         },
       ),
@@ -86,6 +130,21 @@ class AppRouter {
         name: RouteNames.cart,
         path: RoutePaths.cart,
         builder: (context, state) => const CartView(),
+      ),
+      GoRoute(
+        name: RouteNames.debtDetail,
+        path: RoutePaths.debtDetail,
+        builder: (context, state) {
+          final warehouseId = state.pathParameters['warehouseId']!;
+          final warehouseName = state.extra is String ? state.extra as String : '';
+          return BlocProvider(
+            create: (context) => DebtDetailCubit(
+              debtRepository: context.read<DebtRepository>(),
+              warehouseId: warehouseId,
+            )..load(),
+            child: DebtDetailView(warehouseName: warehouseName),
+          );
+        },
       ),
       GoRoute(
         name: RouteNames.orderTracking,
@@ -157,10 +216,18 @@ class AppRouter {
                 name: RouteNames.profile,
                 path: RoutePaths.profile,
                 builder: (context, state) {
-                  return BlocProvider(
-                    create: (context) =>
-                        PharmacyReviewsCubit(reviewRepository: context.read<ReviewRepository>())
-                          ..load(),
+                  return MultiBlocProvider(
+                    providers: [
+                      BlocProvider(
+                        create: (context) =>
+                            PharmacyReviewsCubit(reviewRepository: context.read<ReviewRepository>())
+                              ..load(),
+                      ),
+                      BlocProvider(
+                        create: (context) =>
+                            DebtsCubit(debtRepository: context.read<DebtRepository>())..load(),
+                      ),
+                    ],
                     child: const ProfileView(),
                   );
                 },

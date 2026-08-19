@@ -3,13 +3,22 @@ const { ApiError } = require('../utils/ApiError');
 const Product = require('../models/product.model');
 const Warehouse = require('../models/warehouse.model');
 const { applyProductUpdate } = require('./warehouseProduct.service');
+const { applyResolvedIdentity } = require('./productCatalog.service');
 
 // Section 13c: the admin's oversight view spans every warehouse - unlike the
 // warehouse's own list, this deliberately does NOT filter isActive, so a
 // deactivated product still shows up (with a visible status) as a record of
 // what was removed, not just active inventory to manage.
+//
+// Section 14 Part 2: identity resolution only happens here, in a read-only
+// listing - never in findAnyProductOrThrow below, whose result goes on to
+// `.save()` in updateProduct. Resolving there would silently copy the
+// catalog's name back onto the product's own (legacy) fields on every edit,
+// exactly the duplication Section 14 says not to do.
 async function listAllProducts() {
-  const products = await Product.find({}).sort({ nameEn: 1 });
+  const products = await Product.find({}).populate('masterProductId');
+  products.forEach(applyResolvedIdentity);
+  products.sort((a, b) => (a.nameEn || a.nameAr || '').localeCompare(b.nameEn || b.nameAr || ''));
   if (products.length === 0) return [];
 
   const warehouseIds = [...new Set(products.map((p) => p.warehouseId.toString()))];

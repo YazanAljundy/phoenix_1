@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:phoenix/core/constants/app_colors.dart';
+import 'package:phoenix/core/constants/app_sizes.dart';
 import 'package:phoenix/features/auth/presentation/managers/auth_cubit.dart';
 import 'package:phoenix/features/auth/presentation/managers/auth_state.dart';
 import 'package:phoenix/routes/route_names.dart';
@@ -47,7 +48,7 @@ class _SplashViewState extends State<SplashView> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.local_pharmacy_rounded, color: Colors.white, size: 72),
-              SizedBox(height: 16),
+              SizedBox(height: AppSizes.spacingMedium),
               Text(
                 'Phoenix',
                 style: TextStyle(

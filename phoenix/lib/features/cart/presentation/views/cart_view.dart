@@ -12,7 +12,6 @@ import 'package:phoenix/core/widgets/app_text_field.dart';
 import 'package:phoenix/core/widgets/empty_view.dart';
 import 'package:phoenix/core/widgets/primary_button.dart';
 import 'package:phoenix/core/widgets/secondary_price_hint.dart';
-import 'package:phoenix/features/cart/data/models/cart_item.dart';
 import 'package:phoenix/features/cart/presentation/managers/cart_cubit.dart';
 import 'package:phoenix/features/cart/presentation/managers/cart_state.dart';
 import 'package:phoenix/features/cart/presentation/utils/cart_error_translator.dart';
@@ -33,7 +32,9 @@ class _CartViewState extends State<CartView> {
   @override
   void initState() {
     super.initState();
-    _notesController = TextEditingController(text: context.read<CartCubit>().state.notes);
+    _notesController = TextEditingController(
+      text: context.read<CartCubit>().state.notes,
+    );
   }
 
   @override
@@ -54,24 +55,10 @@ class _CartViewState extends State<CartView> {
       }
     }
 
-    return translateErrorCode(l10n, state.errorCode, state.errorMessage ?? l10n.errorState);
-  }
-
-  Future<void> _confirmRemove(CartItem item) async {
-    final l10n = context.l10n;
-    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
-    final name = isArabic ? item.nameAr : item.nameEn;
-    final cubit = context.read<CartCubit>();
-
-    await AppDialog.show(
-      context: context,
-      title: l10n.removeItemTitle,
-      content: l10n.removeItemConfirmation(name),
-      actionLabel: l10n.removeButton,
-      onAction: () {
-        Navigator.pop(context);
-        cubit.removeItem(item.productId);
-      },
+    return translateErrorCode(
+      l10n,
+      state.errorCode,
+      state.errorMessage ?? l10n.errorState,
     );
   }
 
@@ -86,17 +73,18 @@ class _CartViewState extends State<CartView> {
       content: l10n.submitOrderConfirmation(warehouseName),
       actionLabel: l10n.submitOrderButton,
       onAction: () async {
-        Navigator.pop(context);
+        // AppDialog's own action button already pops this confirmation
+        // dialog (via dialogContext + rootNavigator) before calling here -
+        // an extra Navigator.pop(context) with this outer context popped
+        // CartView itself, which is why the screen used to never actually
+        // reach the navigation below (mounted went false mid-flight).
         final order = await cubit.submitOrder();
         if (!mounted) return;
 
+        // Straight to order tracking on success - no intermediate "order
+        // submitted" dialog to tap through, the tracking screen itself is
+        // the confirmation.
         if (order != null) {
-          await AppDialog.show(
-            context: context,
-            title: l10n.orderSubmittedTitle,
-            content: l10n.orderSubmittedMessage(order.orderNumber.toString()),
-          );
-          if (!mounted) return;
           context.goNamed(
             RouteNames.orderTracking,
             pathParameters: {'orderId': order.id},
@@ -118,9 +106,14 @@ class _CartViewState extends State<CartView> {
       ),
       body: BlocConsumer<CartCubit, CartState>(
         listenWhen: (previous, current) =>
-            current.errorMessage != null && previous.errorMessage != current.errorMessage,
+            current.errorMessage != null &&
+            previous.errorMessage != current.errorMessage,
         listener: (context, state) {
-          AppDialog.show(context: context, title: l10n.errorState, content: _describeError(state));
+          AppDialog.show(
+            context: context,
+            title: l10n.errorState,
+            content: _describeError(state),
+          );
         },
         builder: (context, state) {
           if (state.isEmpty) {
@@ -139,13 +132,11 @@ class _CartViewState extends State<CartView> {
                     final item = state.items[index];
                     return CartItemTile(
                       item: item,
-                      onIncrement: () => context
+                      onQuantityChanged: (quantity) => context
                           .read<CartCubit>()
-                          .updateQuantity(item.productId, item.quantity + 1),
-                      onDecrement: () => context
-                          .read<CartCubit>()
-                          .updateQuantity(item.productId, item.quantity - 1),
-                      onRemove: () => _confirmRemove(item),
+                          .updateQuantity(item.productId, quantity),
+                      onRemove: () =>
+                          context.read<CartCubit>().removeItem(item.productId),
                     );
                   },
                 ),
@@ -155,37 +146,54 @@ class _CartViewState extends State<CartView> {
                 child: AppTextField(
                   label: l10n.notesLabel,
                   controller: _notesController,
-                  onChanged: (value) => context.read<CartCubit>().updateNotes(value),
+                  onChanged: (value) =>
+                      context.read<CartCubit>().updateNotes(value),
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: AppSizes.spacingLarge),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSizes.spacingLarge,
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(l10n.subtotalLabel, style: context.textTheme.titleMedium),
-                    Builder(
-                      builder: (context) {
-                        final usdToSyp = context.watch<ExchangeRateCubit>().state.usdToSyp;
-                        final sypText = formatSypApprox(
-                          state.subtotalUsd,
-                          usdToSyp,
-                          l10n.currencySuffix,
-                        );
-                        return Wrap(
-                          crossAxisAlignment: WrapCrossAlignment.center,
-                          spacing: AppSizes.spacingXSmall,
-                          children: [
-                            Text(
-                              '\$${state.subtotalUsd}',
-                              style: context.textTheme.titleMedium?.copyWith(
-                                color: AppColors.primaryOf(context),
+                    Flexible(
+                      child: Text(
+                        l10n.subtotalLabel,
+                        style: context.textTheme.titleMedium,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Flexible(
+                      child: Builder(
+                        builder: (context) {
+                          final usdToSyp = context
+                              .watch<ExchangeRateCubit>()
+                              .state
+                              .usdToSyp;
+                          final sypText = formatSypApprox(
+                            state.subtotalUsd,
+                            usdToSyp,
+                            l10n.currencySuffix,
+                          );
+                          return Wrap(
+                            alignment: WrapAlignment.end,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            spacing: AppSizes.spacingXSmall,
+                            children: [
+                              Text(
+                                '\$${state.subtotalUsd}',
+                                style: context.textTheme.titleMedium?.copyWith(
+                                  color: AppColors.primaryOf(context),
+                                ),
                               ),
-                            ),
-                            if (sypText != null) SecondaryPriceHint(text: sypText),
-                          ],
-                        );
-                      },
+                              if (sypText != null)
+                                SecondaryPriceHint(text: sypText),
+                            ],
+                          );
+                        },
+                      ),
                     ),
                   ],
                 ),

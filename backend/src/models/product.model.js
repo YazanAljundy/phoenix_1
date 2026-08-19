@@ -13,13 +13,28 @@ const priceHistoryEntrySchema = new Schema(
 const productSchema = new Schema(
   {
     warehouseId: { type: Schema.Types.ObjectId, ref: 'Warehouse', required: true },
-    categoryId: { type: Schema.Types.ObjectId, ref: 'Category', required: true },
-    // Reserved for future cross-warehouse price comparison - not used in logic yet.
+    // Nullable at the schema level only for legacy rows created before
+    // Section 14 Part 2 - warehouseProduct.service.js's createProduct
+    // enforces this as required for every new product (business rule, not a
+    // DB constraint), so a Mongoose-level `required: true` here would break
+    // `.save()` on the legacy rows below the moment anything else about them
+    // changes. Categorization for an imported product may also not be set
+    // yet (the catalog's own categoryId is optional too, see
+    // productCatalog.model.js), hence also nullable here.
+    categoryId: { type: Schema.Types.ObjectId, ref: 'Category', default: null },
+    // Section 14 Part 2: the source of truth for name/manufacturer once set
+    // - resolved live from the populated catalog entry wherever a product is
+    // read (see productCatalog.service.js's applyResolvedIdentity), never
+    // duplicated onto this document at write time. Only OrderItem snapshots
+    // a copy, and only at order time (Section 6.8).
     masterProductId: { type: Schema.Types.ObjectId, ref: 'ProductCatalog', default: null },
-    nameAr: { type: String, required: true, trim: true },
-    nameEn: { type: String, required: true, trim: true },
-    manufacturerAr: { type: String, required: true, trim: true },
-    manufacturerEn: { type: String, required: true, trim: true },
+    // legacy — needs catalog linking: only ever read directly (as a
+    // fallback) for a product created before Part 2, i.e. masterProductId is
+    // null. New products leave these unset; nothing writes to them anymore.
+    nameAr: { type: String, default: null, trim: true },
+    nameEn: { type: String, default: null, trim: true },
+    manufacturerAr: { type: String, default: null, trim: true },
+    manufacturerEn: { type: String, default: null, trim: true },
     description: { type: String, default: null },
     // Reserved for a later stage - not used in the UI yet.
     barcode: { type: String, default: null },
@@ -41,8 +56,11 @@ const productSchema = new Schema(
     // manuallyDisabled changes - not written to directly by controllers.
     isAvailable: { type: Boolean, default: true },
     manuallyDisabled: { type: Boolean, default: false },
-    unitAr: { type: String, required: true },
-    unitEn: { type: String, required: true },
+    // Required for manual entry (warehouseProduct.service.js's createProduct
+    // still asks for it on the form) but not for an Excel-imported row - the
+    // import template has no unit column, same reasoning as categoryId above.
+    unitAr: { type: String, default: null },
+    unitEn: { type: String, default: null },
     isActive: { type: Boolean, default: true },
     lastPriceUpdate: { type: Date, default: Date.now },
     priceHistory: { type: [priceHistoryEntrySchema], default: [] },
@@ -52,5 +70,12 @@ const productSchema = new Schema(
 
 productSchema.index({ warehouseId: 1, categoryId: 1 });
 productSchema.index({ nameAr: 'text', nameEn: 'text', manufacturerAr: 'text', manufacturerEn: 'text' });
+// A warehouse can't link the same catalog entry to two of its own products
+// (Section 14 Part 2) - partial so it only applies once masterProductId is
+// actually set, leaving legacy (null-masterProductId) rows unconstrained.
+productSchema.index(
+  { warehouseId: 1, masterProductId: 1 },
+  { unique: true, partialFilterExpression: { masterProductId: { $type: 'objectId' } } }
+);
 
 module.exports = model('Product', productSchema);

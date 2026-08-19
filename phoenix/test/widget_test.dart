@@ -7,6 +7,7 @@ import 'package:phoenix/core/services/storage_service.dart';
 import 'package:phoenix/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:phoenix/features/cart/data/repositories/order_repository_impl.dart';
 import 'package:phoenix/features/catalog/data/repositories/catalog_repository_impl.dart';
+import 'package:phoenix/features/debts/data/repositories/debt_repository_impl.dart';
 import 'package:phoenix/features/exchange_rate/data/repositories/exchange_rate_repository_impl.dart';
 import 'package:phoenix/features/returns/data/repositories/return_repository_impl.dart';
 import 'package:phoenix/features/reviews/data/repositories/review_repository_impl.dart';
@@ -27,6 +28,7 @@ void main() {
     final orderRepository = OrderRepositoryImpl(apiClient: apiClient);
     final returnRepository = ReturnRepositoryImpl(apiClient: apiClient);
     final reviewRepository = ReviewRepositoryImpl(apiClient: apiClient);
+    final debtRepository = DebtRepositoryImpl(apiClient: apiClient);
 
     await tester.pumpWidget(
       MyApp(
@@ -40,6 +42,7 @@ void main() {
         orderRepository: orderRepository,
         returnRepository: returnRepository,
         reviewRepository: reviewRepository,
+        debtRepository: debtRepository,
       ),
     );
 

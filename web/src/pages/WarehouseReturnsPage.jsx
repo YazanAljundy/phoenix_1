@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api/client';
+import { withArFallback } from '../utils/displayName';
 
 const REASON_LABELS = {
   damaged: 'Damaged',
@@ -117,7 +118,8 @@ export function WarehouseReturnsPage() {
               <div className="order-items">
                 {returnRequest.items.map((item) => (
                   <p key={item.orderItemId}>
-                    {item.productNameEn} &middot; Qty {item.quantity} &middot; {reasonText(item)}
+                    {withArFallback(item.productNameEn, item.productNameAr)} &middot; Qty {item.quantity}{' '}
+                    &middot; {reasonText(item)}
                   </p>
                 ))}
               </div>

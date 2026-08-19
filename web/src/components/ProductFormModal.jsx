@@ -1,6 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { api } from '../api/client';
+import { withArFallback } from '../utils/displayName';
 
 export const EMPTY_PRODUCT_FORM = {
+  masterProductId: null,
   nameAr: '',
   nameEn: '',
   manufacturerAr: '',
@@ -16,13 +19,14 @@ export const EMPTY_PRODUCT_FORM = {
 
 export function productFormFromProduct(product) {
   return {
+    masterProductId: product.masterProductId ?? null,
     nameAr: product.nameAr,
     nameEn: product.nameEn,
     manufacturerAr: product.manufacturerAr,
     manufacturerEn: product.manufacturerEn,
     categoryId: product.categoryId,
-    unitAr: product.unitAr,
-    unitEn: product.unitEn,
+    unitAr: product.unitAr ?? '',
+    unitEn: product.unitEn ?? '',
     price: String(product.priceUsd),
     description: product.description ?? '',
     image: product.image ?? '',
@@ -44,6 +48,64 @@ export function productAvailabilityClass(product) {
   return product.isAvailable ? 'availability-available' : 'availability-paused';
 }
 
+// Section 14 Part 2: a medicine's name/manufacturer are only ever chosen by
+// searching the central catalog, never typed - this is the search+select UI
+// for that, used only when creating a product (an existing one's link isn't
+// re-editable, see ProductFormModal below).
+function CatalogSearchField({ onSelect }) {
+  const [query, setQuery] = useState('');
+  const [results, setResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+
+  useEffect(() => {
+    if (!query.trim()) {
+      setResults([]);
+      return undefined;
+    }
+    setIsSearching(true);
+    const timeout = setTimeout(async () => {
+      try {
+        const data = await api.warehouseCatalogSearch(query.trim());
+        setResults(data.items);
+      } catch {
+        setResults([]);
+      } finally {
+        setIsSearching(false);
+      }
+    }, 300);
+    return () => clearTimeout(timeout);
+  }, [query]);
+
+  return (
+    <label>
+      Medicine (search the central catalog)
+      <input
+        type="text"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Start typing a medicine name..."
+        dir="rtl"
+      />
+      {isSearching && <p className="hint">Searching...</p>}
+      {results.length > 0 && (
+        <ul className="catalog-search-results">
+          {results.map((item) => (
+            <li key={item.id}>
+              <button type="button" onClick={() => onSelect(item)}>
+                <strong>{item.nameAr}</strong>
+                <span className="hint"> — {item.manufacturerAr}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {!isSearching && query.trim() && results.length === 0 && (
+        <p className="hint">No matching medicine in the central catalog.</p>
+      )}
+    </label>
+  );
+}
+
 // The form itself is identical whether a warehouse is creating/editing its
 // own product or an admin is editing someone else's (Section 13c: admin
 // edits/deletes, it never creates) - only WHERE the submission goes differs,
@@ -56,13 +118,38 @@ export function ProductFormModal({ mode, initialForm, categories, usdToSyp, onCl
 
   const setField = (field, value) => setForm((prev) => ({ ...prev, [field]: value }));
 
+  const handleCatalogSelect = (item) => {
+    setForm((prev) => ({
+      ...prev,
+      masterProductId: item.id,
+      nameAr: item.nameAr,
+      nameEn: item.nameEn,
+      manufacturerAr: item.manufacturerAr,
+      manufacturerEn: item.manufacturerEn,
+    }));
+  };
+
+  const handleChangeSelection = () => {
+    setForm((prev) => ({
+      ...prev,
+      masterProductId: null,
+      nameAr: '',
+      nameEn: '',
+      manufacturerAr: '',
+      manufacturerEn: '',
+    }));
+  };
+
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError(null);
 
-    const requiredFields = [
-      'nameAr', 'nameEn', 'manufacturerAr', 'manufacturerEn', 'unitAr', 'unitEn', 'categoryId',
-    ];
+    if (mode === 'create' && !form.masterProductId) {
+      setError('Please select a medicine from the central catalog.');
+      return;
+    }
+
+    const requiredFields = ['unitAr', 'unitEn', 'categoryId'];
     if (requiredFields.some((field) => !form[field].trim())) {
       setError('Please fill in all required fields.');
       return;
@@ -74,10 +161,7 @@ export function ProductFormModal({ mode, initialForm, categories, usdToSyp, onCl
     }
 
     const payload = {
-      nameAr: form.nameAr.trim(),
-      nameEn: form.nameEn.trim(),
-      manufacturerAr: form.manufacturerAr.trim(),
-      manufacturerEn: form.manufacturerEn.trim(),
+      masterProductId: mode === 'create' ? form.masterProductId : undefined,
       categoryId: form.categoryId,
       unitAr: form.unitAr.trim(),
       unitEn: form.unitEn.trim(),
@@ -103,40 +187,21 @@ export function ProductFormModal({ mode, initialForm, categories, usdToSyp, onCl
       <div className="modal" onClick={(event) => event.stopPropagation()}>
         <h2>{mode === 'create' ? 'Add product' : 'Edit product'}</h2>
         <form onSubmit={handleSubmit} className="product-form">
-          <div className="form-row">
-            <label>
-              Name (English)
-              <input value={form.nameEn} onChange={(e) => setField('nameEn', e.target.value)} required />
-            </label>
-            <label>
-              Name (Arabic)
-              <input
-                value={form.nameAr}
-                onChange={(e) => setField('nameAr', e.target.value)}
-                dir="rtl"
-                required
-              />
-            </label>
-          </div>
-          <div className="form-row">
-            <label>
-              Manufacturer (English)
-              <input
-                value={form.manufacturerEn}
-                onChange={(e) => setField('manufacturerEn', e.target.value)}
-                required
-              />
-            </label>
-            <label>
-              Manufacturer (Arabic)
-              <input
-                value={form.manufacturerAr}
-                onChange={(e) => setField('manufacturerAr', e.target.value)}
-                dir="rtl"
-                required
-              />
-            </label>
-          </div>
+          {mode === 'create' && !form.masterProductId ? (
+            <CatalogSearchField onSelect={handleCatalogSelect} />
+          ) : (
+            <div className="catalog-selected-display">
+              <p>
+                <strong>{withArFallback(form.nameEn, form.nameAr)}</strong>
+              </p>
+              <p className="hint">{withArFallback(form.manufacturerEn, form.manufacturerAr)}</p>
+              {mode === 'create' && (
+                <button type="button" className="btn-secondary" onClick={handleChangeSelection}>
+                  Change
+                </button>
+              )}
+            </div>
+          )}
           <div className="form-row">
             <label>
               Unit (English)

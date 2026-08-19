@@ -160,6 +160,8 @@ class _OrderTrackingViewState extends State<OrderTrackingView> {
                           style: context.textTheme.bodyMedium?.copyWith(
                             color: AppColors.textSecondaryOf(context),
                           ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       if (state.warehousePhone != null)

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api/client';
 import { useExchangeRate } from '../context/ExchangeRateContext';
 import { formatPriceWithSyp } from '../utils/currency';
+import { withArFallback } from '../utils/displayName';
 
 export function AdminOffersPage() {
   const usdToSyp = useExchangeRate();
@@ -29,7 +30,7 @@ export function AdminOffersPage() {
 
   const handleDecision = async (offer, action) => {
     const confirmed = window.confirm(
-      `${action === 'approve' ? 'Approve' : 'Reject'} "${offer.titleEn}" on ${offer.productNameEn} (${offer.discountPercentage}% off)?`,
+      `${action === 'approve' ? 'Approve' : 'Reject'} "${offer.titleEn}" on ${withArFallback(offer.productNameEn, offer.productNameAr)} (${offer.discountPercentage}% off)?`,
     );
     if (!confirmed) return;
 
@@ -65,7 +66,8 @@ export function AdminOffersPage() {
                 <span className="account-role-badge">{offer.warehouseNameEn}</span>
                 <h2>{offer.titleEn}</h2>
                 <p>
-                  {offer.productNameEn} &middot; {formatPriceWithSyp(offer.productPriceUsd, usdToSyp)}
+                  {withArFallback(offer.productNameEn, offer.productNameAr)} &middot;{' '}
+                  {formatPriceWithSyp(offer.productPriceUsd, usdToSyp)}
                 </p>
                 <p>{offer.discountPercentage}% off</p>
                 <p>

@@ -11,6 +11,9 @@ import 'package:phoenix/core/widgets/custom_card.dart';
 import 'package:phoenix/features/auth/presentation/managers/auth_cubit.dart';
 import 'package:phoenix/features/auth/presentation/managers/auth_state.dart';
 import 'package:phoenix/core/utils/date_formatter.dart';
+import 'package:phoenix/features/debts/data/models/warehouse_debt_model.dart';
+import 'package:phoenix/features/debts/presentation/managers/debts_cubit.dart';
+import 'package:phoenix/features/debts/presentation/managers/debts_state.dart';
 import 'package:phoenix/features/reviews/data/models/review_model.dart';
 import 'package:phoenix/features/reviews/presentation/managers/pharmacy_reviews_cubit.dart';
 import 'package:phoenix/features/reviews/presentation/managers/pharmacy_reviews_state.dart';
@@ -79,13 +82,20 @@ class ProfileView extends StatelessWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(user?.name ?? '', style: context.textTheme.titleLarge),
+                              Text(
+                                user?.name ?? '',
+                                style: context.textTheme.titleLarge,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                               const SizedBox(height: 2),
                               Text(
                                 user?.phone ?? '',
                                 style: context.textTheme.bodyMedium?.copyWith(
                                   color: AppColors.textSecondaryOf(context),
                                 ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ],
                           ),
@@ -104,9 +114,14 @@ class ProfileView extends StatelessWidget {
                           const SizedBox(width: AppSizes.spacingSmall),
                           Text(l10n.pharmacyNameLabel, style: context.textTheme.bodyMedium),
                           const Spacer(),
-                          Text(
-                            pharmacyName,
-                            style: context.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                          Flexible(
+                            child: Text(
+                              pharmacyName,
+                              style: context.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.end,
+                            ),
                           ),
                         ],
                       ),
@@ -143,13 +158,17 @@ class ProfileView extends StatelessWidget {
                           children: [
                             _StarRow(rating: reviewsState.averageRating.round()),
                             const SizedBox(width: AppSizes.spacingSmall),
-                            Text(
-                              l10n.ratingSummary(
-                                reviewsState.averageRating.toStringAsFixed(1),
-                                reviewsState.reviews.length.toString(),
-                              ),
-                              style: context.textTheme.bodyMedium?.copyWith(
-                                color: AppColors.textSecondaryOf(context),
+                            Flexible(
+                              child: Text(
+                                l10n.ratingSummary(
+                                  reviewsState.averageRating.toStringAsFixed(1),
+                                  reviewsState.reviews.length.toString(),
+                                ),
+                                style: context.textTheme.bodyMedium?.copyWith(
+                                  color: AppColors.textSecondaryOf(context),
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],
@@ -157,6 +176,41 @@ class ProfileView extends StatelessWidget {
                         for (final review in reviewsState.reviews.take(3)) ...[
                           const Divider(height: AppSizes.spacingLarge),
                           _ReviewTile(review: review, isArabic: isArabic),
+                        ],
+                      ],
+                    ),
+                  );
+                },
+              ),
+
+              const SizedBox(height: AppSizes.spacingXLarge),
+              Text(l10n.myDebtsTitle, style: context.textTheme.titleMedium),
+              const SizedBox(height: AppSizes.spacingSmall),
+              BlocBuilder<DebtsCubit, DebtsState>(
+                builder: (context, debtsState) {
+                  if (debtsState.status == DebtsStatus.loading ||
+                      debtsState.status == DebtsStatus.initial) {
+                    return const SizedBox(
+                      height: 24,
+                      child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                    );
+                  }
+                  if (debtsState.debts.isEmpty) {
+                    return Text(
+                      l10n.noDebtsYet,
+                      style: context.textTheme.bodyMedium?.copyWith(
+                        color: AppColors.textSecondaryOf(context),
+                      ),
+                    );
+                  }
+                  return CustomCard(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        for (final debt in debtsState.debts) ...[
+                          if (debt != debtsState.debts.first)
+                            const Divider(height: AppSizes.spacingLarge),
+                          _DebtTile(debt: debt, isArabic: isArabic),
                         ],
                       ],
                     ),
@@ -298,13 +352,63 @@ class _ReviewTile extends StatelessWidget {
         ),
         if (warehouseName != null) ...[
           const SizedBox(height: 2),
-          Text(warehouseName, style: context.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600)),
+          Text(
+            warehouseName,
+            style: context.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
         ],
         if (review.comment != null && review.comment!.isNotEmpty) ...[
           const SizedBox(height: 2),
           Text(review.comment!, style: context.textTheme.bodyMedium),
         ],
       ],
+    );
+  }
+}
+
+// Section 16: one row of "my debts" - tapping it opens the read-only detail
+// screen (orders + payments) for that one warehouse, see DebtDetailView.
+class _DebtTile extends StatelessWidget {
+  const _DebtTile({required this.debt, required this.isArabic});
+
+  final WarehouseDebtModel debt;
+  final bool isArabic;
+
+  @override
+  Widget build(BuildContext context) {
+    final name = isArabic ? debt.nameAr : (debt.nameEn ?? debt.nameAr);
+
+    return InkWell(
+      onTap: () => context.pushNamed(
+        RouteNames.debtDetail,
+        pathParameters: {'warehouseId': debt.warehouseId},
+        extra: name,
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Text(
+              name,
+              style: context.textTheme.bodyMedium,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: AppSizes.spacingSmall),
+          Text(
+            '\$${debt.balanceUsd}',
+            style: context.textTheme.bodyMedium?.copyWith(
+              color: AppColors.errorOf(context),
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(width: AppSizes.spacingXSmall),
+          Icon(Icons.chevron_right, size: AppSizes.iconSizeSmall, color: AppColors.textSecondaryOf(context)),
+        ],
+      ),
     );
   }
 }

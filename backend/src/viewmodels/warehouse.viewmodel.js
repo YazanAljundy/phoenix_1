@@ -15,4 +15,33 @@ function toWarehouseListResponse(warehouses) {
   return { warehouses: warehouses.map(serializeWarehouse) };
 }
 
-module.exports = { toWarehouseListResponse };
+function serializeReview(review) {
+  return {
+    rating: review.rating,
+    comment: review.comment,
+    createdAt: review.createdAt,
+  };
+}
+
+// Section 17: the pharmacist's read-only warehouse profile - delivery
+// info/hours are display-only (never enforced against an actual order, see
+// warehouse.service.js's getWarehouseProfile).
+function toWarehouseProfileResponse({ warehouse, averageRating, reviewsCount, recentReviews }) {
+  return {
+    id: warehouse._id,
+    nameAr: warehouse.nameAr,
+    nameEn: warehouse.nameEn,
+    address: warehouse.address,
+    city: warehouse.city,
+    phone: warehouse.phone,
+    logo: warehouse.logo,
+    deliveryStartTime: warehouse.deliveryStartTime,
+    deliveryEndTime: warehouse.deliveryEndTime,
+    deliveryType: warehouse.deliveryType,
+    averageRating,
+    reviewsCount,
+    recentReviews: recentReviews.map(serializeReview),
+  };
+}
+
+module.exports = { toWarehouseListResponse, toWarehouseProfileResponse };

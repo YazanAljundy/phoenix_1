@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { api } from '../api/client';
 import { StarRating } from '../components/StarRating';
+import { withArFallback } from '../utils/displayName';
 
 const STATUS_TABS = [
   { value: '', label: 'All' },
@@ -32,7 +33,9 @@ const ADVANCE_LABELS = {
 };
 
 function itemsSummary(items) {
-  return items.map((item) => `${item.quantity}× ${item.productNameEn}`).join(', ');
+  return items
+    .map((item) => `${item.quantity}× ${withArFallback(item.productNameEn, item.productNameAr)}`)
+    .join(', ');
 }
 
 // Section 13b/13c: rating the pharmacy is a one-time action per delivered

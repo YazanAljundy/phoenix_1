@@ -21,10 +21,19 @@ import 'package:phoenix/features/catalog/presentation/widgets/product_card.dart'
 import 'package:phoenix/routes/route_names.dart';
 
 class CatalogView extends StatefulWidget {
-  const CatalogView({super.key, required this.warehouseId, required this.warehouseName});
+  const CatalogView({
+    super.key,
+    required this.warehouseId,
+    required this.warehouseName,
+    required this.manufacturer,
+  });
 
   final String warehouseId;
+  // Still needed for cart operations (CartCubit.addProduct, the conflicting-
+  // warehouse dialog) even though the AppBar now shows `manufacturer`
+  // instead of this - see CatalogRouteArgs.
   final String warehouseName;
+  final String manufacturer;
 
   @override
   State<CatalogView> createState() => _CatalogViewState();
@@ -39,10 +48,10 @@ class _CatalogViewState extends State<CatalogView> {
     super.dispose();
   }
 
-  void _handleAdd(ProductModel product) {
+  void _handleAdd(ProductModel product, int quantity) {
     final l10n = context.l10n;
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
-    final name = isArabic ? product.nameAr : product.nameEn;
+    final name = isArabic ? product.nameAr : (product.nameEn ?? product.nameAr);
     final cartCubit = context.read<CartCubit>();
 
     // Section 6.6: every order belongs to exactly one warehouse, so a cart
@@ -60,6 +69,7 @@ class _CatalogViewState extends State<CatalogView> {
             product,
             warehouseId: widget.warehouseId,
             warehouseName: widget.warehouseName,
+            quantity: quantity,
           );
           AppSnackbar.show(context, l10n.addedToCartMessage(name));
         },
@@ -71,6 +81,7 @@ class _CatalogViewState extends State<CatalogView> {
       product,
       warehouseId: widget.warehouseId,
       warehouseName: widget.warehouseName,
+      quantity: quantity,
     );
     AppSnackbar.show(context, l10n.addedToCartMessage(name));
   }
@@ -83,7 +94,7 @@ class _CatalogViewState extends State<CatalogView> {
       appBar: AppBar(
         backgroundColor: AppColors.navyOf(context),
         foregroundColor: Colors.white,
-        title: Text(widget.warehouseName),
+        title: Text(widget.manufacturer, maxLines: 1, overflow: TextOverflow.ellipsis),
         actions: [
           BlocBuilder<CartCubit, CartState>(
             buildWhen: (previous, current) => previous.itemCount != current.itemCount,
@@ -153,7 +164,7 @@ class _CatalogViewState extends State<CatalogView> {
                               final product = state.products[index];
                               return ProductCard(
                                 product: product,
-                                onAdd: () => _handleAdd(product),
+                                onAdd: (quantity) => _handleAdd(product, quantity),
                               );
                             },
                           );

@@ -25,15 +25,16 @@ class CartCubit extends Cubit<CartState> {
     ProductModel product, {
     required String warehouseId,
     required String warehouseName,
+    required int quantity,
   }) {
     final existingIndex = state.items.indexWhere((item) => item.productId == product.id);
     final List<CartItem> updated;
     if (existingIndex >= 0) {
       final existing = state.items[existingIndex];
       updated = List.of(state.items)
-        ..[existingIndex] = existing.copyWith(quantity: existing.quantity + 1);
+        ..[existingIndex] = existing.copyWith(quantity: existing.quantity + quantity);
     } else {
-      updated = [...state.items, CartItem.fromProduct(product, quantity: 1)];
+      updated = [...state.items, CartItem.fromProduct(product, quantity: quantity)];
     }
     emit(
       state.copyWith(
@@ -51,12 +52,13 @@ class CartCubit extends Cubit<CartState> {
     ProductModel product, {
     required String warehouseId,
     required String warehouseName,
+    required int quantity,
   }) {
     emit(
       CartState(
         warehouseId: warehouseId,
         warehouseName: warehouseName,
-        items: [CartItem.fromProduct(product, quantity: 1)],
+        items: [CartItem.fromProduct(product, quantity: quantity)],
       ),
     );
   }

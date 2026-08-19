@@ -77,6 +77,25 @@
     }
   },
 
+  "noManufacturersFound": "No manufacturers available for this warehouse.",
+
+  "warehouseProfileTooltip": "Warehouse info",
+  "deliveryInfoTitle": "Delivery Information",
+  "deliveryHoursValue": "From {start} to {end}",
+  "@deliveryHoursValue": {
+    "placeholders": {
+      "start": { "type": "String" },
+      "end": { "type": "String" }
+    }
+  },
+  "deliveryHoursNotSet": "Not specified",
+  "deliveryTypeSelfLabel": "Delivered by the warehouse itself",
+  "deliveryTypeThirdPartyLabel": "Delivered by a third-party courier",
+  "deliveryInfoDisclaimer": "This information is for display only and doesn't prevent placing an order.",
+  "warehouseReviewsTitle": "Reviews",
+  "noWarehouseReviewsYet": "No reviews yet.",
+  "browseWarehouseProductsButton": "Browse this warehouse's products",
+
   "searchProductsHint": "Search by name or manufacturer",
   "allCategories": "All",
   "addToCartButton": "Add",
@@ -174,6 +193,18 @@
   "invoiceTitle": "Order items",
   "discountLabel": "Discount",
   "invoiceTotalLabel": "Total",
+  "youSavedLabel": "💰 You saved {amount}",
+  "@youSavedLabel": {
+    "placeholders": {
+      "amount": { "type": "String" }
+    }
+  },
+  "totalSavingsLabel": "💰 Total savings: {amount} (including offer discounts and manufacturer discount)",
+  "@totalSavingsLabel": {
+    "placeholders": {
+      "amount": { "type": "String" }
+    }
+  },
 
   "returnsTitle": "Returns",
   "noReturnsYet": "You haven't requested any returns yet.",
@@ -229,6 +260,16 @@
       "count": { "type": "String" }
     }
   },
+
+  "myDebtsTitle": "My Debts",
+  "noDebtsYet": "No debts right now.",
+  "totalOrdersLabel": "Total orders",
+  "totalPaidLabel": "Total paid",
+  "currentBalanceLabel": "Current balance",
+  "creditBalanceLabel": "Credit balance",
+  "deliveredOrdersTitle": "Delivered orders",
+  "paymentsTitle": "Payments",
+  "noPaymentsYet": "No payments recorded yet.",
 
   "rateWarehouseTitle": "Rate the warehouse",
   "rateWarehouseCommentLabel": "Comment (optional)",

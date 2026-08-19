@@ -5,11 +5,15 @@ import { WarehouseProductsPage } from './WarehouseProductsPage';
 import { WarehouseOffersPage } from './WarehouseOffersPage';
 import { WarehouseReturnsPage } from './WarehouseReturnsPage';
 import { WarehouseReviewsPage } from './WarehouseReviewsPage';
+import { WarehouseDiscountsPage } from './WarehouseDiscountsPage';
+import { WarehouseDebtsPage } from './WarehouseDebtsPage';
 
 const TABS = [
   { path: '/warehouse/orders', label: 'Orders' },
   { path: '/warehouse/products', label: 'Catalog' },
   { path: '/warehouse/offers', label: 'Offers' },
+  { path: '/warehouse/discounts', label: 'Discounts' },
+  { path: '/warehouse/debts', label: 'Debts' },
   { path: '/warehouse/returns', label: 'Returns' },
   { path: '/warehouse/reviews', label: 'Reviews' },
 ];
@@ -48,6 +52,8 @@ export function WarehousePanel() {
         <Route path="/warehouse/orders" element={<WarehouseOrdersPage />} />
         <Route path="/warehouse/products" element={<WarehouseProductsPage />} />
         <Route path="/warehouse/offers" element={<WarehouseOffersPage />} />
+        <Route path="/warehouse/discounts" element={<WarehouseDiscountsPage />} />
+        <Route path="/warehouse/debts" element={<WarehouseDebtsPage />} />
         <Route path="/warehouse/returns" element={<WarehouseReturnsPage />} />
         <Route path="/warehouse/reviews" element={<WarehouseReviewsPage />} />
         <Route path="*" element={<Navigate to="/warehouse/orders" replace />} />

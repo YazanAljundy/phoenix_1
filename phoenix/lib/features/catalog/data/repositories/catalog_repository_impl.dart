@@ -29,6 +29,7 @@ class CatalogRepositoryImpl implements CatalogRepository {
     required String warehouseId,
     String? search,
     String? categoryId,
+    String? manufacturer,
   }) async {
     try {
       final response = await _apiClient.dio.get(
@@ -36,11 +37,23 @@ class CatalogRepositoryImpl implements CatalogRepository {
         queryParameters: {
           if (search != null && search.isNotEmpty) 'search': search,
           if (categoryId != null) 'categoryId': categoryId,
+          if (manufacturer != null) 'manufacturer': manufacturer,
         },
       );
       final data = response.data as Map<String, dynamic>;
       final products = (data['products'] as List).cast<Map<String, dynamic>>();
       return products.map(ProductModel.fromJson).toList();
+    } on DioException catch (e) {
+      throw ServerFailure.fromDioError(e);
+    }
+  }
+
+  @override
+  Future<List<String>> getManufacturers({required String warehouseId}) async {
+    try {
+      final response = await _apiClient.dio.get(Endpoints.warehouseManufacturers(warehouseId));
+      final data = response.data as Map<String, dynamic>;
+      return (data['manufacturers'] as List).cast<String>();
     } on DioException catch (e) {
       throw ServerFailure.fromDioError(e);
     }

@@ -16,7 +16,7 @@ String describeStockProblems(
     final productId = problem['productId'] as String?;
     final item = _findItem(cartItems, productId);
     final name = item != null
-        ? (isArabic ? item.nameAr : item.nameEn)
+        ? (isArabic ? item.nameAr : (item.nameEn ?? item.nameAr))
         : l10n.thisItemFallback;
 
     switch (problem['code']) {

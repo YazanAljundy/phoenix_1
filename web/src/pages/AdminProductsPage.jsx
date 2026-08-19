@@ -8,6 +8,7 @@ import {
 } from '../components/ProductFormModal';
 import { useExchangeRate } from '../context/ExchangeRateContext';
 import { formatPriceWithSyp } from '../utils/currency';
+import { withArFallback } from '../utils/displayName';
 
 // Section 13c: admin oversight across every warehouse's catalog - edit or
 // deactivate only, never create (creating a product stays exclusively the
@@ -68,7 +69,7 @@ export function AdminProductsPage() {
 
   const handleDelete = async (product) => {
     const confirmed = window.confirm(
-      `Remove "${product.nameEn}" (${product.warehouseNameEn})? Pharmacies will no longer be able to order it.`,
+      `Remove "${withArFallback(product.nameEn, product.nameAr)}" (${product.warehouseNameEn})? Pharmacies will no longer be able to order it.`,
     );
     if (!confirmed) return;
 
@@ -123,8 +124,10 @@ export function AdminProductsPage() {
               {visibleProducts.map((product) => (
                 <tr key={product.id} className={product.isActive ? '' : 'row-inactive'}>
                   <td>
-                    <div className="product-name">{product.nameEn}</div>
-                    <div className="product-manufacturer">{product.manufacturerEn}</div>
+                    <div className="product-name">{withArFallback(product.nameEn, product.nameAr)}</div>
+                    <div className="product-manufacturer">
+                      {withArFallback(product.manufacturerEn, product.manufacturerAr)}
+                    </div>
                   </td>
                   <td>{product.warehouseNameEn}</td>
                   <td>{categoryName(product.categoryId)}</td>

@@ -10,6 +10,23 @@ const Return = require('../models/return.model');
 const Review = require('../models/review.model');
 const { isWarehouseAvailable } = require('./warehouse.service');
 const { getRate } = require('./exchangeRate.service');
+const { applyResolvedIdentity } = require('./productCatalog.service');
+const { getDiscountMapForWarehouse, computeDiscountedPriceUsd } = require('./manufacturerDiscount.service');
+
+// Section 15: applies an Offer percentage then a manufacturer-discount
+// percentage, in SYP, rounding to the nearest lira after each stage (same
+// per-stage-rounding convention the rest of this file already uses) -
+// either argument being falsy just skips that stage.
+function stackedDiscountSyp(baseSyp, offerPercentage, manufacturerDiscountPercentage) {
+  let price = baseSyp;
+  if (offerPercentage) {
+    price = Math.round(price * (1 - offerPercentage / 100));
+  }
+  if (manufacturerDiscountPercentage) {
+    price = Math.round(price * (1 - manufacturerDiscountPercentage / 100));
+  }
+  return price;
+}
 
 // Section 6.7/7: the five tracked stages, in order - 'cancelled' is
 // deliberately excluded, since it's a special status shown outside the
@@ -67,7 +84,14 @@ async function createOrder({ userId, pharmacyId, warehouseId, items, notes, isRe
   const merged = mergeDuplicateItems(items);
   const productIds = merged.map((item) => item.productId);
 
-  const products = await Product.find({ _id: { $in: productIds }, warehouseId, isActive: true });
+  // Section 14 Part 2: resolved here (read-only - these docs are never
+  // saved, only their values get snapshotted into OrderItem below) so the
+  // order's own productNameAr/productNameEn are correct whether the product
+  // is catalog-linked or legacy.
+  const products = await Product.find({ _id: { $in: productIds }, warehouseId, isActive: true }).populate(
+    'masterProductId'
+  );
+  products.forEach(applyResolvedIdentity);
   const productById = new Map(products.map((p) => [p._id.toString(), p]));
 
   // Each problem is a structured { code, productId, ...params } rather than a
@@ -113,33 +137,52 @@ async function createOrder({ userId, pharmacyId, warehouseId, items, notes, isRe
   const usdToSyp = rate.usdToSyp;
 
   const now = new Date();
-  const offers = await Offer.find({
-    warehouseId,
-    status: 'approved',
-    startDate: { $lte: now },
-    endDate: { $gte: now },
-    productId: { $in: productIds },
-  });
+  const [offers, manufacturerDiscountByName] = await Promise.all([
+    Offer.find({
+      warehouseId,
+      status: 'approved',
+      startDate: { $lte: now },
+      endDate: { $gte: now },
+      productId: { $in: productIds },
+    }),
+    getDiscountMapForWarehouse(warehouseId),
+  ]);
   const offerByProductId = new Map(offers.map((o) => [o.productId.toString(), o]));
 
   let totalPrice = 0;
   const orderItemsData = merged.map((item) => {
     const product = productById.get(item.productId);
     const offer = offerByProductId.get(item.productId);
+    // manufacturerAr here is already resolved (Section 14 Part 2's
+    // applyResolvedIdentity, above) whether this product is catalog-linked
+    // or legacy, so this lookup works either way.
+    const manufacturerDiscountPercentage = manufacturerDiscountByName.get(product.manufacturerAr) ?? null;
+
     // product.price is USD - converted to SYP here, at order time, using
     // today's rate (see comment above).
     const unitPrice = Math.round(product.price * usdToSyp);
-    // Section 4: the product-level offer (if any) applies first, at the item
-    // level - the platform discount/commission below applies afterward, to
-    // the order total. A replacement order (Section 6.9) is always
-    // zero-priced regardless of offers - unitPrice is kept as-is purely for
-    // display context ("this replaces a unitPrice item"), not billed.
+    // Section 4/15: the product-level offer and the warehouse's
+    // manufacturer discount (if any) both apply here, stacked - the
+    // platform discount/commission below applies afterward, to the order
+    // total. A replacement order (Section 6.9) is always zero-priced
+    // regardless of either - unitPrice is kept as-is purely for display
+    // context ("this replaces a unitPrice item"), not billed.
     const discountPrice = isReplacement
       ? 0
-      : offer
-        ? Math.round(unitPrice * (1 - offer.discountPercentage / 100))
-        : unitPrice;
+      : stackedDiscountSyp(unitPrice, offer?.discountPercentage, manufacturerDiscountPercentage);
     totalPrice += discountPrice * item.quantity;
+
+    // Section 15: computed independently in USD, straight from the
+    // catalog's native currency, rather than back-converted from the SYP
+    // figures above - avoids compounding two separate roundings. Only the
+    // amount is stored, deliberately not the percentage or which
+    // manufacturer it came from (project owner's decision).
+    const discountedPriceUsd = isReplacement
+      ? product.price
+      : computeDiscountedPriceUsd(product.price, offer?.discountPercentage, manufacturerDiscountPercentage);
+    const savingsUsd = isReplacement
+      ? 0
+      : Math.round((product.price - discountedPriceUsd) * item.quantity * 100) / 100;
 
     return {
       productId: product._id,
@@ -150,6 +193,7 @@ async function createOrder({ userId, pharmacyId, warehouseId, items, notes, isRe
       quantity: item.quantity,
       unitPrice,
       discountPrice,
+      savingsUsd,
     };
   });
 

@@ -34,6 +34,9 @@ class OrderInvoiceSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+    // Section 15: savings are no longer broken out per line - one combined
+    // total at the foot of the invoice instead (see _InvoiceLineRow below).
+    final totalSavingsUsd = items.fold<num>(0, (sum, item) => sum + (item.savingsUsd ?? 0));
 
     return CustomCard(
       child: Column(
@@ -48,6 +51,16 @@ class OrderInvoiceSection extends StatelessWidget {
             _TotalsRow(label: l10n.discountLabel, amount: -discountAmount),
           const SizedBox(height: AppSizes.spacingXSmall),
           _TotalsRow(label: l10n.invoiceTotalLabel, amount: finalPrice, emphasized: true),
+          if (totalSavingsUsd > 0) ...[
+            const SizedBox(height: AppSizes.spacingXSmall),
+            Text(
+              l10n.totalSavingsLabel('\$${totalSavingsUsd.toStringAsFixed(2)}'),
+              style: context.textTheme.bodySmall?.copyWith(
+                color: AppColors.secondaryOf(context),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -63,7 +76,7 @@ class _InvoiceLineRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
-    final name = isArabic ? item.productNameAr : item.productNameEn;
+    final name = isArabic ? item.productNameAr : (item.productNameEn ?? item.productNameAr);
 
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: AppSizes.spacingXSmall),
@@ -76,32 +89,15 @@ class _InvoiceLineRow extends StatelessWidget {
               children: [
                 Text(name, style: context.textTheme.bodyMedium),
                 const SizedBox(height: 2),
-                Wrap(
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  spacing: AppSizes.spacingXSmall,
-                  children: [
-                    Text(
-                      '${item.quantity} × ',
-                      style: context.textTheme.bodySmall?.copyWith(
-                        color: AppColors.textSecondaryOf(context),
-                      ),
-                    ),
-                    if (item.hasOffer)
-                      Text(
-                        '${item.unitPrice}',
-                        style: TextStyle(
-                          decoration: TextDecoration.lineThrough,
-                          color: AppColors.textSecondaryOf(context),
-                          fontSize: 12,
-                        ),
-                      ),
-                    Text(
-                      '${item.discountPrice} ${l10n.currencySuffix}',
-                      style: context.textTheme.bodySmall?.copyWith(
-                        color: AppColors.textSecondaryOf(context),
-                      ),
-                    ),
-                  ],
+                // Section 15: the original price only - no strikethrough, no
+                // discounted number, no per-line savings. Any discount is
+                // communicated once, combined, at the foot of the invoice
+                // (see OrderInvoiceSection's totalSavingsUsd).
+                Text(
+                  '${item.quantity} × ${item.unitPrice} ${l10n.currencySuffix}',
+                  style: context.textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondaryOf(context),
+                  ),
                 ),
               ],
             ),
@@ -141,16 +137,19 @@ class _TotalsRow extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: style),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('$amount ${l10n.currencySuffix}', style: style),
-              if (usdText != null) ...[
-                const SizedBox(width: AppSizes.spacingXSmall),
-                SecondaryPriceHint(text: usdText),
+          Flexible(
+            child: Text(label, style: style, maxLines: 1, overflow: TextOverflow.ellipsis),
+          ),
+          Flexible(
+            child: Wrap(
+              alignment: WrapAlignment.end,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: AppSizes.spacingXSmall,
+              children: [
+                Text('$amount ${l10n.currencySuffix}', style: style),
+                if (usdText != null) SecondaryPriceHint(text: usdText),
               ],
-            ],
+            ),
           ),
         ],
       ),

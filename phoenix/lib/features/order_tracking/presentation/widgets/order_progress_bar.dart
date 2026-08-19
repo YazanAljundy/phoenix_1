@@ -63,15 +63,20 @@ class _OrderProgressBarState extends State<OrderProgressBar>
             SizedBox(
               height: dotSize,
               child: Stack(
-                alignment: Alignment.centerLeft,
+                alignment: AlignmentDirectional.centerStart,
                 children: [
                   Positioned(
                     left: dotSize / 2,
                     right: dotSize / 2,
                     child: Container(height: 3, color: AppColors.borderOf(context)),
                   ),
-                  Positioned(
-                    left: dotSize / 2,
+                  // PositionedDirectional, not Positioned: the dots below
+                  // (a plain Row) already mirror automatically in RTL, so
+                  // this fill has to grow from the same "start" edge (right
+                  // in Arabic) or it visually fills toward the wrong,
+                  // not-yet-completed stages.
+                  PositionedDirectional(
+                    start: dotSize / 2,
                     child: Container(
                       width: trackWidth * progress,
                       height: 3,
@@ -111,6 +116,8 @@ class _OrderProgressBarState extends State<OrderProgressBar>
                   child: Text(
                     labels[index],
                     textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                     style: context.textTheme.bodyMedium?.copyWith(
                       fontSize: 11,
                       fontWeight: index == widget.currentStageIndex

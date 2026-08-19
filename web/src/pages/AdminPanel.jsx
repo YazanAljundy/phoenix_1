@@ -3,11 +3,13 @@ import { useAuth } from '../auth/AuthContext';
 import { PendingAccountsPage } from './PendingAccountsPage';
 import { AdminOffersPage } from './AdminOffersPage';
 import { AdminProductsPage } from './AdminProductsPage';
+import { AdminCatalogPage } from './AdminCatalogPage';
 
 const TABS = [
   { path: '/admin/pending-accounts', label: 'Pending accounts' },
   { path: '/admin/offers', label: 'Offers' },
   { path: '/admin/products', label: 'Products' },
+  { path: '/admin/catalog', label: 'Catalog' },
 ];
 
 function tabClassName({ isActive }) {
@@ -45,6 +47,7 @@ export function AdminPanel() {
         <Route path="/admin/pending-accounts" element={<PendingAccountsPage />} />
         <Route path="/admin/offers" element={<AdminOffersPage />} />
         <Route path="/admin/products" element={<AdminProductsPage />} />
+        <Route path="/admin/catalog" element={<AdminCatalogPage />} />
         <Route path="*" element={<Navigate to="/admin/pending-accounts" replace />} />
       </Routes>
     </div>

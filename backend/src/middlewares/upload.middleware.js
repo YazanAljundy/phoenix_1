@@ -16,6 +16,9 @@ fs.mkdirSync(RETURN_PHOTOS_DIR, { recursive: true });
 
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
 const MAX_RETURN_PHOTOS = 5;
+const MAX_CATALOG_IMPORT_SIZE_BYTES = 5 * 1024 * 1024;
+
+const XLSX_MIME_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
 // Magic-byte signatures - checked against actual file content after upload,
 // not just the extension or the client-sent MIME type (both are spoofable).
@@ -85,6 +88,25 @@ const returnPhotosUpload = wrapMulter(
   'TOO_MANY_RETURN_PHOTOS'
 );
 
+// Section 14: the master catalog's Excel import (productCatalog.service.js
+// reads straight from `file.buffer`, nothing touches disk) - memory storage
+// rather than makeStorage's disk-based one, since there's no reason to keep
+// the file around after it's parsed.
+const catalogImportUpload = wrapMulter(
+  multer({
+    storage: multer.memoryStorage(),
+    fileFilter: (req, file, cb) => {
+      if (file.mimetype !== XLSX_MIME_TYPE) {
+        cb(ApiError.badRequest('File must be an .xlsx Excel workbook.'));
+        return;
+      }
+      cb(null, true);
+    },
+    limits: { fileSize: MAX_CATALOG_IMPORT_SIZE_BYTES },
+  }).single('file'),
+  'The Excel file must be smaller than 5MB.'
+);
+
 // Reads the first bytes of the saved file and checks them against known image
 // signatures - a spoofed extension/MIME type won't pass this. Deletes the
 // file and throws if the content doesn't actually match an allowed image type.
@@ -114,6 +136,7 @@ function verifyImageMagicBytes(filePath) {
 module.exports = {
   verificationPhotoUpload,
   returnPhotosUpload,
+  catalogImportUpload,
   verifyImageMagicBytes,
   VERIFICATION_PHOTOS_DIR,
   RETURN_PHOTOS_DIR,

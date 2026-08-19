@@ -3,6 +3,7 @@ const { ApiError } = require('../utils/ApiError');
 const Offer = require('../models/offer.model');
 const Product = require('../models/product.model');
 const Warehouse = require('../models/warehouse.model');
+const { applyResolvedIdentity } = require('./productCatalog.service');
 
 // Section 13c: the admin's review queue - oldest first, same FIFO reasoning
 // as the warehouse's own order queue (Section 13b).
@@ -14,9 +15,10 @@ async function listPendingOffers() {
   const warehouseIds = [...new Set(offers.map((o) => o.warehouseId.toString()))];
 
   const [products, warehouses] = await Promise.all([
-    Product.find({ _id: { $in: productIds } }),
+    Product.find({ _id: { $in: productIds } }).populate('masterProductId'),
     Warehouse.find({ _id: { $in: warehouseIds } }),
   ]);
+  products.forEach(applyResolvedIdentity);
   const productById = new Map(products.map((p) => [p._id.toString(), p]));
   const warehouseById = new Map(warehouses.map((w) => [w._id.toString(), w]));
 

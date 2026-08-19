@@ -42,7 +42,20 @@ class _WarehouseSelectionViewState extends State<WarehouseSelectionView> {
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
     final name = isArabic ? warehouse.nameAr : warehouse.nameEn;
     context.pushNamed(
-      RouteNames.catalog,
+      RouteNames.manufacturers,
+      pathParameters: {'warehouseId': warehouse.id},
+      extra: name,
+    );
+  }
+
+  // Section 17: a separate entry point from "Select" (the info icon on the
+  // card, not the button) - opens the read-only profile instead of
+  // continuing straight to /manufacturers.
+  void _handleViewProfile(WarehouseModel warehouse) {
+    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+    final name = isArabic ? warehouse.nameAr : warehouse.nameEn;
+    context.pushNamed(
+      RouteNames.warehouseProfile,
       pathParameters: {'warehouseId': warehouse.id},
       extra: name,
     );
@@ -97,6 +110,7 @@ class _WarehouseSelectionViewState extends State<WarehouseSelectionView> {
                         return WarehouseCard(
                           warehouse: warehouse,
                           onSelect: () => _handleSelect(warehouse),
+                          onViewProfile: () => _handleViewProfile(warehouse),
                         );
                       },
                     );

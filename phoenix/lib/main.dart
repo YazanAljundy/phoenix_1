@@ -13,6 +13,8 @@ import 'package:phoenix/features/cart/data/repositories/order_repository_impl.da
 import 'package:phoenix/features/cart/presentation/managers/cart_cubit.dart';
 import 'package:phoenix/features/catalog/data/repositories/catalog_repository.dart';
 import 'package:phoenix/features/catalog/data/repositories/catalog_repository_impl.dart';
+import 'package:phoenix/features/debts/data/repositories/debt_repository.dart';
+import 'package:phoenix/features/debts/data/repositories/debt_repository_impl.dart';
 import 'package:phoenix/features/exchange_rate/data/repositories/exchange_rate_repository.dart';
 import 'package:phoenix/features/exchange_rate/data/repositories/exchange_rate_repository_impl.dart';
 import 'package:phoenix/features/exchange_rate/presentation/managers/exchange_rate_cubit.dart';
@@ -45,6 +47,7 @@ Future<void> main() async {
   final orderRepository = OrderRepositoryImpl(apiClient: apiClient);
   final returnRepository = ReturnRepositoryImpl(apiClient: apiClient);
   final reviewRepository = ReviewRepositoryImpl(apiClient: apiClient);
+  final debtRepository = DebtRepositoryImpl(apiClient: apiClient);
 
   runApp(
     MyApp(
@@ -58,6 +61,7 @@ Future<void> main() async {
       orderRepository: orderRepository,
       returnRepository: returnRepository,
       reviewRepository: reviewRepository,
+      debtRepository: debtRepository,
     ),
   );
 }
@@ -104,6 +108,7 @@ class MyApp extends StatelessWidget {
     required this.orderRepository,
     required this.returnRepository,
     required this.reviewRepository,
+    required this.debtRepository,
     super.key,
   });
 
@@ -117,6 +122,7 @@ class MyApp extends StatelessWidget {
   final OrderRepositoryImpl orderRepository;
   final ReturnRepositoryImpl returnRepository;
   final ReviewRepositoryImpl reviewRepository;
+  final DebtRepositoryImpl debtRepository;
 
   @override
   Widget build(BuildContext context) {
@@ -128,6 +134,7 @@ class MyApp extends StatelessWidget {
         RepositoryProvider<ReviewRepository>.value(value: reviewRepository),
         RepositoryProvider<WarehouseRepository>.value(value: warehouseRepository),
         RepositoryProvider<ExchangeRateRepository>.value(value: exchangeRateRepository),
+        RepositoryProvider<DebtRepository>.value(value: debtRepository),
       ],
       child: MultiBlocProvider(
         providers: [

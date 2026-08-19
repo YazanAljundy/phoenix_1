@@ -77,6 +77,25 @@
     }
   },
 
+  "noManufacturersFound": "لا توجد شركات مصنّعة متاحة بهذا المستودع.",
+
+  "warehouseProfileTooltip": "معلومات المستودع",
+  "deliveryInfoTitle": "معلومات التوصيل",
+  "deliveryHoursValue": "من {start} إلى {end}",
+  "@deliveryHoursValue": {
+    "placeholders": {
+      "start": { "type": "String" },
+      "end": { "type": "String" }
+    }
+  },
+  "deliveryHoursNotSet": "غير محدّدة",
+  "deliveryTypeSelfLabel": "توصيل خاص بالمستودع",
+  "deliveryTypeThirdPartyLabel": "شركة توصيل خارجية",
+  "deliveryInfoDisclaimer": "هذه المعلومات للعرض فقط، ولا تمنع تقديم الطلب.",
+  "warehouseReviewsTitle": "التقييمات",
+  "noWarehouseReviewsYet": "لا تقييمات بعد.",
+  "browseWarehouseProductsButton": "تصفح منتجات هذا المستودع",
+
   "searchProductsHint": "ابحث بالاسم أو الشركة المصنعة",
   "allCategories": "الكل",
   "addToCartButton": "إضافة",
@@ -174,6 +193,18 @@
   "invoiceTitle": "أصناف الطلب",
   "discountLabel": "الخصم",
   "invoiceTotalLabel": "الإجمالي",
+  "youSavedLabel": "💰 وفّرت {amount}",
+  "@youSavedLabel": {
+    "placeholders": {
+      "amount": { "type": "String" }
+    }
+  },
+  "totalSavingsLabel": "💰 إجمالي التوفير: {amount} (شامل خصم العروض وحسم الشركة المصنّعة)",
+  "@totalSavingsLabel": {
+    "placeholders": {
+      "amount": { "type": "String" }
+    }
+  },
 
   "returnsTitle": "المرتجعات",
   "noReturnsYet": "لم تقدّم أي طلب إرجاع بعد.",
@@ -229,6 +260,16 @@
       "count": { "type": "String" }
     }
   },
+
+  "myDebtsTitle": "ديوني",
+  "noDebtsYet": "لا توجد ديون حالياً.",
+  "totalOrdersLabel": "إجمالي الطلبات",
+  "totalPaidLabel": "إجمالي المدفوع",
+  "currentBalanceLabel": "الدين الحالي",
+  "creditBalanceLabel": "رصيد لصالحك",
+  "deliveredOrdersTitle": "الطلبات المسلّمة",
+  "paymentsTitle": "الدفعات",
+  "noPaymentsYet": "لا توجد دفعات مسجّلة.",
 
   "rateWarehouseTitle": "قيّم المستودع",
   "rateWarehouseCommentLabel": "تعليق (اختياري)",

@@ -72,6 +72,7 @@ function toOrderDetailResponse(order, warehouse, items = [], returnRequest = nul
         unitPrice: item.unitPrice,
         discountPrice: item.discountPrice,
         lineTotal: item.discountPrice * item.quantity,
+        savingsUsd: item.savingsUsd,
       })),
       linkedReturn: serializeLinkedReturn(returnRequest),
       myReview: serializeMyReview(myReview),

@@ -2,12 +2,19 @@ const mongoose = require('mongoose');
 const { ApiError } = require('../utils/ApiError');
 const Product = require('../models/product.model');
 const Category = require('../models/category.model');
+const ProductCatalog = require('../models/productCatalog.model');
+const {
+  applyResolvedIdentity,
+  loadAndParseUpload,
+  escapeRegex,
+} = require('./productCatalog.service');
+const { registerManufacturers } = require('./warehouseManufacturer.service');
 
+// Section 14 Part 2: name/manufacturer no longer come from the warehouse -
+// they're resolved from the linked catalog entry (masterProductId),
+// validated separately below. Only unit stays a manually-typed field on the
+// create form.
 const REQUIRED_STRING_FIELDS = [
-  ['nameAr', 'INVALID_PRODUCT_NAME'],
-  ['nameEn', 'INVALID_PRODUCT_NAME'],
-  ['manufacturerAr', 'INVALID_MANUFACTURER'],
-  ['manufacturerEn', 'INVALID_MANUFACTURER'],
   ['unitAr', 'INVALID_UNIT'],
   ['unitEn', 'INVALID_UNIT'],
 ];
@@ -28,6 +35,21 @@ async function validateCategoryId(categoryId) {
   if (!exists) {
     throw ApiError.badRequest('Invalid category.', undefined, 'INVALID_CATEGORY');
   }
+}
+
+// Section 14 Part 2: every new product must link to an active central-
+// catalog entry - returns it (not just validates) since createProduct needs
+// nothing else from it, but importProductsFromExcel below does its own
+// lookup by name instead of by id.
+async function validateMasterProductId(masterProductId) {
+  if (typeof masterProductId !== 'string' || !mongoose.Types.ObjectId.isValid(masterProductId)) {
+    throw ApiError.badRequest('Invalid catalog item.', undefined, 'INVALID_MASTER_PRODUCT');
+  }
+  const catalogItem = await ProductCatalog.findOne({ _id: masterProductId, isActive: true });
+  if (!catalogItem) {
+    throw ApiError.badRequest('Invalid catalog item.', undefined, 'INVALID_MASTER_PRODUCT');
+  }
+  return catalogItem;
 }
 
 // `price` on the Product doc is USD (Section: USD-first catalog pricing) -
@@ -56,36 +78,61 @@ function validateRequiredStrings(data) {
 // one; there's no reactivate flow yet, so from the warehouse's side it's simply
 // no longer there.
 async function listProductsForWarehouse(warehouseId) {
-  return Product.find({ warehouseId, isActive: true }).sort({ nameEn: 1 });
+  const products = await Product.find({ warehouseId, isActive: true }).populate('masterProductId');
+  products.forEach(applyResolvedIdentity);
+  products.sort((a, b) => (a.nameEn || a.nameAr || '').localeCompare(b.nameEn || b.nameAr || ''));
+  return products;
 }
 
-// Section 8: every field a warehouse can set at creation. image stays
-// optional/null for now - no upload provider is wired up yet (same as the
-// pharmacist-facing catalog), though a plain URL can be pasted in if the
-// warehouse already has one hosted somewhere.
+// Section 8/14 Part 2: every field a warehouse can set at creation.
+// name/manufacturer are no longer among them - masterProductId (chosen via
+// catalog search, see warehouseCatalog.routes.js) is what identifies the
+// product now. image stays optional/null for now - no upload provider is
+// wired up yet (same as the pharmacist-facing catalog), though a plain URL
+// can be pasted in if the warehouse already has one hosted somewhere.
 async function createProduct(warehouseId, data) {
   validateRequiredStrings(data);
+  await validateMasterProductId(data.masterProductId);
   await validateCategoryId(data.categoryId);
   validatePrice(data.priceUsd);
 
   const manuallyDisabled = data.manuallyDisabled === true;
 
-  return Product.create({
-    warehouseId,
-    categoryId: data.categoryId,
-    nameAr: data.nameAr.trim(),
-    nameEn: data.nameEn.trim(),
-    manufacturerAr: data.manufacturerAr.trim(),
-    manufacturerEn: data.manufacturerEn.trim(),
-    unitAr: data.unitAr.trim(),
-    unitEn: data.unitEn.trim(),
-    description: typeof data.description === 'string' && data.description.trim() ? data.description.trim() : null,
-    image: typeof data.image === 'string' && data.image.trim() ? data.image.trim() : null,
-    price: data.priceUsd,
-    manuallyDisabled,
-    isAvailable: computeIsAvailable(manuallyDisabled),
-    lastPriceUpdate: new Date(),
-  });
+  let product;
+  try {
+    product = await Product.create({
+      warehouseId,
+      masterProductId: data.masterProductId,
+      categoryId: data.categoryId,
+      unitAr: data.unitAr.trim(),
+      unitEn: data.unitEn.trim(),
+      description:
+        typeof data.description === 'string' && data.description.trim() ? data.description.trim() : null,
+      image: typeof data.image === 'string' && data.image.trim() ? data.image.trim() : null,
+      price: data.priceUsd,
+      manuallyDisabled,
+      isAvailable: computeIsAvailable(manuallyDisabled),
+      lastPriceUpdate: new Date(),
+    });
+  } catch (err) {
+    // The (warehouseId, masterProductId) unique index (product.model.js) -
+    // a raw Mongo E11000 error would otherwise leak internal index/field
+    // names straight to the client.
+    if (err.code === 11000) {
+      throw ApiError.conflict(
+        'You already have a product linked to this medicine.',
+        'PRODUCT_ALREADY_LINKED'
+      );
+    }
+    throw err;
+  }
+
+  // Resolved strictly *after* create, purely so the response reflects the
+  // linked catalog's name - this in-memory-only doc is never saved again
+  // within this request, so it can't leak back into storage (see the
+  // Section 14 Part 2 note on listAllProducts in adminProduct.service.js).
+  await product.populate('masterProductId');
+  return applyResolvedIdentity(product);
 }
 
 // IDOR guard: scoped to warehouseId, same pattern as every other
@@ -155,12 +202,89 @@ async function applyProductUpdate(product, userId, changes) {
   product.isAvailable = computeIsAvailable(product.manuallyDisabled);
 
   await product.save();
-  return product;
+
+  // Same "resolve only after the write is durable" reasoning as
+  // createProduct above - this response-only mutation never gets saved.
+  await product.populate('masterProductId');
+  return applyResolvedIdentity(product);
 }
 
 async function updateProduct(productId, warehouseId, userId, changes) {
   const product = await findOwnedProductOrThrow(productId, warehouseId);
   return applyProductUpdate(product, userId, changes);
+}
+
+// Section 14 Part 2: bulk-adds/updates this warehouse's own products from an
+// Excel file shaped like generateWarehouseTemplateBuffer's output. Reuses
+// the exact same row-parsing as the admin's catalog import
+// (productCatalog.service.js) - the two-column/company-row shape is
+// identical, only what happens with each parsed row differs.
+async function importProductsFromExcel(warehouseId, userId, file) {
+  const { candidates, errors, manufacturers } = await loadAndParseUpload(file);
+
+  // Registers every manufacturer row recognized in the file - regardless of
+  // whether any of its medicines matched the central catalog, so a
+  // warehouse's manufacturer registry (the Discounts tab's dropdown, see
+  // warehouseManufacturer.service.js) grows the moment a company appears in
+  // an import, not only once one of its products is actually linked.
+  if (manufacturers.length > 0) {
+    await registerManufacturers(warehouseId, manufacturers);
+  }
+
+  let added = 0;
+  let updated = 0;
+
+  for (const candidate of candidates) {
+    // Matched on both name and manufacturer (not name alone) - the central
+    // catalog allows the same drug name under different manufacturers
+    // (Section 14 Part 1's own upsert key), so name-only would risk linking
+    // to the wrong one.
+    const catalogItem = await ProductCatalog.findOne({
+      nameAr: new RegExp(`^${escapeRegex(candidate.nameAr)}$`, 'i'),
+      manufacturerAr: new RegExp(`^${escapeRegex(candidate.manufacturerAr)}$`, 'i'),
+      isActive: true,
+    });
+
+    if (!catalogItem) {
+      errors.push({ row: candidate.rowNumber, reason: 'Medicine not found in the central catalog.' });
+      continue;
+    }
+
+    try {
+      const existing = await Product.findOne({ warehouseId, masterProductId: catalogItem._id });
+      if (existing) {
+        if (candidate.priceUsd !== existing.price) {
+          existing.priceHistory.push({
+            oldPrice: existing.price,
+            newPrice: candidate.priceUsd,
+            changedBy: userId,
+            changedAt: new Date(),
+          });
+          existing.price = candidate.priceUsd;
+          existing.lastPriceUpdate = new Date();
+        }
+        await existing.save();
+        updated += 1;
+      } else {
+        // categoryId/unitAr/unitEn are left null (Section 14 Part 2's schema
+        // note on product.model.js) - the import format carries no columns
+        // for them, same reasoning as the catalog's own import.
+        await Product.create({
+          warehouseId,
+          masterProductId: catalogItem._id,
+          price: candidate.priceUsd,
+          manuallyDisabled: false,
+          isAvailable: true,
+          lastPriceUpdate: new Date(),
+        });
+        added += 1;
+      }
+    } catch (err) {
+      errors.push({ row: candidate.rowNumber, reason: 'Failed to save this row.' });
+    }
+  }
+
+  return { added, updated, errors };
 }
 
 module.exports = {
@@ -169,4 +293,5 @@ module.exports = {
   updateProduct,
   findOwnedProductOrThrow,
   applyProductUpdate,
+  importProductsFromExcel,
 };

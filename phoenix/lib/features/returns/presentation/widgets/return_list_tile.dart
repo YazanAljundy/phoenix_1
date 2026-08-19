@@ -29,7 +29,7 @@ class ReturnListTile extends StatelessWidget {
     final l10n = context.l10n;
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
     final itemNames = returnRequest.items
-        .map((item) => (isArabic ? item.productNameAr : item.productNameEn) ?? '')
+        .map((item) => (isArabic ? item.productNameAr : (item.productNameEn ?? item.productNameAr)) ?? '')
         .where((name) => name.isNotEmpty)
         .join(isArabic ? '، ' : ', ');
 
@@ -129,7 +129,10 @@ class _ReturnStatusBadge extends StatelessWidget {
     };
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSizes.spacingSmall, vertical: 4),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSizes.spacingSmall,
+        vertical: AppSizes.spacingXSmall,
+      ),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
         borderRadius: AppRadius.full,
