@@ -1,31 +1,40 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../api/client';
+import { LoadMoreControl } from '../components/LoadMoreControl';
+import { usePaginatedData } from '../hooks/usePaginatedData';
 import { withArFallback } from '../utils/displayName';
+
+const PAGE_SIZE = 20;
 
 export function AdminOffersPage() {
   const { t } = useTranslation();
-  const [offers, setOffers] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [busyId, setBusyId] = useState(null);
+  const [actionError, setActionError] = useState(null);
+  // Stays accurate regardless of pagination - the backend computes it
+  // independently of whichever page has been loaded.
+  const [totalCount, setTotalCount] = useState(0);
 
-  const load = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const data = await api.pendingOffers();
-      setOffers(data.offers);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const fetchPage = useCallback(
+    (cursor) =>
+      api.pendingOffers({ limit: PAGE_SIZE, after: cursor }).then((data) => {
+        setTotalCount(data.totalCount);
+        return {
+          rows: data.offers,
+          hasMore: data.pagination.hasMore,
+          nextCursor: data.pagination.nextCursor,
+        };
+      }),
+    []
+  );
+
+  const { data: offers, isLoading, isLoadingMore, hasMore, error, loadMore, reset } =
+    usePaginatedData(fetchPage);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    reset();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleDecision = async (offer, action) => {
     const confirmed = window.confirm(
@@ -39,16 +48,16 @@ export function AdminOffersPage() {
     if (!confirmed) return;
 
     setBusyId(offer.id);
-    setError(null);
+    setActionError(null);
     try {
       if (action === 'approve') {
         await api.approveOffer(offer.id);
       } else {
         await api.rejectOffer(offer.id);
       }
-      setOffers((prev) => prev.filter((o) => o.id !== offer.id));
+      reset();
     } catch (err) {
-      setError(err.message);
+      setActionError(err.message);
     } finally {
       setBusyId(null);
     }
@@ -61,7 +70,7 @@ export function AdminOffersPage() {
         <div className="adm-page-head-meta">{t('offers.admin.rejectionHint')}</div>
       </div>
 
-      {error && <p className="error-text">{error}</p>}
+      {(error || actionError) && <p className="error-text">{error || actionError}</p>}
 
       {isLoading ? (
         <p className="hint">{t('common.loading')}</p>
@@ -69,7 +78,7 @@ export function AdminOffersPage() {
         <>
           <div className="adm-pills">
             <span className="adm-pill active">
-              {t('offers.admin.pendingCountLabel', { count: offers.length })}
+              {t('offers.admin.pendingCountLabel', { count: totalCount })}
             </span>
           </div>
 
@@ -79,53 +88,61 @@ export function AdminOffersPage() {
               <div className="adm-empty-state-title">{t('offers.admin.noOffers')}</div>
             </div>
           ) : (
-            <div className="adm-card table-scroll">
-              <table className="adm-table">
-                <thead>
-                  <tr>
-                    <th>{t('offers.admin.warehouseColumn')}</th>
-                    <th>{t('offers.admin.productColumn')}</th>
-                    <th>{t('offers.admin.discountColumn')}</th>
-                    <th>{t('offers.warehouse.fromColumn')}</th>
-                    <th>{t('offers.warehouse.toColumn')}</th>
-                    <th>{t('common.status')}</th>
-                    <th>{t('admin.pendingAccounts.actionColumn')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {offers.map((offer) => (
-                    <tr key={offer.id}>
-                      <td>{offer.warehouseNameEn}</td>
-                      <td>{withArFallback(offer.productNameEn, offer.productNameAr)}</td>
-                      <td className="adm-num adm-offer-discount">{offer.discountPercentage}%</td>
-                      <td className="adm-num">{new Date(offer.startDate).toLocaleDateString()}</td>
-                      <td className="adm-num">{new Date(offer.endDate).toLocaleDateString()}</td>
-                      <td>
-                        <span className="status-badge status-pending">{t('offers.warehouse.statusPending')}</span>
-                      </td>
-                      <td>
-                        <div className="adm-row-actions">
-                          <button
-                            className="btn-approve"
-                            disabled={busyId === offer.id}
-                            onClick={() => handleDecision(offer, 'approve')}
-                          >
-                            {t('common.approve')}
-                          </button>
-                          <button
-                            className="btn-reject"
-                            disabled={busyId === offer.id}
-                            onClick={() => handleDecision(offer, 'reject')}
-                          >
-                            {t('common.reject')}
-                          </button>
-                        </div>
-                      </td>
+            <>
+              <div className="adm-card table-scroll">
+                <table className="adm-table">
+                  <thead>
+                    <tr>
+                      <th>{t('offers.admin.warehouseColumn')}</th>
+                      <th>{t('offers.admin.productColumn')}</th>
+                      <th>{t('offers.admin.discountColumn')}</th>
+                      <th>{t('offers.warehouse.fromColumn')}</th>
+                      <th>{t('offers.warehouse.toColumn')}</th>
+                      <th>{t('common.status')}</th>
+                      <th>{t('admin.pendingAccounts.actionColumn')}</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {offers.map((offer) => (
+                      <tr key={offer.id}>
+                        <td>{offer.warehouseNameEn}</td>
+                        <td>{withArFallback(offer.productNameEn, offer.productNameAr)}</td>
+                        <td className="adm-num adm-offer-discount">{offer.discountPercentage}%</td>
+                        <td className="adm-num">{new Date(offer.startDate).toLocaleDateString()}</td>
+                        <td className="adm-num">{new Date(offer.endDate).toLocaleDateString()}</td>
+                        <td>
+                          <span className="status-badge status-pending">{t('offers.warehouse.statusPending')}</span>
+                        </td>
+                        <td>
+                          <div className="adm-row-actions">
+                            <button
+                              className="btn-approve"
+                              disabled={busyId === offer.id}
+                              onClick={() => handleDecision(offer, 'approve')}
+                            >
+                              {t('common.approve')}
+                            </button>
+                            <button
+                              className="btn-reject"
+                              disabled={busyId === offer.id}
+                              onClick={() => handleDecision(offer, 'reject')}
+                            >
+                              {t('common.reject')}
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <LoadMoreControl
+                hasMore={hasMore}
+                isLoadingMore={isLoadingMore}
+                onLoadMore={loadMore}
+                pageSize={PAGE_SIZE}
+              />
+            </>
           )}
         </>
       )}

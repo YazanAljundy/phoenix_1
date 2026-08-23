@@ -27,6 +27,7 @@ function resolveCorsOrigin() {
     return callback(new Error('Not allowed by CORS'));
   };
 }
+app.set('trust proxy', 1);
 app.use(helmet());
 app.use(
   cors({

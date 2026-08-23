@@ -31,6 +31,50 @@ async function listPendingOffers() {
   }));
 }
 
+const ADMIN_OFFERS_DEFAULT_LIMIT = 20;
+
+// The Offers management page (unlike listPendingOffers above - still used
+// as-is by the Dashboard's stat card/recent-list, which needs every pending
+// offer at once) wants "Load more" with a "Pending (N)" pill that stays
+// accurate regardless of pagination - same oldest-first order as before (an
+// ObjectId's embedded timestamp makes `_id` ascending equivalent to
+// `createdAt` ascending).
+async function listPaginatedPendingOffers({ limit = ADMIN_OFFERS_DEFAULT_LIMIT, after = null } = {}) {
+  const filter = { status: 'pending' };
+  if (after !== null) {
+    filter._id = { $gt: after };
+  }
+
+  const [offers, totalCount] = await Promise.all([
+    Offer.find(filter).sort({ _id: 1 }).limit(limit + 1),
+    Offer.countDocuments({ status: 'pending' }),
+  ]);
+  const hasMore = offers.length > limit;
+  const page = hasMore ? offers.slice(0, limit) : offers;
+  const nextCursor = page.length > 0 ? String(page[page.length - 1]._id) : null;
+
+  if (page.length === 0) return { rows: [], hasMore: false, nextCursor: null, totalCount };
+
+  const productIds = [...new Set(page.map((o) => o.productId.toString()))];
+  const warehouseIds = [...new Set(page.map((o) => o.warehouseId.toString()))];
+
+  const [products, warehouses] = await Promise.all([
+    Product.find({ _id: { $in: productIds } }).populate('masterProductId'),
+    Warehouse.find({ _id: { $in: warehouseIds } }),
+  ]);
+  products.forEach(applyResolvedIdentity);
+  const productById = new Map(products.map((p) => [p._id.toString(), p]));
+  const warehouseById = new Map(warehouses.map((w) => [w._id.toString(), w]));
+
+  const rows = page.map((offer) => ({
+    offer,
+    product: productById.get(offer.productId.toString()) ?? null,
+    warehouse: warehouseById.get(offer.warehouseId.toString()) ?? null,
+  }));
+
+  return { rows, hasMore, nextCursor, totalCount };
+}
+
 async function findPendingOfferOrThrow(offerId) {
   if (!mongoose.Types.ObjectId.isValid(offerId)) {
     throw ApiError.notFound('Offer not found.', 'OFFER_NOT_FOUND');
@@ -87,4 +131,4 @@ async function rejectOffer(offerId) {
   await offer.deleteOne();
 }
 
-module.exports = { listPendingOffers, approveOffer, rejectOffer };
+module.exports = { listPendingOffers, listPaginatedPendingOffers, approveOffer, rejectOffer };

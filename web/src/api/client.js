@@ -132,7 +132,16 @@ export const api = {
     request(`/warehouse/products/${productId}`, { method: 'PATCH', body: changes }),
   warehouseOffers: () => request('/warehouse/offers'),
   createWarehouseOffer: (data) => request('/warehouse/offers', { method: 'POST', body: data }),
-  pendingOffers: () => request('/admin/offers'),
+  // No args: every pending offer - used by the Dashboard's stat card/recent
+  // list. Pass { limit, after } for the Offers management page's own
+  // paginated view.
+  pendingOffers: ({ limit, after } = {}) => {
+    const params = new URLSearchParams();
+    if (limit) params.set('limit', limit);
+    if (after) params.set('after', after);
+    const qs = params.toString();
+    return request(`/admin/offers${qs ? `?${qs}` : ''}`);
+  },
   approveOffer: (offerId) => request(`/admin/offers/${offerId}/approve`, { method: 'POST' }),
   rejectOffer: (offerId) => request(`/admin/offers/${offerId}/reject`, { method: 'POST' }),
   // No args: the full list - used by WarehouseOrderDetailPage's "does this
@@ -203,8 +212,17 @@ export const api = {
   createWarehouseBanner: (formData) => requestFormData('/warehouse/banners', formData),
   updateWarehouseBanner: (id, changes) => request(`/warehouse/banners/${id}`, { method: 'PATCH', body: changes }),
   deleteWarehouseBanner: (id) => request(`/warehouse/banners/${id}`, { method: 'DELETE' }),
-  adminBanners: (status) =>
-    request(`/admin/banners${status ? `?status=${encodeURIComponent(status)}` : ''}`),
+  // No `limit`: the full bucket for the given status - used by the
+  // Dashboard's pending-count. Pass { status, limit, after } for the
+  // Banners management page's own paginated view (status='all').
+  adminBanners: (status, { limit, after } = {}) => {
+    const params = new URLSearchParams();
+    if (status) params.set('status', status);
+    if (limit) params.set('limit', limit);
+    if (after) params.set('after', after);
+    const qs = params.toString();
+    return request(`/admin/banners${qs ? `?${qs}` : ''}`);
+  },
   createAdminBanner: (formData) => requestFormData('/admin/banners', formData),
   approveBanner: (bannerId) => request(`/admin/banners/${bannerId}/approve`, { method: 'PATCH' }),
   rejectBanner: (bannerId, rejectionNote) =>

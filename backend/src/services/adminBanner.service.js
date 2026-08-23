@@ -67,6 +67,50 @@ async function listBanners(status) {
   }));
 }
 
+const ADMIN_BANNERS_DEFAULT_LIMIT = 20;
+
+// The Banners management page (unlike listBanners above - still used as-is
+// by the Dashboard's pending-count and by this same function's own
+// unpaginated default) wants "Load more" over the unfiltered ('all') view.
+// Same status/sort rules as listBanners, just with a cursor - an ObjectId's
+// embedded timestamp makes `_id` ascending/descending equivalent to the
+// `createdAt` ascending/descending choice above.
+async function listPaginatedBanners(status, { limit = ADMIN_BANNERS_DEFAULT_LIMIT, after = null } = {}) {
+  const filter = !status || status === 'pending' ? { status: 'pending' } : status === 'all' ? {} : { status };
+  const newestFirst = Boolean(status) && status !== 'pending';
+
+  if (after !== null) {
+    filter._id = newestFirst ? { $lt: after } : { $gt: after };
+  }
+
+  const banners = await Banner.find(filter)
+    .sort({ _id: newestFirst ? -1 : 1 })
+    .limit(limit + 1);
+  const hasMore = banners.length > limit;
+  const page = hasMore ? banners.slice(0, limit) : banners;
+  const nextCursor = page.length > 0 ? String(page[page.length - 1]._id) : null;
+
+  if (page.length === 0) return { rows: [], hasMore: false, nextCursor: null };
+
+  const warehouseIds = [...new Set(page.filter((b) => b.warehouseId).map((b) => b.warehouseId.toString()))];
+  const productIds = [...new Set(page.filter((b) => b.productId).map((b) => b.productId.toString()))];
+  const [warehouses, products] = await Promise.all([
+    Warehouse.find({ _id: { $in: warehouseIds } }),
+    Product.find({ _id: { $in: productIds } }).populate('masterProductId'),
+  ]);
+  products.forEach(applyResolvedIdentity);
+  const warehouseById = new Map(warehouses.map((w) => [w._id.toString(), w]));
+  const productById = new Map(products.map((p) => [p._id.toString(), p]));
+
+  const rows = page.map((banner) => ({
+    banner,
+    warehouse: banner.warehouseId ? (warehouseById.get(banner.warehouseId.toString()) ?? null) : null,
+    product: banner.productId ? (productById.get(banner.productId.toString()) ?? null) : null,
+  }));
+
+  return { rows, hasMore, nextCursor };
+}
+
 // Section: the admin publishes straight to 'approved' - no self-moderation
 // step, unlike a warehouse's banner. warehouseId stays null (the model's own
 // marker for "the admin's own banner, not tied to any one warehouse").
@@ -178,4 +222,12 @@ async function updateBanner(bannerId, { startDate, endDate, title }) {
   return banner;
 }
 
-module.exports = { listBanners, createAdminBanner, approveBanner, rejectBanner, deleteBanner, updateBanner };
+module.exports = {
+  listBanners,
+  listPaginatedBanners,
+  createAdminBanner,
+  approveBanner,
+  rejectBanner,
+  deleteBanner,
+  updateBanner,
+};

@@ -4,11 +4,31 @@ const { ApiError } = require('../utils/ApiError');
 const adminBannerService = require('../services/adminBanner.service');
 const adminBannerViewModel = require('../viewmodels/adminBanner.viewmodel');
 const { verifyImageMagicBytes } = require('../middlewares/upload.middleware');
+const { parseCursorQuery, parseObjectIdCursor, paginationMeta } = require('../utils/pagination');
 
+// Two shapes on one endpoint: the Dashboard's pending-count calls this with
+// no `limit` (status='pending') and needs the full bucket - only the
+// Banners management page opts into pagination (status='all' + limit/after).
 const list = asyncHandler(async (req, res) => {
   const status = typeof req.query.status === 'string' ? req.query.status : undefined;
-  const rows = await adminBannerService.listBanners(status);
-  res.json({ success: true, ...adminBannerViewModel.toAdminBannersResponse(rows) });
+
+  if (req.query.limit === undefined) {
+    const rows = await adminBannerService.listBanners(status);
+    res.json({ success: true, ...adminBannerViewModel.toAdminBannersResponse(rows) });
+    return;
+  }
+
+  const { limit, after } = parseCursorQuery(req.query, 20);
+  const cursor = parseObjectIdCursor(after);
+  const { rows, hasMore, nextCursor } = await adminBannerService.listPaginatedBanners(status, {
+    limit,
+    after: cursor,
+  });
+  res.json({
+    success: true,
+    ...adminBannerViewModel.toAdminBannersResponse(rows),
+    pagination: paginationMeta(hasMore, nextCursor),
+  });
 });
 
 const create = asyncHandler(async (req, res) => {
