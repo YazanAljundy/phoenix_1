@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../api/client';
+import { LoadMoreControl } from '../components/LoadMoreControl';
+import { usePaginatedData } from '../hooks/usePaginatedData';
+
+const PAGE_SIZE = 20;
 
 function accountName(account) {
   return account.pharmacy?.nameEn || account.warehouse?.nameEn || account.user.name;
@@ -12,29 +16,44 @@ function accountCity(account) {
 
 export function PendingAccountsPage() {
   const { t } = useTranslation();
-  const [accounts, setAccounts] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [busyId, setBusyId] = useState(null);
+  const [actionError, setActionError] = useState(null);
   const [activeRole, setActiveRole] = useState('pharmacy');
   const [lightboxUrl, setLightboxUrl] = useState(null);
+  // The tab counts must stay accurate for both roles at once, independent of
+  // which tab is loaded/paginated - the backend returns both on every
+  // request, regardless of which role was asked for.
+  const [pharmacyCount, setPharmacyCount] = useState(0);
+  const [warehouseCount, setWarehouseCount] = useState(0);
 
-  const load = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const data = await api.pendingAccounts();
-      setAccounts(data.accounts);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const fetchPage = useCallback(
+    (cursor) =>
+      api.pendingAccounts({ role: activeRole, limit: PAGE_SIZE, after: cursor }).then((data) => {
+        setPharmacyCount(data.pharmacyCount);
+        setWarehouseCount(data.warehouseCount);
+        return {
+          rows: data.accounts,
+          hasMore: data.pagination.hasMore,
+          nextCursor: data.pagination.nextCursor,
+        };
+      }),
+    [activeRole]
+  );
+
+  const {
+    data: visibleAccounts,
+    isLoading,
+    isLoadingMore,
+    hasMore,
+    error,
+    loadMore,
+    reset,
+  } = usePaginatedData(fetchPage);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    reset();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeRole]);
 
   const handleDecision = async (account, action) => {
     const confirmed = window.confirm(
@@ -46,24 +65,20 @@ export function PendingAccountsPage() {
     if (!confirmed) return;
 
     setBusyId(account.user.id);
-    setError(null);
+    setActionError(null);
     try {
       if (action === 'approve') {
         await api.approveAccount(account.user.id);
       } else {
         await api.rejectAccount(account.user.id);
       }
-      setAccounts((prev) => prev.filter((a) => a.user.id !== account.user.id));
+      reset();
     } catch (err) {
-      setError(err.message);
+      setActionError(err.message);
     } finally {
       setBusyId(null);
     }
   };
-
-  const pharmacyAccounts = accounts.filter((a) => a.user.role === 'pharmacy');
-  const warehouseAccounts = accounts.filter((a) => a.user.role === 'warehouse');
-  const visibleAccounts = activeRole === 'pharmacy' ? pharmacyAccounts : warehouseAccounts;
 
   return (
     <div>
@@ -71,7 +86,7 @@ export function PendingAccountsPage() {
         <h1>{t('nav.pendingAccounts')}</h1>
       </div>
 
-      {error && <p className="error-text">{error}</p>}
+      {(error || actionError) && <p className="error-text">{error || actionError}</p>}
 
       {isLoading ? (
         <p className="hint">{t('common.loading')}</p>
@@ -83,14 +98,14 @@ export function PendingAccountsPage() {
               className={`adm-pill${activeRole === 'pharmacy' ? ' active' : ''}`}
               onClick={() => setActiveRole('pharmacy')}
             >
-              {t('admin.pendingAccounts.pharmaciesTab', { count: pharmacyAccounts.length })}
+              {t('admin.pendingAccounts.pharmaciesTab', { count: pharmacyCount })}
             </button>
             <button
               type="button"
               className={`adm-pill${activeRole === 'warehouse' ? ' active' : ''}`}
               onClick={() => setActiveRole('warehouse')}
             >
-              {t('admin.pendingAccounts.warehousesTab', { count: warehouseAccounts.length })}
+              {t('admin.pendingAccounts.warehousesTab', { count: warehouseCount })}
             </button>
           </div>
 
@@ -167,6 +182,12 @@ export function PendingAccountsPage() {
                 </table>
               </div>
               {activeRole === 'pharmacy' && <p className="adm-table-hint">{t('admin.pendingAccounts.photoHint')}</p>}
+              <LoadMoreControl
+                hasMore={hasMore}
+                isLoadingMore={isLoadingMore}
+                onLoadMore={loadMore}
+                pageSize={PAGE_SIZE}
+              />
             </>
           )}
         </>
