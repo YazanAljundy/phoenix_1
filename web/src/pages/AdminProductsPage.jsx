@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../api/client';
 import {
@@ -7,9 +7,13 @@ import {
   productAvailabilityLabel,
   productFormFromProduct,
 } from '../components/ProductFormModal';
+import { LoadMoreControl } from '../components/LoadMoreControl';
+import { usePaginatedData } from '../hooks/usePaginatedData';
 import { useExchangeRate } from '../context/ExchangeRateContext';
 import { formatPriceWithSyp } from '../utils/currency';
 import { withArFallback } from '../utils/displayName';
+
+const PAGE_SIZE = 30;
 
 // Section 13c: admin oversight across every warehouse's catalog - edit or
 // deactivate only, never create (creating a product stays exclusively the
@@ -18,62 +22,63 @@ import { withArFallback } from '../utils/displayName';
 export function AdminProductsPage() {
   const { t } = useTranslation();
   const usdToSyp = useExchangeRate();
-  const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [warehouses, setWarehouses] = useState([]);
   const [warehouseFilter, setWarehouseFilter] = useState('');
+  const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [editingProduct, setEditingProduct] = useState(null);
   const [busyId, setBusyId] = useState(null);
-
-  const load = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const [productsData, categoriesData] = await Promise.all([
-        api.adminProducts(),
-        api.categories(),
-      ]);
-      setProducts(productsData.products);
-      setCategories(categoriesData.categories);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const [actionError, setActionError] = useState(null);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    api.categories().then((data) => setCategories(data.categories));
+    api.adminProductWarehouses().then((data) => setWarehouses(data.warehouses));
+  }, []);
 
-  const warehouses = useMemo(() => {
-    const seen = new Map();
-    for (const product of products) {
-      if (!seen.has(product.warehouseId)) {
-        seen.set(product.warehouseId, product.warehouseNameEn);
-      }
-    }
-    return [...seen.entries()];
-  }, [products]);
+  // Debounced so typing doesn't fire a request per keystroke - the search
+  // itself now runs server-side (a linked product's real name lives on its
+  // catalog entry, not the product doc, see listPaginatedAllProducts).
+  useEffect(() => {
+    const timeout = setTimeout(() => setSearchQuery(searchInput.trim()), 300);
+    return () => clearTimeout(timeout);
+  }, [searchInput]);
 
-  // Client-side only, over the already-fetched full list - no new request,
-  // same as the warehouse filter above.
-  const query = searchQuery.trim().toLowerCase();
-  const visibleProducts = products.filter((product) => {
-    if (warehouseFilter && product.warehouseId !== warehouseFilter) return false;
-    if (!query) return true;
-    const haystack = [product.nameEn, product.nameAr, product.manufacturerEn, product.manufacturerAr]
-      .filter(Boolean)
-      .join(' ')
-      .toLowerCase();
-    return haystack.includes(query);
-  });
+  const fetchPage = useCallback(
+    (cursor) =>
+      api
+        .adminProducts({
+          search: searchQuery || undefined,
+          warehouseId: warehouseFilter || undefined,
+          limit: PAGE_SIZE,
+          after: cursor,
+        })
+        .then((data) => ({
+          rows: data.products,
+          hasMore: data.pagination.hasMore,
+          nextCursor: data.pagination.nextCursor,
+        })),
+    [searchQuery, warehouseFilter]
+  );
+
+  const {
+    data: products,
+    isLoading,
+    isLoadingMore,
+    hasMore,
+    error,
+    loadMore,
+    reset,
+  } = usePaginatedData(fetchPage);
+
+  useEffect(() => {
+    reset();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery, warehouseFilter]);
 
   const handleSaved = () => {
     setEditingProduct(null);
-    load();
+    reset();
   };
 
   const handleDelete = async (product) => {
@@ -86,12 +91,12 @@ export function AdminProductsPage() {
     if (!confirmed) return;
 
     setBusyId(product.id);
-    setError(null);
+    setActionError(null);
     try {
       await api.deleteAdminProduct(product.id);
-      await load();
+      reset();
     } catch (err) {
-      setError(err.message);
+      setActionError(err.message);
     } finally {
       setBusyId(null);
     }
@@ -110,9 +115,9 @@ export function AdminProductsPage() {
           onChange={(e) => setWarehouseFilter(e.target.value)}
         >
           <option value="">{t('products.allWarehouses')}</option>
-          {warehouses.map(([id, name]) => (
-            <option key={id} value={id}>
-              {name}
+          {warehouses.map((warehouse) => (
+            <option key={warehouse.id} value={warehouse.id}>
+              {warehouse.nameEn}
             </option>
           ))}
         </select>
@@ -120,16 +125,16 @@ export function AdminProductsPage() {
           type="text"
           className="adm-filter-search"
           placeholder={t('products.searchByNamePlaceholder')}
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
         />
       </div>
 
-      {error && <p className="error-text">{error}</p>}
+      {(error || actionError) && <p className="error-text">{error || actionError}</p>}
 
       {isLoading ? (
         <p className="hint">{t('common.loading')}</p>
-      ) : visibleProducts.length === 0 ? (
+      ) : products.length === 0 ? (
         <div className="adm-empty-state">
           <div className="adm-empty-state-icon">&#128138;</div>
           <div className="adm-empty-state-title">{t('products.noProductsAdmin')}</div>
@@ -149,7 +154,7 @@ export function AdminProductsPage() {
                 </tr>
               </thead>
               <tbody>
-                {visibleProducts.map((product) => (
+                {products.map((product) => (
                   <tr key={product.id} className={product.isActive ? '' : 'row-inactive'}>
                     <td>{withArFallback(product.nameEn, product.nameAr)}</td>
                     <td>{product.warehouseNameEn}</td>
@@ -186,6 +191,12 @@ export function AdminProductsPage() {
             </table>
           </div>
           <p className="adm-table-hint">{t('products.adminEditHint')}</p>
+          <LoadMoreControl
+            hasMore={hasMore}
+            isLoadingMore={isLoadingMore}
+            onLoadMore={loadMore}
+            pageSize={PAGE_SIZE}
+          />
         </>
       )}
 

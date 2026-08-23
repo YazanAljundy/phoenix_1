@@ -167,7 +167,19 @@ export const api = {
   },
   ratePharmacy: (orderId, rating, comment) =>
     request('/warehouse/reviews', { method: 'POST', body: { orderId, rating, comment } }),
-  adminProducts: () => request('/admin/products'),
+  // No args: every product - used by the Dashboard's count and the Banners
+  // composer's product picker. Pass { search, warehouseId, limit, after }
+  // for the Products management page's own paginated, filtered view.
+  adminProducts: ({ search, warehouseId, limit, after } = {}) => {
+    const params = new URLSearchParams();
+    if (search) params.set('search', search);
+    if (warehouseId) params.set('warehouseId', warehouseId);
+    if (limit) params.set('limit', limit);
+    if (after) params.set('after', after);
+    const qs = params.toString();
+    return request(`/admin/products${qs ? `?${qs}` : ''}`);
+  },
+  adminProductWarehouses: () => request('/admin/products/warehouses'),
   updateAdminProduct: (productId, changes) =>
     request(`/admin/products/${productId}`, { method: 'PATCH', body: changes }),
   deleteAdminProduct: (productId) => request(`/admin/products/${productId}`, { method: 'DELETE' }),

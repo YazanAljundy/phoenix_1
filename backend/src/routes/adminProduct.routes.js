@@ -7,6 +7,7 @@ const router = Router();
 router.use(authenticate, authorize('admin'));
 
 router.get('/', controller.list);
+router.get('/warehouses', controller.listWarehouses);
 router.patch('/:id', controller.update);
 router.delete('/:id', controller.deactivate);
 
