@@ -2890,3 +2890,66 @@ input {
   display: flex;
   gap: 10px;
 }
+
+/* — new-warehouse credentials panel — */
+
+.adm-credentials-panel {
+  background: #fff;
+  border: 1px solid var(--adm-border);
+  border-top: 3px solid var(--adm-green);
+  padding: 18px 20px;
+  margin-bottom: 16px;
+}
+
+.adm-credentials-title {
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--adm-green);
+  margin-bottom: 14px;
+}
+
+.adm-credentials-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+@media (max-width: 600px) {
+  .adm-credentials-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.adm-credentials-label {
+  font-weight: 600;
+  font-size: 12px;
+  color: #5a6b87;
+  margin-bottom: 4px;
+}
+
+/* Selectable on purpose: this is the one moment the password is readable, and
+   the admin has to be able to highlight it by hand if the copy button is
+   blocked (insecure context / denied clipboard permission). */
+.adm-credentials-value {
+  padding: 10px 12px;
+  border: 1px solid var(--adm-border);
+  background: var(--adm-bg);
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--adm-text);
+  user-select: all;
+  overflow-wrap: anywhere;
+}
+
+.adm-credentials-hint {
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--adm-text-secondary);
+  margin-bottom: 14px;
+}
+
+.adm-credentials-actions {
+  display: flex;
+  gap: 8px;
+}

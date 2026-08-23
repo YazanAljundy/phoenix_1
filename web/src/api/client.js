@@ -101,6 +101,7 @@ export const api = {
     const qs = params.toString();
     return request(`/admin/pending-accounts${qs ? `?${qs}` : ''}`);
   },
+  createAdminWarehouse: (data) => request('/admin/warehouses', { method: 'POST', body: data }),
   approveAccount: (userId) => request(`/admin/accounts/${userId}/approve`, { method: 'POST' }),
   rejectAccount: (userId) => request(`/admin/accounts/${userId}/reject`, { method: 'POST' }),
   sendAdminNotification: ({ titleAr, titleEn, bodyAr, bodyEn }) =>
@@ -187,8 +188,14 @@ export const api = {
   adminExchangeRate: () => request('/admin/exchange-rate'),
   setExchangeRate: (usdToSyp) => request('/admin/exchange-rate', { method: 'PATCH', body: { usdToSyp } }),
   resetExchangeRate: () => request('/admin/exchange-rate/reset', { method: 'PATCH' }),
-  adminCatalog: (search) =>
-    request(`/admin/catalog${search ? `?q=${encodeURIComponent(search)}` : ''}`),
+  adminCatalog: ({ search, limit, after } = {}) => {
+    const params = new URLSearchParams();
+    if (search) params.set('q', search);
+    if (limit) params.set('limit', limit);
+    if (after) params.set('after', after);
+    const qs = params.toString();
+    return request(`/admin/catalog${qs ? `?${qs}` : ''}`);
+  },
   downloadCatalogTemplate: () => requestBlob('/admin/catalog/template'),
   importCatalogExcel: (file) => requestUpload('/admin/catalog/import', file),
   updateCatalogItem: (id, changes) => request(`/admin/catalog/${id}`, { method: 'PATCH', body: changes }),

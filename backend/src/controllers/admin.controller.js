@@ -44,6 +44,22 @@ const rejectAccount = asyncHandler(async (req, res) => {
   res.json({ success: true, message: 'Account rejected.' });
 });
 
+// The response deliberately carries no password - not even the one just
+// submitted. The admin panel already has the plaintext it typed and shows it
+// once locally; echoing it back would put it in server logs/proxies for no
+// gain.
+const createWarehouse = asyncHandler(async (req, res) => {
+  const { user, warehouse } = await adminService.createWarehouseAccount(req.body);
+  res.status(201).json({
+    success: true,
+    message: 'Warehouse created.',
+    userId: user._id,
+    warehouseId: warehouse._id,
+    phone: user.phone,
+    nameAr: warehouse.nameAr,
+  });
+});
+
 const broadcastNotification = asyncHandler(async (req, res) => {
   const { titleAr, titleEn, bodyAr, bodyEn } = req.body;
   const recipientCount = await adminService.broadcastNotification({
@@ -56,4 +72,10 @@ const broadcastNotification = asyncHandler(async (req, res) => {
   res.json({ success: true, message: 'Notification sent.', recipientCount });
 });
 
-module.exports = { listPendingAccounts, approveAccount, rejectAccount, broadcastNotification };
+module.exports = {
+  listPendingAccounts,
+  approveAccount,
+  rejectAccount,
+  createWarehouse,
+  broadcastNotification,
+};

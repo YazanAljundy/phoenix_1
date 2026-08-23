@@ -6,6 +6,17 @@ import { usePaginatedData } from '../hooks/usePaginatedData';
 
 const PAGE_SIZE = 20;
 
+const EMPTY_WAREHOUSE_FORM = {
+  ownerName: '',
+  phone: '',
+  password: '',
+  nameAr: '',
+  nameEn: '',
+  city: '',
+  address: '',
+  deliveryType: 'self',
+};
+
 function accountName(account) {
   return account.pharmacy?.nameEn || account.warehouse?.nameEn || account.user.name;
 }
@@ -14,12 +25,194 @@ function accountCity(account) {
   return account.pharmacy?.city || account.warehouse?.city || '-';
 }
 
+// Section 7: the admin onboarding a warehouse directly, as opposed to
+// approving one that self-registered (the table below). The account comes
+// back already active, so there's no second approval step - it never lands
+// in the pending queue at all.
+//
+// The password is only ever held here in the admin's own browser: the create
+// response deliberately doesn't echo it back (see admin.controller.js), so
+// `onCreated` hands the typed value straight to the success panel. Once that
+// panel is dismissed it's unrecoverable, which is why the panel says so.
+function NewWarehouseModal({ onClose, onCreated }) {
+  const { t } = useTranslation();
+  const [form, setForm] = useState(EMPTY_WAREHOUSE_FORM);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  const setField = (field, value) => setForm((prev) => ({ ...prev, [field]: value }));
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setError(null);
+
+    const required = ['ownerName', 'phone', 'password', 'nameAr', 'city', 'address'];
+    if (required.some((field) => !form[field].trim())) {
+      setError(t('common.requiredFields'));
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const created = await api.createAdminWarehouse({
+        ownerName: form.ownerName.trim(),
+        phone: form.phone.trim(),
+        password: form.password,
+        nameAr: form.nameAr.trim(),
+        nameEn: form.nameEn.trim() || undefined,
+        city: form.city.trim(),
+        address: form.address.trim(),
+        deliveryType: form.deliveryType,
+      });
+      onCreated({ nameAr: created.nameAr, phone: created.phone, password: form.password });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={(event) => event.stopPropagation()}>
+        <h2>{t('admin.newWarehouse.modalTitle')}</h2>
+        <p className="hint">{t('admin.newWarehouse.modalHint')}</p>
+        <form onSubmit={handleSubmit} className="product-form">
+          <label>
+            {t('admin.newWarehouse.ownerNameLabel')}
+            <input value={form.ownerName} onChange={(e) => setField('ownerName', e.target.value)} required />
+          </label>
+          <div className="form-row">
+            <label>
+              {t('admin.newWarehouse.phoneLabel')}
+              <input
+                value={form.phone}
+                onChange={(e) => setField('phone', e.target.value)}
+                dir="ltr"
+                required
+              />
+            </label>
+            <label>
+              {t('admin.newWarehouse.passwordLabel')}
+              <input
+                value={form.password}
+                onChange={(e) => setField('password', e.target.value)}
+                dir="ltr"
+                required
+              />
+            </label>
+          </div>
+          <p className="hint">{t('admin.newWarehouse.passwordHint')}</p>
+          <div className="form-row">
+            <label>
+              {t('admin.newWarehouse.nameArLabel')}
+              <input
+                value={form.nameAr}
+                onChange={(e) => setField('nameAr', e.target.value)}
+                dir="rtl"
+                required
+              />
+            </label>
+            <label>
+              {t('admin.newWarehouse.nameEnLabel')}
+              <input value={form.nameEn} onChange={(e) => setField('nameEn', e.target.value)} dir="ltr" />
+            </label>
+          </div>
+          <div className="form-row">
+            <label>
+              {t('admin.newWarehouse.cityLabel')}
+              <input value={form.city} onChange={(e) => setField('city', e.target.value)} required />
+            </label>
+            <label>
+              {t('admin.newWarehouse.addressLabel')}
+              <input value={form.address} onChange={(e) => setField('address', e.target.value)} required />
+            </label>
+          </div>
+          <label>
+            {t('admin.newWarehouse.deliveryTypeLabel')}
+            <select value={form.deliveryType} onChange={(e) => setField('deliveryType', e.target.value)}>
+              <option value="self">{t('admin.newWarehouse.deliverySelf')}</option>
+              <option value="third_party">{t('admin.newWarehouse.deliveryThirdParty')}</option>
+            </select>
+          </label>
+
+          {error && <p className="error-text">{error}</p>}
+
+          <div className="modal-actions">
+            <button type="button" className="btn-secondary" onClick={onClose}>
+              {t('common.cancel')}
+            </button>
+            <button type="submit" className="btn-primary" disabled={isSaving}>
+              {isSaving ? t('admin.newWarehouse.creating') : t('admin.newWarehouse.submit')}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// Shown on the page (not in the modal) once creation succeeds, so the
+// credentials stay readable while the admin copies them out. Plain selectable
+// text, never a masked field - the admin has to be able to read this to pass
+// it on, and it's the only time the password is ever visible.
+function NewWarehouseSuccess({ credentials, onDismiss }) {
+  const { t } = useTranslation();
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    const text = `${t('admin.newWarehouse.credentialsPhone')}: ${credentials.phone}\n${t('admin.newWarehouse.credentialsPassword')}: ${credentials.password}`;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard access can be blocked (insecure context, denied
+      // permission) - the credentials are plainly visible and selectable
+      // above regardless, so there's nothing to recover from here.
+    }
+  };
+
+  return (
+    <div className="adm-credentials-panel">
+      <div className="adm-credentials-title">
+        {t('admin.newWarehouse.successTitle')} &mdash; {credentials.nameAr}
+      </div>
+      <div className="adm-credentials-grid">
+        <div>
+          <div className="adm-credentials-label">{t('admin.newWarehouse.credentialsPhone')}</div>
+          <div className="adm-credentials-value" dir="ltr">
+            {credentials.phone}
+          </div>
+        </div>
+        <div>
+          <div className="adm-credentials-label">{t('admin.newWarehouse.credentialsPassword')}</div>
+          <div className="adm-credentials-value" dir="ltr">
+            {credentials.password}
+          </div>
+        </div>
+      </div>
+      <div className="adm-credentials-hint">{t('admin.newWarehouse.successHint')}</div>
+      <div className="adm-credentials-actions">
+        <button type="button" className="adm-row-action" onClick={handleCopy}>
+          {copied ? t('admin.newWarehouse.copied') : t('admin.newWarehouse.copyCredentials')}
+        </button>
+        <button type="button" className="adm-row-action" onClick={onDismiss}>
+          {t('admin.newWarehouse.done')}
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export function PendingAccountsPage() {
   const { t } = useTranslation();
   const [busyId, setBusyId] = useState(null);
   const [actionError, setActionError] = useState(null);
   const [activeRole, setActiveRole] = useState('pharmacy');
   const [lightboxUrl, setLightboxUrl] = useState(null);
+  const [showNewWarehouse, setShowNewWarehouse] = useState(false);
+  const [newWarehouseCredentials, setNewWarehouseCredentials] = useState(null);
   // The tab counts must stay accurate for both roles at once, independent of
   // which tab is loaded/paginated - the backend returns both on every
   // request, regardless of which role was asked for.
@@ -84,7 +277,19 @@ export function PendingAccountsPage() {
     <div>
       <div className="adm-page-head">
         <h1>{t('nav.pendingAccounts')}</h1>
+        <div className="adm-page-head-actions">
+          <button className="btn-primary" onClick={() => setShowNewWarehouse(true)}>
+            {t('admin.newWarehouse.button')}
+          </button>
+        </div>
       </div>
+
+      {newWarehouseCredentials && (
+        <NewWarehouseSuccess
+          credentials={newWarehouseCredentials}
+          onDismiss={() => setNewWarehouseCredentials(null)}
+        />
+      )}
 
       {(error || actionError) && <p className="error-text">{error || actionError}</p>}
 
@@ -197,6 +402,16 @@ export function PendingAccountsPage() {
         <div className="modal-overlay" onClick={() => setLightboxUrl(null)}>
           <img src={lightboxUrl} alt="Verification" className="return-photo-lightbox-image" />
         </div>
+      )}
+
+      {showNewWarehouse && (
+        <NewWarehouseModal
+          onClose={() => setShowNewWarehouse(false)}
+          onCreated={(credentials) => {
+            setShowNewWarehouse(false);
+            setNewWarehouseCredentials(credentials);
+          }}
+        />
       )}
     </div>
   );

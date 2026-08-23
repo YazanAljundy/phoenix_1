@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../api/client';
+import { LoadMoreControl } from '../components/LoadMoreControl';
+import { usePaginatedData } from '../hooks/usePaginatedData';
+
+const PAGE_SIZE = 30;
 
 // Section: edits exactly the 4 fields updateCatalogItem actually accepts
 // (nameAr/unitAr/categoryId/isActive) - see productCatalog.service.js. The
@@ -152,46 +156,45 @@ function ImportResultModal({ report, fileName, onClose }) {
 // the backend (no POST /admin/catalog, see adminCatalog.routes.js).
 export function AdminCatalogPage() {
   const { t } = useTranslation();
-  const [items, setItems] = useState([]);
   const [categories, setCategories] = useState([]);
   const [search, setSearch] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [busyId, setBusyId] = useState(null);
+  const [actionError, setActionError] = useState(null);
   const [isImporting, setIsImporting] = useState(false);
   const [importReport, setImportReport] = useState(null);
   const [importFileName, setImportFileName] = useState('');
   const [editingItem, setEditingItem] = useState(null);
   const fileInputRef = useRef(null);
 
-  const load = useCallback(async (q) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const [catalogData, categoriesData] = await Promise.all([
-        api.adminCatalog(q),
-        api.categories(),
-      ]);
-      setItems(catalogData.items);
-      setCategories(categoriesData.categories);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
+  useEffect(() => {
+    api.categories().then((data) => setCategories(data.categories));
   }, []);
 
+  const fetchPage = useCallback(
+    (cursor) =>
+      api.adminCatalog({ search, limit: PAGE_SIZE, after: cursor }).then((data) => ({
+        rows: data.items,
+        hasMore: data.pagination.hasMore,
+        nextCursor: data.pagination.nextCursor,
+      })),
+    [search]
+  );
+
+  const { data: items, isLoading, isLoadingMore, hasMore, error, loadMore, reset } =
+    usePaginatedData(fetchPage);
+
   useEffect(() => {
-    load('');
-  }, [load]);
+    reset();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSearchSubmit = (event) => {
     event.preventDefault();
-    load(search);
+    reset();
   };
 
   const handleDownloadTemplate = async () => {
-    setError(null);
+    setActionError(null);
     try {
       const blob = await api.downloadCatalogTemplate();
       const url = URL.createObjectURL(blob);
@@ -203,7 +206,7 @@ export function AdminCatalogPage() {
       link.remove();
       URL.revokeObjectURL(url);
     } catch (err) {
-      setError(err.message);
+      setActionError(err.message);
     }
   };
 
@@ -213,15 +216,15 @@ export function AdminCatalogPage() {
     if (!file) return;
 
     setIsImporting(true);
-    setError(null);
+    setActionError(null);
     setImportReport(null);
     try {
       const report = await api.importCatalogExcel(file);
       setImportReport(report);
       setImportFileName(file.name);
-      await load(search);
+      reset();
     } catch (err) {
-      setError(err.message);
+      setActionError(err.message);
     } finally {
       setIsImporting(false);
     }
@@ -229,16 +232,16 @@ export function AdminCatalogPage() {
 
   const handleToggleActive = async (item) => {
     setBusyId(item.id);
-    setError(null);
+    setActionError(null);
     try {
       if (item.isActive) {
         await api.deactivateCatalogItem(item.id);
       } else {
         await api.updateCatalogItem(item.id, { isActive: true });
       }
-      await load(search);
+      reset();
     } catch (err) {
-      setError(err.message);
+      setActionError(err.message);
     } finally {
       setBusyId(null);
     }
@@ -246,7 +249,7 @@ export function AdminCatalogPage() {
 
   const handleEditSaved = () => {
     setEditingItem(null);
-    load(search);
+    reset();
   };
 
   return (
@@ -287,7 +290,7 @@ export function AdminCatalogPage() {
         </button>
       </form>
 
-      {error && <p className="error-text">{error}</p>}
+      {(error || actionError) && <p className="error-text">{error || actionError}</p>}
 
       {isLoading ? (
         <p className="hint">{t('common.loading')}</p>
@@ -297,47 +300,55 @@ export function AdminCatalogPage() {
           <div className="adm-empty-state-title">{t('admin.catalog.noEntries')}</div>
         </div>
       ) : (
-        <div className="adm-card table-scroll">
-          <table className="adm-table">
-            <thead>
-              <tr>
-                <th>{t('common.name')}</th>
-                <th>{t('common.manufacturer')}</th>
-                <th>{t('common.status')}</th>
-                <th>{t('admin.pendingAccounts.actionColumn')}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((item) => (
-                <tr key={item.id} className={item.isActive ? '' : 'row-inactive'}>
-                  <td>{item.nameAr}</td>
-                  <td>{item.manufacturerAr}</td>
-                  <td>
-                    <span
-                      className={`availability-badge ${item.isActive ? 'availability-available' : 'availability-paused'}`}
-                    >
-                      {item.isActive ? t('admin.catalog.active') : t('admin.catalog.disabled')}
-                    </span>
-                  </td>
-                  <td>
-                    <div className="adm-row-actions">
-                      <button className="adm-row-action" onClick={() => setEditingItem(item)}>
-                        {t('common.edit')}
-                      </button>
-                      <button
-                        className={`adm-row-action ${item.isActive ? 'adm-row-action-danger' : ''}`}
-                        disabled={busyId === item.id}
-                        onClick={() => handleToggleActive(item)}
-                      >
-                        {item.isActive ? t('admin.catalog.disable') : t('admin.catalog.enable')}
-                      </button>
-                    </div>
-                  </td>
+        <>
+          <div className="adm-card table-scroll">
+            <table className="adm-table">
+              <thead>
+                <tr>
+                  <th>{t('common.name')}</th>
+                  <th>{t('common.manufacturer')}</th>
+                  <th>{t('common.status')}</th>
+                  <th>{t('admin.pendingAccounts.actionColumn')}</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {items.map((item) => (
+                  <tr key={item.id} className={item.isActive ? '' : 'row-inactive'}>
+                    <td>{item.nameAr}</td>
+                    <td>{item.manufacturerAr}</td>
+                    <td>
+                      <span
+                        className={`availability-badge ${item.isActive ? 'availability-available' : 'availability-paused'}`}
+                      >
+                        {item.isActive ? t('admin.catalog.active') : t('admin.catalog.disabled')}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="adm-row-actions">
+                        <button className="adm-row-action" onClick={() => setEditingItem(item)}>
+                          {t('common.edit')}
+                        </button>
+                        <button
+                          className={`adm-row-action ${item.isActive ? 'adm-row-action-danger' : ''}`}
+                          disabled={busyId === item.id}
+                          onClick={() => handleToggleActive(item)}
+                        >
+                          {item.isActive ? t('admin.catalog.disable') : t('admin.catalog.enable')}
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <LoadMoreControl
+            hasMore={hasMore}
+            isLoadingMore={isLoadingMore}
+            onLoadMore={loadMore}
+            pageSize={PAGE_SIZE}
+          />
+        </>
       )}
 
       {editingItem && (
