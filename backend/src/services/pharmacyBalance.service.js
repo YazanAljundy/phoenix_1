@@ -65,17 +65,46 @@ async function recomputeBalance(pharmacyId, warehouseId) {
 // highest debt first. A balance of exactly 0 or a negative one (a credit)
 // never appears here - see the module-level notes on the two list functions
 // in this file for why negative balances are a detail-view-only concept.
-async function listDebtorsForWarehouse(warehouseId) {
-  const balances = await PharmacyBalance.find({ warehouseId, balanceUsd: { $gt: 0 } }).sort({
-    balanceUsd: -1,
-  });
-  const pharmacyIds = balances.map((b) => b.pharmacyId);
+const WAREHOUSE_DEBTORS_DEFAULT_LIMIT = 20;
+
+// balanceUsd is a live, mutable value (it moves as payments/deliveries come
+// in), not a monotonic id - unlike every other paginated list here, a plain
+// "greater/less than the last cursor" isn't enough on its own, since ties on
+// balanceUsd are possible and a single-field cursor could skip or repeat a
+// row across pages. The cursor is therefore the pair (balanceUsd, _id): "the
+// next row is either a strictly lower balance, or the same balance with a
+// higher _id" - _id only breaks ties, it carries no meaning of its own here.
+async function listPaginatedDebtorsForWarehouse(
+  warehouseId,
+  { limit = WAREHOUSE_DEBTORS_DEFAULT_LIMIT, after = null } = {}
+) {
+  const filter = { warehouseId, balanceUsd: { $gt: 0 } };
+  if (after !== null) {
+    filter.$or = [
+      { balanceUsd: { $lt: after.balanceUsd } },
+      { balanceUsd: after.balanceUsd, _id: { $gt: after.id } },
+    ];
+  }
+
+  const balances = await PharmacyBalance.find(filter)
+    .sort({ balanceUsd: -1, _id: 1 })
+    .limit(limit + 1);
+  const hasMore = balances.length > limit;
+  const page = hasMore ? balances.slice(0, limit) : balances;
+  const nextCursor =
+    page.length > 0
+      ? JSON.stringify({ balanceUsd: page[page.length - 1].balanceUsd, id: String(page[page.length - 1]._id) })
+      : null;
+
+  const pharmacyIds = page.map((b) => b.pharmacyId);
   const pharmacies = await Pharmacy.find({ _id: { $in: pharmacyIds } });
   const pharmacyById = new Map(pharmacies.map((p) => [p._id.toString(), p]));
 
-  return balances
+  const rows = page
     .map((balance) => ({ balance, pharmacy: pharmacyById.get(balance.pharmacyId.toString()) ?? null }))
     .filter((row) => row.pharmacy !== null);
+
+  return { rows, hasMore, nextCursor };
 }
 
 // Every warehouse this pharmacy currently owes (balanceUsd > 0), highest
@@ -138,7 +167,7 @@ async function getBalanceDetail(pharmacyId, warehouseId) {
 
 module.exports = {
   recomputeBalance,
-  listDebtorsForWarehouse,
+  listPaginatedDebtorsForWarehouse,
   listDebtsForPharmacy,
   getBalanceDetail,
 };

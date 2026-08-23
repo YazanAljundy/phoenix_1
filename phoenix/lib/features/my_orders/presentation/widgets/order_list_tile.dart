@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:phoenix/core/constants/app_colors.dart';
-import 'package:phoenix/core/constants/app_radius.dart';
 import 'package:phoenix/core/constants/app_sizes.dart';
 import 'package:phoenix/core/extensions/build_context_extensions.dart';
 import 'package:phoenix/core/utils/date_formatter.dart';
 import 'package:phoenix/core/widgets/custom_card.dart';
+import 'package:phoenix/core/widgets/status_badge.dart';
 import 'package:phoenix/features/cart/data/models/order_model.dart';
 import 'package:phoenix/features/cart/presentation/utils/order_status_label.dart';
 
@@ -35,13 +35,25 @@ class OrderListTile extends StatelessWidget {
                 ),
                 if (warehouseName != null) ...[
                   const SizedBox(height: AppSizes.spacingXSmall),
-                  Text(
-                    warehouseName,
-                    style: context.textTheme.bodyMedium?.copyWith(
-                      color: AppColors.textSecondaryOf(context),
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.storefront_outlined,
+                        size: 14,
+                        color: AppColors.textSecondaryOf(context),
+                      ),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          warehouseName,
+                          style: context.textTheme.bodyMedium?.copyWith(
+                            color: AppColors.textSecondaryOf(context),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
                   ),
                 ],
                 if (order.createdAt != null) ...[
@@ -60,14 +72,19 @@ class OrderListTile extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              _StatusBadge(status: order.status),
+              StatusBadge(label: orderStatusLabel(l10n, order.status), tone: _orderStatusTone(order.status)),
               const SizedBox(height: AppSizes.spacingSmall),
-              Text(
-                '${order.finalPrice} ${l10n.currencySuffix}',
-                style: context.textTheme.titleMedium?.copyWith(
-                  color: AppColors.primaryOf(context),
-                  fontWeight: FontWeight.bold,
-                ),
+              Row(
+                children: [
+                  Text(
+                    '${order.finalPrice} ${l10n.currencySuffix}',
+                    style: context.textTheme.titleMedium?.copyWith(
+                      color: AppColors.primaryOf(context),
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Icon(Icons.chevron_right, size: AppSizes.iconSizeSmall, color: AppColors.textSecondaryOf(context)),
+                ],
               ),
             ],
           ),
@@ -77,38 +94,19 @@ class OrderListTile extends StatelessWidget {
   }
 }
 
-class _StatusBadge extends StatelessWidget {
-  const _StatusBadge({required this.status});
-
-  final String status;
-
-  @override
-  Widget build(BuildContext context) {
-    final Color color;
-    switch (status) {
-      case 'delivered':
-        color = AppColors.secondaryOf(context);
-        break;
-      case 'cancelled':
-        color = AppColors.errorOf(context);
-        break;
-      default:
-        color = AppColors.primaryOf(context);
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSizes.spacingSmall,
-        vertical: AppSizes.spacingXSmall,
-      ),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: AppRadius.full,
-      ),
-      child: Text(
-        orderStatusLabel(context.l10n, status),
-        style: context.textTheme.bodySmall?.copyWith(color: color, fontWeight: FontWeight.w600),
-      ),
-    );
+// Same status-to-color grouping the order-tracking progress bar and the
+// warehouse panel already use: pending -> orange, delivered -> green,
+// cancelled -> red, everything in between (confirmed/preparing/out for
+// delivery - already in progress, not yet at a terminal state) -> navy.
+StatusBadgeTone _orderStatusTone(String status) {
+  switch (status) {
+    case 'delivered':
+      return StatusBadgeTone.success;
+    case 'cancelled':
+      return StatusBadgeTone.danger;
+    case 'pending':
+      return StatusBadgeTone.pending;
+    default:
+      return StatusBadgeTone.info;
   }
 }

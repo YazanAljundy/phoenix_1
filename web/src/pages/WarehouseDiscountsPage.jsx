@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { api } from '../api/client';
 
 // Section 15: a warehouse-set, always-on discount per manufacturer, stacked
@@ -9,6 +10,7 @@ import { api } from '../api/client';
 // imports, sticky even if a manufacturer's products are later removed - see
 // backend/src/services/warehouseManufacturer.service.js), never free text.
 export function WarehouseDiscountsPage() {
+  const { t } = useTranslation();
   const [discounts, setDiscounts] = useState([]);
   const [manufacturers, setManufacturers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -28,7 +30,12 @@ export function WarehouseDiscountsPage() {
         api.warehouseDiscounts(),
         api.warehouseManufacturers(),
       ]);
-      setDiscounts(discountsData.discounts);
+      // Newest first - the backend sorts these alphabetically by
+      // manufacturer, so sort by createdAt here rather than a plain reverse,
+      // which would just flip alphabetical order.
+      setDiscounts(
+        discountsData.discounts.slice().sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)),
+      );
       setManufacturers(manufacturersData.manufacturers);
     } catch (err) {
       setError(err.message);
@@ -53,11 +60,11 @@ export function WarehouseDiscountsPage() {
 
     const pct = Number(percentage);
     if (!selectedManufacturer) {
-      setError('Please select a manufacturer.');
+      setError(t('discounts.pleaseSelectManufacturer'));
       return;
     }
     if (!Number.isFinite(pct) || pct <= 0 || pct > 100) {
-      setError('Discount percentage must be between 1 and 100.');
+      setError(t('discounts.percentRange'));
       return;
     }
 
@@ -83,7 +90,7 @@ export function WarehouseDiscountsPage() {
     setError(null);
     const pct = Number(editPercentage);
     if (!Number.isFinite(pct) || pct <= 0 || pct > 100) {
-      setError('Discount percentage must be between 1 and 100.');
+      setError(t('discounts.percentRange'));
       return;
     }
     setBusyId(id);
@@ -99,7 +106,7 @@ export function WarehouseDiscountsPage() {
   };
 
   const handleDelete = async (discount) => {
-    const confirmed = window.confirm(`Remove the discount for "${discount.manufacturerAr}"?`);
+    const confirmed = window.confirm(t('discounts.confirmRemove', { name: discount.manufacturerAr }));
     if (!confirmed) return;
 
     setBusyId(discount.id);
@@ -116,116 +123,138 @@ export function WarehouseDiscountsPage() {
 
   return (
     <div>
-      <div className="exchange-rate-card">
-        <h2>Add a manufacturer discount</h2>
-        <form onSubmit={handleAdd} className="form-row">
-          <label>
-            Manufacturer
-            <select
-              value={selectedManufacturer}
-              onChange={(e) => setSelectedManufacturer(e.target.value)}
-              required
-            >
-              <option value="" disabled>
-                {availableManufacturers.length === 0 ? 'No manufacturers available' : 'Select a manufacturer'}
-              </option>
-              {availableManufacturers.map((name) => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Discount %
-            <input
-              type="number"
-              min="1"
-              max="100"
-              step="1"
-              value={percentage}
-              onChange={(e) => setPercentage(e.target.value)}
-              required
-            />
-          </label>
-          <button type="submit" className="btn-primary" disabled={isSaving || availableManufacturers.length === 0}>
-            {isSaving ? 'Adding...' : 'Add discount'}
-          </button>
-        </form>
+      <div className="wh-page-head">
+        <h1>{t('nav.discounts')}</h1>
       </div>
 
       {error && <p className="error-text">{error}</p>}
 
-      {isLoading ? (
-        <p className="hint">Loading...</p>
-      ) : discounts.length === 0 ? (
-        <p className="hint">No manufacturer discounts yet.</p>
-      ) : (
-        <div className="table-scroll">
-          <table className="product-table">
-            <thead>
-              <tr>
-                <th>Manufacturer</th>
-                <th>Discount</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {discounts.map((discount) => (
-                <tr key={discount.id}>
-                  <td>{discount.manufacturerAr}</td>
-                  <td>
-                    {editingId === discount.id ? (
-                      <input
-                        type="number"
-                        min="1"
-                        max="100"
-                        step="1"
-                        value={editPercentage}
-                        onChange={(e) => setEditPercentage(e.target.value)}
-                        style={{ width: 80 }}
-                      />
-                    ) : (
-                      `${discount.discountPercentage}%`
-                    )}
-                  </td>
-                  <td>
-                    <div className="table-row-actions">
-                      {editingId === discount.id ? (
-                        <>
-                          <button
-                            className="btn-secondary"
-                            disabled={busyId === discount.id}
-                            onClick={() => handleSaveEdit(discount.id)}
-                          >
-                            Save
-                          </button>
-                          <button className="btn-secondary" onClick={() => setEditingId(null)}>
-                            Cancel
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <button className="btn-secondary" onClick={() => startEdit(discount)}>
-                            Edit
-                          </button>
-                          <button
-                            className="btn-reject"
-                            disabled={busyId === discount.id}
-                            onClick={() => handleDelete(discount)}
-                          >
-                            Delete
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      <div className="wh-detail-grid">
+        <div style={{ minWidth: 0 }}>
+          {isLoading ? (
+            <p className="hint">{t('common.loading')}</p>
+          ) : discounts.length === 0 ? (
+            <div className="wh-empty-state">
+              <div className="wh-empty-state-icon">%</div>
+              <div className="wh-empty-state-title">{t('discounts.emptyTitle')}</div>
+              <div className="wh-empty-state-body">{t('discounts.emptyBody')}</div>
+            </div>
+          ) : (
+            <div className="wh-card table-scroll">
+              <table className="wh-table">
+                <thead>
+                  <tr>
+                    <th>{t('discounts.manufacturer')}</th>
+                    <th>{t('discounts.discountColumn')}</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {discounts.map((discount) => (
+                    <tr key={discount.id}>
+                      <td>{discount.manufacturerAr}</td>
+                      <td className="wh-num">
+                        {editingId === discount.id ? (
+                          <input
+                            type="number"
+                            min="1"
+                            max="100"
+                            step="1"
+                            value={editPercentage}
+                            onChange={(e) => setEditPercentage(e.target.value)}
+                            style={{ width: 80 }}
+                          />
+                        ) : (
+                          `${discount.discountPercentage}%`
+                        )}
+                      </td>
+                      <td>
+                        <div className="table-row-actions">
+                          {editingId === discount.id ? (
+                            <>
+                              <button
+                                className="btn-secondary"
+                                disabled={busyId === discount.id}
+                                onClick={() => handleSaveEdit(discount.id)}
+                              >
+                                {t('common.save')}
+                              </button>
+                              <button className="btn-secondary" onClick={() => setEditingId(null)}>
+                                {t('common.cancel')}
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button className="btn-secondary" onClick={() => startEdit(discount)}>
+                                {t('common.edit')}
+                              </button>
+                              <button
+                                className="btn-reject"
+                                disabled={busyId === discount.id}
+                                onClick={() => handleDelete(discount)}
+                              >
+                                {t('common.delete')}
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
-      )}
+
+        <div className="wh-detail-card">
+          <h2 className="wh-detail-card-title">{t('discounts.addTitle')}</h2>
+          <form onSubmit={handleAdd} className="product-form">
+            <label>
+              {t('discounts.manufacturer')}
+              <select
+                value={selectedManufacturer}
+                onChange={(e) => setSelectedManufacturer(e.target.value)}
+                required
+              >
+                <option value="" disabled>
+                  {availableManufacturers.length === 0
+                    ? t('discounts.noManufacturersAvailable')
+                    : t('discounts.selectManufacturer')}
+                </option>
+                {availableManufacturers.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              {t('discounts.discountPercent')}
+              <input
+                type="number"
+                min="1"
+                max="100"
+                step="1"
+                value={percentage}
+                onChange={(e) => setPercentage(e.target.value)}
+                required
+              />
+            </label>
+            <button
+              type="submit"
+              className="btn-primary"
+              style={{ width: '100%' }}
+              disabled={isSaving || availableManufacturers.length === 0}
+            >
+              {isSaving ? t('discounts.adding') : t('discounts.addDiscount')}
+            </button>
+          </form>
+          <p className="hint" style={{ marginTop: 14, fontSize: 12 }}>
+            {t('discounts.availableManufacturersHint')}
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

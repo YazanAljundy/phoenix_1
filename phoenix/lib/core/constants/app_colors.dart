@@ -7,31 +7,40 @@ import 'package:phoenix/core/extensions/build_context_extensions.dart';
 class AppColors {
   AppColors._();
 
-  static const Color _lightPrimary = Color(0xFFFF7A00); // orange - CTAs
-  static const Color _lightSecondary = Color(0xFF1E8E5A); // green - medical/positive
-  static const Color _lightNavy = Color(0xFF0B2545); // navy - headers
+  // Section 5's five mandatory brand colors - exact values, not approximations.
+  static const Color _lightPrimary = Color(0xFFF57C00); // orange - CTAs
+  static const Color _lightSecondary = Color(0xFF2E7D32); // green - medical/positive
+  static const Color _lightNavy = Color(0xFF1A237E); // navy - headers
   static const Color _lightBackground = Color(0xFFFFFFFF);
-  static const Color _lightSurface = Color(0xFFF6F7F9);
-  static const Color _lightBorder = Color(0xFFE0E0E0);
-  static const Color _lightError = Color(0xFFD32F2F); // red - warnings/danger
-  static const Color _lightText = Color(0xFF14213D);
-  static const Color _lightTextSecondary = Color(0xFF5A6B87);
+  static const Color _lightSurface = Color(0xFFF4F6F9);
+  static const Color _lightBorder = Color(0xFFE2E6ED);
+  static const Color _lightError = Color(0xFFC62828); // red - warnings/danger
+  static const Color _lightText = Color(0xFF14161B);
+  static const Color _lightTextSecondary = Color(0xFF5F6673);
 
-  static const Color _darkPrimary = Color(0xFFFF9142);
-  static const Color _darkSecondary = Color(0xFF4CAF7D);
-  static const Color _darkNavy = Color(0xFF13345C);
-  static const Color _darkBackground = Color(0xFF121212);
-  static const Color _darkSurface = Color(0xFF1E1E1E);
-  static const Color _darkBorder = Color(0xFF424242);
-  static const Color _darkError = Color(0xFFEF5350);
-  static const Color _darkText = Color(0xFFFFFFFF);
-  static const Color _darkTextSecondary = Color(0xFFB0B0B0);
+  // A second, whiter surface tier for content that should read as "raised"
+  // above the page (cards) rather than "recessed into" it (input fills) -
+  // both map to the same flat grey in Material's default Card/Input theming,
+  // which is why cards and fields used to look identical.
+  static const Color _lightSurfaceElevated = Color(0xFFFFFFFF);
+  static const Color _darkSurfaceElevated = Color(0xFF1C2028);
+
+  static const Color _darkPrimary = Color(0xFFFFA733);
+  static const Color _darkSecondary = Color(0xFF6FBF73);
+  static const Color _darkNavy = Color(0xFF8C97DB);
+  static const Color _darkBackground = Color(0xFF0E1014);
+  static const Color _darkSurface = Color(0xFF15181E);
+  static const Color _darkBorder = Color(0xFF2A303B);
+  static const Color _darkError = Color(0xFFF0625E);
+  static const Color _darkText = Color(0xFFECEEF3);
+  static const Color _darkTextSecondary = Color(0xFF98A0AE);
 
   static Color get lightPrimary => _lightPrimary;
   static Color get lightSecondary => _lightSecondary;
   static Color get lightNavy => _lightNavy;
   static Color get lightBackground => _lightBackground;
   static Color get lightSurface => _lightSurface;
+  static Color get lightSurfaceElevated => _lightSurfaceElevated;
   static Color get lightBorder => _lightBorder;
   static Color get lightError => _lightError;
   static Color get lightText => _lightText;
@@ -42,6 +51,7 @@ class AppColors {
   static Color get darkNavy => _darkNavy;
   static Color get darkBackground => _darkBackground;
   static Color get darkSurface => _darkSurface;
+  static Color get darkSurfaceElevated => _darkSurfaceElevated;
   static Color get darkBorder => _darkBorder;
   static Color get darkError => _darkError;
   static Color get darkText => _darkText;
@@ -79,6 +89,11 @@ class AppColors {
       Theme.of(context).brightness == Brightness.dark
       ? darkSurface
       : lightSurface;
+
+  static Color surfaceElevatedOf(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark
+      ? darkSurfaceElevated
+      : lightSurfaceElevated;
 
   static Color borderOf(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark

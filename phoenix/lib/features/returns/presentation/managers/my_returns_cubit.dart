@@ -11,11 +11,29 @@ class MyReturnsCubit extends Cubit<MyReturnsState> {
 
   final ReturnRepository _returnRepository;
 
+  // Full reset - also what pull-to-refresh calls, so it always restarts
+  // pagination from page one rather than just re-fetching whatever the
+  // first page currently happens to be.
   Future<void> load() async {
-    emit(state.copyWith(status: MyReturnsStatus.loading, clearError: true));
+    emit(
+      state.copyWith(
+        status: MyReturnsStatus.loading,
+        clearError: true,
+        hasMore: false,
+        clearNextCursor: true,
+      ),
+    );
     try {
-      final returns = await _returnRepository.getReturns();
-      emit(state.copyWith(status: MyReturnsStatus.loaded, returns: returns));
+      final result = await _returnRepository.getReturns();
+      emit(
+        state.copyWith(
+          status: MyReturnsStatus.loaded,
+          returns: result.items,
+          hasMore: result.hasMore,
+          nextCursor: result.nextCursor,
+          clearNextCursor: result.nextCursor == null,
+        ),
+      );
     } on Failure catch (f) {
       emit(
         state.copyWith(
@@ -24,6 +42,26 @@ class MyReturnsCubit extends Cubit<MyReturnsState> {
           errorCode: f.code,
         ),
       );
+    }
+  }
+
+  Future<void> loadMore() async {
+    if (!state.hasMore || state.isLoadingMore || state.nextCursor == null) return;
+
+    emit(state.copyWith(isLoadingMore: true, clearLoadMoreError: true));
+    try {
+      final result = await _returnRepository.getReturns(after: state.nextCursor);
+      emit(
+        state.copyWith(
+          returns: [...state.returns, ...result.items],
+          hasMore: result.hasMore,
+          nextCursor: result.nextCursor,
+          clearNextCursor: result.nextCursor == null,
+          isLoadingMore: false,
+        ),
+      );
+    } on Failure catch (f) {
+      emit(state.copyWith(isLoadingMore: false, loadMoreErrorMessage: f.errMessage, loadMoreErrorCode: f.code));
     }
   }
 
@@ -36,6 +74,9 @@ class MyReturnsCubit extends Cubit<MyReturnsState> {
       return true;
     } on Failure catch (f) {
       emit(state.copyWith(errorMessage: f.errMessage, errorCode: f.code));
+      return false;
+    } catch (e) {
+      emit(state.copyWith(errorMessage: 'Unexpected error', errorCode: 'UNEXPECTED_ERROR'));
       return false;
     }
   }

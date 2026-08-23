@@ -6,16 +6,18 @@ import 'package:phoenix/core/constants/app_padding.dart';
 import 'package:phoenix/core/constants/app_radius.dart';
 import 'package:phoenix/core/constants/app_sizes.dart';
 import 'package:phoenix/core/error/error_translator.dart';
+import 'package:phoenix/core/error/failure.dart';
 import 'package:phoenix/core/extensions/build_context_extensions.dart';
+import 'package:phoenix/core/utils/date_formatter.dart';
 import 'package:phoenix/core/widgets/app_dialog.dart';
 import 'package:phoenix/core/widgets/app_loading.dart';
 import 'package:phoenix/core/widgets/app_text_field.dart';
 import 'package:phoenix/core/widgets/custom_card.dart';
 import 'package:phoenix/core/widgets/error_view.dart';
 import 'package:phoenix/core/widgets/primary_button.dart';
-import 'package:phoenix/core/widgets/secondary_button.dart';
 import 'package:phoenix/core/widgets/whatsapp_button.dart';
 import 'package:phoenix/features/cart/data/models/order_model.dart';
+import 'package:phoenix/features/cart/presentation/utils/order_status_label.dart';
 import 'package:phoenix/features/order_tracking/presentation/managers/order_tracking_cubit.dart';
 import 'package:phoenix/features/order_tracking/presentation/managers/order_tracking_state.dart';
 import 'package:phoenix/features/order_tracking/presentation/widgets/order_invoice_section.dart';
@@ -55,15 +57,24 @@ class _OrderTrackingViewState extends State<OrderTrackingView> {
   }
 
   Future<void> _editReturn(String orderId, String returnId) async {
-    final returns = await context.read<ReturnRepository>().getReturns();
-    if (!mounted) return;
+    // getReturns() is cursor-paginated now (Section: cursor pagination) -
+    // paged through here rather than capped at the first page, since the
+    // one return being looked for could be sitting on any page.
+    final returnRepository = context.read<ReturnRepository>();
     ReturnModel? existing;
-    for (final r in returns) {
-      if (r.id == returnId) {
-        existing = r;
-        break;
+    String? cursor;
+    while (existing == null) {
+      final result = await returnRepository.getReturns(after: cursor);
+      for (final r in result.items) {
+        if (r.id == returnId) {
+          existing = r;
+          break;
+        }
       }
+      if (existing != null || !result.hasMore || result.nextCursor == null) break;
+      cursor = result.nextCursor;
     }
+    if (!mounted) return;
     if (existing == null) return;
     final result = await showRequestReturnSheet(context, orderId: orderId, existingReturn: existing);
     if (!mounted || result == null) return;
@@ -77,10 +88,27 @@ class _OrderTrackingViewState extends State<OrderTrackingView> {
       title: l10n.deleteReturnConfirmTitle,
       content: l10n.deleteReturnConfirmMessage,
       actionLabel: l10n.deleteReturnButton,
+      // AppDialog's own action button already pops this confirmation dialog
+      // (via dialogContext + rootNavigator) before calling here - an extra
+      // Navigator.pop(context) with this outer context has nothing left of
+      // its own to pop and throws, which silently aborts this callback
+      // before deleteReturn() ever runs (see cart_view.dart's _confirmSubmit
+      // for the same fix applied earlier).
       onAction: () async {
-        Navigator.pop(context);
-        await context.read<ReturnRepository>().deleteReturn(returnId);
-        if (mounted) context.read<OrderTrackingCubit>().load();
+        try {
+          await context.read<ReturnRepository>().deleteReturn(returnId);
+          if (mounted) context.read<OrderTrackingCubit>().load();
+        } on Failure catch (f) {
+          if (!mounted) return;
+          await AppDialog.show(
+            context: context,
+            title: l10n.errorState,
+            content: translateErrorCode(l10n, f.code, f.errMessage),
+          );
+        } catch (e) {
+          if (!mounted) return;
+          await AppDialog.show(context: context, title: l10n.errorState, content: l10n.errorState);
+        }
       },
     );
   }
@@ -94,10 +122,10 @@ class _OrderTrackingViewState extends State<OrderTrackingView> {
       title: l10n.cancelOrderTitle,
       content: l10n.cancelOrderConfirmation,
       actionLabel: l10n.cancelOrderButton,
-      onAction: () {
-        Navigator.pop(context);
-        cubit.cancel();
-      },
+      // See _deleteReturn above - AppDialog already pops the dialog itself,
+      // an extra pop here throws and short-circuits before cubit.cancel()
+      // ever runs (the "cancel order freezes" report this fixes).
+      onAction: () => cubit.cancel(),
     );
   }
 
@@ -105,126 +133,227 @@ class _OrderTrackingViewState extends State<OrderTrackingView> {
   Widget build(BuildContext context) {
     final l10n = context.l10n;
 
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: AppColors.navyOf(context),
-        foregroundColor: Colors.white,
-        title: Text(l10n.orderTrackingTitle),
-      ),
-      body: BlocConsumer<OrderTrackingCubit, OrderTrackingState>(
-        listenWhen: (previous, current) =>
-            current.errorMessage != null && previous.errorMessage != current.errorMessage,
-        listener: (context, state) {
-          AppDialog.show(
-            context: context,
-            title: l10n.errorState,
-            content: translateErrorCode(l10n, state.errorCode, state.errorMessage!),
-          );
-        },
-        builder: (context, state) {
-          if (state.status == OrderTrackingStatus.initial ||
-              (state.status == OrderTrackingStatus.loading && state.order == null)) {
-            return const AppLoading();
-          }
-          if (state.status == OrderTrackingStatus.error && state.order == null) {
-            return ErrorView(
-              message: translateErrorCode(
-                l10n,
-                state.errorCode,
-                state.errorMessage ?? l10n.errorState,
-              ),
-              onRetry: () => context.read<OrderTrackingCubit>().load(),
-            );
-          }
+    return BlocConsumer<OrderTrackingCubit, OrderTrackingState>(
+      listenWhen: (previous, current) =>
+          current.errorMessage != null && previous.errorMessage != current.errorMessage,
+      listener: (context, state) {
+        AppDialog.show(
+          context: context,
+          title: l10n.errorState,
+          content: translateErrorCode(l10n, state.errorCode, state.errorMessage!),
+        );
+      },
+      builder: (context, state) {
+        final order = state.order;
+        final isArabic = Localizations.localeOf(context).languageCode == 'ar';
 
-          final order = state.order!;
-          final isArabic = Localizations.localeOf(context).languageCode == 'ar';
-          final warehouseName = isArabic ? order.warehouseNameAr : order.warehouseNameEn;
-
-          return SingleChildScrollView(
-            padding: AppPadding.screen,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  l10n.orderNumberLabel(order.orderNumber.toString()),
-                  style: context.textTheme.titleLarge,
-                ),
-                if (warehouseName != null) ...[
-                  const SizedBox(height: AppSizes.spacingXSmall),
-                  Row(
+        return Scaffold(
+          appBar: AppBar(
+            backgroundColor: AppColors.navyOf(context),
+            foregroundColor: Colors.white,
+            toolbarHeight: order != null ? 64 : kToolbarHeight,
+            title: order == null
+                ? Text(l10n.orderTrackingTitle)
+                : Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Text(
-                          warehouseName,
-                          style: context.textTheme.bodyMedium?.copyWith(
-                            color: AppColors.textSecondaryOf(context),
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                      Text(
+                        l10n.orderNumberLabel(order.orderNumber.toString()),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      if (state.warehousePhone != null)
-                        WhatsAppButton(phone: state.warehousePhone!),
+                      Text(
+                        [
+                          if ((isArabic ? order.warehouseNameAr : order.warehouseNameEn) != null)
+                            (isArabic ? order.warehouseNameAr : order.warehouseNameEn)!,
+                          if (order.createdAt != null) DateFormatter.formatDate(order.createdAt!),
+                        ].join(' · '),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.normal, color: Colors.white70),
+                      ),
                     ],
                   ),
-                ],
-                const SizedBox(height: AppSizes.spacingXLarge),
-                if (order.isCancelled)
-                  _CancelledBanner(reason: order.cancelReason)
-                else
-                  OrderProgressBar(currentStageIndex: order.stageIndex),
-                const SizedBox(height: AppSizes.spacingXLarge),
-                Text(l10n.statusHistoryTitle, style: context.textTheme.titleMedium),
-                const SizedBox(height: AppSizes.spacingSmall),
-                StatusHistoryList(entries: order.statusHistory),
-                if (order.items.isNotEmpty) ...[
-                  const SizedBox(height: AppSizes.spacingXLarge),
-                  OrderInvoiceSection(
-                    items: order.items,
-                    totalPrice: order.totalPrice,
-                    discountAmount: order.discountAmount,
-                    finalPrice: order.finalPrice,
-                  ),
-                ],
-                if (order.status == 'delivered') ...[
-                  const SizedBox(height: AppSizes.spacingMedium),
-                  _ReturnStatusSection(
-                    order: order,
-                    onRequestReturn: () => _requestReturn(order.id),
-                    onEdit: order.linkedReturn == null
-                        ? null
-                        : () => _editReturn(order.id, order.linkedReturn!.id),
-                    onDelete: order.linkedReturn == null
-                        ? null
-                        : () => _deleteReturn(order.linkedReturn!.id),
-                  ),
-                  const SizedBox(height: AppSizes.spacingMedium),
-                  _WarehouseReviewSection(
-                    myReview: order.myReview,
-                    isSubmitting: state.isSubmittingReview,
-                  ),
-                ],
-                if (order.isCancellable) ...[
-                  const SizedBox(height: AppSizes.spacingXLarge),
-                  SecondaryButton(
-                    label: state.isCancelling ? l10n.loading : l10n.cancelOrderButton,
-                    onPressed: state.isCancelling ? () {} : _confirmCancel,
-                  ),
-                ] else if (!order.isCancelled) ...[
-                  const SizedBox(height: AppSizes.spacingXLarge),
+            actions: [
+              if (state.warehousePhone != null)
+                Padding(
+                  padding: const EdgeInsets.only(left: AppSizes.spacingSmall),
+                  child: WhatsAppButton(phone: state.warehousePhone!),
+                ),
+            ],
+          ),
+          body: _buildBody(context, state),
+        );
+      },
+    );
+  }
+
+  Widget _buildBody(BuildContext context, OrderTrackingState state) {
+    final l10n = context.l10n;
+
+    if (state.status == OrderTrackingStatus.initial ||
+        (state.status == OrderTrackingStatus.loading && state.order == null)) {
+      return const AppLoading();
+    }
+    if (state.status == OrderTrackingStatus.error && state.order == null) {
+      return ErrorView(
+        message: translateErrorCode(
+          l10n,
+          state.errorCode,
+          state.errorMessage ?? l10n.errorState,
+        ),
+        onRetry: () => context.read<OrderTrackingCubit>().load(),
+      );
+    }
+
+    final order = state.order!;
+
+    return SingleChildScrollView(
+      padding: AppPadding.screen,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (order.isCancelled)
+            _CancelledBanner(reason: order.cancelReason)
+          else ...[
+            CustomCard(child: OrderProgressBar(currentStageIndex: order.stageIndex)),
+            const SizedBox(height: AppSizes.spacingMedium),
+            _CurrentStatusHighlight(order: order),
+          ],
+          const SizedBox(height: AppSizes.spacingXLarge),
+          StatusHistoryList(entries: order.statusHistory),
+          if (order.items.isNotEmpty) ...[
+            const SizedBox(height: AppSizes.spacingXLarge),
+            OrderInvoiceSection(
+              items: order.items,
+              totalPrice: order.totalPrice,
+              discountAmount: order.discountAmount,
+              finalPrice: order.finalPrice,
+            ),
+          ],
+          if (order.status == 'delivered') ...[
+            const SizedBox(height: AppSizes.spacingMedium),
+            _ReturnStatusSection(
+              order: order,
+              onRequestReturn: () => _requestReturn(order.id),
+              onEdit: order.linkedReturn == null
+                  ? null
+                  : () => _editReturn(order.id, order.linkedReturn!.id),
+              onDelete: order.linkedReturn == null
+                  ? null
+                  : () => _deleteReturn(order.linkedReturn!.id),
+            ),
+            const SizedBox(height: AppSizes.spacingMedium),
+            _WarehouseReviewSection(
+              myReview: order.myReview,
+              isSubmitting: state.isSubmittingReview,
+            ),
+          ],
+          if (order.isCancellable) ...[
+            const SizedBox(height: AppSizes.spacingXLarge),
+            _CancelOrderButton(
+              isLoading: state.isCancelling,
+              onPressed: _confirmCancel,
+            ),
+          ] else if (!order.isCancelled) ...[
+            const SizedBox(height: AppSizes.spacingXLarge),
+            Text(
+              l10n.contactWarehouseForChanges,
+              textAlign: TextAlign.center,
+              style: context.textTheme.bodyMedium?.copyWith(
+                color: AppColors.textSecondaryOf(context),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// The design's equivalent highlight uses a static per-stage ETA that has no
+// real backing data here - substituted with the most recent status_history
+// timestamp instead, which is real.
+class _CurrentStatusHighlight extends StatelessWidget {
+  const _CurrentStatusHighlight({required this.order});
+
+  final OrderModel order;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final stageIndex = order.stageIndex;
+    if (stageIndex < 0) return const SizedBox.shrink();
+
+    final lastUpdate = order.statusHistory.isEmpty ? null : order.statusHistory.last.changedAt;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSizes.spacingMedium),
+      decoration: BoxDecoration(
+        color: AppColors.primaryOf(context).withValues(alpha: 0.1),
+        borderRadius: AppRadius.large,
+      ),
+      child: Row(
+        children: [
+          Icon(OrderProgressBar.stageIcons[stageIndex], size: 26, color: AppColors.primaryOf(context)),
+          const SizedBox(width: AppSizes.spacingMedium),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  orderStatusLabel(l10n, order.status),
+                  style: context.textTheme.titleSmall,
+                ),
+                if (lastUpdate != null) ...[
+                  const SizedBox(height: 2),
                   Text(
-                    l10n.contactWarehouseForChanges,
-                    textAlign: TextAlign.center,
-                    style: context.textTheme.bodyMedium?.copyWith(
+                    l10n.lastUpdatedLabel(DateFormatter.formatDateTime(lastUpdate)),
+                    style: context.textTheme.bodySmall?.copyWith(
                       color: AppColors.textSecondaryOf(context),
                     ),
                   ),
                 ],
               ],
             ),
-          );
-        },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CancelOrderButton extends StatelessWidget {
+  const _CancelOrderButton({required this.isLoading, required this.onPressed});
+
+  final bool isLoading;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final color = AppColors.errorOf(context);
+
+    return SizedBox(
+      width: double.infinity,
+      height: AppSizes.buttonHeight,
+      child: OutlinedButton.icon(
+        onPressed: isLoading ? null : onPressed,
+        style: OutlinedButton.styleFrom(
+          foregroundColor: color,
+          side: BorderSide(color: color, width: 1.5),
+          shape: const RoundedRectangleBorder(borderRadius: AppRadius.medium),
+        ),
+        icon: isLoading
+            ? SizedBox(
+                height: 18,
+                width: 18,
+                child: CircularProgressIndicator(strokeWidth: 2, color: color),
+              )
+            : const Icon(Icons.cancel_outlined),
+        label: Text(l10n.cancelOrderButton),
       ),
     );
   }
@@ -378,10 +507,8 @@ class _WarehouseReviewSectionState extends State<_WarehouseReviewSection> {
       title: l10n.submitReviewConfirmTitle,
       content: l10n.submitReviewConfirmMessage,
       actionLabel: l10n.submitReviewButton,
-      onAction: () {
-        Navigator.pop(context);
-        cubit.submitReview(rating: rating, comment: comment.isEmpty ? null : comment);
-      },
+      // See _deleteReturn above - same extra-pop bug.
+      onAction: () => cubit.submitReview(rating: rating, comment: comment.isEmpty ? null : comment),
     );
   }
 
@@ -413,9 +540,11 @@ class _WarehouseReviewSectionState extends State<_WarehouseReviewSection> {
         children: [
           Text(l10n.rateWarehouseTitle, style: context.textTheme.titleMedium),
           const SizedBox(height: AppSizes.spacingSmall),
-          _StarRatingRow(rating: _rating, onRatingChanged: (r) => setState(() => _rating = r)),
+          Center(
+            child: _StarRatingRow(rating: _rating, onRatingChanged: (r) => setState(() => _rating = r)),
+          ),
           const SizedBox(height: AppSizes.spacingMedium),
-          AppTextField(label: l10n.rateWarehouseCommentLabel, controller: _commentController),
+          AppTextField(label: l10n.rateWarehouseCommentLabel, controller: _commentController, maxLines: 2),
           const SizedBox(height: AppSizes.spacingMedium),
           PrimaryButton(
             label: l10n.submitReviewButton,
@@ -447,10 +576,16 @@ class _StarRatingRow extends StatelessWidget {
           color: filled ? AppColors.primaryOf(context) : AppColors.borderOf(context),
         );
         if (onRatingChanged == null) return icon;
-        return InkWell(
-          onTap: () => onRatingChanged!(starValue),
-          borderRadius: BorderRadius.circular(20),
-          child: icon,
+        // 44x44 tap target (icon itself stays 32) - large enough to hit
+        // reliably without inflating the visual size of the stars.
+        return SizedBox(
+          width: 44,
+          height: 44,
+          child: InkWell(
+            onTap: () => onRatingChanged!(starValue),
+            borderRadius: BorderRadius.circular(22),
+            child: Center(child: icon),
+          ),
         );
       }),
     );
@@ -470,7 +605,7 @@ class _CancelledBanner extends StatelessWidget {
       padding: const EdgeInsets.all(AppSizes.spacingMedium),
       decoration: BoxDecoration(
         color: AppColors.errorOf(context).withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: AppRadius.large,
       ),
       child: Column(
         children: [

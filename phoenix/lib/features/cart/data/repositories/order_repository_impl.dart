@@ -1,5 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:phoenix/core/error/failure.dart';
+import 'package:phoenix/core/models/paginated_result.dart';
 import 'package:phoenix/core/network/api_client.dart';
 import 'package:phoenix/core/network/endpoints.dart';
 import 'package:phoenix/features/cart/data/models/cart_item.dart';
@@ -59,13 +60,17 @@ class OrderRepositoryImpl implements OrderRepository {
   }
 
   @override
-  Future<List<OrderModel>> getOrders() async {
+  Future<PaginatedResult<OrderModel>> getOrders({int? limit, String? after}) async {
     try {
-      final response = await _apiClient.dio.get(Endpoints.orders);
+      final response = await _apiClient.dio.get(
+        Endpoints.orders,
+        queryParameters: {
+          if (limit != null) 'limit': limit,
+          if (after != null) 'after': after,
+        },
+      );
       final data = response.data as Map<String, dynamic>;
-      return (data['orders'] as List)
-          .map((e) => OrderModel.fromJson(e as Map<String, dynamic>))
-          .toList();
+      return PaginatedResult.fromJson(data, 'orders', OrderModel.fromJson);
     } on DioException catch (e) {
       throw ServerFailure.fromDioError(e);
     }

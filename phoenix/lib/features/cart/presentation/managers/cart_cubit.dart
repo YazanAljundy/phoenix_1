@@ -87,7 +87,16 @@ class CartCubit extends Cubit<CartState> {
   // isAvailable for real (Section 7/8) and this surfaces whatever
   // human-readable message it returns.
   Future<OrderModel?> submitOrder() async {
-    if (state.items.isEmpty || state.warehouseId == null) return null;
+    if (state.warehouseId == null) return null;
+    // Unreachable through the normal UI (CartView swaps to its empty-cart
+    // view once items.isEmpty), but a real, user-visible message here rather
+    // than a silent no-op covers any edge case that still reaches this call
+    // - e.g. the last item being removed in the gap between tapping submit
+    // and this running.
+    if (state.items.isEmpty) {
+      emit(state.copyWith(errorMessage: 'Your cart is empty.', errorCode: 'CART_EMPTY'));
+      return null;
+    }
 
     emit(state.copyWith(isSubmitting: true, clearError: true));
     try {
@@ -107,6 +116,13 @@ class CartCubit extends Cubit<CartState> {
           errorDetails: f.details,
         ),
       );
+      return null;
+    } catch (e) {
+      // Anything that isn't a Failure (e.g. a response-parsing bug) must
+      // still land the cubit in a terminal state - otherwise isSubmitting
+      // stays true forever and the submit button spins with no error ever
+      // shown (the "submit order freezes" report this fixes).
+      emit(state.copyWith(isSubmitting: false, errorMessage: 'Unexpected error', errorCode: 'UNEXPECTED_ERROR'));
       return null;
     }
   }

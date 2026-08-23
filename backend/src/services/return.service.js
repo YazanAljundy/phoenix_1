@@ -185,12 +185,30 @@ async function deleteReturn({ pharmacyId, returnId }) {
   await returnRequest.deleteOne();
 }
 
+const DEFAULT_RETURNS_LIMIT = 15;
+
 // Section 6.9: "my returns" list - scoped to the caller's own pharmacy (same
 // IDOR pattern used across orders), newest first. Batches the OrderItem/Order
 // lookups instead of a query per row.
-async function listReturnsForPharmacy(pharmacyId) {
-  const returns = await Return.find({ pharmacyId }).sort({ createdAt: -1 });
-  return attachOrderContext(returns);
+//
+// Cursor pagination: sorted by `_id` descending (not createdAt - `_id` is
+// already a unique, monotonically-ordered-by-creation key, so it doubles as
+// the cursor without a second index). `after` means "older than this _id".
+async function listReturnsForPharmacy(pharmacyId, { limit = DEFAULT_RETURNS_LIMIT, after = null } = {}) {
+  const filter = { pharmacyId };
+  if (after) {
+    filter._id = { $lt: after };
+  }
+
+  const returns = await Return.find(filter)
+    .sort({ _id: -1 })
+    .limit(limit + 1);
+  const hasMore = returns.length > limit;
+  const page = hasMore ? returns.slice(0, limit) : returns;
+  const nextCursor = page.length > 0 ? page[page.length - 1]._id.toString() : null;
+
+  const rows = await attachOrderContext(page);
+  return { rows, hasMore, nextCursor };
 }
 
 async function attachOrderContext(returns) {

@@ -10,6 +10,16 @@ class OrderProgressBar extends StatefulWidget {
 
   final int currentStageIndex;
 
+  // Exposed so OrderTrackingView can show the same icon on its "current
+  // status" highlight card, without duplicating this list.
+  static const stageIcons = [
+    Icons.send_outlined,
+    Icons.fact_check_outlined,
+    Icons.inventory_2_outlined,
+    Icons.local_shipping_outlined,
+    Icons.check_circle_outline,
+  ];
+
   @override
   State<OrderProgressBar> createState() => _OrderProgressBarState();
 }
@@ -17,14 +27,6 @@ class OrderProgressBar extends StatefulWidget {
 class _OrderProgressBarState extends State<OrderProgressBar>
     with SingleTickerProviderStateMixin {
   late final AnimationController _pulseController;
-
-  static const _icons = [
-    Icons.send_outlined,
-    Icons.fact_check_outlined,
-    Icons.inventory_2_outlined,
-    Icons.local_shipping_outlined,
-    Icons.check_circle_outline,
-  ];
 
   @override
   void initState() {
@@ -90,7 +92,7 @@ class _OrderProgressBarState extends State<OrderProgressBar>
                       final isCurrent = index == widget.currentStageIndex;
 
                       final dot = _StageDot(
-                        icon: _icons[index],
+                        icon: OrderProgressBar.stageIcons[index],
                         completed: isCompleted,
                         current: isCurrent,
                       );

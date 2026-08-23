@@ -105,97 +105,126 @@ class _CartItemTileState extends State<CartItemTile> {
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
     final name = isArabic ? item.nameAr : (item.nameEn ?? item.nameAr);
     final usdToSyp = context.watch<ExchangeRateCubit>().state.usdToSyp;
-    final sypText = formatSypApprox(item.discountPriceUsd, usdToSyp, l10n.currencySuffix);
+    // The line total's own SYP hint (quantity x price), not the unit price's -
+    // it now sits next to `item.lineTotalUsd` further down, not the per-unit
+    // price.
+    final sypText = formatSypApprox(item.lineTotalUsd, usdToSyp, l10n.currencySuffix);
 
     return CustomCard(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _ItemImage(url: item.image),
-          const SizedBox(width: AppSizes.spacingMedium),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: context.textTheme.titleMedium,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: AppSizes.spacingXSmall),
-                if (item.hasOffer)
-                  Wrap(
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    spacing: AppSizes.spacingSmall,
-                    children: [
-                      Text(
-                        '\$${item.unitPriceUsd}',
-                        style: TextStyle(
-                          decoration: TextDecoration.lineThrough,
-                          color: AppColors.textSecondaryOf(context),
-                          fontSize: 12,
-                        ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _ItemImage(url: item.image),
+              const SizedBox(width: AppSizes.spacingMedium),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      name,
+                      style: context.textTheme.titleSmall,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      isArabic ? item.manufacturerAr : (item.manufacturerEn ?? item.manufacturerAr),
+                      style: context.textTheme.bodySmall?.copyWith(
+                        color: AppColors.textSecondaryOf(context),
                       ),
-                      Text(
-                        '\$${item.discountPriceUsd}',
-                        style: TextStyle(
-                          color: AppColors.secondaryOf(context),
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      if (sypText != null) SecondaryPriceHint(text: sypText),
-                    ],
-                  )
-                else
-                  Wrap(
-                    crossAxisAlignment: WrapCrossAlignment.center,
-                    spacing: AppSizes.spacingXSmall,
-                    children: [
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: AppSizes.spacingXSmall),
+                    if (item.hasOffer)
+                      Wrap(
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: AppSizes.spacingXSmall,
+                        children: [
+                          Text(
+                            '\$${item.unitPriceUsd}',
+                            style: TextStyle(
+                              decoration: TextDecoration.lineThrough,
+                              color: AppColors.textSecondaryOf(context),
+                              fontSize: 11.5,
+                            ),
+                          ),
+                          Text(
+                            '\$${item.discountPriceUsd}',
+                            style: TextStyle(
+                              color: AppColors.secondaryOf(context),
+                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ],
+                      )
+                    else
                       Text(
                         '\$${item.discountPriceUsd}',
                         style: TextStyle(
                           color: AppColors.primaryOf(context),
                           fontWeight: FontWeight.bold,
+                          fontSize: 13,
                         ),
                       ),
-                      if (sypText != null) SecondaryPriceHint(text: sypText),
-                    ],
-                  ),
-                const SizedBox(height: AppSizes.spacingSmall),
-                Row(
-                  children: [
-                    SizedBox(
-                      width: 64,
-                      child: TextField(
-                        controller: _controller,
-                        focusNode: _focusNode,
-                        keyboardType: TextInputType.number,
-                        textInputAction: TextInputAction.done,
-                        textAlign: TextAlign.center,
-                        style: context.textTheme.titleMedium,
-                        onEditingComplete: () => _focusNode.unfocus(),
-                        decoration: InputDecoration(
-                          isDense: true,
-                          contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                          filled: true,
-                          fillColor: AppColors.surfaceOf(context),
-                          border: OutlineInputBorder(
-                            borderRadius: AppRadius.small,
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const Spacer(),
-                    IconButton(
-                      icon: Icon(Icons.delete_outline, color: AppColors.errorOf(context)),
-                      onPressed: _confirmRemoval,
-                    ),
                   ],
                 ),
-              ],
-            ),
+              ),
+              IconButton(
+                icon: Icon(Icons.delete_outline, color: AppColors.errorOf(context)),
+                onPressed: _confirmRemoval,
+              ),
+            ],
+          ),
+          const Divider(height: AppSizes.spacingLarge),
+          Row(
+            children: [
+              Text(
+                l10n.quantityLabel,
+                style: context.textTheme.bodySmall?.copyWith(color: AppColors.textSecondaryOf(context)),
+              ),
+              const SizedBox(width: AppSizes.spacingSmall),
+              // Section: a directly-editable numeric field, deliberately not
+              // +/- stepper buttons - project owner's explicit call (see the
+              // commit/confirm-removal logic above), kept exactly as-is here.
+              SizedBox(
+                width: 64,
+                child: TextField(
+                  controller: _controller,
+                  focusNode: _focusNode,
+                  keyboardType: TextInputType.number,
+                  textInputAction: TextInputAction.done,
+                  textAlign: TextAlign.center,
+                  style: context.textTheme.titleSmall,
+                  onEditingComplete: () => _focusNode.unfocus(),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                    filled: true,
+                    fillColor: AppColors.surfaceOf(context),
+                    border: OutlineInputBorder(
+                      borderRadius: AppRadius.small,
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+              ),
+              const Spacer(),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '\$${item.lineTotalUsd}',
+                    style: context.textTheme.titleSmall,
+                  ),
+                  if (sypText != null) SecondaryPriceHint(text: sypText),
+                ],
+              ),
+            ],
           ),
         ],
       ),

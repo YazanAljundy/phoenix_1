@@ -2,8 +2,10 @@ const mongoose = require('mongoose');
 const { ApiError } = require('../utils/ApiError');
 const Offer = require('../models/offer.model');
 const Product = require('../models/product.model');
+const Pharmacy = require('../models/pharmacy.model');
 const Warehouse = require('../models/warehouse.model');
 const { applyResolvedIdentity } = require('./productCatalog.service');
+const notificationService = require('./notification.service');
 
 // Section 13c: the admin's review queue - oldest first, same FIFO reasoning
 // as the warehouse's own order queue (Section 13b).
@@ -46,6 +48,34 @@ async function approveOffer(offerId, userId) {
   offer.approvedBy = userId;
   offer.approvedAt = new Date();
   await offer.save();
+
+  // Fan out to every active pharmacy - never lets a notification hiccup
+  // undo the approval above, which already succeeded. sendToAll's own
+  // per-user rate limiting (notification.service.js) caps this at one
+  // 'offer' push per pharmacy per rolling 24h, so approving several offers
+  // in a row doesn't spam the same pharmacy repeatedly.
+  try {
+    const [warehouse, pharmacies] = await Promise.all([
+      Warehouse.findById(offer.warehouseId, 'nameAr nameEn'),
+      Pharmacy.find({ isActive: true }, 'userId'),
+    ]);
+    const warehouseName = warehouse?.nameAr ?? '';
+    const warehouseNameEn = warehouse?.nameEn ?? warehouseName;
+    await notificationService.sendToAll(
+      pharmacies.map((p) => p.userId),
+      {
+        titleAr: 'عرض جديد',
+        titleEn: 'New Offer',
+        bodyAr: `عرض جديد من ${warehouseName}`,
+        bodyEn: `New offer from ${warehouseNameEn}`,
+        type: 'offer',
+      }
+    );
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('Failed to send offer notification.', err.message);
+  }
+
   return offer;
 }
 

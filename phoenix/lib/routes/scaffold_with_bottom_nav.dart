@@ -18,37 +18,50 @@ class ScaffoldWithBottomNav extends StatelessWidget {
 
     return Scaffold(
       body: navigationShell,
-      bottomNavigationBar: NavigationBar(
-        backgroundColor: AppColors.surfaceOf(context),
-        selectedIndex: navigationShell.currentIndex,
-        onDestinationSelected: (index) {
-          navigationShell.goBranch(
-            index,
-            initialLocation: index == navigationShell.currentIndex,
-          );
-        },
-        destinations: [
-          NavigationDestination(
-            icon: const Icon(Icons.storefront_outlined),
-            selectedIcon: Icon(Icons.storefront, color: AppColors.primaryOf(context)),
-            label: l10n.navWarehouses,
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.receipt_long_outlined),
-            selectedIcon: Icon(Icons.receipt_long, color: AppColors.primaryOf(context)),
-            label: l10n.myOrdersTitle,
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.assignment_return_outlined),
-            selectedIcon: Icon(Icons.assignment_return, color: AppColors.primaryOf(context)),
-            label: l10n.returnsTitle,
-          ),
-          NavigationDestination(
-            icon: const Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person, color: AppColors.primaryOf(context)),
-            label: l10n.profileTitle,
-          ),
-        ],
+      // A soft shadow cast upward onto the body content above the bar
+      // (Section 1 of the visual-polish pass) - NavigationBar itself has no
+      // "shadow above" concept, so this wraps it in a plain decorated box.
+      bottomNavigationBar: DecoratedBox(
+        decoration: BoxDecoration(
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.1),
+              blurRadius: 8,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: NavigationBar(
+          selectedIndex: navigationShell.currentIndex,
+          onDestinationSelected: (index) {
+            navigationShell.goBranch(
+              index,
+              initialLocation: index == navigationShell.currentIndex,
+            );
+          },
+          destinations: [
+            NavigationDestination(
+              icon: const Icon(Icons.storefront_outlined),
+              selectedIcon: Icon(Icons.storefront, color: AppColors.primaryOf(context)),
+              label: l10n.navWarehouses,
+            ),
+            NavigationDestination(
+              icon: const Icon(Icons.receipt_long_outlined),
+              selectedIcon: Icon(Icons.receipt_long, color: AppColors.primaryOf(context)),
+              label: l10n.myOrdersTitle,
+            ),
+            NavigationDestination(
+              icon: const Icon(Icons.assignment_return_outlined),
+              selectedIcon: Icon(Icons.assignment_return, color: AppColors.primaryOf(context)),
+              label: l10n.returnsTitle,
+            ),
+            NavigationDestination(
+              icon: const Icon(Icons.person_outline),
+              selectedIcon: Icon(Icons.person, color: AppColors.primaryOf(context)),
+              label: l10n.profileTitle,
+            ),
+          ],
+        ),
       ),
     );
   }

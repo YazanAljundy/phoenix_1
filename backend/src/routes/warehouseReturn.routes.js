@@ -7,6 +7,7 @@ const router = Router();
 router.use(authenticate, authorize('warehouse'), requireActiveStatus);
 
 router.get('/', controller.list);
+router.get('/:id', controller.getDetail);
 router.post('/:id/approve', controller.approve);
 router.post('/:id/reject', controller.reject);
 

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { api } from '../api/client';
 import { withArFallback } from '../utils/displayName';
 
@@ -40,8 +41,10 @@ export function productFormFromProduct(product) {
 // TODO(re-enable-stock): was also gated on stock > 0, with "Out of stock"
 // called out distinctly from "Paused" - quantity tracking is on hold, see
 // backend/src/models/product.model.js.
-export function productAvailabilityLabel(product) {
-  return product.manuallyDisabled ? 'Paused' : 'Available';
+// `t` is threaded in explicitly (not a hook itself) since this runs outside
+// component render in some call sites (table cell helpers).
+export function productAvailabilityLabel(product, t) {
+  return product.manuallyDisabled ? t('products.paused') : t('products.available');
 }
 
 export function productAvailabilityClass(product) {
@@ -53,6 +56,7 @@ export function productAvailabilityClass(product) {
 // for that, used only when creating a product (an existing one's link isn't
 // re-editable, see ProductFormModal below).
 function CatalogSearchField({ onSelect }) {
+  const { t } = useTranslation();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -78,15 +82,15 @@ function CatalogSearchField({ onSelect }) {
 
   return (
     <label>
-      Medicine (search the central catalog)
+      {t('productForm.searchMedicine')}
       <input
         type="text"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Start typing a medicine name..."
+        placeholder={t('productForm.searchPlaceholder')}
         dir="rtl"
       />
-      {isSearching && <p className="hint">Searching...</p>}
+      {isSearching && <p className="hint">{t('productForm.searching')}</p>}
       {results.length > 0 && (
         <ul className="catalog-search-results">
           {results.map((item) => (
@@ -100,7 +104,7 @@ function CatalogSearchField({ onSelect }) {
         </ul>
       )}
       {!isSearching && query.trim() && results.length === 0 && (
-        <p className="hint">No matching medicine in the central catalog.</p>
+        <p className="hint">{t('productForm.noMatch')}</p>
       )}
     </label>
   );
@@ -112,6 +116,7 @@ function CatalogSearchField({ onSelect }) {
 // so that's left entirely to the caller via onSubmit rather than hardcoded
 // here.
 export function ProductFormModal({ mode, initialForm, categories, usdToSyp, onClose, onSaved, onSubmit }) {
+  const { t } = useTranslation();
   const [form, setForm] = useState(initialForm);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -145,18 +150,18 @@ export function ProductFormModal({ mode, initialForm, categories, usdToSyp, onCl
     setError(null);
 
     if (mode === 'create' && !form.masterProductId) {
-      setError('Please select a medicine from the central catalog.');
+      setError(t('productForm.selectMedicineRequired'));
       return;
     }
 
     const requiredFields = ['unitAr', 'unitEn', 'categoryId'];
     if (requiredFields.some((field) => !form[field].trim())) {
-      setError('Please fill in all required fields.');
+      setError(t('common.requiredFields'));
       return;
     }
     const price = Number(form.price);
     if (!Number.isFinite(price) || price <= 0) {
-      setError('Price must be a positive number.');
+      setError(t('productForm.pricePositive'));
       return;
     }
 
@@ -185,7 +190,7 @@ export function ProductFormModal({ mode, initialForm, categories, usdToSyp, onCl
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(event) => event.stopPropagation()}>
-        <h2>{mode === 'create' ? 'Add product' : 'Edit product'}</h2>
+        <h2>{mode === 'create' ? t('productForm.addTitle') : t('productForm.editTitle')}</h2>
         <form onSubmit={handleSubmit} className="product-form">
           {mode === 'create' && !form.masterProductId ? (
             <CatalogSearchField onSelect={handleCatalogSelect} />
@@ -197,14 +202,14 @@ export function ProductFormModal({ mode, initialForm, categories, usdToSyp, onCl
               <p className="hint">{withArFallback(form.manufacturerEn, form.manufacturerAr)}</p>
               {mode === 'create' && (
                 <button type="button" className="btn-secondary" onClick={handleChangeSelection}>
-                  Change
+                  {t('productForm.change')}
                 </button>
               )}
             </div>
           )}
           <div className="form-row">
             <label>
-              Unit (English)
+              {t('productForm.unitEn')}
               <input
                 value={form.unitEn}
                 onChange={(e) => setField('unitEn', e.target.value)}
@@ -213,7 +218,7 @@ export function ProductFormModal({ mode, initialForm, categories, usdToSyp, onCl
               />
             </label>
             <label>
-              Unit (Arabic)
+              {t('productForm.unitAr')}
               <input
                 value={form.unitAr}
                 onChange={(e) => setField('unitAr', e.target.value)}
@@ -225,10 +230,10 @@ export function ProductFormModal({ mode, initialForm, categories, usdToSyp, onCl
           </div>
           <div className="form-row">
             <label>
-              Category
+              {t('common.category')}
               <select value={form.categoryId} onChange={(e) => setField('categoryId', e.target.value)} required>
                 <option value="" disabled>
-                  Select a category
+                  {t('productForm.selectCategory')}
                 </option>
                 {categories.map((category) => (
                   <option key={category.id} value={category.id}>
@@ -239,7 +244,7 @@ export function ProductFormModal({ mode, initialForm, categories, usdToSyp, onCl
             </label>
           </div>
           <label>
-            Price (USD)
+            {t('productForm.priceUsd')}
             <input
               type="number"
               min="0.01"
@@ -250,10 +255,12 @@ export function ProductFormModal({ mode, initialForm, categories, usdToSyp, onCl
             />
           </label>
           {usdToSyp != null && Number(form.price) > 0 && (
-            <p className="hint">≈ {Math.round(Number(form.price) * usdToSyp).toLocaleString()} SYP</p>
+            <p className="hint">
+              {t('productForm.approxSyp', { amount: Math.round(Number(form.price) * usdToSyp).toLocaleString() })}
+            </p>
           )}
           <label>
-            Description (optional)
+            {t('productForm.descriptionOptional')}
             <textarea
               value={form.description}
               onChange={(e) => setField('description', e.target.value)}
@@ -261,7 +268,7 @@ export function ProductFormModal({ mode, initialForm, categories, usdToSyp, onCl
             />
           </label>
           <label>
-            Image URL (optional)
+            {t('productForm.imageUrlOptional')}
             <input value={form.image} onChange={(e) => setField('image', e.target.value)} placeholder="https://" />
           </label>
           <label className="checkbox-row">
@@ -270,17 +277,17 @@ export function ProductFormModal({ mode, initialForm, categories, usdToSyp, onCl
               checked={form.manuallyDisabled}
               onChange={(e) => setField('manuallyDisabled', e.target.checked)}
             />
-            Temporarily paused (hidden from pharmacies)
+            {t('productForm.temporarilyPaused')}
           </label>
 
           {error && <p className="error-text">{error}</p>}
 
           <div className="modal-actions">
             <button type="button" className="btn-secondary" onClick={onClose}>
-              Cancel
+              {t('common.cancel')}
             </button>
             <button type="submit" className="btn-primary" disabled={isSaving}>
-              {isSaving ? 'Saving...' : mode === 'create' ? 'Add product' : 'Save changes'}
+              {isSaving ? t('common.saving') : mode === 'create' ? t('products.addProduct') : t('productForm.saveChanges')}
             </button>
           </div>
         </form>

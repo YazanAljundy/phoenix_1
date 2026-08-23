@@ -66,6 +66,20 @@ async function requestUpload(path, file) {
   return data;
 }
 
+// Like requestUpload, but for endpoints that take a file *alongside* other
+// form fields (a banner's image + title/dates/productId) rather than just
+// the file alone - caller builds the FormData itself.
+async function requestFormData(path, formData) {
+  const token = getToken();
+  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  const response = await fetch(`${API_BASE_URL}${path}`, { method: 'POST', headers, body: formData });
+  const data = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new ApiError(data?.message ?? 'Upload failed. Please try again.', response.status);
+  }
+  return data;
+}
+
 export const api = {
   // TODO(re-enable-otp): unused by the current login flow - kept for a
   // future re-enable. The backend routes are still live.
@@ -76,15 +90,43 @@ export const api = {
   loginWithPassword: (phone, password) =>
     request('/auth/login-password', { method: 'POST', body: { phone, password } }),
   me: () => request('/auth/me'),
-  pendingAccounts: () => request('/admin/pending-accounts'),
+  // No args: every pending account of both roles - used by the Dashboard's
+  // stat card/recent list. Pass { role, limit, after } for the Pending
+  // Accounts management page's own paginated, role-scoped view.
+  pendingAccounts: ({ role, limit, after } = {}) => {
+    const params = new URLSearchParams();
+    if (role) params.set('role', role);
+    if (limit) params.set('limit', limit);
+    if (after) params.set('after', after);
+    const qs = params.toString();
+    return request(`/admin/pending-accounts${qs ? `?${qs}` : ''}`);
+  },
   approveAccount: (userId) => request(`/admin/accounts/${userId}/approve`, { method: 'POST' }),
   rejectAccount: (userId) => request(`/admin/accounts/${userId}/reject`, { method: 'POST' }),
-  warehouseOrders: (status) =>
-    request(`/warehouse/orders${status ? `?status=${encodeURIComponent(status)}` : ''}`),
+  sendAdminNotification: ({ titleAr, titleEn, bodyAr, bodyEn }) =>
+    request('/admin/notifications', { method: 'POST', body: { titleAr, titleEn, bodyAr, bodyEn } }),
+  warehouseOrders: ({ status, limit, after } = {}) => {
+    const params = new URLSearchParams();
+    if (status) params.set('status', status);
+    if (limit) params.set('limit', limit);
+    if (after) params.set('after', after);
+    const qs = params.toString();
+    return request(`/warehouse/orders${qs ? `?${qs}` : ''}`);
+  },
+  warehouseOrderDetail: (orderId) => request(`/warehouse/orders/${orderId}`),
   advanceOrderStatus: (orderId) =>
     request(`/warehouse/orders/${orderId}/advance-status`, { method: 'POST' }),
   categories: () => request('/categories'),
-  warehouseProducts: () => request('/warehouse/products'),
+  // No args: the full, alphabetical list - used by the banner/offer "linked
+  // product" pickers, which need every product. Pass { limit, after } for
+  // the Products management page's own paginated, newest-first view.
+  warehouseProducts: ({ limit, after } = {}) => {
+    const params = new URLSearchParams();
+    if (limit) params.set('limit', limit);
+    if (after) params.set('after', after);
+    const qs = params.toString();
+    return request(`/warehouse/products${qs ? `?${qs}` : ''}`);
+  },
   createWarehouseProduct: (data) => request('/warehouse/products', { method: 'POST', body: data }),
   updateWarehouseProduct: (productId, changes) =>
     request(`/warehouse/products/${productId}`, { method: 'PATCH', body: changes }),
@@ -93,11 +135,27 @@ export const api = {
   pendingOffers: () => request('/admin/offers'),
   approveOffer: (offerId) => request(`/admin/offers/${offerId}/approve`, { method: 'POST' }),
   rejectOffer: (offerId) => request(`/admin/offers/${offerId}/reject`, { method: 'POST' }),
-  warehouseReturns: () => request('/warehouse/returns'),
+  // No args: the full list - used by WarehouseOrderDetailPage's "does this
+  // order already have a pending return" lookup. Pass { limit, after } for
+  // the Returns management page's own paginated, newest-first view.
+  warehouseReturns: ({ limit, after } = {}) => {
+    const params = new URLSearchParams();
+    if (limit) params.set('limit', limit);
+    if (after) params.set('after', after);
+    const qs = params.toString();
+    return request(`/warehouse/returns${qs ? `?${qs}` : ''}`);
+  },
+  warehouseReturnDetail: (returnId) => request(`/warehouse/returns/${returnId}`),
   approveReturn: (returnId) => request(`/warehouse/returns/${returnId}/approve`, { method: 'POST' }),
   rejectReturn: (returnId, rejectionNote) =>
     request(`/warehouse/returns/${returnId}/reject`, { method: 'POST', body: { rejectionNote } }),
-  warehouseReviews: () => request('/warehouse/reviews'),
+  warehouseReviews: ({ limit, after } = {}) => {
+    const params = new URLSearchParams();
+    if (limit) params.set('limit', limit);
+    if (after) params.set('after', after);
+    const qs = params.toString();
+    return request(`/warehouse/reviews${qs ? `?${qs}` : ''}`);
+  },
   ratePharmacy: (orderId, rating, comment) =>
     request('/warehouse/reviews', { method: 'POST', body: { orderId, rating, comment } }),
   adminProducts: () => request('/admin/products'),
@@ -124,9 +182,33 @@ export const api = {
     request(`/warehouse/discounts/${id}`, { method: 'PATCH', body: changes }),
   deleteWarehouseDiscount: (id) => request(`/warehouse/discounts/${id}`, { method: 'DELETE' }),
   warehouseManufacturers: () => request('/warehouse/manufacturers'),
-  warehouseBalances: () => request('/warehouse/balances'),
+  warehouseBalances: ({ limit, after } = {}) => {
+    const params = new URLSearchParams();
+    if (limit) params.set('limit', limit);
+    if (after) params.set('after', after);
+    const qs = params.toString();
+    return request(`/warehouse/balances${qs ? `?${qs}` : ''}`);
+  },
   warehouseBalanceDetail: (pharmacyId) => request(`/warehouse/balances/${pharmacyId}`),
   createPayment: (data) => request('/warehouse/payments', { method: 'POST', body: data }),
   updatePayment: (id, changes) => request(`/warehouse/payments/${id}`, { method: 'PATCH', body: changes }),
   deletePayment: (id) => request(`/warehouse/payments/${id}`, { method: 'DELETE' }),
+  warehouseBanners: ({ limit, after } = {}) => {
+    const params = new URLSearchParams();
+    if (limit) params.set('limit', limit);
+    if (after) params.set('after', after);
+    const qs = params.toString();
+    return request(`/warehouse/banners${qs ? `?${qs}` : ''}`);
+  },
+  createWarehouseBanner: (formData) => requestFormData('/warehouse/banners', formData),
+  updateWarehouseBanner: (id, changes) => request(`/warehouse/banners/${id}`, { method: 'PATCH', body: changes }),
+  deleteWarehouseBanner: (id) => request(`/warehouse/banners/${id}`, { method: 'DELETE' }),
+  adminBanners: (status) =>
+    request(`/admin/banners${status ? `?status=${encodeURIComponent(status)}` : ''}`),
+  createAdminBanner: (formData) => requestFormData('/admin/banners', formData),
+  approveBanner: (bannerId) => request(`/admin/banners/${bannerId}/approve`, { method: 'PATCH' }),
+  rejectBanner: (bannerId, rejectionNote) =>
+    request(`/admin/banners/${bannerId}/reject`, { method: 'PATCH', body: { rejectionNote } }),
+  deleteAdminBanner: (id) => request(`/admin/banners/${id}`, { method: 'DELETE' }),
+  updateAdminBanner: (id, changes) => request(`/admin/banners/${id}`, { method: 'PATCH', body: changes }),
 };

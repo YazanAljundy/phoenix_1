@@ -11,8 +11,10 @@ const { ApiError } = require('../utils/ApiError');
 const UPLOAD_ROOT = path.join(__dirname, '../../uploads');
 const VERIFICATION_PHOTOS_DIR = path.join(UPLOAD_ROOT, 'verification-photos');
 const RETURN_PHOTOS_DIR = path.join(UPLOAD_ROOT, 'return-photos');
+const BANNER_IMAGES_DIR = path.join(UPLOAD_ROOT, 'banners');
 fs.mkdirSync(VERIFICATION_PHOTOS_DIR, { recursive: true });
 fs.mkdirSync(RETURN_PHOTOS_DIR, { recursive: true });
+fs.mkdirSync(BANNER_IMAGES_DIR, { recursive: true });
 
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
 const MAX_RETURN_PHOTOS = 5;
@@ -107,6 +109,17 @@ const catalogImportUpload = wrapMulter(
   'The Excel file must be smaller than 5MB.'
 );
 
+// Section: banner image - a single required photo, same shape as
+// verificationPhotoUpload above, just its own directory/field name.
+const bannerImageUpload = wrapMulter(
+  multer({
+    storage: makeStorage(BANNER_IMAGES_DIR),
+    fileFilter: imageFileFilter,
+    limits: { fileSize: MAX_FILE_SIZE_BYTES },
+  }).single('image'),
+  'Banner image must be smaller than 5MB.'
+);
+
 // Reads the first bytes of the saved file and checks them against known image
 // signatures - a spoofed extension/MIME type won't pass this. Deletes the
 // file and throws if the content doesn't actually match an allowed image type.
@@ -137,8 +150,10 @@ module.exports = {
   verificationPhotoUpload,
   returnPhotosUpload,
   catalogImportUpload,
+  bannerImageUpload,
   verifyImageMagicBytes,
   VERIFICATION_PHOTOS_DIR,
   RETURN_PHOTOS_DIR,
+  BANNER_IMAGES_DIR,
   MAX_RETURN_PHOTOS,
 };

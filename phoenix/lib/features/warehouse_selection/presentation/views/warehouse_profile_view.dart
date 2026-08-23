@@ -12,6 +12,7 @@ import 'package:phoenix/core/widgets/custom_card.dart';
 import 'package:phoenix/core/widgets/error_view.dart';
 import 'package:phoenix/core/widgets/primary_button.dart';
 import 'package:phoenix/core/widgets/whatsapp_button.dart';
+import 'package:phoenix/features/catalog/data/models/manufacturers_route_args.dart';
 import 'package:phoenix/features/warehouse_selection/data/models/warehouse_profile_model.dart';
 import 'package:phoenix/features/warehouse_selection/presentation/managers/warehouse_profile_cubit.dart';
 import 'package:phoenix/features/warehouse_selection/presentation/managers/warehouse_profile_state.dart';
@@ -35,7 +36,7 @@ class WarehouseProfileView extends StatelessWidget {
     context.pushNamed(
       RouteNames.manufacturers,
       pathParameters: {'warehouseId': warehouseId},
-      extra: name,
+      extra: ManufacturersRouteArgs(warehouseName: name),
     );
   }
 
@@ -117,32 +118,33 @@ class _ProfileHeader extends StatelessWidget {
     return Column(
       children: [
         ClipRRect(
-          borderRadius: AppRadius.medium,
-          child: Container(
-            width: 88,
-            height: 88,
-            color: AppColors.surfaceOf(context),
-            child: profile.logo == null || profile.logo!.isEmpty
-                ? Icon(
-                    Icons.local_shipping_outlined,
-                    color: AppColors.navyOf(context),
-                    size: AppSizes.iconSizeLarge,
-                  )
-                : Image.network(
-                    profile.logo!,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) => Icon(
+          borderRadius: AppRadius.large,
+          child: AspectRatio(
+            aspectRatio: 2.2,
+            child: Container(
+              color: AppColors.surfaceOf(context),
+              child: profile.logo == null || profile.logo!.isEmpty
+                  ? Icon(
                       Icons.local_shipping_outlined,
                       color: AppColors.navyOf(context),
                       size: AppSizes.iconSizeLarge,
+                    )
+                  : Image.network(
+                      profile.logo!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Icon(
+                        Icons.local_shipping_outlined,
+                        color: AppColors.navyOf(context),
+                        size: AppSizes.iconSizeLarge,
+                      ),
                     ),
-                  ),
+            ),
           ),
         ),
         const SizedBox(height: AppSizes.spacingMedium),
         Text(
           name,
-          style: context.textTheme.titleLarge,
+          style: context.textTheme.displaySmall,
           textAlign: TextAlign.center,
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
@@ -314,67 +316,68 @@ class _ReviewsSection extends StatelessWidget {
             l10n.noWarehouseReviewsYet,
             style: context.textTheme.bodyMedium?.copyWith(color: AppColors.textSecondaryOf(context)),
           )
-        else
+        else ...[
           CustomCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+            child: Row(
               children: [
-                Row(
-                  children: [
-                    _StarRow(rating: profile.averageRating.round()),
-                    const SizedBox(width: AppSizes.spacingSmall),
-                    Flexible(
-                      child: Text(
-                        l10n.ratingSummary(
-                          profile.averageRating.toStringAsFixed(1),
-                          profile.reviewsCount.toString(),
-                        ),
-                        style: context.textTheme.bodyMedium?.copyWith(
-                          color: AppColors.textSecondaryOf(context),
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                _StarRow(rating: profile.averageRating.round()),
+                const SizedBox(width: AppSizes.spacingSmall),
+                Flexible(
+                  child: Text(
+                    l10n.ratingSummary(
+                      profile.averageRating.toStringAsFixed(1),
+                      profile.reviewsCount.toString(),
                     ),
-                  ],
+                    style: context.textTheme.bodyMedium?.copyWith(
+                      color: AppColors.textSecondaryOf(context),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
-                for (final review in profile.recentReviews) ...[
-                  const Divider(height: AppSizes.spacingLarge),
-                  _ReviewRow(review: review),
-                ],
               ],
             ),
           ),
+          // Each review is its own bordered card, not one card with dividers
+          // between rows - a short, scannable list of independent opinions
+          // reads more clearly this way than one continuous block.
+          for (final review in profile.recentReviews) ...[
+            const SizedBox(height: AppSizes.spacingSmall),
+            _ReviewCard(review: review),
+          ],
+        ],
       ],
     );
   }
 }
 
-class _ReviewRow extends StatelessWidget {
-  const _ReviewRow({required this.review});
+class _ReviewCard extends StatelessWidget {
+  const _ReviewCard({required this.review});
 
   final WarehouseReviewModel review;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            _StarRow(rating: review.rating, size: 14),
-            Text(
-              DateFormatter.formatDate(review.createdAt),
-              style: context.textTheme.bodySmall?.copyWith(color: AppColors.textSecondaryOf(context)),
-            ),
+    return CustomCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _StarRow(rating: review.rating, size: 14),
+              Text(
+                DateFormatter.formatDate(review.createdAt),
+                style: context.textTheme.bodySmall?.copyWith(color: AppColors.textSecondaryOf(context)),
+              ),
+            ],
+          ),
+          if (review.comment != null && review.comment!.isNotEmpty) ...[
+            const SizedBox(height: AppSizes.spacingXSmall),
+            Text(review.comment!, style: context.textTheme.bodyMedium),
           ],
-        ),
-        if (review.comment != null && review.comment!.isNotEmpty) ...[
-          const SizedBox(height: 2),
-          Text(review.comment!, style: context.textTheme.bodyMedium),
         ],
-      ],
+      ),
     );
   }
 }

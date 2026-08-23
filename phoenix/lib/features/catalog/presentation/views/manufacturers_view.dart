@@ -17,18 +17,46 @@ import 'package:phoenix/routes/route_names.dart';
 // New step between warehouse selection and the catalog (Section 16):
 // warehouse -> manufacturers -> medicines, replacing the old warehouse ->
 // medicines flow directly.
-class ManufacturersView extends StatelessWidget {
-  const ManufacturersView({super.key, required this.warehouseId, required this.warehouseName});
+class ManufacturersView extends StatefulWidget {
+  const ManufacturersView({
+    super.key,
+    required this.warehouseId,
+    required this.warehouseName,
+    this.autoFilterManufacturer,
+  });
 
   final String warehouseId;
   final String warehouseName;
+  // Section: banners - a tapped banner with a linked product skips this
+  // screen straight through to its catalog, once the manufacturer list has
+  // actually loaded (need it to confirm the manufacturer still has products
+  // here before jumping). Never re-triggers on rebuild - see _autoNavigated.
+  final String? autoFilterManufacturer;
+
+  @override
+  State<ManufacturersView> createState() => _ManufacturersViewState();
+}
+
+class _ManufacturersViewState extends State<ManufacturersView> {
+  bool _autoNavigated = false;
 
   void _handleSelect(BuildContext context, String manufacturer) {
     context.pushNamed(
       RouteNames.catalog,
-      pathParameters: {'warehouseId': warehouseId},
-      extra: CatalogRouteArgs(warehouseName: warehouseName, manufacturer: manufacturer),
+      pathParameters: {'warehouseId': widget.warehouseId},
+      extra: CatalogRouteArgs(warehouseName: widget.warehouseName, manufacturer: manufacturer),
     );
+  }
+
+  void _maybeAutoNavigate(ManufacturersState state) {
+    if (_autoNavigated || widget.autoFilterManufacturer == null) return;
+    if (state.status != ManufacturersStatus.loaded) return;
+    if (!state.manufacturers.contains(widget.autoFilterManufacturer)) return;
+
+    _autoNavigated = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _handleSelect(context, widget.autoFilterManufacturer!);
+    });
   }
 
   @override
@@ -39,10 +67,29 @@ class ManufacturersView extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: AppColors.navyOf(context),
         foregroundColor: Colors.white,
-        title: Text(warehouseName, maxLines: 1, overflow: TextOverflow.ellipsis),
+        toolbarHeight: 64,
+        title: BlocBuilder<ManufacturersCubit, ManufacturersState>(
+          buildWhen: (previous, current) => previous.manufacturers.length != current.manufacturers.length,
+          builder: (context, state) {
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(widget.warehouseName, maxLines: 1, overflow: TextOverflow.ellipsis),
+                Text(
+                  l10n.manufacturersCountSubtitle(state.manufacturers.length),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.normal, color: Colors.white70),
+                ),
+              ],
+            );
+          },
+        ),
       ),
       body: BlocBuilder<ManufacturersCubit, ManufacturersState>(
         builder: (context, state) {
+          _maybeAutoNavigate(state);
           switch (state.status) {
             case ManufacturersStatus.initial:
             case ManufacturersStatus.loading:
@@ -54,29 +101,27 @@ class ManufacturersView extends StatelessWidget {
               );
             case ManufacturersStatus.loaded:
               if (state.manufacturers.isEmpty) {
-                return EmptyView(message: l10n.noManufacturersFound);
+                return EmptyView(message: l10n.noManufacturersFound, icon: Icons.factory_outlined);
               }
               return RefreshIndicator(
                 onRefresh: () => context.read<ManufacturersCubit>().loadManufacturers(),
-                child: LayoutBuilder(
-                  builder: (context, constraints) {
-                    final isWide = constraints.maxWidth >= 700;
-                    return GridView.builder(
-                      padding: AppPadding.screen,
-                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: isWide ? 2 : 1,
-                        mainAxisSpacing: AppSizes.spacingMedium,
-                        crossAxisSpacing: AppSizes.spacingMedium,
-                        childAspectRatio: isWide ? 4.4 : 3.6,
-                      ),
-                      itemCount: state.manufacturers.length,
-                      itemBuilder: (context, index) {
-                        final manufacturer = state.manufacturers[index];
-                        return ManufacturerCard(
-                          manufacturer: manufacturer,
-                          onSelect: () => _handleSelect(context, manufacturer),
-                        );
-                      },
+                child: GridView.builder(
+                  padding: AppPadding.screen,
+                  // Fluid column count (as many as fit at up to ~160px each)
+                  // rather than a fixed 1-vs-2 breakpoint - see
+                  // WarehouseSelectionView for the same treatment.
+                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                    maxCrossAxisExtent: 160,
+                    mainAxisSpacing: AppSizes.spacingMedium,
+                    crossAxisSpacing: AppSizes.spacingMedium,
+                    mainAxisExtent: 180,
+                  ),
+                  itemCount: state.manufacturers.length,
+                  itemBuilder: (context, index) {
+                    final manufacturer = state.manufacturers[index];
+                    return ManufacturerCard(
+                      manufacturer: manufacturer,
+                      onSelect: () => _handleSelect(context, manufacturer),
                     );
                   },
                 ),

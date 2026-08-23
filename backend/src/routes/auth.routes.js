@@ -11,5 +11,6 @@ router.post('/register', authLimiter, verificationPhotoUpload, controller.regist
 router.post('/login', authLimiter, controller.login);
 router.post('/login-password', authLimiter, controller.loginWithPassword);
 router.get('/me', authenticate, controller.me);
+router.post('/device-token', authenticate, controller.registerDeviceToken);
 
 module.exports = router;

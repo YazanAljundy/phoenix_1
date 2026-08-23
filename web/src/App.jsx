@@ -1,4 +1,5 @@
 import { BrowserRouter } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { AuthProvider, useAuth } from './auth/AuthContext';
 import { LoginPage } from './auth/LoginPage';
 import { ExchangeRateProvider } from './context/ExchangeRateContext';
@@ -11,12 +12,13 @@ import { WarehousePanel } from './pages/WarehousePanel';
 // authenticate (the backend's /auth/login is role-agnostic) but is rejected
 // in AuthContext.login before it ever reaches here.
 function Gate() {
+  const { t } = useTranslation();
   const { status, user } = useAuth();
 
   if (status === 'loading') {
     return (
       <div className="auth-screen">
-        <p className="hint">Loading...</p>
+        <p className="hint">{t('common.loading')}</p>
       </div>
     );
   }

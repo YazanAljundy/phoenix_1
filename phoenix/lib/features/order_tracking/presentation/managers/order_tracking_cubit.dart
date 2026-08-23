@@ -50,6 +50,12 @@ class OrderTrackingCubit extends Cubit<OrderTrackingState> {
           errorCode: f.code,
         ),
       );
+    } catch (e) {
+      // Anything that isn't a Failure must still land in the error state -
+      // otherwise this stays on OrderTrackingStatus.loading forever (a
+      // spinner with no error ever shown).
+      if (isClosed) return;
+      emit(state.copyWith(status: OrderTrackingStatus.error, errorMessage: 'Unexpected error', errorCode: 'UNEXPECTED_ERROR'));
     }
   }
 
@@ -66,8 +72,8 @@ class OrderTrackingCubit extends Cubit<OrderTrackingState> {
           return;
         }
       }
-    } on Failure {
-      // Ignored - see method comment.
+    } catch (e) {
+      // Ignored - see method comment (covers Failure and anything else).
     }
   }
 
@@ -89,6 +95,13 @@ class OrderTrackingCubit extends Cubit<OrderTrackingState> {
       // warehouse moved it to out_for_delivery moments ago) - resync so a
       // stale cancel button doesn't linger.
       await load();
+      return false;
+    } catch (e) {
+      // Anything that isn't a Failure must still land in a terminal state -
+      // otherwise isCancelling stays true forever (a spinner with no error
+      // ever shown - the "cancel order freezes" report this fixes).
+      if (isClosed) return false;
+      emit(state.copyWith(isCancelling: false, errorMessage: 'Unexpected error', errorCode: 'UNEXPECTED_ERROR'));
       return false;
     }
   }
@@ -127,6 +140,10 @@ class OrderTrackingCubit extends Cubit<OrderTrackingState> {
     } on Failure catch (f) {
       if (isClosed) return false;
       emit(state.copyWith(isSubmittingReview: false, errorMessage: f.errMessage, errorCode: f.code));
+      return false;
+    } catch (e) {
+      if (isClosed) return false;
+      emit(state.copyWith(isSubmittingReview: false, errorMessage: 'Unexpected error', errorCode: 'UNEXPECTED_ERROR'));
       return false;
     }
   }

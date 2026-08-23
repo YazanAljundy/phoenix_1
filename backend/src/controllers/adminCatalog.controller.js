@@ -1,10 +1,24 @@
 const { asyncHandler } = require('../utils/asyncHandler');
 const catalogService = require('../services/productCatalog.service');
 const catalogViewModel = require('../viewmodels/productCatalog.viewmodel');
+const { parseCursorQuery, parseObjectIdCursor, paginationMeta } = require('../utils/pagination');
+
+const CATALOG_DEFAULT_LIMIT = 30;
 
 const list = asyncHandler(async (req, res) => {
-  const items = await catalogService.listCatalog({ search: req.query.q });
-  res.json({ success: true, ...catalogViewModel.toCatalogListResponse(items) });
+  const { limit, after } = parseCursorQuery(req.query, CATALOG_DEFAULT_LIMIT);
+  const cursor = parseObjectIdCursor(after);
+
+  const { items, hasMore, nextCursor } = await catalogService.listCatalog({
+    search: req.query.q,
+    limit,
+    after: cursor,
+  });
+  res.json({
+    success: true,
+    ...catalogViewModel.toCatalogListResponse(items),
+    pagination: paginationMeta(hasMore, nextCursor),
+  });
 });
 
 const downloadTemplate = asyncHandler(async (req, res) => {

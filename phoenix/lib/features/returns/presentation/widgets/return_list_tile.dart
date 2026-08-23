@@ -5,6 +5,7 @@ import 'package:phoenix/core/constants/app_sizes.dart';
 import 'package:phoenix/core/extensions/build_context_extensions.dart';
 import 'package:phoenix/core/utils/date_formatter.dart';
 import 'package:phoenix/core/widgets/custom_card.dart';
+import 'package:phoenix/core/widgets/status_badge.dart';
 import 'package:phoenix/features/returns/data/models/return_model.dart';
 import 'package:phoenix/features/returns/presentation/utils/return_labels.dart';
 
@@ -32,6 +33,10 @@ class ReturnListTile extends StatelessWidget {
         .map((item) => (isArabic ? item.productNameAr : (item.productNameEn ?? item.productNameAr)) ?? '')
         .where((name) => name.isNotEmpty)
         .join(isArabic ? '، ' : ', ');
+    final reasonTypes = returnRequest.items.map((item) => item.reasonType).toSet();
+    final reasonText = reasonTypes.length == 1
+        ? returnReasonLabel(l10n, reasonTypes.first)
+        : l10n.multipleReasonsLabel;
 
     return CustomCard(
       child: Column(
@@ -52,19 +57,38 @@ class ReturnListTile extends StatelessWidget {
                         ),
                       ),
                     const SizedBox(height: AppSizes.spacingXSmall),
-                    Text(itemNames, style: context.textTheme.titleMedium),
-                    const SizedBox(height: AppSizes.spacingXSmall),
                     Text(
-                      DateFormatter.formatDateTime(returnRequest.createdAt),
-                      style: context.textTheme.bodySmall?.copyWith(
-                        color: AppColors.textSecondaryOf(context),
-                      ),
+                      itemNames,
+                      style: context.textTheme.titleMedium,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
               const SizedBox(width: AppSizes.spacingSmall),
-              _ReturnStatusBadge(status: returnRequest.status),
+              StatusBadge(
+                label: returnStatusLabel(l10n, returnRequest.status),
+                tone: _returnStatusTone(returnRequest.status),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSizes.spacingSmall),
+          Row(
+            children: [
+              Icon(Icons.event, size: 15, color: AppColors.textSecondaryOf(context)),
+              const SizedBox(width: 4),
+              Text(
+                DateFormatter.formatDateTime(returnRequest.createdAt),
+                style: context.textTheme.bodySmall?.copyWith(
+                  color: AppColors.textSecondaryOf(context),
+                ),
+              ),
+              const Spacer(),
+              Text(
+                reasonText,
+                style: context.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold),
+              ),
             ],
           ),
           if (returnRequest.isRejected && returnRequest.rejectionNote != null) ...[
@@ -114,33 +138,8 @@ class ReturnListTile extends StatelessWidget {
   }
 }
 
-class _ReturnStatusBadge extends StatelessWidget {
-  const _ReturnStatusBadge({required this.status});
-
-  final String status;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final color = switch (status) {
-      'approved' => AppColors.secondaryOf(context),
-      'rejected' => AppColors.errorOf(context),
-      _ => AppColors.primaryOf(context),
-    };
-
-    return Container(
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSizes.spacingSmall,
-        vertical: AppSizes.spacingXSmall,
-      ),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: AppRadius.full,
-      ),
-      child: Text(
-        returnStatusLabel(l10n, status),
-        style: context.textTheme.bodySmall?.copyWith(color: color, fontWeight: FontWeight.w600),
-      ),
-    );
-  }
-}
+StatusBadgeTone _returnStatusTone(String status) => switch (status) {
+  'approved' => StatusBadgeTone.success,
+  'rejected' => StatusBadgeTone.danger,
+  _ => StatusBadgeTone.pending,
+};

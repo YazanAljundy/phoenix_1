@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { api } from '../api/client';
 import {
   EMPTY_PRODUCT_FORM,
@@ -7,52 +8,65 @@ import {
   productAvailabilityLabel,
   productFormFromProduct,
 } from '../components/ProductFormModal';
+import { LoadMoreControl } from '../components/LoadMoreControl';
+import { usePaginatedData } from '../hooks/usePaginatedData';
 import { useExchangeRate } from '../context/ExchangeRateContext';
 import { formatPriceWithSyp } from '../utils/currency';
 import { withArFallback } from '../utils/displayName';
 
+const PAGE_SIZE = 20;
+
 export function WarehouseProductsPage() {
+  const { t } = useTranslation();
   const usdToSyp = useExchangeRate();
-  const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [modal, setModal] = useState(null); // null | { mode: 'create' } | { mode: 'edit', product }
   const [isImporting, setIsImporting] = useState(false);
   const [importReport, setImportReport] = useState(null);
+  const [actionError, setActionError] = useState(null);
   const fileInputRef = useRef(null);
 
-  const load = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const [productsData, categoriesData] = await Promise.all([
-        api.warehouseProducts(),
-        api.categories(),
-      ]);
-      setProducts(productsData.products);
-      setCategories(categoriesData.categories);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
+  useEffect(() => {
+    api.categories().then((data) => setCategories(data.categories));
   }, []);
 
+  // Newest first is the backend's own paginated sort now (see
+  // listPaginatedProductsForWarehouse) - no client-side re-sort needed here.
+  const fetchPage = useCallback(
+    (cursor) =>
+      api.warehouseProducts({ limit: PAGE_SIZE, after: cursor }).then((data) => ({
+        rows: data.products,
+        hasMore: data.pagination.hasMore,
+        nextCursor: data.pagination.nextCursor,
+      })),
+    []
+  );
+
+  const {
+    data: products,
+    isLoading,
+    isLoadingMore,
+    hasMore,
+    error,
+    loadMore,
+    reset,
+  } = usePaginatedData(fetchPage);
+
   useEffect(() => {
-    load();
-  }, [load]);
+    reset();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const categoryName = (categoryId) =>
     categories.find((category) => category.id === categoryId)?.nameEn ?? '-';
 
   const handleSaved = () => {
     setModal(null);
-    load();
+    reset();
   };
 
   const handleDownloadTemplate = async () => {
-    setError(null);
+    setActionError(null);
     try {
       const blob = await api.downloadWarehouseProductTemplate();
       const url = URL.createObjectURL(blob);
@@ -64,7 +78,7 @@ export function WarehouseProductsPage() {
       link.remove();
       URL.revokeObjectURL(url);
     } catch (err) {
-      setError(err.message);
+      setActionError(err.message);
     }
   };
 
@@ -74,14 +88,14 @@ export function WarehouseProductsPage() {
     if (!file) return;
 
     setIsImporting(true);
-    setError(null);
+    setActionError(null);
     setImportReport(null);
     try {
       const report = await api.importWarehouseProducts(file);
       setImportReport(report);
-      await load();
+      reset();
     } catch (err) {
-      setError(err.message);
+      setActionError(err.message);
     } finally {
       setIsImporting(false);
     }
@@ -89,34 +103,44 @@ export function WarehouseProductsPage() {
 
   return (
     <div>
+      <div className="wh-page-head">
+        <h1>{t('nav.catalog')}</h1>
+      </div>
+
       <div className="section-toolbar section-toolbar-start">
         <button className="btn-secondary" onClick={handleDownloadTemplate}>
-          Download template
+          {t('products.downloadTemplate')}
         </button>
         <button
           className="btn-secondary"
           disabled={isImporting}
           onClick={() => fileInputRef.current?.click()}
         >
-          {isImporting ? 'Importing...' : 'Import Excel'}
+          {isImporting ? t('products.importing') : t('products.importExcel')}
         </button>
         <input ref={fileInputRef} type="file" accept=".xlsx" hidden onChange={handleFilePicked} />
         <button className="btn-primary" onClick={() => setModal({ mode: 'create' })}>
-          Add product
+          {t('products.addProduct')}
         </button>
       </div>
 
       {importReport && (
         <div className="exchange-rate-card">
           <p>
-            Added {importReport.added}, updated {importReport.updated}
-            {importReport.errors.length > 0 && `, ${importReport.errors.length} failed`}.
+            {t('products.importReport', {
+              added: importReport.added,
+              updated: importReport.updated,
+              failed:
+                importReport.errors.length > 0
+                  ? t('products.importReportFailed', { count: importReport.errors.length })
+                  : '',
+            })}
           </p>
           {importReport.errors.length > 0 && (
             <ul>
               {importReport.errors.map((e, index) => (
                 <li key={index} className="error-text">
-                  Row {e.row}: {e.reason}
+                  {t('products.importRowError', { row: e.row, reason: e.reason })}
                 </li>
               ))}
             </ul>
@@ -124,50 +148,58 @@ export function WarehouseProductsPage() {
         </div>
       )}
 
-      {error && <p className="error-text">{error}</p>}
+      {(error || actionError) && <p className="error-text">{error || actionError}</p>}
 
       {isLoading ? (
-        <p className="hint">Loading...</p>
+        <p className="hint">{t('common.loading')}</p>
       ) : products.length === 0 ? (
-        <p className="hint">No products yet - add your first one.</p>
+        <p className="hint">{t('products.noProductsWarehouse')}</p>
       ) : (
-        <div className="table-scroll">
-          <table className="product-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Category</th>
-                <th>Price</th>
-                <th>Status</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {products.map((product) => (
-                <tr key={product.id}>
-                  <td>
-                    <div className="product-name">{withArFallback(product.nameEn, product.nameAr)}</div>
-                    <div className="product-manufacturer">
-                      {withArFallback(product.manufacturerEn, product.manufacturerAr)}
-                    </div>
-                  </td>
-                  <td>{categoryName(product.categoryId)}</td>
-                  <td>{formatPriceWithSyp(product.priceUsd, usdToSyp)}</td>
-                  <td>
-                    <span className={`availability-badge ${productAvailabilityClass(product)}`}>
-                      {productAvailabilityLabel(product)}
-                    </span>
-                  </td>
-                  <td>
-                    <button className="btn-secondary" onClick={() => setModal({ mode: 'edit', product })}>
-                      Edit
-                    </button>
-                  </td>
+        <>
+          <div className="wh-card table-scroll">
+            <table className="wh-table">
+              <thead>
+                <tr>
+                  <th>{t('common.name')}</th>
+                  <th>{t('common.category')}</th>
+                  <th>{t('common.price')}</th>
+                  <th>{t('common.status')}</th>
+                  <th></th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {products.map((product) => (
+                  <tr key={product.id}>
+                    <td>
+                      <div className="product-name">{withArFallback(product.nameEn, product.nameAr)}</div>
+                      <div className="product-manufacturer">
+                        {withArFallback(product.manufacturerEn, product.manufacturerAr)}
+                      </div>
+                    </td>
+                    <td>{categoryName(product.categoryId)}</td>
+                    <td className="wh-num">{formatPriceWithSyp(product.priceUsd, usdToSyp)}</td>
+                    <td>
+                      <span className={`availability-badge ${productAvailabilityClass(product)}`}>
+                        {productAvailabilityLabel(product, t)}
+                      </span>
+                    </td>
+                    <td>
+                      <button className="btn-secondary" onClick={() => setModal({ mode: 'edit', product })}>
+                        {t('common.edit')}
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <LoadMoreControl
+            hasMore={hasMore}
+            isLoadingMore={isLoadingMore}
+            onLoadMore={loadMore}
+            pageSize={PAGE_SIZE}
+          />
+        </>
       )}
 
       {modal && (

@@ -6,14 +6,16 @@ import 'package:phoenix/core/constants/app_padding.dart';
 import 'package:phoenix/core/constants/app_radius.dart';
 import 'package:phoenix/core/constants/app_sizes.dart';
 import 'package:phoenix/core/extensions/build_context_extensions.dart';
+import 'package:phoenix/core/utils/currency_formatter.dart';
+import 'package:phoenix/core/utils/date_formatter.dart';
 import 'package:phoenix/core/widgets/app_dialog.dart';
 import 'package:phoenix/core/widgets/custom_card.dart';
 import 'package:phoenix/features/auth/presentation/managers/auth_cubit.dart';
 import 'package:phoenix/features/auth/presentation/managers/auth_state.dart';
-import 'package:phoenix/core/utils/date_formatter.dart';
 import 'package:phoenix/features/debts/data/models/warehouse_debt_model.dart';
 import 'package:phoenix/features/debts/presentation/managers/debts_cubit.dart';
 import 'package:phoenix/features/debts/presentation/managers/debts_state.dart';
+import 'package:phoenix/features/exchange_rate/presentation/managers/exchange_rate_cubit.dart';
 import 'package:phoenix/features/reviews/data/models/review_model.dart';
 import 'package:phoenix/features/reviews/presentation/managers/pharmacy_reviews_cubit.dart';
 import 'package:phoenix/features/reviews/presentation/managers/pharmacy_reviews_state.dart';
@@ -62,70 +64,58 @@ class ProfileView extends StatelessWidget {
           final pharmacyName = pharmacy == null
               ? null
               : (isArabic ? pharmacy.nameAr : pharmacy.nameEn);
+          final subtitleParts = [
+            if (pharmacyName != null) pharmacyName,
+            if (pharmacy?.city != null) pharmacy!.city,
+          ];
 
           return ListView(
             padding: AppPadding.screen,
             children: [
               CustomCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 28,
-                          backgroundColor: AppColors.primaryOf(context).withValues(alpha: 0.1),
-                          child: Icon(Icons.person, color: AppColors.primaryOf(context), size: 32),
-                        ),
-                        const SizedBox(width: AppSizes.spacingMedium),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                user?.name ?? '',
-                                style: context.textTheme.titleLarge,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                user?.phone ?? '',
-                                style: context.textTheme.bodyMedium?.copyWith(
-                                  color: AppColors.textSecondaryOf(context),
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                    CircleAvatar(
+                      radius: 31,
+                      backgroundColor: AppColors.primaryOf(context).withValues(alpha: 0.1),
+                      child: Icon(Icons.person, color: AppColors.primaryOf(context), size: 34),
                     ),
-                    if (pharmacyName != null) ...[
-                      const Divider(height: AppSizes.spacingLarge),
-                      Row(
+                    const SizedBox(width: AppSizes.spacingMedium),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Icon(
-                            Icons.local_pharmacy_outlined,
-                            size: AppSizes.iconSizeSmall,
-                            color: AppColors.textSecondaryOf(context),
+                          Text(
+                            user?.name ?? '',
+                            style: context.textTheme.titleLarge,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                          const SizedBox(width: AppSizes.spacingSmall),
-                          Text(l10n.pharmacyNameLabel, style: context.textTheme.bodyMedium),
-                          const Spacer(),
-                          Flexible(
-                            child: Text(
-                              pharmacyName,
-                              style: context.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                          if (subtitleParts.isNotEmpty) ...[
+                            const SizedBox(height: 2),
+                            Text(
+                              subtitleParts.join(' · '),
+                              style: context.textTheme.bodySmall?.copyWith(
+                                color: AppColors.textSecondaryOf(context),
+                                fontWeight: FontWeight.w700,
+                              ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              textAlign: TextAlign.end,
                             ),
+                          ],
+                          const SizedBox(height: 2),
+                          Text(
+                            user?.phone ?? '',
+                            style: context.textTheme.bodySmall?.copyWith(
+                              color: AppColors.textSecondaryOf(context),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ],
                       ),
-                    ],
+                    ),
                   ],
                 ),
               ),
@@ -150,35 +140,34 @@ class ProfileView extends StatelessWidget {
                       ),
                     );
                   }
-                  return CustomCard(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        Row(
-                          children: [
-                            _StarRow(rating: reviewsState.averageRating.round()),
-                            const SizedBox(width: AppSizes.spacingSmall),
-                            Flexible(
-                              child: Text(
-                                l10n.ratingSummary(
-                                  reviewsState.averageRating.toStringAsFixed(1),
-                                  reviewsState.reviews.length.toString(),
-                                ),
-                                style: context.textTheme.bodyMedium?.copyWith(
-                                  color: AppColors.textSecondaryOf(context),
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        children: [
+                          _StarRow(rating: reviewsState.averageRating.round()),
+                          const SizedBox(width: AppSizes.spacingSmall),
+                          Flexible(
+                            child: Text(
+                              l10n.ratingSummary(
+                                reviewsState.averageRating.toStringAsFixed(1),
+                                reviewsState.reviews.length.toString(),
                               ),
+                              style: context.textTheme.bodyMedium?.copyWith(
+                                color: AppColors.textSecondaryOf(context),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                          ],
-                        ),
-                        for (final review in reviewsState.reviews.take(3)) ...[
-                          const Divider(height: AppSizes.spacingLarge),
-                          _ReviewTile(review: review, isArabic: isArabic),
+                          ),
                         ],
+                      ),
+                      const SizedBox(height: AppSizes.spacingSmall),
+                      for (final review in reviewsState.reviews.take(3)) ...[
+                        _ReviewCard(review: review, isArabic: isArabic),
+                        const SizedBox(height: AppSizes.spacingSmall),
                       ],
-                    ),
+                    ],
                   );
                 },
               ),
@@ -203,15 +192,49 @@ class ProfileView extends StatelessWidget {
                       ),
                     );
                   }
+                  final usdToSyp = context.watch<ExchangeRateCubit>().state.usdToSyp;
+                  final total = debtsState.debts.fold<num>(0, (sum, d) => sum + d.balanceUsd);
+                  final totalSypText = formatSypApprox(total, usdToSyp, l10n.currencySuffix);
+
                   return CustomCard(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: AppSizes.spacingMedium,
+                      vertical: AppSizes.spacingSmall,
+                    ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        for (final debt in debtsState.debts) ...[
-                          if (debt != debtsState.debts.first)
-                            const Divider(height: AppSizes.spacingLarge),
-                          _DebtTile(debt: debt, isArabic: isArabic),
-                        ],
+                        for (final debt in debtsState.debts)
+                          _DebtTile(debt: debt, isArabic: isArabic, usdToSyp: usdToSyp),
+                        const Divider(height: AppSizes.spacingLarge),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: AppSizes.spacingSmall),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(l10n.totalDebtsLabel, style: context.textTheme.titleSmall),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    '\$$total',
+                                    style: context.textTheme.titleMedium?.copyWith(
+                                      color: AppColors.errorOf(context),
+                                    ),
+                                  ),
+                                  if (totalSypText != null)
+                                    Text(
+                                      totalSypText,
+                                      style: context.textTheme.bodySmall?.copyWith(
+                                        color: AppColors.textSecondaryOf(context),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
                       ],
                     ),
                   );
@@ -219,63 +242,44 @@ class ProfileView extends StatelessWidget {
               ),
 
               const SizedBox(height: AppSizes.spacingXLarge),
-              Text(l10n.language, style: context.textTheme.titleMedium),
-              const SizedBox(height: AppSizes.spacingSmall),
               BlocBuilder<SettingsCubit, SettingsState>(
                 builder: (context, settingsState) {
                   final currentCode = settingsState.locale?.languageCode ?? 'ar';
-                  return Wrap(
-                    spacing: AppSizes.spacingSmall,
-                    children: [
-                      ChoiceChip(
-                        label: const Text('العربية'),
-                        selected: currentCode == 'ar',
-                        shape: RoundedRectangleBorder(borderRadius: AppRadius.full),
-                        onSelected: (_) =>
-                            context.read<SettingsCubit>().changeLocale(const Locale('ar')),
-                      ),
-                      ChoiceChip(
-                        label: const Text('English'),
-                        selected: currentCode == 'en',
-                        shape: RoundedRectangleBorder(borderRadius: AppRadius.full),
-                        onSelected: (_) =>
-                            context.read<SettingsCubit>().changeLocale(const Locale('en')),
-                      ),
-                    ],
+                  return _SettingsCard(
+                    icon: Icons.translate,
+                    label: l10n.language,
+                    segments: _SegmentedControl<String>(
+                      value: currentCode,
+                      options: const [('ar', 'العربية'), ('en', 'English')],
+                      onChanged: (code) =>
+                          context.read<SettingsCubit>().changeLocale(Locale(code)),
+                    ),
                   );
                 },
               ),
 
-              const SizedBox(height: AppSizes.spacingXLarge),
-              Text(l10n.theme, style: context.textTheme.titleMedium),
-              const SizedBox(height: AppSizes.spacingSmall),
+              const SizedBox(height: AppSizes.spacingMedium),
               BlocBuilder<SettingsCubit, SettingsState>(
                 builder: (context, settingsState) {
-                  return Wrap(
-                    spacing: AppSizes.spacingSmall,
-                    children: [
-                      ChoiceChip(
-                        label: Text(l10n.light),
-                        selected: settingsState.themeMode == ThemeMode.light,
-                        shape: RoundedRectangleBorder(borderRadius: AppRadius.full),
-                        onSelected: (_) =>
-                            context.read<SettingsCubit>().changeTheme(ThemeMode.light),
-                      ),
-                      ChoiceChip(
-                        label: Text(l10n.dark),
-                        selected: settingsState.themeMode == ThemeMode.dark,
-                        shape: RoundedRectangleBorder(borderRadius: AppRadius.full),
-                        onSelected: (_) =>
-                            context.read<SettingsCubit>().changeTheme(ThemeMode.dark),
-                      ),
-                      ChoiceChip(
-                        label: Text(l10n.system),
-                        selected: settingsState.themeMode == ThemeMode.system,
-                        shape: RoundedRectangleBorder(borderRadius: AppRadius.full),
-                        onSelected: (_) =>
-                            context.read<SettingsCubit>().changeTheme(ThemeMode.system),
-                      ),
-                    ],
+                  final mode = settingsState.themeMode;
+                  final modeLabel = switch (mode) {
+                    ThemeMode.light => l10n.light,
+                    ThemeMode.dark => l10n.dark,
+                    ThemeMode.system => l10n.system,
+                  };
+                  return _SettingsCard(
+                    icon: Icons.dark_mode_outlined,
+                    label: l10n.theme,
+                    subtitle: modeLabel,
+                    segments: _SegmentedControl<ThemeMode>(
+                      value: mode,
+                      options: [
+                        (ThemeMode.light, l10n.light),
+                        (ThemeMode.dark, l10n.dark),
+                        (ThemeMode.system, l10n.system),
+                      ],
+                      onChanged: (m) => context.read<SettingsCubit>().changeTheme(m),
+                    ),
                   );
                 },
               ),
@@ -284,15 +288,24 @@ class ProfileView extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 height: AppSizes.buttonHeight,
-                child: OutlinedButton(
+                child: OutlinedButton.icon(
                   onPressed: () => _confirmLogout(context),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.errorOf(context),
-                    side: BorderSide(color: AppColors.errorOf(context)),
+                    side: BorderSide(color: AppColors.errorOf(context), width: 1.5),
                     shape: const RoundedRectangleBorder(borderRadius: AppRadius.medium),
                     padding: AppPadding.button,
                   ),
-                  child: Text(l10n.logout),
+                  icon: const Icon(Icons.logout),
+                  label: Text(l10n.logout),
+                ),
+              ),
+              const SizedBox(height: AppSizes.spacingMedium),
+              Text(
+                l10n.appName,
+                textAlign: TextAlign.center,
+                style: context.textTheme.bodySmall?.copyWith(
+                  color: AppColors.textSecondaryOf(context),
                 ),
               ),
             ],
@@ -325,8 +338,11 @@ class _StarRow extends StatelessWidget {
   }
 }
 
-class _ReviewTile extends StatelessWidget {
-  const _ReviewTile({required this.review, required this.isArabic});
+// Restyled to match the individually-bordered review-card pattern
+// established on the Warehouse Profile screen, instead of one card with
+// dividers between reviews.
+class _ReviewCard extends StatelessWidget {
+  const _ReviewCard({required this.review, required this.isArabic});
 
   final ReviewModel review;
   final bool isArabic;
@@ -335,50 +351,57 @@ class _ReviewTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final warehouseName = isArabic ? review.warehouseNameAr : review.warehouseNameEn;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            _StarRow(rating: review.rating, size: 14),
-            Text(
-              DateFormatter.formatDate(review.createdAt),
-              style: context.textTheme.bodySmall?.copyWith(
-                color: AppColors.textSecondaryOf(context),
+    return CustomCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _StarRow(rating: review.rating, size: 14),
+              Text(
+                DateFormatter.formatDate(review.createdAt),
+                style: context.textTheme.bodySmall?.copyWith(
+                  color: AppColors.textSecondaryOf(context),
+                ),
               ),
+            ],
+          ),
+          if (warehouseName != null) ...[
+            const SizedBox(height: AppSizes.spacingXSmall),
+            Text(
+              warehouseName,
+              style: context.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
-        ),
-        if (warehouseName != null) ...[
-          const SizedBox(height: 2),
-          Text(
-            warehouseName,
-            style: context.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w600),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
+          if (review.comment != null && review.comment!.isNotEmpty) ...[
+            const SizedBox(height: AppSizes.spacingXSmall),
+            Text(review.comment!, style: context.textTheme.bodyMedium),
+          ],
         ],
-        if (review.comment != null && review.comment!.isNotEmpty) ...[
-          const SizedBox(height: 2),
-          Text(review.comment!, style: context.textTheme.bodyMedium),
-        ],
-      ],
+      ),
     );
   }
 }
 
 // Section 16: one row of "my debts" - tapping it opens the read-only detail
-// screen (orders + payments) for that one warehouse, see DebtDetailView.
+// screen (orders + payments) for that one warehouse, see DebtDetailView. The
+// design's per-row "last payment date" isn't shown - WarehouseDebtModel
+// doesn't carry it.
 class _DebtTile extends StatelessWidget {
-  const _DebtTile({required this.debt, required this.isArabic});
+  const _DebtTile({required this.debt, required this.isArabic, required this.usdToSyp});
 
   final WarehouseDebtModel debt;
   final bool isArabic;
+  final double? usdToSyp;
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final name = isArabic ? debt.nameAr : (debt.nameEn ?? debt.nameAr);
+    final sypText = formatSypApprox(debt.balanceUsd, usdToSyp, l10n.currencySuffix);
 
     return InkWell(
       onTap: () => context.pushNamed(
@@ -386,28 +409,163 @@ class _DebtTile extends StatelessWidget {
         pathParameters: {'warehouseId': debt.warehouseId},
         extra: name,
       ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: AppSizes.spacingSmall),
+        child: Row(
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: AppColors.surfaceOf(context),
+                borderRadius: AppRadius.small,
+              ),
+              child: Icon(Icons.storefront_outlined, size: 17, color: AppColors.textSecondaryOf(context)),
+            ),
+            const SizedBox(width: AppSizes.spacingSmall),
+            Expanded(
+              child: Text(
+                name,
+                style: context.textTheme.bodyMedium,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const SizedBox(width: AppSizes.spacingSmall),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(
+                  '\$${debt.balanceUsd}',
+                  style: context.textTheme.bodyMedium?.copyWith(
+                    color: AppColors.errorOf(context),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                if (sypText != null)
+                  Text(
+                    sypText,
+                    style: context.textTheme.bodySmall?.copyWith(
+                      fontSize: 10.5,
+                      color: AppColors.textSecondaryOf(context),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(width: AppSizes.spacingXSmall),
+            Icon(Icons.chevron_right, size: AppSizes.iconSizeSmall, color: AppColors.textSecondaryOf(context)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// A bordered card with an icon+label(+subtitle) on one side and a segmented
+// control on the other - the shared shell for the language and theme rows,
+// matching the design's "settings row" pattern.
+class _SettingsCard extends StatelessWidget {
+  const _SettingsCard({
+    required this.icon,
+    required this.label,
+    this.subtitle,
+    required this.segments,
+  });
+
+  final IconData icon;
+  final String label;
+  final String? subtitle;
+  final Widget segments;
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomCard(
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
+          Icon(icon, size: 22, color: AppColors.navyOf(context)),
+          const SizedBox(width: AppSizes.spacingMedium),
           Expanded(
-            child: Text(
-              name,
-              style: context.textTheme.bodyMedium,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: context.textTheme.titleSmall),
+                if (subtitle != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle!,
+                    style: context.textTheme.bodySmall?.copyWith(
+                      color: AppColors.textSecondaryOf(context),
+                    ),
+                  ),
+                ],
+              ],
             ),
           ),
           const SizedBox(width: AppSizes.spacingSmall),
-          Text(
-            '\$${debt.balanceUsd}',
-            style: context.textTheme.bodyMedium?.copyWith(
-              color: AppColors.errorOf(context),
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(width: AppSizes.spacingXSmall),
-          Icon(Icons.chevron_right, size: AppSizes.iconSizeSmall, color: AppColors.textSecondaryOf(context)),
+          segments,
         ],
+      ),
+    );
+  }
+}
+
+class _SegmentedControl<T> extends StatelessWidget {
+  const _SegmentedControl({required this.value, required this.options, required this.onChanged});
+
+  final T value;
+  final List<(T, String)> options;
+  final ValueChanged<T> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceOf(context),
+        borderRadius: AppRadius.small,
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final option in options)
+            _SegmentButton(
+              label: option.$2,
+              selected: option.$1 == value,
+              onTap: () => onChanged(option.$1),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SegmentButton extends StatelessWidget {
+  const _SegmentButton({required this.label, required this.selected, required this.onTap});
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(9),
+      child: Container(
+        constraints: const BoxConstraints(minWidth: 46, minHeight: 36),
+        alignment: Alignment.center,
+        padding: const EdgeInsets.symmetric(horizontal: AppSizes.spacingSmall),
+        decoration: BoxDecoration(
+          color: selected ? AppColors.navyOf(context) : Colors.transparent,
+          borderRadius: BorderRadius.circular(9),
+        ),
+        child: Text(
+          label,
+          style: context.textTheme.bodySmall?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: selected ? Colors.white : AppColors.textSecondaryOf(context),
+          ),
+        ),
       ),
     );
   }

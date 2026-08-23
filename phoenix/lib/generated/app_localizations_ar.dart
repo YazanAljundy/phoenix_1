@@ -60,13 +60,20 @@ class AppLocalizationsAr extends AppLocalizations {
   String get registrationTitle => 'إنشاء حساب الصيدلية';
 
   @override
-  String get registrationSubtitle => 'أدخل بياناتك للبدء';
+  String get registrationSubtitle =>
+      'املأ البيانات التالية، وسيتم تفعيل حسابك بعد مراجعة الوثائق من قِبل الإدارة.';
 
   @override
   String get fullNameLabel => 'الاسم الكامل';
 
   @override
+  String get fullNameHint => 'مثال: د. سامر الحلبي';
+
+  @override
   String get pharmacyNameLabel => 'اسم الصيدلية';
+
+  @override
+  String get pharmacyNameHint => 'مثال: صيدلية النور';
 
   @override
   String get phoneLabel => 'رقم الهاتف';
@@ -75,22 +82,32 @@ class AppLocalizationsAr extends AppLocalizations {
   String get addressLabel => 'العنوان';
 
   @override
-  String get verificationPhotoLabel => 'صورة الصيدلية';
+  String get pickLocationHint => 'حرّك الخريطة لضبط موضع المؤشر بدقة';
 
   @override
-  String get verificationPhotoHint => 'صورة لواجهة أو لافتة صيدليتك';
+  String get resolvingAddressText => 'جارِ تحديد العنوان...';
 
   @override
-  String get choosePhotoButton => 'اختر صورة';
+  String get locationPermissionDeniedMessage =>
+      'تعذّر الوصول لموقعك، يمكنك تحريك الخريطة يدوياً لتحديد الموقع.';
 
   @override
-  String get changePhotoButton => 'تغيير الصورة';
+  String get addressNotResolvedYetMessage =>
+      'يرجى الانتظار حتى يتم تحديد العنوان من الخريطة، أو حرّك الخريطة لضبط الموقع.';
 
   @override
-  String get photoRequired => 'يرجى إضافة صورة لصيدليتك.';
+  String get useCurrentLocationTooltip => 'موقعي الحالي';
 
   @override
   String get confirmPasswordLabel => 'تأكيد كلمة المرور';
+
+  @override
+  String get confirmPasswordHint => 'أعد إدخال كلمة المرور';
+
+  @override
+  String passwordHint(String min) {
+    return '$min أحرف على الأقل';
+  }
 
   @override
   String get passwordTooShort =>
@@ -109,6 +126,16 @@ class AppLocalizationsAr extends AppLocalizations {
   String get createAccountButton => 'إنشاء الحساب';
 
   @override
+  String get termsAgreementLabel => 'أوافق على شروط الاستخدام وسياسة الخصوصية.';
+
+  @override
+  String get termsAgreementRequiredError =>
+      'يجب الموافقة على الشروط والأحكام للمتابعة.';
+
+  @override
+  String get passwordsMustMatchHint => 'يجب أن تتطابق كلمتا المرور.';
+
+  @override
   String get passwordLoginTitle => 'تسجيل الدخول بكلمة السر';
 
   @override
@@ -121,9 +148,8 @@ class AppLocalizationsAr extends AppLocalizations {
   String get otpTitle => 'أدخل رمز التحقق';
 
   @override
-  String otpInstructions(String phone) {
-    return 'أرسلنا رمزاً مكوناً من 6 أرقام عبر رسالة نصية إلى $phone';
-  }
+  String get otpInstructionsPrefix =>
+      'أدخل الرمز المكوّن من 6 أرقام المُرسل إلى';
 
   @override
   String get otpCodeLabel => 'رمز التحقق';
@@ -132,7 +158,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get verifyButton => 'تحقق';
 
   @override
-  String get resendCodeButton => 'إعادة إرسال الرمز';
+  String get resendCodeButton => 'لم يصلك الرمز؟ إعادة الإرسال';
 
   @override
   String get codeResent => 'تم إرسال رمز جديد.';
@@ -145,11 +171,25 @@ class AppLocalizationsAr extends AppLocalizations {
       'نقوم بمراجعة تسجيلك حالياً. ستتمكن من الطلب فور الموافقة على حسابك.';
 
   @override
+  String approvalPendingMessageWithName(String pharmacyName) {
+    return 'نقوم بمراجعة وثائق صيدلية $pharmacyName حالياً. ستتمكن من الطلب فور الموافقة على حسابك.';
+  }
+
+  @override
   String get approvalPendingBlockedTitle => 'الحساب محظور';
 
   @override
   String get approvalPendingBlockedMessage =>
       'تم حظر هذا الحساب. يرجى التواصل مع الدعم للمساعدة.';
+
+  @override
+  String get approvalChecklistReceived => 'تم استلام البيانات والوثائق';
+
+  @override
+  String get approvalChecklistReview => 'قيد مراجعة الإدارة';
+
+  @override
+  String get approvalChecklistActivate => 'تفعيل الحساب والبدء بالطلب';
 
   @override
   String get refreshStatusButton => 'تحقق من الحالة';
@@ -180,6 +220,12 @@ class AppLocalizationsAr extends AppLocalizations {
   String get errorState => 'حدث خطأ ما.';
 
   @override
+  String get noMoreResultsText => 'لا توجد نتائج إضافية';
+
+  @override
+  String get retryButton => 'إعادة المحاولة';
+
+  @override
   String get warehouseSelectionTitle => 'اختر المستودع';
 
   @override
@@ -194,8 +240,47 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String warehousesAvailableSubtitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count مستودع متاح لصيدليتك',
+      many: '$count مستودعاً متاحاً لصيدليتك',
+      few: '$count مستودعات متاحة لصيدليتك',
+      two: 'مستودعان متاحان لصيدليتك',
+      one: 'مستودع واحد متاح لصيدليتك',
+      zero: 'لا توجد مستودعات متاحة لصيدليتك',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get searchWarehouseHint => 'ابحث عن مستودع أو مدينة';
+
+  @override
+  String get noSearchResultsFound => 'ما في نتائج مطابقة لبحثك.';
+
+  @override
+  String get warehouseProfileButtonLabel => 'البروفايل';
+
+  @override
   String get noManufacturersFound =>
       'لا توجد شركات مصنّعة متاحة بهذا المستودع.';
+
+  @override
+  String manufacturersCountSubtitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count شركة مصنّعة',
+      many: '$count شركة مصنّعة',
+      few: '$count شركات مصنّعة',
+      two: 'شركتان مصنّعتان',
+      one: 'شركة مصنّعة واحدة',
+      zero: 'لا توجد شركات مصنّعة',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get warehouseProfileTooltip => 'معلومات المستودع';
@@ -234,16 +319,34 @@ class AppLocalizationsAr extends AppLocalizations {
   String get searchProductsHint => 'ابحث بالاسم أو الشركة المصنعة';
 
   @override
-  String get allCategories => 'الكل';
-
-  @override
   String get addToCartButton => 'إضافة';
 
   @override
   String get unavailableLabel => 'غير متوفر';
 
   @override
+  String get offerBadgeLabel => 'عرض';
+
+  @override
+  String get toggleDensityTooltip => 'تبديل طريقة العرض';
+
+  @override
   String get noProductsFound => 'لم يتم العثور على منتجات.';
+
+  @override
+  String catalogItemsCountSubtitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count صنف',
+      many: '$count صنفاً',
+      few: '$count أصناف',
+      two: 'صنفان',
+      one: 'صنف واحد',
+      zero: 'لا توجد أصناف',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get currencySuffix => 'ل.س';
@@ -258,6 +361,15 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get cartEmptyMessage => 'سلتك فارغة.';
+
+  @override
+  String get cartEmptyHint => 'اختر مستودعاً وابدأ بإضافة الأدوية إلى سلتك.';
+
+  @override
+  String get browseCatalogButton => 'تصفّح المنتجات';
+
+  @override
+  String get quantityLabel => 'الكمية';
 
   @override
   String get notesLabel => 'ملاحظات (اختياري)';
@@ -374,6 +486,11 @@ class AppLocalizationsAr extends AppLocalizations {
   String get statusHistoryTitle => 'سجل الحالة';
 
   @override
+  String lastUpdatedLabel(String time) {
+    return 'آخر تحديث: $time';
+  }
+
+  @override
   String get cancelOrderTitle => 'إلغاء الطلب؟';
 
   @override
@@ -400,7 +517,28 @@ class AppLocalizationsAr extends AppLocalizations {
   String get myOrdersTitle => 'طلباتي';
 
   @override
+  String myOrdersCountSubtitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count طلب · اسحب للأسفل للتحديث',
+      many: '$count طلباً · اسحب للأسفل للتحديث',
+      few: '$count طلبات · اسحب للأسفل للتحديث',
+      two: 'طلبان · اسحب للأسفل للتحديث',
+      one: 'طلب واحد · اسحب للأسفل للتحديث',
+      zero: 'لا طلبات بعد',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get refreshTooltip => 'تحديث';
+
+  @override
   String get noOrdersYet => 'لم تقم بأي طلبات بعد.';
+
+  @override
+  String get browseWarehousesButton => 'تصفّح المستودعات';
 
   @override
   String get invoiceTitle => 'أصناف الطلب';
@@ -425,7 +563,33 @@ class AppLocalizationsAr extends AppLocalizations {
   String get returnsTitle => 'المرتجعات';
 
   @override
+  String returnsCountSubtitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count طلب إرجاع',
+      many: '$count طلب إرجاع',
+      few: '$count طلبات إرجاع',
+      two: 'طلبا إرجاع',
+      one: 'طلب إرجاع واحد',
+      zero: 'لا طلبات إرجاع',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get noReturnsYet => 'لم تقدّم أي طلب إرجاع بعد.';
+
+  @override
+  String get newReturnRequestButton => 'طلب مرتجع جديد';
+
+  @override
+  String get selectOrderForReturnTitle =>
+      'اختر الطلب الذي تريد إرجاع أصناف منه';
+
+  @override
+  String get noEligibleOrdersForReturn =>
+      'لا يوجد طلبات مسلّمة حالياً يمكن طلب إرجاع لها.';
 
   @override
   String get requestReturnTitle => 'طلب إرجاع';
@@ -447,6 +611,9 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get reasonOther => 'سبب آخر';
+
+  @override
+  String get multipleReasonsLabel => 'أسباب متعددة';
 
   @override
   String get customReasonLabel => 'يرجى التوضيح';
@@ -573,6 +740,9 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get noDebtsYet => 'لا توجد ديون حالياً.';
+
+  @override
+  String get totalDebtsLabel => 'إجمالي الديون';
 
   @override
   String get totalOrdersLabel => 'إجمالي الطلبات';

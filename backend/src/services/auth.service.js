@@ -40,7 +40,15 @@ async function loadProfile(user) {
 // expiry (7 days) and reinstalls, without adding a screen the spec doesn't call
 // for. The same discard applies to password/verificationPhotoUrl (Section 6-2
 // update): both are only ever captured once, at the account's actual creation.
-async function registerOrLogin({ name, pharmacyName, phone, address, password, verificationPhotoUrl }) {
+async function registerOrLogin({
+  name,
+  pharmacyName,
+  phone,
+  address,
+  password,
+  verificationPhotoUrl,
+  location,
+}) {
   const existingUser = await User.findOne({ phone });
   if (existingUser) {
     if (existingUser.status === 'blocked') {
@@ -72,6 +80,7 @@ async function registerOrLogin({ name, pharmacyName, phone, address, password, v
     city: 'Latakia',
     phone,
     verificationPhoto: verificationPhotoUrl,
+    location: location || undefined,
     addedBy: 'self',
   });
 
@@ -121,6 +130,21 @@ async function loginWithPassword({ phone, password }) {
   return { user, pharmacy, warehouse, token: issueToken(user) };
 }
 
+// A token can only ever belong to one user at a time - if this exact device
+// was previously registered under a different account (a logout/login
+// switch on the same phone), remove it from wherever it was before
+// re-adding it here. Without this, the previous account would keep getting
+// push notifications meant for whoever's actually logged in now. Refreshing
+// the same token for the same user goes through the same pull-then-push,
+// which is also how lastUsedAt gets bumped on every app launch.
+async function registerDeviceToken(userId, { fcmToken, deviceType }) {
+  await User.updateMany({ 'deviceTokens.fcmToken': fcmToken }, { $pull: { deviceTokens: { fcmToken } } });
+  await User.updateOne(
+    { _id: userId },
+    { $push: { deviceTokens: { fcmToken, deviceType, lastUsedAt: new Date() } } }
+  );
+}
+
 async function getMe(userId) {
   const user = await User.findById(userId);
   if (!user) {
@@ -131,4 +155,4 @@ async function getMe(userId) {
   return { user, pharmacy, warehouse };
 }
 
-module.exports = { registerOrLogin, login, loginWithPassword, getMe };
+module.exports = { registerOrLogin, login, loginWithPassword, getMe, registerDeviceToken };

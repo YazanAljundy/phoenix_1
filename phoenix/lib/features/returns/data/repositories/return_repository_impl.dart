@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:phoenix/core/error/failure.dart';
+import 'package:phoenix/core/models/paginated_result.dart';
 import 'package:phoenix/core/network/api_client.dart';
 import 'package:phoenix/core/network/endpoints.dart';
 import 'package:phoenix/features/returns/data/models/return_model.dart';
@@ -81,13 +82,17 @@ class ReturnRepositoryImpl implements ReturnRepository {
   }
 
   @override
-  Future<List<ReturnModel>> getReturns() async {
+  Future<PaginatedResult<ReturnModel>> getReturns({int? limit, String? after}) async {
     try {
-      final response = await _apiClient.dio.get(Endpoints.returns);
+      final response = await _apiClient.dio.get(
+        Endpoints.returns,
+        queryParameters: {
+          if (limit != null) 'limit': limit,
+          if (after != null) 'after': after,
+        },
+      );
       final data = response.data as Map<String, dynamic>;
-      return (data['returns'] as List)
-          .map((e) => ReturnModel.fromJson(e as Map<String, dynamic>))
-          .toList();
+      return PaginatedResult.fromJson(data, 'returns', ReturnModel.fromJson);
     } on DioException catch (e) {
       throw ServerFailure.fromDioError(e);
     }

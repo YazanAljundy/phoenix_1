@@ -1,28 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { api } from '../api/client';
-import { withArFallback } from '../utils/displayName';
+import { LoadMoreControl } from '../components/LoadMoreControl';
+import { usePaginatedData } from '../hooks/usePaginatedData';
 
-const REASON_LABELS = {
-  damaged: 'Damaged',
-  wrong_item: 'Wrong item',
-  other: 'Other',
-};
-
-// Section 6.9/8: status is the outcome directly now - no separate
-// "resolution" and no "refund" (meaningless under COD). Approve always means
-// a no-extra-charge replacement order.
-const STATUS_LABELS = {
-  pending: 'Pending review',
-  approved: 'Approved',
-  rejected: 'Rejected',
-};
-
-function reasonText(item) {
-  if (item.reasonType === 'other' && item.customReason) {
-    return item.customReason;
-  }
-  return REASON_LABELS[item.reasonType] ?? item.reasonType;
-}
+const PAGE_SIZE = 15;
 
 function statusBadgeClass(returnRequest) {
   if (returnRequest.status === 'approved') return 'status-delivered';
@@ -31,61 +14,67 @@ function statusBadgeClass(returnRequest) {
 }
 
 // Section 6.9: one return per order, covering every problem item in it at
-// once - each row here is one item, all under the same return card.
+// once - the item-level breakdown (products, reasons, photos) lives on
+// WarehouseReturnDetailPage; this table is just the browsing queue.
 export function WarehouseReturnsPage() {
-  const [returns, setReturns] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const { t } = useTranslation();
+  const navigate = useNavigate();
   const [busyId, setBusyId] = useState(null);
+  const [actionError, setActionError] = useState(null);
 
-  const load = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const data = await api.warehouseReturns();
-      setReturns(data.returns);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
+  const statusLabel = (returnRequest) => {
+    if (returnRequest.status === 'approved') return t('returns.statusApproved');
+    if (returnRequest.status === 'rejected') return t('returns.statusRejected');
+    return t('returns.statusPending');
+  };
+
+  // Newest first is the backend's own paginated sort now (see
+  // listPaginatedReturnsForWarehouse) - no client-side re-sort needed here.
+  const fetchPage = useCallback(
+    (cursor) =>
+      api.warehouseReturns({ limit: PAGE_SIZE, after: cursor }).then((data) => ({
+        rows: data.returns,
+        hasMore: data.pagination.hasMore,
+        nextCursor: data.pagination.nextCursor,
+      })),
+    []
+  );
+
+  const { data: returns, isLoading, isLoadingMore, hasMore, error, loadMore, reset } =
+    usePaginatedData(fetchPage);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    reset();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleApprove = async (returnRequest) => {
-    const confirmed = window.confirm(
-      `Approve this return for order #${returnRequest.orderNumber}? This creates a new no-extra-charge replacement order and cannot be undone.`,
-    );
+    const confirmed = window.confirm(t('returns.confirmApprove', { number: returnRequest.orderNumber }));
     if (!confirmed) return;
 
     setBusyId(returnRequest.id);
-    setError(null);
+    setActionError(null);
     try {
       await api.approveReturn(returnRequest.id);
-      await load();
+      reset();
     } catch (err) {
-      setError(err.message);
+      setActionError(err.message);
     } finally {
       setBusyId(null);
     }
   };
 
   const handleReject = async (returnRequest) => {
-    const rejectionNote = window.prompt(
-      `Explain why this return (order #${returnRequest.orderNumber}) is being rejected - the pharmacist will see this note:`,
-    );
+    const rejectionNote = window.prompt(t('returns.promptReject', { number: returnRequest.orderNumber }));
     if (!rejectionNote || !rejectionNote.trim()) return;
 
     setBusyId(returnRequest.id);
-    setError(null);
+    setActionError(null);
     try {
       await api.rejectReturn(returnRequest.id, rejectionNote.trim());
-      await load();
+      reset();
     } catch (err) {
-      setError(err.message);
+      setActionError(err.message);
     } finally {
       setBusyId(null);
     }
@@ -93,76 +82,90 @@ export function WarehouseReturnsPage() {
 
   return (
     <div>
-      {error && <p className="error-text">{error}</p>}
+      <div className="wh-page-head">
+        <h1>{t('nav.returns')}</h1>
+      </div>
+
+      {(error || actionError) && <p className="error-text">{error || actionError}</p>}
 
       {isLoading ? (
-        <p className="hint">Loading...</p>
+        <p className="hint">{t('common.loading')}</p>
       ) : returns.length === 0 ? (
-        <p className="hint">No return requests yet.</p>
-      ) : (
-        <div className="order-list">
-          {returns.map((returnRequest) => (
-            <div className="order-card" key={returnRequest.id}>
-              <div className="order-card-header">
-                <div>
-                  <h2>
-                    {returnRequest.pharmacyNameEn} &middot; Order #{returnRequest.orderNumber}
-                  </h2>
-                  <p>{returnRequest.pharmacyPhone}</p>
-                </div>
-                <span className={`status-badge ${statusBadgeClass(returnRequest)}`}>
-                  {STATUS_LABELS[returnRequest.status] ?? returnRequest.status}
-                </span>
-              </div>
-
-              <div className="order-items">
-                {returnRequest.items.map((item) => (
-                  <p key={item.orderItemId}>
-                    {withArFallback(item.productNameEn, item.productNameAr)} &middot; Qty {item.quantity}{' '}
-                    &middot; {reasonText(item)}
-                  </p>
-                ))}
-              </div>
-              {returnRequest.notes && <p className="order-notes">Note: {returnRequest.notes}</p>}
-
-              {returnRequest.images?.length > 0 && (
-                <div className="return-photo-row">
-                  {returnRequest.images.map((url) => (
-                    <a key={url} href={url} target="_blank" rel="noreferrer">
-                      <img className="return-photo-thumb" src={url} alt="Return evidence" />
-                    </a>
-                  ))}
-                </div>
-              )}
-
-              {returnRequest.status === 'rejected' && returnRequest.rejectionNote && (
-                <p className="order-notes">Rejection reason: {returnRequest.rejectionNote}</p>
-              )}
-              {returnRequest.status === 'approved' && (
-                <p className="hint">Replacement order created.</p>
-              )}
-
-              {returnRequest.status === 'pending' && (
-                <div className="return-actions">
-                  <button
-                    className="btn-approve"
-                    disabled={busyId === returnRequest.id}
-                    onClick={() => handleApprove(returnRequest)}
-                  >
-                    Approve (replace)
-                  </button>
-                  <button
-                    className="btn-reject"
-                    disabled={busyId === returnRequest.id}
-                    onClick={() => handleReject(returnRequest)}
-                  >
-                    Reject
-                  </button>
-                </div>
-              )}
-            </div>
-          ))}
+        <div className="wh-empty-state">
+          <div className="wh-empty-state-icon">↩</div>
+          <div className="wh-empty-state-title">{t('returns.noReturns')}</div>
         </div>
+      ) : (
+        <>
+          <div className="wh-card table-scroll">
+            <table className="wh-table">
+              <thead>
+                <tr>
+                  <th>{t('orders.orderNumberColumn')}</th>
+                  <th>{t('orderDetail.pharmacy')}</th>
+                  <th>{t('orders.itemCountColumn')}</th>
+                  <th>{t('common.status')}</th>
+                  <th>{t('debts.date')}</th>
+                  <th>{t('orders.actionColumn')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {returns.map((returnRequest) => (
+                  <tr key={returnRequest.id} onClick={() => navigate(`/warehouse/returns/${returnRequest.id}`)}>
+                    <td>
+                      <span className="wh-num wh-table-order-num">
+                        {t('orders.orderNumber', { number: returnRequest.orderNumber })}
+                      </span>
+                    </td>
+                    <td>{returnRequest.pharmacyNameEn}</td>
+                    <td className="wh-num">{returnRequest.items.length}</td>
+                    <td>
+                      <span className={`status-badge ${statusBadgeClass(returnRequest)}`}>
+                        {statusLabel(returnRequest)}
+                      </span>
+                    </td>
+                    <td className="wh-num wh-table-date">
+                      {returnRequest.createdAt ? new Date(returnRequest.createdAt).toLocaleString() : ''}
+                    </td>
+                    <td>
+                      {returnRequest.status === 'pending' && (
+                        <div className="wh-row-actions">
+                          <button
+                            className="wh-row-action"
+                            disabled={busyId === returnRequest.id}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleApprove(returnRequest);
+                            }}
+                          >
+                            {t('returns.approveReplace')}
+                          </button>
+                          <button
+                            className="wh-row-action wh-row-action-danger"
+                            disabled={busyId === returnRequest.id}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              handleReject(returnRequest);
+                            }}
+                          >
+                            {t('common.reject')}
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="wh-table-hint">{t('returns.clickRowHint')}</p>
+          <LoadMoreControl
+            hasMore={hasMore}
+            isLoadingMore={isLoadingMore}
+            onLoadMore={loadMore}
+            pageSize={PAGE_SIZE}
+          />
+        </>
       )}
     </div>
   );

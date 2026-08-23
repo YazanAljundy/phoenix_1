@@ -6,6 +6,7 @@ class Endpoints {
   static const String login = '/auth/login';
   static const String loginPassword = '/auth/login-password';
   static const String me = '/auth/me';
+  static const String deviceToken = '/auth/device-token';
 
   static const String warehouses = '/warehouses';
   static const String categories = '/categories';
@@ -25,4 +26,6 @@ class Endpoints {
 
   static const String debts = '/pharmacy/debts';
   static String debtDetail(String warehouseId) => '/pharmacy/debts/$warehouseId';
+
+  static const String activeBanners = '/banners/active';
 }

@@ -9,9 +9,9 @@ const reviewSchema = new Schema(
     reviewerType: { type: String, enum: ['pharmacy', 'warehouse'], required: true },
     rating: { type: Number, required: true, min: 1, max: 5 },
     comment: { type: String, default: null },
-    // Default depends on reviewerType, set by review.service.js at creation time:
-    // pharmacy->warehouse reviews start hidden and flip to true after one month (cron job);
-    // warehouse->pharmacy reviews are visible immediately.
+    // Both directions are visible immediately - kept as a real field (rather
+    // than removed outright) in case a future moderation need brings back a
+    // reason to hide a review.
     isVisible: { type: Boolean, default: true },
   },
   { timestamps: true }

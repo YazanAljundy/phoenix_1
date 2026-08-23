@@ -1,13 +1,21 @@
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:phoenix/core/network/api_client.dart';
+import 'package:phoenix/core/services/fcm_service.dart';
 import 'package:phoenix/core/services/secure_storage_service.dart';
 import 'package:phoenix/core/services/storage_service.dart';
+import 'package:phoenix/firebase_options.dart';
 import 'package:phoenix/core/theme/dark_theme.dart';
+import 'package:phoenix/core/theme/light_theme.dart';
 import 'package:phoenix/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:phoenix/features/auth/presentation/managers/auth_cubit.dart';
+import 'package:phoenix/features/banners/data/repositories/banners_repository.dart';
+import 'package:phoenix/features/banners/data/repositories/banners_repository_impl.dart';
+import 'package:phoenix/features/banners/presentation/managers/banners_cubit.dart';
 import 'package:phoenix/features/cart/data/repositories/order_repository.dart';
 import 'package:phoenix/features/cart/data/repositories/order_repository_impl.dart';
 import 'package:phoenix/features/cart/presentation/managers/cart_cubit.dart';
@@ -32,6 +40,10 @@ import 'package:phoenix/routes/app_router.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  // Must be registered before any background/terminated message can be
+  // received at all - see the handler's own doc comment in fcm_service.dart.
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
 
   final prefs = await SharedPreferences.getInstance();
   final storageService = StorageService(prefs);
@@ -41,13 +53,17 @@ Future<void> main() async {
   final secureStorage = SecureStorageService();
   final apiClient = ApiClient(secureStorage: secureStorage);
   final authRepository = AuthRepositoryImpl(apiClient: apiClient);
+  final fcmService = FcmService(authRepository: authRepository);
   final warehouseRepository = WarehouseRepositoryImpl(apiClient: apiClient);
   final catalogRepository = CatalogRepositoryImpl(apiClient: apiClient);
-  final exchangeRateRepository = ExchangeRateRepositoryImpl(apiClient: apiClient);
+  final exchangeRateRepository = ExchangeRateRepositoryImpl(
+    apiClient: apiClient,
+  );
   final orderRepository = OrderRepositoryImpl(apiClient: apiClient);
   final returnRepository = ReturnRepositoryImpl(apiClient: apiClient);
   final reviewRepository = ReviewRepositoryImpl(apiClient: apiClient);
   final debtRepository = DebtRepositoryImpl(apiClient: apiClient);
+  final bannersRepository = BannersRepositoryImpl(apiClient: apiClient);
 
   runApp(
     MyApp(
@@ -62,6 +78,8 @@ Future<void> main() async {
       returnRepository: returnRepository,
       reviewRepository: reviewRepository,
       debtRepository: debtRepository,
+      bannersRepository: bannersRepository,
+      fcmService: fcmService,
     ),
   );
 }
@@ -109,6 +127,8 @@ class MyApp extends StatelessWidget {
     required this.returnRepository,
     required this.reviewRepository,
     required this.debtRepository,
+    required this.bannersRepository,
+    required this.fcmService,
     super.key,
   });
 
@@ -123,6 +143,8 @@ class MyApp extends StatelessWidget {
   final ReturnRepositoryImpl returnRepository;
   final ReviewRepositoryImpl reviewRepository;
   final DebtRepositoryImpl debtRepository;
+  final BannersRepositoryImpl bannersRepository;
+  final FcmService fcmService;
 
   @override
   Widget build(BuildContext context) {
@@ -132,9 +154,14 @@ class MyApp extends StatelessWidget {
         RepositoryProvider<OrderRepository>.value(value: orderRepository),
         RepositoryProvider<ReturnRepository>.value(value: returnRepository),
         RepositoryProvider<ReviewRepository>.value(value: reviewRepository),
-        RepositoryProvider<WarehouseRepository>.value(value: warehouseRepository),
-        RepositoryProvider<ExchangeRateRepository>.value(value: exchangeRateRepository),
+        RepositoryProvider<WarehouseRepository>.value(
+          value: warehouseRepository,
+        ),
+        RepositoryProvider<ExchangeRateRepository>.value(
+          value: exchangeRateRepository,
+        ),
         RepositoryProvider<DebtRepository>.value(value: debtRepository),
+        RepositoryProvider<BannersRepository>.value(value: bannersRepository),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -148,6 +175,7 @@ class MyApp extends StatelessWidget {
             create: (context) => AuthCubit(
               authRepository: authRepository,
               secureStorage: secureStorage,
+              fcmService: fcmService,
             ),
           ),
           BlocProvider(
@@ -159,8 +187,13 @@ class MyApp extends StatelessWidget {
             create: (context) => CartCubit(orderRepository: orderRepository),
           ),
           BlocProvider(
+            create: (context) => ExchangeRateCubit(
+              exchangeRateRepository: exchangeRateRepository,
+            ),
+          ),
+          BlocProvider(
             create: (context) =>
-                ExchangeRateCubit(exchangeRateRepository: exchangeRateRepository),
+                BannersCubit(bannersRepository: bannersRepository),
           ),
         ],
         child: Builder(
@@ -171,7 +204,7 @@ class MyApp extends StatelessWidget {
                 darkTheme: DarkTheme.data,
                 routerConfig: AppRouter().router,
                 debugShowCheckedModeBanner: false,
-                theme: ThemeData(fontFamily: 'Inter'),
+                theme: LightTheme.data,
                 locale: state.locale,
                 localizationsDelegates: const [
                   AppLocalizations.delegate,

@@ -15,3 +15,4 @@
 # Flutter/Dart
 **/.dart_tool/
 .flutter_temp/
+backend/.env.example

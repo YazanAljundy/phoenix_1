@@ -34,9 +34,9 @@ async function isWarehouseAvailable(warehouseId) {
 // order) plus the same visible reviews the warehouse's own web panel sees
 // (warehouseReview.service.js), just capped to the 5 most recent.
 // Warehouse.averageRating/reviewsCount aren't used here - they're not kept
-// up to date yet (see review.service.js's createWarehouseReview comment),
-// so the rating shown here is computed live from the actual visible
-// reviews, same as listReviewsForWarehouse already does for the panel.
+// up to date as reviews come in, so the rating shown here is computed live
+// from the actual visible reviews, same as listReviewsForWarehouse already
+// does for the panel.
 async function getWarehouseProfile(warehouseId) {
   const available = await isWarehouseAvailable(warehouseId);
   if (!available) {

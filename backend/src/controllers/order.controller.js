@@ -4,6 +4,9 @@ const { ApiError } = require('../utils/ApiError');
 const Pharmacy = require('../models/pharmacy.model');
 const orderService = require('../services/order.service');
 const orderViewModel = require('../viewmodels/order.viewmodel');
+const { parseCursorQuery, parseNumericCursor, paginationMeta } = require('../utils/pagination');
+
+const ORDERS_DEFAULT_LIMIT = 15;
 
 async function loadPharmacyOrThrow(userId) {
   const pharmacy = await Pharmacy.findOne({ userId });
@@ -59,8 +62,18 @@ const create = asyncHandler(async (req, res) => {
 
 const list = asyncHandler(async (req, res) => {
   const pharmacy = await loadPharmacyOrThrow(req.user._id);
-  const items = await orderService.listOrdersForPharmacy(pharmacy._id);
-  res.json({ success: true, ...orderViewModel.toOrderListResponse(items) });
+  const { limit, after } = parseCursorQuery(req.query, ORDERS_DEFAULT_LIMIT);
+  const cursor = parseNumericCursor(after);
+
+  const { rows, hasMore, nextCursor } = await orderService.listOrdersForPharmacy(pharmacy._id, {
+    limit,
+    after: cursor,
+  });
+  res.json({
+    success: true,
+    ...orderViewModel.toOrderListResponse(rows),
+    pagination: paginationMeta(hasMore, nextCursor),
+  });
 });
 
 const getOne = asyncHandler(async (req, res) => {

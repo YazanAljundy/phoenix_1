@@ -1,7 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:phoenix/core/constants/storage_keys.dart';
 import 'package:phoenix/core/error/failure.dart';
+import 'package:phoenix/core/services/fcm_service.dart';
 import 'package:phoenix/core/services/secure_storage_service.dart';
 import 'package:phoenix/features/auth/data/models/user_model.dart';
 import 'package:phoenix/features/auth/data/repositories/auth_repository_impl.dart';
@@ -12,12 +14,15 @@ class AuthCubit extends Cubit<AuthState> {
   AuthCubit({
     required AuthRepositoryImpl authRepository,
     required SecureStorageService secureStorage,
+    required FcmService fcmService,
   }) : _authRepository = authRepository,
        _secureStorage = secureStorage,
+       _fcmService = fcmService,
        super(const AuthState());
 
   final AuthRepositoryImpl _authRepository;
   final SecureStorageService _secureStorage;
+  final FcmService _fcmService;
 
   Future<void> checkSession() async {
     try {
@@ -28,13 +33,15 @@ class AuthCubit extends Cubit<AuthState> {
       }
 
       final me = await _authRepository.getMe();
+      final sessionStatus = _sessionStatusFor(me.user);
       emit(
         state.copyWith(
-          sessionStatus: _sessionStatusFor(me.user),
+          sessionStatus: sessionStatus,
           user: me.user,
           pharmacy: me.pharmacy,
         ),
       );
+      _registerForPushIfActive(sessionStatus);
     } catch (_) {
       try {
         await _secureStorage.delete(StorageKeys.authToken);
@@ -62,14 +69,15 @@ class AuthCubit extends Cubit<AuthState> {
   // Section 6-2/3: registers and saves directly - no OTP step (temporarily
   // disabled, see auth_repository.dart). Also serves as the returning-user
   // re-entry path: if `phone` already has an account, the backend logs it
-  // back in and ignores name/pharmacyName/address/password/verificationPhoto.
+  // back in and ignores name/pharmacyName/address/password.
   Future<bool> register({
     required String name,
     required String pharmacyName,
     required String phone,
     required String address,
     required String password,
-    required XFile verificationPhoto,
+    double? latitude,
+    double? longitude,
   }) async {
     emit(state.copyWith(isSubmitting: true, clearError: true));
     try {
@@ -79,17 +87,20 @@ class AuthCubit extends Cubit<AuthState> {
         phone: phone,
         address: address,
         password: password,
-        verificationPhoto: verificationPhoto,
+        latitude: latitude,
+        longitude: longitude,
       );
       await _secureStorage.write(StorageKeys.authToken, result.token);
+      final sessionStatus = _sessionStatusFor(result.user);
       emit(
         state.copyWith(
           isSubmitting: false,
-          sessionStatus: _sessionStatusFor(result.user),
+          sessionStatus: sessionStatus,
           user: result.user,
           pharmacy: result.pharmacy,
         ),
       );
+      _registerForPushIfActive(sessionStatus);
       return true;
     } on Failure catch (f) {
       emit(state.copyWith(isSubmitting: false, errorMessage: f.errMessage));
@@ -104,14 +115,16 @@ class AuthCubit extends Cubit<AuthState> {
     try {
       final result = await _authRepository.loginWithPassword(phone: phone, password: password);
       await _secureStorage.write(StorageKeys.authToken, result.token);
+      final sessionStatus = _sessionStatusFor(result.user);
       emit(
         state.copyWith(
           isSubmitting: false,
-          sessionStatus: _sessionStatusFor(result.user),
+          sessionStatus: sessionStatus,
           user: result.user,
           pharmacy: result.pharmacy,
         ),
       );
+      _registerForPushIfActive(sessionStatus);
       return true;
     } on Failure catch (f) {
       emit(state.copyWith(isSubmitting: false, errorMessage: f.errMessage));
@@ -122,6 +135,16 @@ class AuthCubit extends Cubit<AuthState> {
   Future<void> logout() async {
     await _secureStorage.delete(StorageKeys.authToken);
     emit(const AuthState(sessionStatus: SessionStatus.unauthenticated));
+  }
+
+  // Fire-and-forget on purpose: FcmService swallows its own errors and this
+  // must never delay (or fail) the login/session-restore flow it's called
+  // from - a blocked/pending account never reaches this since there's no
+  // device registration to do for an account that can't use the app yet.
+  void _registerForPushIfActive(SessionStatus sessionStatus) {
+    if (sessionStatus == SessionStatus.active) {
+      unawaited(_fcmService.initialize());
+    }
   }
 
   SessionStatus _sessionStatusFor(UserModel user) {

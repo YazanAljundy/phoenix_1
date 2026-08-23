@@ -10,6 +10,8 @@ const {
 } = require('./productCatalog.service');
 const { registerManufacturers } = require('./warehouseManufacturer.service');
 
+const WAREHOUSE_PRODUCTS_DEFAULT_LIMIT = 20;
+
 // Section 14 Part 2: name/manufacturer no longer come from the warehouse -
 // they're resolved from the linked catalog entry (masterProductId),
 // validated separately below. Only unit stays a manually-typed field on the
@@ -82,6 +84,32 @@ async function listProductsForWarehouse(warehouseId) {
   products.forEach(applyResolvedIdentity);
   products.sort((a, b) => (a.nameEn || a.nameAr || '').localeCompare(b.nameEn || b.nameAr || ''));
   return products;
+}
+
+// The Products management page (unlike the callers of the unpaginated
+// listProductsForWarehouse above - banner/offer "linked product" pickers,
+// which need every product, alphabetically) wants newest-first with "Load
+// more". An ObjectId's embedded timestamp makes `_id` descending equivalent
+// to `createdAt` descending, so no compound cursor is needed.
+async function listPaginatedProductsForWarehouse(
+  warehouseId,
+  { limit = WAREHOUSE_PRODUCTS_DEFAULT_LIMIT, after = null } = {}
+) {
+  const filter = { warehouseId, isActive: true };
+  if (after !== null) {
+    filter._id = { $lt: after };
+  }
+
+  const rows = await Product.find(filter)
+    .sort({ _id: -1 })
+    .limit(limit + 1)
+    .populate('masterProductId');
+  const hasMore = rows.length > limit;
+  const page = hasMore ? rows.slice(0, limit) : rows;
+  page.forEach(applyResolvedIdentity);
+  const nextCursor = page.length > 0 ? String(page[page.length - 1]._id) : null;
+
+  return { rows: page, hasMore, nextCursor };
 }
 
 // Section 8/14 Part 2: every field a warehouse can set at creation.
@@ -289,6 +317,7 @@ async function importProductsFromExcel(warehouseId, userId, file) {
 
 module.exports = {
   listProductsForWarehouse,
+  listPaginatedProductsForWarehouse,
   createProduct,
   updateProduct,
   findOwnedProductOrThrow,

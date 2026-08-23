@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { api } from '../api/client';
-import { useExchangeRate } from '../context/ExchangeRateContext';
-import { formatPriceWithSyp } from '../utils/currency';
 import { withArFallback } from '../utils/displayName';
 
 export function AdminOffersPage() {
-  const usdToSyp = useExchangeRate();
+  const { t } = useTranslation();
   const [offers, setOffers] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -30,7 +29,12 @@ export function AdminOffersPage() {
 
   const handleDecision = async (offer, action) => {
     const confirmed = window.confirm(
-      `${action === 'approve' ? 'Approve' : 'Reject'} "${offer.titleEn}" on ${withArFallback(offer.productNameEn, offer.productNameAr)} (${offer.discountPercentage}% off)?`,
+      t('offers.admin.confirmDecision', {
+        action: action === 'approve' ? t('common.approve') : t('common.reject'),
+        title: offer.titleEn,
+        product: withArFallback(offer.productNameEn, offer.productNameAr),
+        percent: offer.discountPercentage,
+      }),
     );
     if (!confirmed) return;
 
@@ -52,48 +56,78 @@ export function AdminOffersPage() {
 
   return (
     <div>
+      <div className="adm-page-head">
+        <h1>{t('nav.offers')}</h1>
+        <div className="adm-page-head-meta">{t('offers.admin.rejectionHint')}</div>
+      </div>
+
       {error && <p className="error-text">{error}</p>}
 
       {isLoading ? (
-        <p className="hint">Loading...</p>
-      ) : offers.length === 0 ? (
-        <p className="hint">No offers waiting for review.</p>
+        <p className="hint">{t('common.loading')}</p>
       ) : (
-        <div className="account-list">
-          {offers.map((offer) => (
-            <div className="account-card" key={offer.id}>
-              <div className="account-info">
-                <span className="account-role-badge">{offer.warehouseNameEn}</span>
-                <h2>{offer.titleEn}</h2>
-                <p>
-                  {withArFallback(offer.productNameEn, offer.productNameAr)} &middot;{' '}
-                  {formatPriceWithSyp(offer.productPriceUsd, usdToSyp)}
-                </p>
-                <p>{offer.discountPercentage}% off</p>
-                <p>
-                  {new Date(offer.startDate).toLocaleDateString()} &ndash;{' '}
-                  {new Date(offer.endDate).toLocaleDateString()}
-                </p>
-              </div>
-              <div className="account-actions">
-                <button
-                  className="btn-approve"
-                  disabled={busyId === offer.id}
-                  onClick={() => handleDecision(offer, 'approve')}
-                >
-                  Approve
-                </button>
-                <button
-                  className="btn-reject"
-                  disabled={busyId === offer.id}
-                  onClick={() => handleDecision(offer, 'reject')}
-                >
-                  Reject
-                </button>
-              </div>
+        <>
+          <div className="adm-pills">
+            <span className="adm-pill active">
+              {t('offers.admin.pendingCountLabel', { count: offers.length })}
+            </span>
+          </div>
+
+          {offers.length === 0 ? (
+            <div className="adm-empty-state">
+              <div className="adm-empty-state-icon">&#10003;</div>
+              <div className="adm-empty-state-title">{t('offers.admin.noOffers')}</div>
             </div>
-          ))}
-        </div>
+          ) : (
+            <div className="adm-card table-scroll">
+              <table className="adm-table">
+                <thead>
+                  <tr>
+                    <th>{t('offers.admin.warehouseColumn')}</th>
+                    <th>{t('offers.admin.productColumn')}</th>
+                    <th>{t('offers.admin.discountColumn')}</th>
+                    <th>{t('offers.warehouse.fromColumn')}</th>
+                    <th>{t('offers.warehouse.toColumn')}</th>
+                    <th>{t('common.status')}</th>
+                    <th>{t('admin.pendingAccounts.actionColumn')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {offers.map((offer) => (
+                    <tr key={offer.id}>
+                      <td>{offer.warehouseNameEn}</td>
+                      <td>{withArFallback(offer.productNameEn, offer.productNameAr)}</td>
+                      <td className="adm-num adm-offer-discount">{offer.discountPercentage}%</td>
+                      <td className="adm-num">{new Date(offer.startDate).toLocaleDateString()}</td>
+                      <td className="adm-num">{new Date(offer.endDate).toLocaleDateString()}</td>
+                      <td>
+                        <span className="status-badge status-pending">{t('offers.warehouse.statusPending')}</span>
+                      </td>
+                      <td>
+                        <div className="adm-row-actions">
+                          <button
+                            className="btn-approve"
+                            disabled={busyId === offer.id}
+                            onClick={() => handleDecision(offer, 'approve')}
+                          >
+                            {t('common.approve')}
+                          </button>
+                          <button
+                            className="btn-reject"
+                            disabled={busyId === offer.id}
+                            onClick={() => handleDecision(offer, 'reject')}
+                          >
+                            {t('common.reject')}
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

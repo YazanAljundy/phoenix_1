@@ -1,4 +1,5 @@
 import 'package:image_picker/image_picker.dart';
+import 'package:phoenix/core/models/paginated_result.dart';
 import 'package:phoenix/features/returns/data/models/return_model.dart';
 
 // A single problem item being submitted as part of a return request - see
@@ -45,5 +46,7 @@ abstract class ReturnRepository {
 
   Future<void> deleteReturn(String returnId);
 
-  Future<List<ReturnModel>> getReturns();
+  // Cursor pagination: `after` is the previous page's nextCursor, omitted
+  // for the first page.
+  Future<PaginatedResult<ReturnModel>> getReturns({int? limit, String? after});
 }

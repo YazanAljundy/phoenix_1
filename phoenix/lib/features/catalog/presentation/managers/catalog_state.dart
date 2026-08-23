@@ -11,6 +11,10 @@ class CatalogState {
     this.selectedCategoryId,
     this.searchQuery = '',
     this.errorMessage,
+    this.hasMore = false,
+    this.nextCursor,
+    this.isLoadingMore = false,
+    this.loadMoreErrorMessage,
   });
 
   final CatalogStatus status;
@@ -20,6 +24,18 @@ class CatalogState {
   final String searchQuery;
   final String? errorMessage;
 
+  // Cursor pagination - reset (hasMore: false, nextCursor: null) whenever
+  // the manufacturer (fixed per screen instance, never changes), category,
+  // or search query changes, since any of those restarts the result set
+  // from its own first page. `isLoadingMore`/`loadMoreErrorMessage` are
+  // deliberately separate from `status`/`errorMessage` above - a failed or
+  // in-flight next-page fetch must never blank out the page(s) already
+  // loaded and showing.
+  final bool hasMore;
+  final String? nextCursor;
+  final bool isLoadingMore;
+  final String? loadMoreErrorMessage;
+
   CatalogState copyWith({
     CatalogStatus? status,
     List<CategoryModel>? categories,
@@ -28,6 +44,12 @@ class CatalogState {
     bool clearCategory = false,
     String? searchQuery,
     String? errorMessage,
+    bool? hasMore,
+    String? nextCursor,
+    bool clearNextCursor = false,
+    bool? isLoadingMore,
+    String? loadMoreErrorMessage,
+    bool clearLoadMoreError = false,
   }) {
     return CatalogState(
       status: status ?? this.status,
@@ -38,6 +60,10 @@ class CatalogState {
           : (selectedCategoryId ?? this.selectedCategoryId),
       searchQuery: searchQuery ?? this.searchQuery,
       errorMessage: errorMessage,
+      hasMore: hasMore ?? this.hasMore,
+      nextCursor: clearNextCursor ? null : (nextCursor ?? this.nextCursor),
+      isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+      loadMoreErrorMessage: clearLoadMoreError ? null : (loadMoreErrorMessage ?? this.loadMoreErrorMessage),
     );
   }
 }

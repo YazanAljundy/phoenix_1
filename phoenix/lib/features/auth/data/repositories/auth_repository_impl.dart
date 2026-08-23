@@ -1,5 +1,4 @@
 import 'package:dio/dio.dart';
-import 'package:image_picker/image_picker.dart';
 import 'package:phoenix/core/error/failure.dart';
 import 'package:phoenix/core/network/api_client.dart';
 import 'package:phoenix/core/network/endpoints.dart';
@@ -29,10 +28,10 @@ class AuthRepositoryImpl implements AuthRepository {
     required String phone,
     required String address,
     required String password,
-    required XFile verificationPhoto,
+    double? latitude,
+    double? longitude,
   }) async {
     try {
-      final photoBytes = await verificationPhoto.readAsBytes();
       final formData = FormData.fromMap({
         'name': name,
         'pharmacyName': pharmacyName,
@@ -40,10 +39,8 @@ class AuthRepositoryImpl implements AuthRepository {
         'address': address,
         'password': password,
         'confirmPassword': password,
-        'verificationPhoto': MultipartFile.fromBytes(
-          photoBytes,
-          filename: verificationPhoto.name,
-        ),
+        if (latitude != null && longitude != null) 'latitude': latitude.toString(),
+        if (latitude != null && longitude != null) 'longitude': longitude.toString(),
       });
       final response = await _apiClient.dio.post(Endpoints.register, data: formData);
       return AuthResponse.fromJson(response.data as Map<String, dynamic>);
@@ -70,6 +67,18 @@ class AuthRepositoryImpl implements AuthRepository {
     try {
       final response = await _apiClient.dio.get(Endpoints.me);
       return MeResponse.fromJson(response.data as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw ServerFailure.fromDioError(e);
+    }
+  }
+
+  @override
+  Future<void> registerDeviceToken({required String fcmToken, required String deviceType}) async {
+    try {
+      await _apiClient.dio.post(
+        Endpoints.deviceToken,
+        data: {'fcmToken': fcmToken, 'deviceType': deviceType},
+      );
     } on DioException catch (e) {
       throw ServerFailure.fromDioError(e);
     }

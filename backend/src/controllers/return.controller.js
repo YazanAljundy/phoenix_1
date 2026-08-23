@@ -5,6 +5,9 @@ const Pharmacy = require('../models/pharmacy.model');
 const returnService = require('../services/return.service');
 const returnViewModel = require('../viewmodels/return.viewmodel');
 const { verifyImageMagicBytes } = require('../middlewares/upload.middleware');
+const { parseCursorQuery, parseObjectIdCursor, paginationMeta } = require('../utils/pagination');
+
+const RETURNS_DEFAULT_LIMIT = 15;
 
 async function loadPharmacyOrThrow(userId) {
   const pharmacy = await Pharmacy.findOne({ userId });
@@ -116,8 +119,18 @@ const remove = asyncHandler(async (req, res) => {
 
 const list = asyncHandler(async (req, res) => {
   const pharmacy = await loadPharmacyOrThrow(req.user._id);
-  const items = await returnService.listReturnsForPharmacy(pharmacy._id);
-  res.json({ success: true, ...returnViewModel.toReturnListResponse(items) });
+  const { limit, after } = parseCursorQuery(req.query, RETURNS_DEFAULT_LIMIT);
+  const cursor = parseObjectIdCursor(after);
+
+  const { rows, hasMore, nextCursor } = await returnService.listReturnsForPharmacy(pharmacy._id, {
+    limit,
+    after: cursor,
+  });
+  res.json({
+    success: true,
+    ...returnViewModel.toReturnListResponse(rows),
+    pagination: paginationMeta(hasMore, nextCursor),
+  });
 });
 
 module.exports = { create, update, remove, list };

@@ -2,9 +2,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:phoenix/core/network/api_client.dart';
+import 'package:phoenix/core/services/fcm_service.dart';
 import 'package:phoenix/core/services/secure_storage_service.dart';
 import 'package:phoenix/core/services/storage_service.dart';
 import 'package:phoenix/features/auth/data/repositories/auth_repository_impl.dart';
+import 'package:phoenix/features/banners/data/repositories/banners_repository_impl.dart';
 import 'package:phoenix/features/cart/data/repositories/order_repository_impl.dart';
 import 'package:phoenix/features/catalog/data/repositories/catalog_repository_impl.dart';
 import 'package:phoenix/features/debts/data/repositories/debt_repository_impl.dart';
@@ -29,6 +31,8 @@ void main() {
     final returnRepository = ReturnRepositoryImpl(apiClient: apiClient);
     final reviewRepository = ReviewRepositoryImpl(apiClient: apiClient);
     final debtRepository = DebtRepositoryImpl(apiClient: apiClient);
+    final bannersRepository = BannersRepositoryImpl(apiClient: apiClient);
+    final fcmService = FcmService(authRepository: authRepository);
 
     await tester.pumpWidget(
       MyApp(
@@ -43,6 +47,8 @@ void main() {
         returnRepository: returnRepository,
         reviewRepository: reviewRepository,
         debtRepository: debtRepository,
+        bannersRepository: bannersRepository,
+        fcmService: fcmService,
       ),
     );
 

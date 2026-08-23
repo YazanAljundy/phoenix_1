@@ -1,3 +1,4 @@
+import 'package:phoenix/core/models/paginated_result.dart';
 import 'package:phoenix/features/cart/data/models/cart_item.dart';
 import 'package:phoenix/features/cart/data/models/order_model.dart';
 
@@ -12,5 +13,7 @@ abstract class OrderRepository {
 
   Future<OrderModel> cancelOrder(String orderId);
 
-  Future<List<OrderModel>> getOrders();
+  // Cursor pagination: `after` is the previous page's nextCursor, omitted
+  // for the first page.
+  Future<PaginatedResult<OrderModel>> getOrders({int? limit, String? after});
 }

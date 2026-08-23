@@ -11,6 +11,6 @@ class AppSizes {
   static const double iconSizeMedium = 24;
   static const double iconSizeLarge = 32;
 
-  static const double buttonHeight = 48;
+  static const double buttonHeight = 54;
   static const double inputHeight = 56;
 }

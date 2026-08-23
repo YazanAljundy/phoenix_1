@@ -10,8 +10,11 @@ class AppConfig {
 
   static const String apiBaseUrl = String.fromEnvironment(
     'API_BASE_URL',
-    defaultValue: kIsWeb
-        ? 'http://localhost:5000/api'
-        : 'http://10.0.2.2:5000/api',
+    defaultValue: 'https://phoenix-1-p2qi.onrender.com/api',
+    
+    
+    // kIsWeb
+    //     ? 'http://localhost:5000/api'
+    //     : 'http://10.0.2.2:5000/api',
   );
 }

@@ -53,11 +53,17 @@ function applyResolvedIdentity(product) {
 // List / search
 // ---------------------------------------------------------------------------
 
+const DEFAULT_CATALOG_LIMIT = 30;
+
 // Section 14: the admin's full list, every item regardless of isActive (a
 // disabled entry still needs to show up so it can be re-enabled) - matches
 // adminProduct.service.js's listAllProducts, which does the same for the
 // per-warehouse catalog.
-async function listCatalog({ search } = {}) {
+//
+// Cursor pagination: sorted by `_id` ascending (replacing the previous
+// manufacturerAr/nameAr sort - a stable, unique cursor field is required for
+// pagination to work correctly, see pagination.js).
+async function listCatalog({ search, limit = DEFAULT_CATALOG_LIMIT, after = null } = {}) {
   const filter = {};
   if (search && search.trim()) {
     const pattern = new RegExp(escapeRegex(search.trim()), 'i');
@@ -68,7 +74,16 @@ async function listCatalog({ search } = {}) {
       { manufacturerEn: pattern },
     ];
   }
-  return ProductCatalog.find(filter).sort({ manufacturerAr: 1, nameAr: 1 });
+  if (after) {
+    filter._id = { $gt: after };
+  }
+
+  const results = await ProductCatalog.find(filter).sort({ _id: 1 }).limit(limit + 1);
+  const hasMore = results.length > limit;
+  const page = hasMore ? results.slice(0, limit) : results;
+  const nextCursor = page.length > 0 ? page[page.length - 1]._id.toString() : null;
+
+  return { items: page, hasMore, nextCursor };
 }
 
 // Section 14 Part 1 item 5: for the warehouse's own (not-yet-built) "search

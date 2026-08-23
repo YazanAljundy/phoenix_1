@@ -203,7 +203,7 @@ abstract class AppLocalizations {
   /// No description provided for @registrationSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'Fill in your details to get started'**
+  /// **'Fill in the details below - your account is activated once the administration reviews your documents.'**
   String get registrationSubtitle;
 
   /// No description provided for @fullNameLabel.
@@ -212,11 +212,23 @@ abstract class AppLocalizations {
   /// **'Full name'**
   String get fullNameLabel;
 
+  /// No description provided for @fullNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Dr. Samer Halabi'**
+  String get fullNameHint;
+
   /// No description provided for @pharmacyNameLabel.
   ///
   /// In en, this message translates to:
   /// **'Pharmacy name'**
   String get pharmacyNameLabel;
+
+  /// No description provided for @pharmacyNameHint.
+  ///
+  /// In en, this message translates to:
+  /// **'e.g. Al-Noor Pharmacy'**
+  String get pharmacyNameHint;
 
   /// No description provided for @phoneLabel.
   ///
@@ -230,41 +242,53 @@ abstract class AppLocalizations {
   /// **'Address'**
   String get addressLabel;
 
-  /// No description provided for @verificationPhotoLabel.
+  /// No description provided for @pickLocationHint.
   ///
   /// In en, this message translates to:
-  /// **'Pharmacy photo'**
-  String get verificationPhotoLabel;
+  /// **'Move the map to fine-tune the pin\'s position'**
+  String get pickLocationHint;
 
-  /// No description provided for @verificationPhotoHint.
+  /// No description provided for @resolvingAddressText.
   ///
   /// In en, this message translates to:
-  /// **'A photo of your pharmacy\'s storefront or sign'**
-  String get verificationPhotoHint;
+  /// **'Resolving address...'**
+  String get resolvingAddressText;
 
-  /// No description provided for @choosePhotoButton.
+  /// No description provided for @locationPermissionDeniedMessage.
   ///
   /// In en, this message translates to:
-  /// **'Choose photo'**
-  String get choosePhotoButton;
+  /// **'Couldn\'t access your location - you can still drag the map manually.'**
+  String get locationPermissionDeniedMessage;
 
-  /// No description provided for @changePhotoButton.
+  /// No description provided for @addressNotResolvedYetMessage.
   ///
   /// In en, this message translates to:
-  /// **'Change photo'**
-  String get changePhotoButton;
+  /// **'Please wait for the map to resolve an address, or adjust the pin\'s position.'**
+  String get addressNotResolvedYetMessage;
 
-  /// No description provided for @photoRequired.
+  /// No description provided for @useCurrentLocationTooltip.
   ///
   /// In en, this message translates to:
-  /// **'Please add a photo of your pharmacy.'**
-  String get photoRequired;
+  /// **'My current location'**
+  String get useCurrentLocationTooltip;
 
   /// No description provided for @confirmPasswordLabel.
   ///
   /// In en, this message translates to:
   /// **'Confirm password'**
   String get confirmPasswordLabel;
+
+  /// No description provided for @confirmPasswordHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Re-enter your password'**
+  String get confirmPasswordHint;
+
+  /// No description provided for @passwordHint.
+  ///
+  /// In en, this message translates to:
+  /// **'At least {min} characters'**
+  String passwordHint(String min);
 
   /// No description provided for @passwordTooShort.
   ///
@@ -296,6 +320,24 @@ abstract class AppLocalizations {
   /// **'Create account'**
   String get createAccountButton;
 
+  /// No description provided for @termsAgreementLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'I agree to the Terms of Use and Privacy Policy.'**
+  String get termsAgreementLabel;
+
+  /// No description provided for @termsAgreementRequiredError.
+  ///
+  /// In en, this message translates to:
+  /// **'You must agree to the terms to continue.'**
+  String get termsAgreementRequiredError;
+
+  /// No description provided for @passwordsMustMatchHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Both passwords must match.'**
+  String get passwordsMustMatchHint;
+
   /// No description provided for @passwordLoginTitle.
   ///
   /// In en, this message translates to:
@@ -320,11 +362,11 @@ abstract class AppLocalizations {
   /// **'Enter verification code'**
   String get otpTitle;
 
-  /// No description provided for @otpInstructions.
+  /// No description provided for @otpInstructionsPrefix.
   ///
   /// In en, this message translates to:
-  /// **'We sent a 6-digit code by SMS to {phone}'**
-  String otpInstructions(String phone);
+  /// **'Enter the 6-digit code sent to'**
+  String get otpInstructionsPrefix;
 
   /// No description provided for @otpCodeLabel.
   ///
@@ -341,7 +383,7 @@ abstract class AppLocalizations {
   /// No description provided for @resendCodeButton.
   ///
   /// In en, this message translates to:
-  /// **'Resend code'**
+  /// **'Didn\'t get the code? Resend'**
   String get resendCodeButton;
 
   /// No description provided for @codeResent.
@@ -362,6 +404,12 @@ abstract class AppLocalizations {
   /// **'We\'re reviewing your registration. You\'ll be able to order as soon as it\'s approved.'**
   String get approvalPendingMessage;
 
+  /// No description provided for @approvalPendingMessageWithName.
+  ///
+  /// In en, this message translates to:
+  /// **'We\'re currently reviewing {pharmacyName}\'s documents. You\'ll be able to order as soon as it\'s approved.'**
+  String approvalPendingMessageWithName(String pharmacyName);
+
   /// No description provided for @approvalPendingBlockedTitle.
   ///
   /// In en, this message translates to:
@@ -373,6 +421,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This account has been blocked. Please contact support for help.'**
   String get approvalPendingBlockedMessage;
+
+  /// No description provided for @approvalChecklistReceived.
+  ///
+  /// In en, this message translates to:
+  /// **'Data and documents received'**
+  String get approvalChecklistReceived;
+
+  /// No description provided for @approvalChecklistReview.
+  ///
+  /// In en, this message translates to:
+  /// **'Under administration review'**
+  String get approvalChecklistReview;
+
+  /// No description provided for @approvalChecklistActivate.
+  ///
+  /// In en, this message translates to:
+  /// **'Account activation and ordering'**
+  String get approvalChecklistActivate;
 
   /// No description provided for @refreshStatusButton.
   ///
@@ -428,6 +494,18 @@ abstract class AppLocalizations {
   /// **'Something went wrong.'**
   String get errorState;
 
+  /// No description provided for @noMoreResultsText.
+  ///
+  /// In en, this message translates to:
+  /// **'No more results'**
+  String get noMoreResultsText;
+
+  /// No description provided for @retryButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get retryButton;
+
   /// No description provided for @warehouseSelectionTitle.
   ///
   /// In en, this message translates to:
@@ -452,11 +530,41 @@ abstract class AppLocalizations {
   /// **'{name} selected. The product catalog is coming soon.'**
   String warehouseSelectedMessage(String name);
 
+  /// No description provided for @warehousesAvailableSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, zero{No warehouses available for your pharmacy} one{1 warehouse available for your pharmacy} other{{count} warehouses available for your pharmacy}}'**
+  String warehousesAvailableSubtitle(int count);
+
+  /// No description provided for @searchWarehouseHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search by warehouse or city'**
+  String get searchWarehouseHint;
+
+  /// No description provided for @noSearchResultsFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No results match your search.'**
+  String get noSearchResultsFound;
+
+  /// No description provided for @warehouseProfileButtonLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Profile'**
+  String get warehouseProfileButtonLabel;
+
   /// No description provided for @noManufacturersFound.
   ///
   /// In en, this message translates to:
   /// **'No manufacturers available for this warehouse.'**
   String get noManufacturersFound;
+
+  /// No description provided for @manufacturersCountSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, zero{No manufacturers} one{1 manufacturer} other{{count} manufacturers}}'**
+  String manufacturersCountSubtitle(int count);
 
   /// No description provided for @warehouseProfileTooltip.
   ///
@@ -524,12 +632,6 @@ abstract class AppLocalizations {
   /// **'Search by name or manufacturer'**
   String get searchProductsHint;
 
-  /// No description provided for @allCategories.
-  ///
-  /// In en, this message translates to:
-  /// **'All'**
-  String get allCategories;
-
   /// No description provided for @addToCartButton.
   ///
   /// In en, this message translates to:
@@ -542,11 +644,29 @@ abstract class AppLocalizations {
   /// **'Unavailable'**
   String get unavailableLabel;
 
+  /// No description provided for @offerBadgeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Offer'**
+  String get offerBadgeLabel;
+
+  /// No description provided for @toggleDensityTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Toggle view'**
+  String get toggleDensityTooltip;
+
   /// No description provided for @noProductsFound.
   ///
   /// In en, this message translates to:
   /// **'No products found.'**
   String get noProductsFound;
+
+  /// No description provided for @catalogItemsCountSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, zero{No items} one{1 item} other{{count} items}}'**
+  String catalogItemsCountSubtitle(int count);
 
   /// No description provided for @currencySuffix.
   ///
@@ -571,6 +691,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Your cart is empty.'**
   String get cartEmptyMessage;
+
+  /// No description provided for @cartEmptyHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a warehouse and start adding medicines to your cart.'**
+  String get cartEmptyHint;
+
+  /// No description provided for @browseCatalogButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse products'**
+  String get browseCatalogButton;
+
+  /// No description provided for @quantityLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Quantity'**
+  String get quantityLabel;
 
   /// No description provided for @notesLabel.
   ///
@@ -764,6 +902,12 @@ abstract class AppLocalizations {
   /// **'Status history'**
   String get statusHistoryTitle;
 
+  /// No description provided for @lastUpdatedLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Last updated: {time}'**
+  String lastUpdatedLabel(String time);
+
   /// No description provided for @cancelOrderTitle.
   ///
   /// In en, this message translates to:
@@ -812,11 +956,29 @@ abstract class AppLocalizations {
   /// **'My Orders'**
   String get myOrdersTitle;
 
+  /// No description provided for @myOrdersCountSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, zero{No orders yet} one{1 order · pull down to refresh} other{{count} orders · pull down to refresh}}'**
+  String myOrdersCountSubtitle(int count);
+
+  /// No description provided for @refreshTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get refreshTooltip;
+
   /// No description provided for @noOrdersYet.
   ///
   /// In en, this message translates to:
   /// **'You haven\'t placed any orders yet.'**
   String get noOrdersYet;
+
+  /// No description provided for @browseWarehousesButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Browse warehouses'**
+  String get browseWarehousesButton;
 
   /// No description provided for @invoiceTitle.
   ///
@@ -854,11 +1016,35 @@ abstract class AppLocalizations {
   /// **'Returns'**
   String get returnsTitle;
 
+  /// No description provided for @returnsCountSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, zero{No return requests} one{1 return request} other{{count} return requests}}'**
+  String returnsCountSubtitle(int count);
+
   /// No description provided for @noReturnsYet.
   ///
   /// In en, this message translates to:
   /// **'You haven\'t requested any returns yet.'**
   String get noReturnsYet;
+
+  /// No description provided for @newReturnRequestButton.
+  ///
+  /// In en, this message translates to:
+  /// **'New return request'**
+  String get newReturnRequestButton;
+
+  /// No description provided for @selectOrderForReturnTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Select the order you want to return items from'**
+  String get selectOrderForReturnTitle;
+
+  /// No description provided for @noEligibleOrdersForReturn.
+  ///
+  /// In en, this message translates to:
+  /// **'No delivered orders are currently eligible for a return.'**
+  String get noEligibleOrdersForReturn;
 
   /// No description provided for @requestReturnTitle.
   ///
@@ -901,6 +1087,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Other'**
   String get reasonOther;
+
+  /// No description provided for @multipleReasonsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Multiple reasons'**
+  String get multipleReasonsLabel;
 
   /// No description provided for @customReasonLabel.
   ///
@@ -1135,6 +1327,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'No debts right now.'**
   String get noDebtsYet;
+
+  /// No description provided for @totalDebtsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Total debts'**
+  String get totalDebtsLabel;
 
   /// No description provided for @totalOrdersLabel.
   ///

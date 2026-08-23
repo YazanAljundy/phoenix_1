@@ -56,7 +56,7 @@ class DebtDetailView extends StatelessWidget {
               Text(l10n.deliveredOrdersTitle, style: context.textTheme.titleMedium),
               const SizedBox(height: AppSizes.spacingSmall),
               if (detail.orders.isEmpty)
-                EmptyView(message: l10n.noOrdersYet)
+                EmptyView(message: l10n.noOrdersYet, icon: Icons.receipt_long_outlined)
               else
                 CustomCard(
                   child: Column(

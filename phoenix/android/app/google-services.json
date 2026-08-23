@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "53939034042",
+    "project_id": "phoenix-pharmacy-e54d2",
+    "storage_bucket": "phoenix-pharmacy-e54d2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:53939034042:android:c7d233eaa772e3e12aef83",
+        "android_client_info": {
+          "package_name": "com.example.phoenix"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDULM5yzVLSw0Ke0R13hdrF927I6CuJso8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

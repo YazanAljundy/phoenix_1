@@ -19,43 +19,59 @@
   "profile": "Profile",
 
   "registrationTitle": "Create your pharmacy account",
-  "registrationSubtitle": "Fill in your details to get started",
+  "registrationSubtitle": "Fill in the details below - your account is activated once the administration reviews your documents.",
   "fullNameLabel": "Full name",
+  "fullNameHint": "e.g. Dr. Samer Halabi",
   "pharmacyNameLabel": "Pharmacy name",
+  "pharmacyNameHint": "e.g. Al-Noor Pharmacy",
   "phoneLabel": "Phone number",
   "addressLabel": "Address",
-  "verificationPhotoLabel": "Pharmacy photo",
-  "verificationPhotoHint": "A photo of your pharmacy's storefront or sign",
-  "choosePhotoButton": "Choose photo",
-  "changePhotoButton": "Change photo",
-  "photoRequired": "Please add a photo of your pharmacy.",
+  "pickLocationHint": "Move the map to fine-tune the pin's position",
+  "resolvingAddressText": "Resolving address...",
+  "locationPermissionDeniedMessage": "Couldn't access your location - you can still drag the map manually.",
+  "addressNotResolvedYetMessage": "Please wait for the map to resolve an address, or adjust the pin's position.",
+  "useCurrentLocationTooltip": "My current location",
   "confirmPasswordLabel": "Confirm password",
+  "confirmPasswordHint": "Re-enter your password",
+  "passwordHint": "At least {min} characters",
+  "@passwordHint": {
+    "placeholders": {
+      "min": { "type": "String" }
+    }
+  },
   "passwordTooShort": "Password must be at least 6 characters.",
   "passwordMismatch": "Passwords do not match.",
   "alreadyHaveAccountLink": "Already have an account? Log in with password",
   "sendCodeButton": "Send verification code",
   "createAccountButton": "Create account",
+  "termsAgreementLabel": "I agree to the Terms of Use and Privacy Policy.",
+  "termsAgreementRequiredError": "You must agree to the terms to continue.",
+  "passwordsMustMatchHint": "Both passwords must match.",
 
   "passwordLoginTitle": "Log in with password",
   "passwordLoginSubtitle": "Enter your phone number and password",
   "backToRegistrationLink": "New here? Create an account",
 
   "otpTitle": "Enter verification code",
-  "otpInstructions": "We sent a 6-digit code by SMS to {phone}",
-  "@otpInstructions": {
-    "placeholders": {
-      "phone": { "type": "String" }
-    }
-  },
+  "otpInstructionsPrefix": "Enter the 6-digit code sent to",
   "otpCodeLabel": "Verification code",
   "verifyButton": "Verify",
-  "resendCodeButton": "Resend code",
+  "resendCodeButton": "Didn't get the code? Resend",
   "codeResent": "A new code has been sent.",
 
   "approvalPendingTitle": "Your account is under review",
   "approvalPendingMessage": "We're reviewing your registration. You'll be able to order as soon as it's approved.",
+  "approvalPendingMessageWithName": "We're currently reviewing {pharmacyName}'s documents. You'll be able to order as soon as it's approved.",
+  "@approvalPendingMessageWithName": {
+    "placeholders": {
+      "pharmacyName": { "type": "String" }
+    }
+  },
   "approvalPendingBlockedTitle": "Account blocked",
   "approvalPendingBlockedMessage": "This account has been blocked. Please contact support for help.",
+  "approvalChecklistReceived": "Data and documents received",
+  "approvalChecklistReview": "Under administration review",
+  "approvalChecklistActivate": "Account activation and ordering",
   "refreshStatusButton": "Check status",
   "contactSupportButton": "Contact support",
   "contactSupportDialogTitle": "Contact support",
@@ -67,6 +83,8 @@
   "close": "Close",
 
   "errorState": "Something went wrong.",
+  "noMoreResultsText": "No more results",
+  "retryButton": "Retry",
   "warehouseSelectionTitle": "Choose a warehouse",
   "selectWarehouseButton": "Select",
   "noWarehousesAvailable": "No warehouses available yet.",
@@ -76,8 +94,23 @@
       "name": { "type": "String" }
     }
   },
+  "warehousesAvailableSubtitle": "{count, plural, zero{No warehouses available for your pharmacy} one{1 warehouse available for your pharmacy} other{{count} warehouses available for your pharmacy}}",
+  "@warehousesAvailableSubtitle": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "searchWarehouseHint": "Search by warehouse or city",
+  "noSearchResultsFound": "No results match your search.",
+  "warehouseProfileButtonLabel": "Profile",
 
   "noManufacturersFound": "No manufacturers available for this warehouse.",
+  "manufacturersCountSubtitle": "{count, plural, zero{No manufacturers} one{1 manufacturer} other{{count} manufacturers}}",
+  "@manufacturersCountSubtitle": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
 
   "warehouseProfileTooltip": "Warehouse info",
   "deliveryInfoTitle": "Delivery Information",
@@ -97,10 +130,17 @@
   "browseWarehouseProductsButton": "Browse this warehouse's products",
 
   "searchProductsHint": "Search by name or manufacturer",
-  "allCategories": "All",
   "addToCartButton": "Add",
   "unavailableLabel": "Unavailable",
+  "offerBadgeLabel": "Offer",
+  "toggleDensityTooltip": "Toggle view",
   "noProductsFound": "No products found.",
+  "catalogItemsCountSubtitle": "{count, plural, zero{No items} one{1 item} other{{count} items}}",
+  "@catalogItemsCountSubtitle": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
   "currencySuffix": "SYP",
   "addedToCartMessage": "{name} added to cart.",
   "@addedToCartMessage": {
@@ -111,6 +151,9 @@
 
   "cartTitle": "Cart",
   "cartEmptyMessage": "Your cart is empty.",
+  "cartEmptyHint": "Choose a warehouse and start adding medicines to your cart.",
+  "browseCatalogButton": "Browse products",
+  "quantityLabel": "Quantity",
   "notesLabel": "Notes (optional)",
   "subtotalLabel": "Subtotal",
   "submitOrderButton": "Submit order",
@@ -180,6 +223,12 @@
   "stageDelivered": "Delivered",
   "stageCancelled": "Cancelled",
   "statusHistoryTitle": "Status history",
+  "lastUpdatedLabel": "Last updated: {time}",
+  "@lastUpdatedLabel": {
+    "placeholders": {
+      "time": { "type": "String" }
+    }
+  },
   "cancelOrderTitle": "Cancel order?",
   "cancelOrderConfirmation": "Are you sure you want to cancel this order?",
   "cancelOrderButton": "Cancel order",
@@ -189,7 +238,15 @@
   "errorOrderNotCancellable": "This order can no longer be cancelled from the app.",
 
   "myOrdersTitle": "My Orders",
+  "myOrdersCountSubtitle": "{count, plural, zero{No orders yet} one{1 order · pull down to refresh} other{{count} orders · pull down to refresh}}",
+  "@myOrdersCountSubtitle": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "refreshTooltip": "Refresh",
   "noOrdersYet": "You haven't placed any orders yet.",
+  "browseWarehousesButton": "Browse warehouses",
   "invoiceTitle": "Order items",
   "discountLabel": "Discount",
   "invoiceTotalLabel": "Total",
@@ -207,7 +264,16 @@
   },
 
   "returnsTitle": "Returns",
+  "returnsCountSubtitle": "{count, plural, zero{No return requests} one{1 return request} other{{count} return requests}}",
+  "@returnsCountSubtitle": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
   "noReturnsYet": "You haven't requested any returns yet.",
+  "newReturnRequestButton": "New return request",
+  "selectOrderForReturnTitle": "Select the order you want to return items from",
+  "noEligibleOrdersForReturn": "No delivered orders are currently eligible for a return.",
   "requestReturnTitle": "Request a return",
   "requestReturnButton": "Submit return request",
   "returnQuantityLabel": "Quantity",
@@ -215,6 +281,7 @@
   "reasonDamaged": "Damaged",
   "reasonWrongItem": "Wrong item",
   "reasonOther": "Other",
+  "multipleReasonsLabel": "Multiple reasons",
   "customReasonLabel": "Please specify",
   "returnSubmittedTitle": "Return requested",
   "returnSubmittedMessage": "Your return request has been submitted. The warehouse will review it.",
@@ -263,6 +330,7 @@
 
   "myDebtsTitle": "My Debts",
   "noDebtsYet": "No debts right now.",
+  "totalDebtsLabel": "Total debts",
   "totalOrdersLabel": "Total orders",
   "totalPaidLabel": "Total paid",
   "currentBalanceLabel": "Current balance",

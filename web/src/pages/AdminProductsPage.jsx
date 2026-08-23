@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { api } from '../api/client';
 import {
   ProductFormModal,
@@ -15,10 +16,12 @@ import { withArFallback } from '../utils/displayName';
 // warehouse's own job). Reuses the exact same form the warehouse itself
 // edits with; only where the submission goes differs.
 export function AdminProductsPage() {
+  const { t } = useTranslation();
   const usdToSyp = useExchangeRate();
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [warehouseFilter, setWarehouseFilter] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [editingProduct, setEditingProduct] = useState(null);
@@ -55,12 +58,18 @@ export function AdminProductsPage() {
     return [...seen.entries()];
   }, [products]);
 
-  const visibleProducts = warehouseFilter
-    ? products.filter((product) => product.warehouseId === warehouseFilter)
-    : products;
-
-  const categoryName = (categoryId) =>
-    categories.find((category) => category.id === categoryId)?.nameEn ?? '-';
+  // Client-side only, over the already-fetched full list - no new request,
+  // same as the warehouse filter above.
+  const query = searchQuery.trim().toLowerCase();
+  const visibleProducts = products.filter((product) => {
+    if (warehouseFilter && product.warehouseId !== warehouseFilter) return false;
+    if (!query) return true;
+    const haystack = [product.nameEn, product.nameAr, product.manufacturerEn, product.manufacturerAr]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+    return haystack.includes(query);
+  });
 
   const handleSaved = () => {
     setEditingProduct(null);
@@ -69,7 +78,10 @@ export function AdminProductsPage() {
 
   const handleDelete = async (product) => {
     const confirmed = window.confirm(
-      `Remove "${withArFallback(product.nameEn, product.nameAr)}" (${product.warehouseNameEn})? Pharmacies will no longer be able to order it.`,
+      t('products.confirmRemove', {
+        name: withArFallback(product.nameEn, product.nameAr),
+        warehouse: product.warehouseNameEn,
+      }),
     );
     if (!confirmed) return;
 
@@ -87,81 +99,94 @@ export function AdminProductsPage() {
 
   return (
     <div>
-      <div className="section-toolbar section-toolbar-start">
-        <label className="inline-filter">
-          Warehouse
-          <select value={warehouseFilter} onChange={(e) => setWarehouseFilter(e.target.value)}>
-            <option value="">All warehouses</option>
-            {warehouses.map(([id, name]) => (
-              <option key={id} value={id}>
-                {name}
-              </option>
-            ))}
-          </select>
-        </label>
+      <div className="adm-page-head">
+        <h1>{t('nav.products')}</h1>
+      </div>
+
+      <div className="adm-filters-row">
+        <select
+          className="adm-filter-select"
+          value={warehouseFilter}
+          onChange={(e) => setWarehouseFilter(e.target.value)}
+        >
+          <option value="">{t('products.allWarehouses')}</option>
+          {warehouses.map(([id, name]) => (
+            <option key={id} value={id}>
+              {name}
+            </option>
+          ))}
+        </select>
+        <input
+          type="text"
+          className="adm-filter-search"
+          placeholder={t('products.searchByNamePlaceholder')}
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
       </div>
 
       {error && <p className="error-text">{error}</p>}
 
       {isLoading ? (
-        <p className="hint">Loading...</p>
+        <p className="hint">{t('common.loading')}</p>
       ) : visibleProducts.length === 0 ? (
-        <p className="hint">No products found.</p>
-      ) : (
-        <div className="table-scroll">
-          <table className="product-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Warehouse</th>
-                <th>Category</th>
-                <th>Price</th>
-                <th>Status</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {visibleProducts.map((product) => (
-                <tr key={product.id} className={product.isActive ? '' : 'row-inactive'}>
-                  <td>
-                    <div className="product-name">{withArFallback(product.nameEn, product.nameAr)}</div>
-                    <div className="product-manufacturer">
-                      {withArFallback(product.manufacturerEn, product.manufacturerAr)}
-                    </div>
-                  </td>
-                  <td>{product.warehouseNameEn}</td>
-                  <td>{categoryName(product.categoryId)}</td>
-                  <td>{formatPriceWithSyp(product.priceUsd, usdToSyp)}</td>
-                  <td>
-                    {product.isActive ? (
-                      <span className={`availability-badge ${productAvailabilityClass(product)}`}>
-                        {productAvailabilityLabel(product)}
-                      </span>
-                    ) : (
-                      <span className="availability-badge availability-out">Removed</span>
-                    )}
-                  </td>
-                  <td>
-                    {product.isActive && (
-                      <div className="table-row-actions">
-                        <button className="btn-secondary" onClick={() => setEditingProduct(product)}>
-                          Edit
-                        </button>
-                        <button
-                          className="btn-reject"
-                          disabled={busyId === product.id}
-                          onClick={() => handleDelete(product)}
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="adm-empty-state">
+          <div className="adm-empty-state-icon">&#128138;</div>
+          <div className="adm-empty-state-title">{t('products.noProductsAdmin')}</div>
         </div>
+      ) : (
+        <>
+          <div className="adm-card table-scroll">
+            <table className="adm-table">
+              <thead>
+                <tr>
+                  <th>{t('common.name')}</th>
+                  <th>{t('common.warehouse')}</th>
+                  <th>{t('common.manufacturer')}</th>
+                  <th>{t('common.price')}</th>
+                  <th>{t('common.status')}</th>
+                  <th>{t('admin.pendingAccounts.actionColumn')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visibleProducts.map((product) => (
+                  <tr key={product.id} className={product.isActive ? '' : 'row-inactive'}>
+                    <td>{withArFallback(product.nameEn, product.nameAr)}</td>
+                    <td>{product.warehouseNameEn}</td>
+                    <td>{withArFallback(product.manufacturerEn, product.manufacturerAr)}</td>
+                    <td className="adm-num">{formatPriceWithSyp(product.priceUsd, usdToSyp)}</td>
+                    <td>
+                      {product.isActive ? (
+                        <span className={`availability-badge ${productAvailabilityClass(product)}`}>
+                          {productAvailabilityLabel(product, t)}
+                        </span>
+                      ) : (
+                        <span className="availability-badge availability-out">{t('products.removed')}</span>
+                      )}
+                    </td>
+                    <td>
+                      {product.isActive && (
+                        <div className="adm-row-actions">
+                          <button className="adm-row-action" onClick={() => setEditingProduct(product)}>
+                            {t('common.edit')}
+                          </button>
+                          <button
+                            className="adm-row-action adm-row-action-danger"
+                            disabled={busyId === product.id}
+                            onClick={() => handleDelete(product)}
+                          >
+                            {t('common.delete')}
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p className="adm-table-hint">{t('products.adminEditHint')}</p>
+        </>
       )}
 
       {editingProduct && (

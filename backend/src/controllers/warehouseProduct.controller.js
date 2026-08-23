@@ -4,6 +4,7 @@ const Warehouse = require('../models/warehouse.model');
 const warehouseProductService = require('../services/warehouseProduct.service');
 const warehouseProductViewModel = require('../viewmodels/warehouseProduct.viewmodel');
 const productCatalogService = require('../services/productCatalog.service');
+const { parseCursorQuery, parseObjectIdCursor, paginationMeta } = require('../utils/pagination');
 
 async function loadWarehouseOrThrow(userId) {
   const warehouse = await Warehouse.findOne({ userId });
@@ -13,10 +14,31 @@ async function loadWarehouseOrThrow(userId) {
   return warehouse;
 }
 
+// Two shapes on one endpoint: the banner/offer "linked product" pickers call
+// this with no `limit` at all and need the full, alphabetical list (see
+// listProductsForWarehouse) - only the Products management page opts into
+// pagination by actually sending `limit`/`after`, which is when the
+// `pagination` key appears on the response.
 const list = asyncHandler(async (req, res) => {
   const warehouse = await loadWarehouseOrThrow(req.user._id);
-  const products = await warehouseProductService.listProductsForWarehouse(warehouse._id);
-  res.json({ success: true, ...warehouseProductViewModel.toProductListResponse(products) });
+
+  if (req.query.limit === undefined) {
+    const products = await warehouseProductService.listProductsForWarehouse(warehouse._id);
+    res.json({ success: true, ...warehouseProductViewModel.toProductListResponse(products) });
+    return;
+  }
+
+  const { limit, after } = parseCursorQuery(req.query, 20);
+  const cursor = parseObjectIdCursor(after);
+  const { rows, hasMore, nextCursor } = await warehouseProductService.listPaginatedProductsForWarehouse(
+    warehouse._id,
+    { limit, after: cursor }
+  );
+  res.json({
+    success: true,
+    ...warehouseProductViewModel.toProductListResponse(rows),
+    pagination: paginationMeta(hasMore, nextCursor),
+  });
 });
 
 const create = asyncHandler(async (req, res) => {

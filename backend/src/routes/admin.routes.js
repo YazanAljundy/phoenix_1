@@ -9,5 +9,6 @@ router.use(authenticate, authorize('admin'));
 router.get('/pending-accounts', controller.listPendingAccounts);
 router.post('/accounts/:userId/approve', controller.approveAccount);
 router.post('/accounts/:userId/reject', controller.rejectAccount);
+router.post('/notifications', controller.broadcastNotification);
 
 module.exports = router;

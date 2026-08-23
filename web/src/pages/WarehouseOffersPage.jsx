@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { api } from '../api/client';
 import { useExchangeRate } from '../context/ExchangeRateContext';
 import { formatPriceWithSyp } from '../utils/currency';
@@ -13,11 +14,8 @@ const EMPTY_FORM = {
   endDate: '',
 };
 
-function statusLabel(offer) {
-  return offer.status === 'approved' ? 'Approved' : 'Pending review';
-}
-
 function CreateOfferModal({ products, usdToSyp, onClose, onCreated }) {
+  const { t } = useTranslation();
   const [form, setForm] = useState(EMPTY_FORM);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -29,16 +27,16 @@ function CreateOfferModal({ products, usdToSyp, onClose, onCreated }) {
     setError(null);
 
     if (!form.productId || !form.titleAr.trim() || !form.titleEn.trim() || !form.startDate || !form.endDate) {
-      setError('Please fill in all required fields.');
+      setError(t('common.requiredFields'));
       return;
     }
     const discountPercentage = Number(form.discountPercentage);
     if (!Number.isFinite(discountPercentage) || discountPercentage <= 0 || discountPercentage > 100) {
-      setError('Discount must be a number between 1 and 100.');
+      setError(t('offers.warehouse.discountRange'));
       return;
     }
     if (new Date(form.endDate) <= new Date(form.startDate)) {
-      setError('End date must be after the start date.');
+      setError(t('common.endAfterStart'));
       return;
     }
 
@@ -63,13 +61,13 @@ function CreateOfferModal({ products, usdToSyp, onClose, onCreated }) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(event) => event.stopPropagation()}>
-        <h2>New offer</h2>
+        <h2>{t('offers.warehouse.modalTitle')}</h2>
         <form onSubmit={handleSubmit} className="product-form">
           <label>
-            Product
+            {t('orderDetail.product')}
             <select value={form.productId} onChange={(e) => setField('productId', e.target.value)} required>
               <option value="" disabled>
-                Select a product
+                {t('offers.warehouse.selectProduct')}
               </option>
               {products.map((product) => (
                 <option key={product.id} value={product.id}>
@@ -81,11 +79,11 @@ function CreateOfferModal({ products, usdToSyp, onClose, onCreated }) {
           </label>
           <div className="form-row">
             <label>
-              Title (English)
+              {t('offers.warehouse.titleEn')}
               <input value={form.titleEn} onChange={(e) => setField('titleEn', e.target.value)} required />
             </label>
             <label>
-              Title (Arabic)
+              {t('offers.warehouse.titleAr')}
               <input
                 value={form.titleAr}
                 onChange={(e) => setField('titleAr', e.target.value)}
@@ -95,7 +93,7 @@ function CreateOfferModal({ products, usdToSyp, onClose, onCreated }) {
             </label>
           </div>
           <label>
-            Discount percentage
+            {t('offers.warehouse.discountPercentage')}
             <input
               type="number"
               min="1"
@@ -107,7 +105,7 @@ function CreateOfferModal({ products, usdToSyp, onClose, onCreated }) {
           </label>
           <div className="form-row">
             <label>
-              Start date
+              {t('common.startDate')}
               <input
                 type="date"
                 value={form.startDate}
@@ -116,7 +114,7 @@ function CreateOfferModal({ products, usdToSyp, onClose, onCreated }) {
               />
             </label>
             <label>
-              End date
+              {t('common.endDate')}
               <input
                 type="date"
                 value={form.endDate}
@@ -130,10 +128,10 @@ function CreateOfferModal({ products, usdToSyp, onClose, onCreated }) {
 
           <div className="modal-actions">
             <button type="button" className="btn-secondary" onClick={onClose}>
-              Cancel
+              {t('common.cancel')}
             </button>
             <button type="submit" className="btn-primary" disabled={isSaving}>
-              {isSaving ? 'Submitting...' : 'Submit for approval'}
+              {isSaving ? t('offers.warehouse.submitting') : t('offers.warehouse.submitForApproval')}
             </button>
           </div>
         </form>
@@ -143,6 +141,7 @@ function CreateOfferModal({ products, usdToSyp, onClose, onCreated }) {
 }
 
 export function WarehouseOffersPage() {
+  const { t } = useTranslation();
   const usdToSyp = useExchangeRate();
   const [offers, setOffers] = useState([]);
   const [products, setProducts] = useState([]);
@@ -150,14 +149,14 @@ export function WarehouseOffersPage() {
   const [error, setError] = useState(null);
   const [showCreate, setShowCreate] = useState(false);
 
+  const statusLabel = (offer) =>
+    offer.status === 'approved' ? t('offers.warehouse.statusApproved') : t('offers.warehouse.statusPending');
+
   const load = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const [offersData, productsData] = await Promise.all([
-        api.warehouseOffers(),
-        api.warehouseProducts(),
-      ]);
+      const [offersData, productsData] = await Promise.all([api.warehouseOffers(), api.warehouseProducts()]);
       setOffers(offersData.offers);
       setProducts(productsData.products);
     } catch (err) {
@@ -178,40 +177,56 @@ export function WarehouseOffersPage() {
 
   return (
     <div>
-      <div className="section-toolbar">
-        <button className="btn-primary" onClick={() => setShowCreate(true)}>
-          New offer
+      <div className="wh-page-head">
+        <h1>{t('nav.offers')}</h1>
+        <button className="btn-primary" style={{ width: 'auto', marginTop: 0 }} onClick={() => setShowCreate(true)}>
+          {t('offers.warehouse.newOffer')}
         </button>
       </div>
+
+      <p className="wh-notice">{t('offers.warehouse.approvalNotice')}</p>
 
       {error && <p className="error-text">{error}</p>}
 
       {isLoading ? (
-        <p className="hint">Loading...</p>
+        <p className="hint">{t('common.loading')}</p>
       ) : offers.length === 0 ? (
-        <p className="hint">No offers yet - propose your first discount.</p>
+        <p className="hint">{t('offers.warehouse.noOffers')}</p>
       ) : (
-        <div className="order-list">
-          {offers.map((offer) => (
-            <div className="order-card" key={offer.id}>
-              <div className="order-card-header">
-                <div>
-                  <h2>{withArFallback(offer.productNameEn, offer.productNameAr)}</h2>
-                  <p>{offer.titleEn}</p>
-                </div>
-                <span
-                  className={`status-badge ${offer.status === 'approved' ? 'status-delivered' : 'status-pending'}`}
-                >
-                  {statusLabel(offer)}
-                </span>
-              </div>
-              <p className="order-items">{offer.discountPercentage}% off</p>
-              <p className="order-notes">
-                {new Date(offer.startDate).toLocaleDateString()} &ndash;{' '}
-                {new Date(offer.endDate).toLocaleDateString()}
-              </p>
-            </div>
-          ))}
+        <div className="wh-card table-scroll">
+          <table className="wh-table">
+            <thead>
+              <tr>
+                <th>{t('orderDetail.product')}</th>
+                <th>{t('offers.warehouse.discountPercentage')}</th>
+                <th>{t('offers.warehouse.fromColumn')}</th>
+                <th>{t('offers.warehouse.toColumn')}</th>
+                <th>{t('common.status')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {offers.map((offer) => (
+                <tr key={offer.id}>
+                  <td>
+                    {withArFallback(offer.productNameEn, offer.productNameAr)}
+                    <div className="wh-table-sub">{offer.titleEn}</div>
+                  </td>
+                  <td className="wh-num" style={{ color: 'var(--wh-orange)', fontWeight: 700 }}>
+                    {offer.discountPercentage}%
+                  </td>
+                  <td className="wh-num wh-table-date">{new Date(offer.startDate).toLocaleDateString()}</td>
+                  <td className="wh-num wh-table-date">{new Date(offer.endDate).toLocaleDateString()}</td>
+                  <td>
+                    <span
+                      className={`status-badge ${offer.status === 'approved' ? 'status-delivered' : 'status-pending'}`}
+                    >
+                      {statusLabel(offer)}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 

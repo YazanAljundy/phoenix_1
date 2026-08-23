@@ -24,6 +24,21 @@ function requirePassword(value, message) {
   return password;
 }
 
+// Optional - the registration screen's map picker sends both as plain form
+// fields, or neither if the pharmacist skipped/denied it (Section 6.2
+// update). Returns null unless both are present and valid, so a partial/bad
+// pair is silently dropped rather than failing the whole registration.
+function parseOptionalLocation(body) {
+  if (body.latitude === undefined && body.longitude === undefined) {
+    return null;
+  }
+  const lat = Number(body.latitude);
+  const lng = Number(body.longitude);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return null;
+  return { type: 'Point', coordinates: [lng, lat] };
+}
+
 // TODO(re-enable-otp): route stays live and fully working, but no current
 // client calls it - registration/login are password-only for now. See the
 // TODO in auth.service.js's registerOrLogin.
@@ -63,13 +78,19 @@ const register = asyncHandler(async (req, res) => {
       throw ApiError.badRequest('Passwords do not match.');
     }
 
-    if (!req.file) {
-      throw ApiError.badRequest('A photo of the pharmacy is required.');
+    // Section 6.2 update: no longer collected at registration - the
+    // pharmacist verifies via a separate step after admin approval instead.
+    // The route/upload middleware stay wired for that future step, so a
+    // file is still accepted (and validated) here if one happens to be sent.
+    let verificationPhotoUrl;
+    if (req.file) {
+      if (!verifyImageMagicBytes(req.file.path)) {
+        throw ApiError.badRequest('Verification photo file content is not a valid image.');
+      }
+      verificationPhotoUrl = `${req.protocol}://${req.get('host')}/uploads/verification-photos/${req.file.filename}`;
     }
-    if (!verifyImageMagicBytes(req.file.path)) {
-      throw ApiError.badRequest('Verification photo file content is not a valid image.');
-    }
-    const verificationPhotoUrl = `${req.protocol}://${req.get('host')}/uploads/verification-photos/${req.file.filename}`;
+
+    const location = parseOptionalLocation(req.body);
 
     const result = await authService.registerOrLogin({
       name,
@@ -78,6 +99,7 @@ const register = asyncHandler(async (req, res) => {
       address,
       password,
       verificationPhotoUrl,
+      location,
     });
 
     res.status(201).json({
@@ -133,4 +155,15 @@ const me = asyncHandler(async (req, res) => {
   res.json({ success: true, ...authViewModel.toMeResponse(result) });
 });
 
-module.exports = { sendOtp, register, login, loginWithPassword, me };
+const registerDeviceToken = asyncHandler(async (req, res) => {
+  const fcmToken = requireNonEmptyString(req.body.fcmToken, 'fcmToken is required.');
+  const deviceType = req.body.deviceType;
+  if (deviceType !== 'android' && deviceType !== 'ios') {
+    throw ApiError.badRequest("deviceType must be 'android' or 'ios'.");
+  }
+
+  await authService.registerDeviceToken(req.user._id, { fcmToken, deviceType });
+  res.json({ success: true, message: 'Device registered.' });
+});
+
+module.exports = { sendOtp, register, login, loginWithPassword, me, registerDeviceToken };

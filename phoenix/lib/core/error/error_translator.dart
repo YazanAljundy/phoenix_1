@@ -61,6 +61,8 @@ String translateErrorCode(AppLocalizations l10n, String? code, String fallbackMe
       return l10n.errorInvalidRequest;
     case 'ALREADY_REVIEWED':
       return l10n.errorAlreadyReviewed;
+    case 'UNEXPECTED_ERROR':
+      return l10n.errorState;
     default:
       return fallbackMessage;
   }

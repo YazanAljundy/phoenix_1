@@ -38,10 +38,10 @@ function validateRating(rating) {
 }
 
 // Section 13b's mirror: the pharmacy rates the warehouse once per delivered
-// order. Unlike the reverse direction, this starts hidden (isVisible: false)
-// and does NOT fold into Warehouse.averageRating/reviewsCount yet - both
-// happen together, once, when the not-yet-built one-month cron job flips
-// isVisible to true (see review.model.js).
+// order - visible immediately, same as the reverse direction. Still does NOT
+// fold into Warehouse.averageRating/reviewsCount (that field is computed
+// live from visible reviews instead, see warehouse.service.js's
+// getWarehouseProfile).
 async function createWarehouseReview(pharmacyId, userId, { orderId, rating, comment }) {
   if (typeof orderId !== 'string' || !mongoose.Types.ObjectId.isValid(orderId)) {
     throw ApiError.notFound('Order not found.', 'ORDER_NOT_FOUND');
@@ -68,7 +68,7 @@ async function createWarehouseReview(pharmacyId, userId, { orderId, rating, comm
     reviewerType: 'pharmacy',
     rating,
     comment: typeof comment === 'string' && comment.trim() ? comment.trim() : null,
-    isVisible: false,
+    isVisible: true,
   });
 
   return review;

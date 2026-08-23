@@ -160,6 +160,43 @@ input {
   border: 1px solid var(--color-error);
 }
 
+/* --- Load more (shared by every cursor-paginated list - warehouse + admin) --- */
+
+.load-more-btn {
+  width: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 16px auto 0;
+  padding: 10px 24px;
+}
+
+.load-more-spinner {
+  width: 14px;
+  height: 14px;
+  flex: none;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 999px;
+  display: inline-block;
+  animation: load-more-spin 0.7s linear infinite;
+}
+
+@keyframes load-more-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.load-more-done {
+  margin: 16px auto 0;
+  text-align: center;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
 /* --- Admin page --- */
 
 .page {
@@ -243,6 +280,21 @@ input {
   border-radius: 8px;
   border: 1px solid var(--color-border);
   background: var(--color-surface);
+}
+
+.return-photo-thumb-button {
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  line-height: 0;
+}
+
+.return-photo-lightbox-image {
+  max-width: 90vw;
+  max-height: 90vh;
+  object-fit: contain;
+  border-radius: 12px;
 }
 
 .account-verification-photo {
@@ -590,7 +642,7 @@ input {
 
 .product-table th,
 .product-table td {
-  text-align: left;
+  text-align: start;
   padding: 12px;
   border-bottom: 1px solid var(--color-border);
   font-size: 14px;
@@ -834,4 +886,2007 @@ input {
 .review-summary-text {
   color: var(--color-text-secondary);
   font-size: 14px;
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   Warehouse panel redesign (Phoenix Design import, "Modernist"-based).
+   Everything below is scoped under .warehouse-shell (WarehousePanel.jsx's
+   own root) or targets shared classes through a ".warehouse-shell <shared
+   class>" ancestor selector - never a bare selector - so none of it can
+   reach the admin panel, which renders a separate DOM subtree and never
+   carries this class. The shared --color-* tokens above stay untouched
+   (still what the admin panel itself uses); this uses its own --wh-*
+   tokens with the brief's exact palette instead.
+   ══════════════════════════════════════════════════════════════════════ */
+
+.warehouse-shell {
+  --wh-white: #ffffff;
+  --wh-green: #2e7d32;
+  --wh-navy: #1a237e;
+  --wh-orange: #f57c00;
+  --wh-red: #c62828;
+  --wh-bg: #f5f5f5;
+  --wh-border: #e0e0e0;
+  --wh-text: #212121;
+  --wh-text-secondary: #757575;
+  --wh-text-muted: #9e9e9e;
+  --wh-sidebar-width: 232px;
+
+  min-height: 100svh;
+  display: flex;
+  background: var(--wh-bg);
+  font-family: 'Cairo', 'Archivo', system-ui, sans-serif;
+  color: var(--wh-text);
+}
+
+.warehouse-shell .wh-num {
+  font-family: 'Archivo', system-ui, sans-serif;
+}
+
+/* — sidebar — */
+
+.wh-sidebar {
+  flex: none;
+  width: var(--wh-sidebar-width);
+  background: var(--wh-navy);
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 16px;
+}
+
+.wh-sidebar-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 20px 20px 18px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.wh-sidebar-logo {
+  width: 34px;
+  height: 34px;
+  flex: none;
+  border-radius: 8px;
+  background: var(--wh-orange);
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 15px;
+  color: #fff;
+}
+
+.wh-sidebar-brand {
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 1.2;
+  color: #fff;
+}
+
+.wh-sidebar-subtitle {
+  font-size: 11px;
+  line-height: 1.3;
+  color: #9fa8da;
+}
+
+.wh-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px 10px;
+}
+
+.wh-nav-link {
+  padding: 11px 14px;
+  border-radius: 8px;
+  color: #c5cae9;
+  font-size: 14px;
+  font-weight: 400;
+  text-decoration: none;
+}
+
+.wh-nav-link.active {
+  background: var(--wh-orange);
+  color: #fff;
+  font-weight: 600;
+}
+
+/* — main column + topbar — */
+
+.wh-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.wh-topbar {
+  flex: none;
+  min-height: 64px;
+  background: #fff;
+  border-bottom: 1px solid var(--wh-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 24px;
+  flex-wrap: wrap;
+}
+
+.wh-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.wh-topbar-title {
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--wh-navy);
+}
+
+.wh-topbar-title .wh-topbar-city {
+  font-weight: 400;
+  font-size: 13px;
+  color: var(--wh-text-secondary);
+}
+
+.wh-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.wh-topbar-actions .user-name {
+  color: var(--wh-text-secondary);
+  font-size: 14px;
+}
+
+/* Scoped restyle of the shared LanguageToggle/logout buttons - only within
+   this topbar, so the admin header's own buttons are untouched. */
+.wh-topbar-actions .btn-secondary {
+  width: auto;
+  margin-top: 0;
+  padding: 7px 16px;
+  border-radius: 8px;
+  border-color: var(--wh-border);
+  color: var(--wh-navy);
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.wh-logout-btn {
+  padding: 7px 16px;
+  border: 1px solid var(--wh-border);
+  border-radius: 8px;
+  background: none;
+  color: var(--wh-red);
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.wh-hamburger {
+  display: none;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border-radius: 8px;
+  border: 1px solid var(--wh-border);
+  background: #fff;
+  align-items: center;
+  justify-content: center;
+}
+
+.wh-sidebar-backdrop {
+  display: none;
+}
+
+.wh-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+/* — responsive: below tablet width, the sidebar becomes an off-canvas
+   drawer opened by the hamburger — */
+@media (max-width: 768px) {
+  .wh-hamburger {
+    display: flex;
+  }
+
+  .wh-sidebar {
+    position: fixed;
+    inset-inline-start: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 120;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+  }
+
+  [dir='rtl'] .wh-sidebar {
+    transform: translateX(100%);
+  }
+
+  .wh-sidebar.wh-sidebar-open {
+    transform: translateX(0);
+  }
+
+  .wh-sidebar-backdrop.wh-sidebar-open {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 110;
+  }
+}
+
+/* — badges: light-bg/dark-text pairs, matching the design (replaces the
+   solid-color pill this class uses elsewhere in the app) — */
+
+.warehouse-shell .status-badge {
+  border-radius: 999px;
+  font-family: inherit;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: normal;
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+.warehouse-shell .status-badge.status-pending {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+.warehouse-shell .status-badge.status-delivered {
+  background: #e8f5e9;
+  color: var(--wh-green);
+}
+
+.warehouse-shell .status-badge.status-cancelled {
+  background: #ffebee;
+  color: var(--wh-red);
+}
+
+.warehouse-shell .availability-badge {
+  border-radius: 999px;
+  font-family: inherit;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.warehouse-shell .availability-badge.availability-available {
+  background: #e8f5e9;
+  color: var(--wh-green);
+}
+
+.warehouse-shell .availability-badge.availability-paused {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+.warehouse-shell .availability-badge.availability-out {
+  background: #ffebee;
+  color: var(--wh-red);
+}
+
+/* Import-report card (product/catalog Excel import) - same shared
+   .exchange-rate-card the admin's own exchange-rate widget uses, scoped
+   restyle only. */
+.warehouse-shell .exchange-rate-card {
+  border-radius: 8px;
+}
+
+.wh-notice {
+  padding: 12px 16px;
+  border-radius: 8px;
+  background: #e8eaf6;
+  color: var(--wh-navy);
+  font-size: 13px;
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+
+/* — buttons: brief's palette + 8px radius — */
+
+.warehouse-shell .btn-primary {
+  background: var(--wh-orange);
+  border-radius: 8px;
+  font-family: inherit;
+}
+
+.warehouse-shell .btn-secondary {
+  border-radius: 8px;
+  border-color: var(--wh-border);
+  color: var(--wh-navy);
+  font-family: inherit;
+}
+
+.warehouse-shell .btn-approve {
+  background: var(--wh-green);
+  border-radius: 8px;
+  font-family: inherit;
+}
+
+.warehouse-shell .btn-reject {
+  border-radius: 8px;
+  color: var(--wh-red);
+  border-color: var(--wh-red);
+  font-family: inherit;
+}
+
+/* Modals (Rate pharmacy / Record payment) - scoped restyle only, same
+   .modal-overlay/.modal/.product-form the admin panel's own modals use
+   elsewhere, untouched outside this scope. */
+.warehouse-shell .modal-overlay {
+  background: rgba(26, 35, 126, 0.5);
+}
+
+.warehouse-shell .modal {
+  border-radius: 12px;
+  font-family: inherit;
+}
+
+.warehouse-shell .modal h2 {
+  color: var(--wh-navy);
+}
+
+.warehouse-shell .product-form input:focus,
+.warehouse-shell .product-form select:focus,
+.warehouse-shell .product-form textarea:focus {
+  border-color: var(--wh-orange);
+}
+
+/* — orders list page — */
+
+.wh-page-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.wh-page-head h1 {
+  font-size: 22px;
+  color: var(--wh-text);
+}
+
+.wh-page-head-meta {
+  font-size: 13px;
+  color: var(--wh-text-secondary);
+}
+
+.wh-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+  border-bottom: 2px solid var(--wh-border);
+  padding-bottom: 12px;
+}
+
+.wh-pill {
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--wh-border);
+  background: none;
+  color: #616161;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.wh-pill.active {
+  background: var(--wh-navy);
+  border-color: var(--wh-navy);
+  color: #fff;
+}
+
+.wh-card {
+  background: #fff;
+  border: 1px solid var(--wh-border);
+  border-radius: 8px;
+}
+
+.wh-table {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: collapse;
+}
+
+/* Narrower tables (e.g. the order-detail items table, squeezed into the
+   1fr column of .wh-detail-grid alongside a fixed 340px sidebar) don't
+   need - and don't have room for - the list table's wider minimum before
+   .table-scroll kicks in. */
+.wh-table.wh-table-compact {
+  min-width: 480px;
+}
+
+/* Even narrower (the debts detail page squeezes two tables into a
+   1fr/1fr/320px three-way grid, so neither has room for wh-table-compact's
+   480px minimum). */
+.wh-table.wh-table-narrow {
+  min-width: 300px;
+}
+
+.wh-table th {
+  text-align: start;
+  padding: 12px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #5a6b87;
+  border-bottom: 2px solid var(--wh-border);
+  white-space: nowrap;
+}
+
+.wh-table td {
+  padding: 14px;
+  border-bottom: 1px solid #eee;
+  font-size: 14px;
+  color: var(--wh-text);
+}
+
+.wh-table tbody tr:hover {
+  background: #e8eaf6;
+  cursor: pointer;
+}
+
+.wh-table-order-num {
+  font-weight: 600;
+  color: var(--wh-navy);
+}
+
+.wh-table-sub {
+  font-size: 12px;
+  color: var(--wh-text-muted);
+}
+
+.wh-table-total {
+  font-weight: 700;
+}
+
+.wh-table-date {
+  font-size: 13px;
+  color: var(--wh-text-secondary);
+  white-space: nowrap;
+}
+
+.wh-row-action {
+  padding: 8px 16px;
+  border-radius: 8px;
+  background: var(--wh-orange);
+  color: #fff;
+  border: none;
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.wh-row-action:disabled {
+  opacity: 0.6;
+}
+
+.wh-table-hint {
+  margin-top: 14px;
+  font-size: 12px;
+  color: var(--wh-text-muted);
+}
+
+.wh-table-thumb {
+  width: 64px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 6px;
+  background: var(--wh-border);
+}
+
+.wh-row-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.wh-row-actions button {
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--wh-border);
+  background: none;
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--wh-navy);
+}
+
+.wh-row-actions button.wh-row-action-danger {
+  color: var(--wh-red);
+}
+
+/* — order detail page — */
+
+.wh-detail-back {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  padding: 0 0 12px;
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--wh-navy);
+}
+
+.wh-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .wh-detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.wh-detail-card {
+  background: #fff;
+  border: 1px solid var(--wh-border);
+  border-radius: 8px;
+  padding: 18px 20px;
+}
+
+.wh-detail-card-title {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--wh-text);
+  margin: 0 0 12px;
+}
+
+.wh-detail-header-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 6px;
+}
+
+.wh-detail-header-row h1 {
+  margin: 0;
+  font-size: 22px;
+  color: var(--wh-text);
+}
+
+.wh-detail-timestamp {
+  font-size: 13px;
+  color: var(--wh-text-secondary);
+}
+
+.wh-pharmacy-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.wh-pharmacy-label {
+  font-weight: 600;
+  font-size: 12px;
+  color: #5a6b87;
+  margin-bottom: 4px;
+}
+
+.wh-pharmacy-name {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--wh-text);
+}
+
+.wh-pharmacy-meta {
+  font-size: 13px;
+  color: var(--wh-text-secondary);
+}
+
+.wh-pharmacy-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.wh-pharmacy-actions button {
+  width: auto;
+  margin-top: 0;
+  padding: 9px 16px;
+}
+
+.wh-summary-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 14px;
+  color: #616161;
+  margin-bottom: 8px;
+}
+
+.wh-summary-row.wh-summary-discount {
+  color: var(--wh-green);
+}
+
+.wh-summary-divider {
+  height: 2px;
+  background: var(--wh-border);
+  margin: 10px 0;
+}
+
+.wh-summary-total {
+  display: flex;
+  justify-content: space-between;
+  font-weight: 700;
+  font-size: 17px;
+  color: var(--wh-text);
+}
+
+.wh-summary-total .wh-num {
+  color: var(--wh-orange);
+}
+
+.wh-savings-banner {
+  margin-top: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #e8f5e9;
+  color: var(--wh-green);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.wh-timeline-item {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding-bottom: 12px;
+}
+
+.wh-timeline-item:last-child {
+  padding-bottom: 0;
+}
+
+.wh-timeline-dot {
+  width: 10px;
+  height: 10px;
+  flex: none;
+  margin-top: 5px;
+  border-radius: 999px;
+  background: var(--wh-orange);
+}
+
+.wh-timeline-label {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--wh-text);
+}
+
+.wh-timeline-at {
+  font-size: 12px;
+  color: var(--wh-text-muted);
+}
+
+.wh-pending-return-card {
+  background: #fff8e1;
+  border: 1px solid var(--wh-orange);
+  border-radius: 8px;
+  padding: 16px 20px;
+}
+
+.wh-pending-return-title {
+  font-weight: 700;
+  font-size: 14px;
+  color: #e65100;
+  margin-bottom: 6px;
+}
+
+.wh-detail-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.wh-detail-actions .btn-primary,
+.wh-detail-actions .btn-secondary,
+.wh-detail-actions .btn-approve,
+.wh-detail-actions .btn-reject {
+  width: 100%;
+  margin-top: 0;
+  padding: 14px;
+  font-size: 15px;
+}
+
+/* — reusable empty state (e.g. Discounts with none set up yet) — */
+
+.wh-empty-state {
+  background: #fff;
+  border: 1px solid var(--wh-border);
+  border-radius: 8px;
+  padding: 64px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.wh-empty-state-icon {
+  width: 72px;
+  height: 72px;
+  flex: none;
+  border-radius: 999px;
+  background: var(--wh-bg);
+  border: 2px dashed #bdbdbd;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 26px;
+  color: #bdbdbd;
+  margin-bottom: 18px;
+}
+
+.wh-empty-state-title {
+  font-weight: 700;
+  font-size: 17px;
+  color: var(--wh-text);
+  margin-bottom: 8px;
+}
+
+.wh-empty-state-body {
+  max-width: 420px;
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--wh-text-secondary);
+}
+
+/* — debts page — */
+
+.warehouse-shell .balance-amount.is-debt {
+  color: var(--wh-red);
+}
+
+.warehouse-shell .balance-amount.is-credit {
+  color: var(--wh-green);
+}
+
+.wh-debt-stats {
+  display: flex;
+  gap: 28px;
+  flex-wrap: wrap;
+}
+
+.wh-debt-stat-value {
+  font-weight: 700;
+  font-size: 17px;
+  color: var(--wh-text);
+}
+
+.wh-debt-stat-value.wh-debt-stat-paid {
+  color: var(--wh-green);
+}
+
+.wh-debt-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 320px;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 1100px) {
+  .wh-debt-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 900px) {
+  .wh-debt-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* — returns detail page — */
+
+.wh-reason-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: #ffebee;
+  color: var(--wh-red);
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.wh-return-photos {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+.wh-return-photos .return-photo-thumb-button {
+  display: block;
+  width: 100%;
+}
+
+.wh-return-photos .return-photo-thumb {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 3;
+  border-radius: 8px;
+}
+
+@media (max-width: 480px) {
+  .wh-return-photos {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* — reviews page — */
+
+.warehouse-shell .star-filled {
+  color: var(--wh-orange);
+}
+
+.wh-review-summary-card {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  background: #fff;
+  border: 1px solid var(--wh-border);
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.wh-review-score {
+  padding: 22px;
+  border-inline-end: 1px solid #eee;
+}
+
+.wh-review-score-value {
+  font-weight: 700;
+  font-size: 44px;
+  line-height: 1;
+  color: var(--wh-text);
+}
+
+.wh-review-score .star-rating {
+  margin: 8px 0 6px;
+}
+
+.wh-review-score-count {
+  font-size: 13px;
+  color: var(--wh-text-secondary);
+}
+
+.wh-review-bars {
+  padding: 22px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 9px;
+}
+
+.wh-review-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.wh-review-bar-label {
+  width: 30px;
+  flex: none;
+  font-weight: 600;
+  font-size: 12px;
+  color: #616161;
+  white-space: nowrap;
+}
+
+.wh-review-bar-track {
+  flex: 1;
+  display: block;
+  height: 8px;
+  border-radius: 999px;
+  background: #f0f0f0;
+  overflow: hidden;
+}
+
+.wh-review-bar-fill {
+  display: block;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--wh-orange);
+}
+
+.wh-review-bar-count {
+  width: 22px;
+  flex: none;
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--wh-text-muted);
+  text-align: end;
+}
+
+.wh-review-list-head {
+  padding: 14px 20px;
+  border-bottom: 2px solid var(--wh-border);
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--wh-text);
+}
+
+.wh-review-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 15px 20px;
+  border-bottom: 1px solid #eee;
+}
+
+.wh-review-row:last-child {
+  border-bottom: none;
+}
+
+.wh-review-row:hover {
+  background: #e8eaf6;
+}
+
+.wh-review-avatar {
+  flex: none;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  background: #e8eaf6;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--wh-navy);
+}
+
+.wh-review-row-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.wh-review-row-name {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--wh-text);
+}
+
+.wh-review-row-date {
+  font-size: 12px;
+  color: var(--wh-text-muted);
+}
+
+.wh-review-row-comment {
+  font-size: 13px;
+  line-height: 1.7;
+  color: #616161;
+  margin-top: 3px;
+}
+
+.wh-review-row-order {
+  font-size: 12px;
+  color: var(--wh-text-muted);
+  margin-top: 2px;
+}
+
+@media (max-width: 700px) {
+  .wh-review-summary-card {
+    grid-template-columns: 1fr;
+  }
+
+  .wh-review-score {
+    border-inline-end: none;
+    border-bottom: 1px solid #eee;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════
+   Admin panel redesign (Phoenix Design import, "Modernist"-based).
+   Same strategy as the warehouse-shell section above, in its own scope:
+   AdminPanel.jsx's root carries ".admin-shell", and every rule below either
+   uses a brand-new "adm-*"-prefixed class or overrides a shared class via a
+   ".admin-shell <shared-class>" descendant selector - never a bare
+   selector. WarehousePanel.jsx never renders inside .admin-shell (and vice
+   versa, .warehouse-shell), so neither panel's rules can reach the other.
+   ══════════════════════════════════════════════════════════════════════ */
+
+.admin-shell {
+  --adm-white: #ffffff;
+  --adm-green: #2e7d32;
+  --adm-navy: #1a237e;
+  --adm-orange: #f57c00;
+  --adm-red: #c62828;
+  --adm-bg: #f5f5f5;
+  --adm-border: #e0e0e0;
+  --adm-text: #212121;
+  --adm-text-secondary: #757575;
+  --adm-text-muted: #9e9e9e;
+  --adm-sidebar-width: 240px;
+
+  min-height: 100svh;
+  display: flex;
+  background: var(--adm-bg);
+  font-family: 'Cairo', 'Archivo', system-ui, sans-serif;
+  color: var(--adm-text);
+}
+
+.admin-shell .adm-num {
+  font-family: 'Archivo', system-ui, sans-serif;
+}
+
+/* — sidebar — */
+
+.adm-sidebar {
+  flex: none;
+  width: var(--adm-sidebar-width);
+  background: var(--adm-navy);
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 16px;
+}
+
+.adm-sidebar-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+}
+
+.adm-sidebar-logo {
+  width: 34px;
+  height: 34px;
+  flex: none;
+  background: var(--adm-orange);
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 15px;
+  color: #fff;
+}
+
+.adm-sidebar-brand {
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 1.2;
+  color: #fff;
+}
+
+.adm-sidebar-subtitle {
+  font-size: 11px;
+  line-height: 1.3;
+  color: #9fa8da;
+}
+
+.adm-nav {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 0;
+}
+
+.adm-nav-link {
+  padding: 12px 20px;
+  border-inline-end: 3px solid transparent;
+  color: #c5cae9;
+  font-size: 14px;
+  font-weight: 400;
+  text-decoration: none;
+}
+
+.adm-nav-link.active {
+  background: rgba(255, 255, 255, 0.08);
+  border-inline-end-color: var(--adm-orange);
+  color: #fff;
+  font-weight: 700;
+}
+
+/* — main column + topbar — */
+
+.adm-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.adm-topbar {
+  flex: none;
+  min-height: 64px;
+  background: #fff;
+  border-bottom: 1px solid var(--adm-border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 24px;
+  flex-wrap: wrap;
+}
+
+.adm-topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.adm-topbar-title {
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--adm-navy);
+}
+
+.adm-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.adm-topbar-actions .user-name {
+  color: var(--adm-text-secondary);
+  font-size: 14px;
+}
+
+/* Scoped restyle of the shared LanguageToggle button - only within this
+   topbar, so the warehouse header's own button is untouched. */
+.adm-topbar-actions .btn-secondary {
+  width: auto;
+  margin-top: 0;
+  padding: 7px 16px;
+  border-radius: 8px;
+  border-color: var(--adm-border);
+  color: var(--adm-navy);
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.adm-logout-btn {
+  padding: 7px 16px;
+  border: 1px solid var(--adm-border);
+  border-radius: 8px;
+  background: none;
+  color: var(--adm-red);
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.adm-hamburger {
+  display: none;
+  width: 36px;
+  height: 36px;
+  flex: none;
+  border-radius: 8px;
+  border: 1px solid var(--adm-border);
+  background: #fff;
+  align-items: center;
+  justify-content: center;
+}
+
+.adm-sidebar-backdrop {
+  display: none;
+}
+
+.adm-content {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+/* — responsive: below tablet width, the sidebar becomes an off-canvas
+   drawer opened by the hamburger — */
+@media (max-width: 768px) {
+  .adm-hamburger {
+    display: flex;
+  }
+
+  .adm-sidebar {
+    position: fixed;
+    inset-inline-start: 0;
+    top: 0;
+    bottom: 0;
+    z-index: 120;
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+  }
+
+  [dir='rtl'] .adm-sidebar {
+    transform: translateX(100%);
+  }
+
+  .adm-sidebar.adm-sidebar-open {
+    transform: translateX(0);
+  }
+
+  .adm-sidebar-backdrop.adm-sidebar-open {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 110;
+  }
+}
+
+/* — page head — */
+
+.adm-page-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.adm-page-head h1 {
+  margin: 0;
+  font-size: 22px;
+  color: var(--adm-text);
+}
+
+.adm-page-head-meta {
+  font-size: 13px;
+  color: var(--adm-text-secondary);
+}
+
+/* — dashboard — */
+
+.adm-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+@media (max-width: 900px) {
+  .adm-stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.adm-stat-card {
+  background: #fff;
+  border: 1px solid var(--adm-border);
+  border-top: 3px solid var(--adm-navy);
+  padding: 16px 16px 20px;
+  display: block;
+  text-decoration: none;
+}
+
+.adm-stat-card.adm-stat-pending {
+  border-top-color: var(--adm-orange);
+}
+
+.adm-stat-card.adm-stat-pending .adm-stat-value {
+  color: var(--adm-orange);
+}
+
+.adm-stat-card.adm-stat-info {
+  border-top-color: #1565c0;
+}
+
+.adm-stat-card.adm-stat-info .adm-stat-value {
+  color: #1565c0;
+}
+
+.adm-stat-card.adm-stat-success {
+  border-top-color: var(--adm-green);
+}
+
+.adm-stat-card.adm-stat-success .adm-stat-value {
+  color: var(--adm-green);
+}
+
+.adm-stat-card.adm-stat-navy .adm-stat-value {
+  color: var(--adm-navy);
+}
+
+.adm-stat-label {
+  font-weight: 600;
+  font-size: 12px;
+  color: #5a6b87;
+  margin-bottom: 8px;
+}
+
+.adm-stat-value {
+  font-weight: 700;
+  font-size: 34px;
+  line-height: 1;
+  color: var(--adm-navy);
+}
+
+.adm-stat-hint {
+  margin-top: 10px;
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--adm-navy);
+}
+
+.adm-dashboard-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+@media (max-width: 900px) {
+  .adm-dashboard-columns {
+    grid-template-columns: 1fr;
+  }
+}
+
+.adm-card {
+  background: #fff;
+  border: 1px solid var(--adm-border);
+}
+
+.adm-card-head {
+  padding: 14px 16px;
+  border-bottom: 2px solid var(--adm-border);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.adm-card-head span {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--adm-text);
+}
+
+.adm-card-head a {
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--adm-navy);
+  text-decoration: none;
+}
+
+.adm-list-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 13px 16px;
+  border-bottom: 1px solid #eee;
+}
+
+.adm-list-row:last-child {
+  border-bottom: none;
+}
+
+.adm-list-row:hover {
+  background: #e8eaf6;
+}
+
+.adm-list-row-main {
+  min-width: 0;
+}
+
+.adm-list-row-title {
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--adm-text);
+}
+
+.adm-list-row-sub {
+  font-size: 12px;
+  color: var(--adm-text-muted);
+}
+
+.adm-list-row-end {
+  flex: none;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--adm-text);
+}
+
+.adm-exchange-footer {
+  margin-top: 24px;
+  padding: 12px 16px;
+  background: #fff;
+  border: 1px solid var(--adm-border);
+  border-inline-start: 3px solid var(--adm-orange);
+  font-size: 13px;
+  color: var(--adm-text-secondary);
+}
+
+/* Scoped restyle of the shared exchange-rate widget (also used unscoped by
+   the warehouse's own import-report card) - sharp corners here, matching
+   this design's square-cornered language everywhere else. */
+.admin-shell .exchange-rate-card {
+  border-radius: 0;
+  border-color: var(--adm-border);
+}
+
+/* Scoped restyle of the shared approve/reject buttons - square corners,
+   fixed 44px tap target, matching the mockup's table-row action chips
+   (different treatment than the warehouse's own rounded scoped version). */
+.admin-shell .btn-approve,
+.admin-shell .btn-reject {
+  border-radius: 0;
+  min-height: 44px;
+  padding: 0 18px;
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+/* — pending accounts: role pills — */
+
+.adm-pills {
+  display: flex;
+  border-bottom: 2px solid var(--adm-border);
+  margin-bottom: 16px;
+}
+
+.adm-pill {
+  padding: 12px 20px;
+  border: none;
+  background: none;
+  color: #616161;
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.adm-pill.active {
+  background: var(--adm-navy);
+  color: #fff;
+}
+
+/* — tables — */
+
+.adm-table {
+  width: 100%;
+  min-width: 640px;
+  border-collapse: collapse;
+}
+
+.adm-table th {
+  text-align: start;
+  padding: 12px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #5a6b87;
+  border-bottom: 2px solid var(--adm-border);
+  white-space: nowrap;
+}
+
+.adm-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid #eee;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--adm-text);
+}
+
+.adm-table tbody tr:hover {
+  background: #e8eaf6;
+}
+
+.adm-table-sub {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--adm-text-muted);
+}
+
+.adm-table-thumb-button {
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  line-height: 0;
+}
+
+.adm-table-thumb {
+  width: 64px;
+  height: 44px;
+  object-fit: cover;
+  background: var(--adm-border);
+}
+
+.adm-row-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.adm-table-hint {
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--adm-text-muted);
+}
+
+/* — reusable empty state — */
+
+.adm-empty-state {
+  background: #fff;
+  border: 1px solid var(--adm-border);
+  padding: 96px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.adm-empty-state-icon {
+  width: 76px;
+  height: 76px;
+  flex: none;
+  border: 2px solid var(--adm-green);
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-size: 34px;
+  color: var(--adm-green);
+  margin-bottom: 20px;
+}
+
+.adm-empty-state-title {
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--adm-text);
+  margin-bottom: 8px;
+}
+
+.adm-empty-state-body {
+  max-width: 420px;
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--adm-text-secondary);
+}
+
+/* Scoped restyle of the shared availability-badge classes (also used
+   unscoped by the catalog's product-availability chips) - light-bg/dark-
+   text pair matching this design, same source colors as the warehouse's own
+   scoped version. */
+.admin-shell .availability-badge {
+  border-radius: 999px;
+  font-family: inherit;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.admin-shell .availability-badge.availability-available {
+  background: #e8f5e9;
+  color: var(--adm-green);
+}
+
+.admin-shell .availability-badge.availability-paused {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+.admin-shell .availability-badge.availability-out {
+  background: #ffebee;
+  color: var(--adm-red);
+}
+
+/* — exchange rate page — */
+
+.adm-rate-page-body {
+  display: flex;
+  justify-content: center;
+}
+
+.adm-rate-card {
+  width: 100%;
+  max-width: 600px;
+  background: #fff;
+  border: 1px solid var(--adm-border);
+}
+
+.adm-rate-section {
+  padding: 28px 32px;
+  border-bottom: 1px solid #eee;
+}
+
+.adm-rate-hero {
+  padding: 32px;
+  border-bottom: 2px solid var(--adm-border);
+}
+
+.adm-rate-label {
+  font-weight: 600;
+  font-size: 12px;
+  color: #5a6b87;
+  margin-bottom: 12px;
+}
+
+.adm-rate-value {
+  font-weight: 700;
+  font-size: 46px;
+  line-height: 1;
+  color: var(--adm-navy);
+}
+
+.adm-rate-meta {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+
+.adm-rate-updated {
+  font-size: 13px;
+  color: var(--adm-text-secondary);
+}
+
+.adm-rate-warning {
+  margin-top: 16px;
+  padding: 14px 16px;
+  background: #fff8e1;
+  border-inline-start: 4px solid var(--adm-orange);
+  font-weight: 600;
+  font-size: 13px;
+  line-height: 1.7;
+  color: #e65100;
+}
+
+.adm-rate-section-title {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--adm-text);
+  margin-bottom: 14px;
+}
+
+.adm-rate-form {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.adm-rate-input-label {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-weight: 600;
+  font-size: 13px;
+  color: var(--adm-text);
+}
+
+.adm-rate-input-label input {
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid var(--adm-border);
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--adm-text);
+}
+
+.adm-rate-input-label input:focus {
+  outline: none;
+  border-color: var(--adm-green);
+  background: #f1f8e9;
+}
+
+.adm-rate-form .btn-primary {
+  width: auto;
+  min-height: 48px;
+  margin-top: 0;
+  padding: 0 26px;
+  border-radius: 0;
+  font-family: inherit;
+}
+
+.adm-rate-change-hint {
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--adm-green);
+}
+
+.adm-rate-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 24px 32px;
+}
+
+.adm-rate-disclaimer {
+  max-width: 320px;
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--adm-text-secondary);
+}
+
+.adm-rate-footer .btn-secondary {
+  width: auto;
+  min-height: 48px;
+  margin-top: 0;
+  padding: 0 22px;
+  border-radius: 0;
+  border-color: var(--adm-navy);
+  color: var(--adm-navy);
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+/* — notifications page — */
+
+.adm-notify-card {
+  padding: 24px;
+  max-width: 720px;
+}
+
+.adm-notify-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+@media (max-width: 700px) {
+  .adm-notify-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.adm-notify-success {
+  color: var(--adm-green);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+/* — offers page — */
+
+/* Scoped restyle of the shared status-badge (also used unscoped elsewhere
+   and separately scoped for the warehouse shell) - light-bg/dark-text pair,
+   only the "pending" tone is needed here since this list only ever shows
+   pending offers. */
+.admin-shell .status-badge {
+  border-radius: 999px;
+  font-family: inherit;
+  font-weight: 600;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.admin-shell .status-badge.status-pending {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+.admin-shell .status-badge.status-delivered {
+  background: #e8f5e9;
+  color: var(--adm-green);
+}
+
+.admin-shell .status-badge.status-cancelled {
+  background: #ffebee;
+  color: var(--adm-red);
+}
+
+.adm-offer-discount {
+  font-weight: 700;
+  color: var(--adm-orange);
+}
+
+/* — banners page — */
+
+.adm-detail-grid {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 24px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .adm-detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.adm-detail-card {
+  background: #fff;
+  border: 1px solid var(--adm-border);
+  padding: 20px;
+}
+
+.adm-detail-card-title {
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--adm-text);
+  margin: 0 0 4px;
+}
+
+.adm-detail-card-hint {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--adm-text-secondary);
+  margin: 0 0 16px;
+}
+
+.adm-tag {
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 10px;
+  background: #e8eaf6;
+  color: var(--adm-navy);
+  white-space: nowrap;
+}
+
+.adm-row-action {
+  padding: 6px 14px;
+  border: 1px solid var(--adm-border);
+  background: none;
+  font-family: inherit;
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--adm-navy);
+  white-space: nowrap;
+}
+
+.adm-row-action:disabled {
+  opacity: 0.6;
+}
+
+.adm-row-action.adm-row-action-danger {
+  color: var(--adm-red);
+}
+
+/* — products page — */
+
+.adm-filters-row {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.adm-filter-select,
+.adm-filter-search {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--adm-border);
+  background: #fff;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--adm-text);
+}
+
+.adm-filter-search {
+  flex: 1;
+  max-width: 360px;
+}
+
+.adm-filter-search::placeholder {
+  color: var(--adm-text-muted);
+}
+
+/* — catalog page — */
+
+.adm-page-head-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.adm-import-modal {
+  width: 100%;
+  max-width: 560px;
+  max-height: 90vh;
+  overflow-y: auto;
+  background: #fff;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.3);
+  padding: 24px;
+}
+
+.adm-import-title {
+  font-weight: 700;
+  font-size: 19px;
+  color: var(--adm-text);
+  margin-bottom: 4px;
+}
+
+.adm-import-file {
+  font-size: 13px;
+  color: var(--adm-text-secondary);
+  margin-bottom: 18px;
+}
+
+.adm-import-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.adm-import-stat {
+  border: 1px solid var(--adm-border);
+  border-top: 3px solid var(--adm-navy);
+  padding: 14px;
+}
+
+.adm-import-stat-added {
+  border-top-color: var(--adm-green);
+}
+
+.adm-import-stat-added .adm-import-stat-value {
+  color: var(--adm-green);
+}
+
+.adm-import-stat-updated {
+  border-top-color: var(--adm-navy);
+}
+
+.adm-import-stat-updated .adm-import-stat-value {
+  color: var(--adm-navy);
+}
+
+.adm-import-stat-failed {
+  border-top-color: var(--adm-red);
+}
+
+.adm-import-stat-failed .adm-import-stat-value {
+  color: var(--adm-red);
+}
+
+.adm-import-stat-value {
+  font-weight: 700;
+  font-size: 26px;
+  line-height: 1;
+}
+
+.adm-import-stat-label {
+  font-weight: 600;
+  font-size: 12px;
+  color: #5a6b87;
+  margin-top: 6px;
+}
+
+.adm-import-errors {
+  border: 1px solid var(--adm-border);
+  margin-bottom: 20px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.adm-import-errors-head {
+  padding: 10px 14px;
+  border-bottom: 1px solid #eee;
+  background: var(--adm-bg);
+  font-weight: 600;
+  font-size: 12px;
+  color: #5a6b87;
+  position: sticky;
+  top: 0;
+}
+
+.adm-import-error-row {
+  display: flex;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid #eee;
+  font-size: 13px;
+  color: var(--adm-text-secondary);
+}
+
+.adm-import-error-row-num {
+  flex: none;
+  font-weight: 600;
+  font-size: 12px;
+  color: var(--adm-red);
+  min-width: 40px;
+}
+
+.adm-import-actions {
+  display: flex;
+  gap: 10px;
 }

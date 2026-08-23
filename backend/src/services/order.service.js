@@ -75,6 +75,20 @@ async function nextOrderNumber() {
 // Stock/availability is still checked normally: the warehouse genuinely needs
 // the replacement units in hand to fulfill it.
 async function createOrder({ userId, pharmacyId, warehouseId, items, notes, isReplacement = false }) {
+  // Defense in depth: order.controller.js's validateItems already rejects an
+  // empty/invalid cart before this is ever called from the API, and a
+  // return's own items are validated non-empty at creation time (the other
+  // caller, approveReturn in warehouseReturn.service.js) - but this is the
+  // one choke point every order write passes through, so it re-checks rather
+  // than trusting every future caller to remember to.
+  if (!Array.isArray(items) || items.length === 0) {
+    throw ApiError.badRequest('Your cart is empty.', undefined, 'CART_EMPTY');
+  }
+  const invalidItem = items.find((item) => !Number.isInteger(item.quantity) || item.quantity <= 0);
+  if (invalidItem) {
+    throw ApiError.badRequest('Invalid quantity in cart.', undefined, 'INVALID_QUANTITY');
+  }
+
   const available = await isWarehouseAvailable(warehouseId);
   if (!available) {
     throw ApiError.notFound('Warehouse not found.', 'WAREHOUSE_NOT_FOUND');
@@ -244,9 +258,7 @@ async function getOrderForPharmacy(orderId, pharmacyId) {
     throw ApiError.notFound('Order not found.', 'ORDER_NOT_FOUND');
   }
   // myReview: this pharmacy's own rating of the warehouse for this order, if
-  // it's submitted one already (Section 8/13c) - fetched regardless of
-  // isVisible, since the pharmacist should see their own pending-visibility
-  // review even though nobody else can yet.
+  // it's submitted one already (Section 8/13c).
   const [warehouse, items, returnRequest, myReview] = await Promise.all([
     Warehouse.findById(order.warehouseId),
     OrderItem.find({ orderId: order._id }),
@@ -256,22 +268,42 @@ async function getOrderForPharmacy(orderId, pharmacyId) {
   return { order, warehouse, items, returnRequest, myReview };
 }
 
+const DEFAULT_ORDERS_LIMIT = 15;
+
 // Section 6.8: "my orders" list - every status included (delivered/cancelled
 // are history, not just active tracking), scoped to the caller's own
 // pharmacy (same IDOR pattern as getOrderForPharmacy above). Sorted by
 // orderNumber, not createdAt: it's already a unique-indexed, sequentially
 // assigned field, so descending order is both "newest first" and index-backed
 // without adding a second index.
-async function listOrdersForPharmacy(pharmacyId) {
-  const orders = await Order.find({ pharmacyId }).sort({ orderNumber: -1 });
-  const warehouseIds = [...new Set(orders.map((o) => o.warehouseId.toString()))];
+//
+// Cursor pagination: `after` is the last orderNumber seen, meaning "orders
+// numbered below this one" (descending = newest first).
+async function listOrdersForPharmacy(pharmacyId, { limit = DEFAULT_ORDERS_LIMIT, after = null } = {}) {
+  const filter = { pharmacyId };
+  if (after !== null) {
+    filter.orderNumber = { $lt: after };
+  }
+
+  const orders = await Order.find(filter)
+    .sort({ orderNumber: -1 })
+    .limit(limit + 1);
+  const hasMore = orders.length > limit;
+  const page = hasMore ? orders.slice(0, limit) : orders;
+  // Stringified even though orderNumber is a Number - the pagination
+  // contract's nextCursor is always a string, same shape regardless of
+  // which field a given endpoint actually cursors on.
+  const nextCursor = page.length > 0 ? String(page[page.length - 1].orderNumber) : null;
+
+  const warehouseIds = [...new Set(page.map((o) => o.warehouseId.toString()))];
   const warehouses = await Warehouse.find({ _id: { $in: warehouseIds } });
   const warehouseById = new Map(warehouses.map((w) => [w._id.toString(), w]));
 
-  return orders.map((order) => ({
+  const rows = page.map((order) => ({
     order,
     warehouse: warehouseById.get(order.warehouseId.toString()) ?? null,
   }));
+  return { rows, hasMore, nextCursor };
 }
 
 // Section 7: only the pharmacist may cancel, and only before the order goes

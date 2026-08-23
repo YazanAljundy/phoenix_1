@@ -14,6 +14,18 @@ function toWarehouseReturnsResponse(rows) {
   return { returns: rows.map(serializeWarehouseReturn) };
 }
 
+// Same shape as the list row, plus the replacement order's number (only
+// meaningful once approved) - the returns list intentionally skips this
+// since it's the detail page's job (per the request), not a queue column.
+function toWarehouseReturnDetailResponse({ returnRequest, order, orderItemById, pharmacy, replacementOrder }) {
+  return {
+    return: {
+      ...serializeWarehouseReturn({ returnRequest, order, orderItemById, pharmacy }),
+      replacementOrderNumber: replacementOrder ? replacementOrder.orderNumber : null,
+    },
+  };
+}
+
 function toResolvedReturnResponse(returnRequest, replacementOrder) {
   return {
     return: {
@@ -29,4 +41,4 @@ function toResolvedReturnResponse(returnRequest, replacementOrder) {
   };
 }
 
-module.exports = { toWarehouseReturnsResponse, toResolvedReturnResponse };
+module.exports = { toWarehouseReturnsResponse, toResolvedReturnResponse, toWarehouseReturnDetailResponse };

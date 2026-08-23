@@ -45,5 +45,7 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Phoenix uses your location only when you tap "Pick my location" during registration, to help pinpoint your pharmacy on the map.</string>
 </dict>
 </plist>

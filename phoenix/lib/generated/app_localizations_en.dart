@@ -60,13 +60,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get registrationTitle => 'Create your pharmacy account';
 
   @override
-  String get registrationSubtitle => 'Fill in your details to get started';
+  String get registrationSubtitle =>
+      'Fill in the details below - your account is activated once the administration reviews your documents.';
 
   @override
   String get fullNameLabel => 'Full name';
 
   @override
+  String get fullNameHint => 'e.g. Dr. Samer Halabi';
+
+  @override
   String get pharmacyNameLabel => 'Pharmacy name';
+
+  @override
+  String get pharmacyNameHint => 'e.g. Al-Noor Pharmacy';
 
   @override
   String get phoneLabel => 'Phone number';
@@ -75,23 +82,33 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addressLabel => 'Address';
 
   @override
-  String get verificationPhotoLabel => 'Pharmacy photo';
+  String get pickLocationHint =>
+      'Move the map to fine-tune the pin\'s position';
 
   @override
-  String get verificationPhotoHint =>
-      'A photo of your pharmacy\'s storefront or sign';
+  String get resolvingAddressText => 'Resolving address...';
 
   @override
-  String get choosePhotoButton => 'Choose photo';
+  String get locationPermissionDeniedMessage =>
+      'Couldn\'t access your location - you can still drag the map manually.';
 
   @override
-  String get changePhotoButton => 'Change photo';
+  String get addressNotResolvedYetMessage =>
+      'Please wait for the map to resolve an address, or adjust the pin\'s position.';
 
   @override
-  String get photoRequired => 'Please add a photo of your pharmacy.';
+  String get useCurrentLocationTooltip => 'My current location';
 
   @override
   String get confirmPasswordLabel => 'Confirm password';
+
+  @override
+  String get confirmPasswordHint => 'Re-enter your password';
+
+  @override
+  String passwordHint(String min) {
+    return 'At least $min characters';
+  }
 
   @override
   String get passwordTooShort => 'Password must be at least 6 characters.';
@@ -110,6 +127,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get createAccountButton => 'Create account';
 
   @override
+  String get termsAgreementLabel =>
+      'I agree to the Terms of Use and Privacy Policy.';
+
+  @override
+  String get termsAgreementRequiredError =>
+      'You must agree to the terms to continue.';
+
+  @override
+  String get passwordsMustMatchHint => 'Both passwords must match.';
+
+  @override
   String get passwordLoginTitle => 'Log in with password';
 
   @override
@@ -122,9 +150,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get otpTitle => 'Enter verification code';
 
   @override
-  String otpInstructions(String phone) {
-    return 'We sent a 6-digit code by SMS to $phone';
-  }
+  String get otpInstructionsPrefix => 'Enter the 6-digit code sent to';
 
   @override
   String get otpCodeLabel => 'Verification code';
@@ -133,7 +159,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get verifyButton => 'Verify';
 
   @override
-  String get resendCodeButton => 'Resend code';
+  String get resendCodeButton => 'Didn\'t get the code? Resend';
 
   @override
   String get codeResent => 'A new code has been sent.';
@@ -146,11 +172,25 @@ class AppLocalizationsEn extends AppLocalizations {
       'We\'re reviewing your registration. You\'ll be able to order as soon as it\'s approved.';
 
   @override
+  String approvalPendingMessageWithName(String pharmacyName) {
+    return 'We\'re currently reviewing $pharmacyName\'s documents. You\'ll be able to order as soon as it\'s approved.';
+  }
+
+  @override
   String get approvalPendingBlockedTitle => 'Account blocked';
 
   @override
   String get approvalPendingBlockedMessage =>
       'This account has been blocked. Please contact support for help.';
+
+  @override
+  String get approvalChecklistReceived => 'Data and documents received';
+
+  @override
+  String get approvalChecklistReview => 'Under administration review';
+
+  @override
+  String get approvalChecklistActivate => 'Account activation and ordering';
 
   @override
   String get refreshStatusButton => 'Check status';
@@ -181,6 +221,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get errorState => 'Something went wrong.';
 
   @override
+  String get noMoreResultsText => 'No more results';
+
+  @override
+  String get retryButton => 'Retry';
+
+  @override
   String get warehouseSelectionTitle => 'Choose a warehouse';
 
   @override
@@ -195,8 +241,41 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String warehousesAvailableSubtitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count warehouses available for your pharmacy',
+      one: '1 warehouse available for your pharmacy',
+      zero: 'No warehouses available for your pharmacy',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get searchWarehouseHint => 'Search by warehouse or city';
+
+  @override
+  String get noSearchResultsFound => 'No results match your search.';
+
+  @override
+  String get warehouseProfileButtonLabel => 'Profile';
+
+  @override
   String get noManufacturersFound =>
       'No manufacturers available for this warehouse.';
+
+  @override
+  String manufacturersCountSubtitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count manufacturers',
+      one: '1 manufacturer',
+      zero: 'No manufacturers',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get warehouseProfileTooltip => 'Warehouse info';
@@ -237,16 +316,31 @@ class AppLocalizationsEn extends AppLocalizations {
   String get searchProductsHint => 'Search by name or manufacturer';
 
   @override
-  String get allCategories => 'All';
-
-  @override
   String get addToCartButton => 'Add';
 
   @override
   String get unavailableLabel => 'Unavailable';
 
   @override
+  String get offerBadgeLabel => 'Offer';
+
+  @override
+  String get toggleDensityTooltip => 'Toggle view';
+
+  @override
   String get noProductsFound => 'No products found.';
+
+  @override
+  String catalogItemsCountSubtitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count items',
+      one: '1 item',
+      zero: 'No items',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get currencySuffix => 'SYP';
@@ -261,6 +355,16 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get cartEmptyMessage => 'Your cart is empty.';
+
+  @override
+  String get cartEmptyHint =>
+      'Choose a warehouse and start adding medicines to your cart.';
+
+  @override
+  String get browseCatalogButton => 'Browse products';
+
+  @override
+  String get quantityLabel => 'Quantity';
 
   @override
   String get notesLabel => 'Notes (optional)';
@@ -377,6 +481,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get statusHistoryTitle => 'Status history';
 
   @override
+  String lastUpdatedLabel(String time) {
+    return 'Last updated: $time';
+  }
+
+  @override
   String get cancelOrderTitle => 'Cancel order?';
 
   @override
@@ -404,7 +513,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get myOrdersTitle => 'My Orders';
 
   @override
+  String myOrdersCountSubtitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count orders · pull down to refresh',
+      one: '1 order · pull down to refresh',
+      zero: 'No orders yet',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get refreshTooltip => 'Refresh';
+
+  @override
   String get noOrdersYet => 'You haven\'t placed any orders yet.';
+
+  @override
+  String get browseWarehousesButton => 'Browse warehouses';
 
   @override
   String get invoiceTitle => 'Order items';
@@ -429,7 +556,30 @@ class AppLocalizationsEn extends AppLocalizations {
   String get returnsTitle => 'Returns';
 
   @override
+  String returnsCountSubtitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count return requests',
+      one: '1 return request',
+      zero: 'No return requests',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get noReturnsYet => 'You haven\'t requested any returns yet.';
+
+  @override
+  String get newReturnRequestButton => 'New return request';
+
+  @override
+  String get selectOrderForReturnTitle =>
+      'Select the order you want to return items from';
+
+  @override
+  String get noEligibleOrdersForReturn =>
+      'No delivered orders are currently eligible for a return.';
 
   @override
   String get requestReturnTitle => 'Request a return';
@@ -451,6 +601,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get reasonOther => 'Other';
+
+  @override
+  String get multipleReasonsLabel => 'Multiple reasons';
 
   @override
   String get customReasonLabel => 'Please specify';
@@ -584,6 +737,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get noDebtsYet => 'No debts right now.';
+
+  @override
+  String get totalDebtsLabel => 'Total debts';
 
   @override
   String get totalOrdersLabel => 'Total orders';

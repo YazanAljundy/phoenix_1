@@ -19,43 +19,59 @@
   "profile": "الملف الشخصي",
 
   "registrationTitle": "إنشاء حساب الصيدلية",
-  "registrationSubtitle": "أدخل بياناتك للبدء",
+  "registrationSubtitle": "املأ البيانات التالية، وسيتم تفعيل حسابك بعد مراجعة الوثائق من قِبل الإدارة.",
   "fullNameLabel": "الاسم الكامل",
+  "fullNameHint": "مثال: د. سامر الحلبي",
   "pharmacyNameLabel": "اسم الصيدلية",
+  "pharmacyNameHint": "مثال: صيدلية النور",
   "phoneLabel": "رقم الهاتف",
   "addressLabel": "العنوان",
-  "verificationPhotoLabel": "صورة الصيدلية",
-  "verificationPhotoHint": "صورة لواجهة أو لافتة صيدليتك",
-  "choosePhotoButton": "اختر صورة",
-  "changePhotoButton": "تغيير الصورة",
-  "photoRequired": "يرجى إضافة صورة لصيدليتك.",
+  "pickLocationHint": "حرّك الخريطة لضبط موضع المؤشر بدقة",
+  "resolvingAddressText": "جارِ تحديد العنوان...",
+  "locationPermissionDeniedMessage": "تعذّر الوصول لموقعك، يمكنك تحريك الخريطة يدوياً لتحديد الموقع.",
+  "addressNotResolvedYetMessage": "يرجى الانتظار حتى يتم تحديد العنوان من الخريطة، أو حرّك الخريطة لضبط الموقع.",
+  "useCurrentLocationTooltip": "موقعي الحالي",
   "confirmPasswordLabel": "تأكيد كلمة المرور",
+  "confirmPasswordHint": "أعد إدخال كلمة المرور",
+  "passwordHint": "{min} أحرف على الأقل",
+  "@passwordHint": {
+    "placeholders": {
+      "min": { "type": "String" }
+    }
+  },
   "passwordTooShort": "يجب أن تتكون كلمة المرور من 6 أحرف على الأقل.",
   "passwordMismatch": "كلمتا المرور غير متطابقتين.",
   "alreadyHaveAccountLink": "عندك حساب؟ سجّل دخول بكلمة السر",
   "sendCodeButton": "إرسال رمز التحقق",
   "createAccountButton": "إنشاء الحساب",
+  "termsAgreementLabel": "أوافق على شروط الاستخدام وسياسة الخصوصية.",
+  "termsAgreementRequiredError": "يجب الموافقة على الشروط والأحكام للمتابعة.",
+  "passwordsMustMatchHint": "يجب أن تتطابق كلمتا المرور.",
 
   "passwordLoginTitle": "تسجيل الدخول بكلمة السر",
   "passwordLoginSubtitle": "أدخل رقم هاتفك وكلمة السر",
   "backToRegistrationLink": "جديد هون؟ أنشئ حساب",
 
   "otpTitle": "أدخل رمز التحقق",
-  "otpInstructions": "أرسلنا رمزاً مكوناً من 6 أرقام عبر رسالة نصية إلى {phone}",
-  "@otpInstructions": {
-    "placeholders": {
-      "phone": { "type": "String" }
-    }
-  },
+  "otpInstructionsPrefix": "أدخل الرمز المكوّن من 6 أرقام المُرسل إلى",
   "otpCodeLabel": "رمز التحقق",
   "verifyButton": "تحقق",
-  "resendCodeButton": "إعادة إرسال الرمز",
+  "resendCodeButton": "لم يصلك الرمز؟ إعادة الإرسال",
   "codeResent": "تم إرسال رمز جديد.",
 
   "approvalPendingTitle": "حسابك قيد المراجعة",
   "approvalPendingMessage": "نقوم بمراجعة تسجيلك حالياً. ستتمكن من الطلب فور الموافقة على حسابك.",
+  "approvalPendingMessageWithName": "نقوم بمراجعة وثائق صيدلية {pharmacyName} حالياً. ستتمكن من الطلب فور الموافقة على حسابك.",
+  "@approvalPendingMessageWithName": {
+    "placeholders": {
+      "pharmacyName": { "type": "String" }
+    }
+  },
   "approvalPendingBlockedTitle": "الحساب محظور",
   "approvalPendingBlockedMessage": "تم حظر هذا الحساب. يرجى التواصل مع الدعم للمساعدة.",
+  "approvalChecklistReceived": "تم استلام البيانات والوثائق",
+  "approvalChecklistReview": "قيد مراجعة الإدارة",
+  "approvalChecklistActivate": "تفعيل الحساب والبدء بالطلب",
   "refreshStatusButton": "تحقق من الحالة",
   "contactSupportButton": "تواصل مع الدعم",
   "contactSupportDialogTitle": "تواصل مع الدعم",
@@ -67,6 +83,8 @@
   "close": "إغلاق",
 
   "errorState": "حدث خطأ ما.",
+  "noMoreResultsText": "لا توجد نتائج إضافية",
+  "retryButton": "إعادة المحاولة",
   "warehouseSelectionTitle": "اختر المستودع",
   "selectWarehouseButton": "اختيار",
   "noWarehousesAvailable": "لا توجد مستودعات متاحة حالياً.",
@@ -76,8 +94,23 @@
       "name": { "type": "String" }
     }
   },
+  "warehousesAvailableSubtitle": "{count, plural, zero{لا توجد مستودعات متاحة لصيدليتك} one{مستودع واحد متاح لصيدليتك} two{مستودعان متاحان لصيدليتك} few{{count} مستودعات متاحة لصيدليتك} many{{count} مستودعاً متاحاً لصيدليتك} other{{count} مستودع متاح لصيدليتك}}",
+  "@warehousesAvailableSubtitle": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "searchWarehouseHint": "ابحث عن مستودع أو مدينة",
+  "noSearchResultsFound": "ما في نتائج مطابقة لبحثك.",
+  "warehouseProfileButtonLabel": "البروفايل",
 
   "noManufacturersFound": "لا توجد شركات مصنّعة متاحة بهذا المستودع.",
+  "manufacturersCountSubtitle": "{count, plural, zero{لا توجد شركات مصنّعة} one{شركة مصنّعة واحدة} two{شركتان مصنّعتان} few{{count} شركات مصنّعة} many{{count} شركة مصنّعة} other{{count} شركة مصنّعة}}",
+  "@manufacturersCountSubtitle": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
 
   "warehouseProfileTooltip": "معلومات المستودع",
   "deliveryInfoTitle": "معلومات التوصيل",
@@ -97,10 +130,17 @@
   "browseWarehouseProductsButton": "تصفح منتجات هذا المستودع",
 
   "searchProductsHint": "ابحث بالاسم أو الشركة المصنعة",
-  "allCategories": "الكل",
   "addToCartButton": "إضافة",
   "unavailableLabel": "غير متوفر",
+  "offerBadgeLabel": "عرض",
+  "toggleDensityTooltip": "تبديل طريقة العرض",
   "noProductsFound": "لم يتم العثور على منتجات.",
+  "catalogItemsCountSubtitle": "{count, plural, zero{لا توجد أصناف} one{صنف واحد} two{صنفان} few{{count} أصناف} many{{count} صنفاً} other{{count} صنف}}",
+  "@catalogItemsCountSubtitle": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
   "currencySuffix": "ل.س",
   "addedToCartMessage": "تمت إضافة {name} إلى السلة.",
   "@addedToCartMessage": {
@@ -111,6 +151,9 @@
 
   "cartTitle": "السلة",
   "cartEmptyMessage": "سلتك فارغة.",
+  "cartEmptyHint": "اختر مستودعاً وابدأ بإضافة الأدوية إلى سلتك.",
+  "browseCatalogButton": "تصفّح المنتجات",
+  "quantityLabel": "الكمية",
   "notesLabel": "ملاحظات (اختياري)",
   "subtotalLabel": "المجموع",
   "submitOrderButton": "إرسال الطلب",
@@ -180,6 +223,12 @@
   "stageDelivered": "تم التوصيل",
   "stageCancelled": "ملغى",
   "statusHistoryTitle": "سجل الحالة",
+  "lastUpdatedLabel": "آخر تحديث: {time}",
+  "@lastUpdatedLabel": {
+    "placeholders": {
+      "time": { "type": "String" }
+    }
+  },
   "cancelOrderTitle": "إلغاء الطلب؟",
   "cancelOrderConfirmation": "هل أنت متأكد من إلغاء هذا الطلب؟",
   "cancelOrderButton": "إلغاء الطلب",
@@ -189,7 +238,15 @@
   "errorOrderNotCancellable": "لم يعد بالإمكان إلغاء هذا الطلب من التطبيق.",
 
   "myOrdersTitle": "طلباتي",
+  "myOrdersCountSubtitle": "{count, plural, zero{لا طلبات بعد} one{طلب واحد · اسحب للأسفل للتحديث} two{طلبان · اسحب للأسفل للتحديث} few{{count} طلبات · اسحب للأسفل للتحديث} many{{count} طلباً · اسحب للأسفل للتحديث} other{{count} طلب · اسحب للأسفل للتحديث}}",
+  "@myOrdersCountSubtitle": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
+  "refreshTooltip": "تحديث",
   "noOrdersYet": "لم تقم بأي طلبات بعد.",
+  "browseWarehousesButton": "تصفّح المستودعات",
   "invoiceTitle": "أصناف الطلب",
   "discountLabel": "الخصم",
   "invoiceTotalLabel": "الإجمالي",
@@ -207,7 +264,16 @@
   },
 
   "returnsTitle": "المرتجعات",
+  "returnsCountSubtitle": "{count, plural, zero{لا طلبات إرجاع} one{طلب إرجاع واحد} two{طلبا إرجاع} few{{count} طلبات إرجاع} many{{count} طلب إرجاع} other{{count} طلب إرجاع}}",
+  "@returnsCountSubtitle": {
+    "placeholders": {
+      "count": { "type": "int" }
+    }
+  },
   "noReturnsYet": "لم تقدّم أي طلب إرجاع بعد.",
+  "newReturnRequestButton": "طلب مرتجع جديد",
+  "selectOrderForReturnTitle": "اختر الطلب الذي تريد إرجاع أصناف منه",
+  "noEligibleOrdersForReturn": "لا يوجد طلبات مسلّمة حالياً يمكن طلب إرجاع لها.",
   "requestReturnTitle": "طلب إرجاع",
   "requestReturnButton": "إرسال طلب الإرجاع",
   "returnQuantityLabel": "الكمية",
@@ -215,6 +281,7 @@
   "reasonDamaged": "تالف",
   "reasonWrongItem": "منتج خاطئ",
   "reasonOther": "سبب آخر",
+  "multipleReasonsLabel": "أسباب متعددة",
   "customReasonLabel": "يرجى التوضيح",
   "returnSubmittedTitle": "تم إرسال الطلب",
   "returnSubmittedMessage": "تم إرسال طلب الإرجاع. سيقوم المستودع بمراجعته.",
@@ -263,6 +330,7 @@
 
   "myDebtsTitle": "ديوني",
   "noDebtsYet": "لا توجد ديون حالياً.",
+  "totalDebtsLabel": "إجمالي الديون",
   "totalOrdersLabel": "إجمالي الطلبات",
   "totalPaidLabel": "إجمالي المدفوع",
   "currentBalanceLabel": "الدين الحالي",

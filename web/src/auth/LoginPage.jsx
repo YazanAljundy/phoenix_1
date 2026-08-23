@@ -1,10 +1,12 @@
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from './AuthContext';
 
 // Section 6-2/3: phone + password, no OTP (temporarily disabled - see
 // AuthContext.login). Single-step form, same shape as the pharmacy app's
 // password-login screen.
 export function LoginPage() {
+  const { t } = useTranslation();
   const { login } = useAuth();
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
@@ -27,10 +29,10 @@ export function LoginPage() {
   return (
     <div className="auth-screen">
       <div className="auth-card">
-        <h1 className="brand">Phoenix Admin</h1>
+        <h1 className="brand">{t('app.brand')}</h1>
 
         <form onSubmit={handleSubmit}>
-          <label htmlFor="phone">Phone number</label>
+          <label htmlFor="phone">{t('auth.phoneLabel')}</label>
           <input
             id="phone"
             type="tel"
@@ -39,7 +41,7 @@ export function LoginPage() {
             required
             autoFocus
           />
-          <label htmlFor="password">Password</label>
+          <label htmlFor="password">{t('auth.passwordLabel')}</label>
           <input
             id="password"
             type="password"
@@ -49,7 +51,7 @@ export function LoginPage() {
           />
           {error && <p className="error-text">{error}</p>}
           <button type="submit" className="btn-primary" disabled={isSubmitting}>
-            {isSubmitting ? 'Logging in...' : 'Log in'}
+            {isSubmitting ? t('auth.loggingIn') : t('auth.logIn')}
           </button>
         </form>
       </div>

@@ -3,13 +3,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:phoenix/core/constants/app_colors.dart';
 import 'package:phoenix/core/constants/app_padding.dart';
+import 'package:phoenix/core/constants/app_radius.dart';
 import 'package:phoenix/core/constants/app_sizes.dart';
 import 'package:phoenix/core/error/error_translator.dart';
 import 'package:phoenix/core/extensions/build_context_extensions.dart';
 import 'package:phoenix/core/utils/currency_formatter.dart';
 import 'package:phoenix/core/widgets/app_dialog.dart';
 import 'package:phoenix/core/widgets/app_text_field.dart';
-import 'package:phoenix/core/widgets/empty_view.dart';
 import 'package:phoenix/core/widgets/primary_button.dart';
 import 'package:phoenix/core/widgets/secondary_price_hint.dart';
 import 'package:phoenix/features/cart/presentation/managers/cart_cubit.dart';
@@ -102,7 +102,28 @@ class _CartViewState extends State<CartView> {
       appBar: AppBar(
         backgroundColor: AppColors.navyOf(context),
         foregroundColor: Colors.white,
-        title: Text(l10n.cartTitle),
+        toolbarHeight: 64,
+        title: BlocBuilder<CartCubit, CartState>(
+          buildWhen: (previous, current) =>
+              previous.itemCount != current.itemCount ||
+              previous.warehouseName != current.warehouseName,
+          builder: (context, state) {
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(l10n.cartTitle, maxLines: 1, overflow: TextOverflow.ellipsis),
+                if (state.warehouseName != null)
+                  Text(
+                    '${state.warehouseName} · ${l10n.catalogItemsCountSubtitle(state.itemCount)}',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.normal, color: Colors.white70),
+                  ),
+              ],
+            );
+          },
+        ),
       ),
       body: BlocConsumer<CartCubit, CartState>(
         listenWhen: (previous, current) =>
@@ -117,98 +138,158 @@ class _CartViewState extends State<CartView> {
         },
         builder: (context, state) {
           if (state.isEmpty) {
-            return EmptyView(message: l10n.cartEmptyMessage);
+            return _EmptyCart(onBrowse: () => context.goNamed(RouteNames.warehouseSelection));
           }
 
           return Column(
             children: [
               Expanded(
-                child: ListView.separated(
+                child: SingleChildScrollView(
                   padding: AppPadding.screen,
-                  itemCount: state.items.length,
-                  separatorBuilder: (context, index) =>
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      for (final item in state.items) ...[
+                        CartItemTile(
+                          item: item,
+                          onQuantityChanged: (quantity) => context
+                              .read<CartCubit>()
+                              .updateQuantity(item.productId, quantity),
+                          onRemove: () =>
+                              context.read<CartCubit>().removeItem(item.productId),
+                        ),
+                        const SizedBox(height: AppSizes.spacingSmall),
+                      ],
+                      const SizedBox(height: AppSizes.spacingXSmall),
+                      AppTextField(
+                        label: l10n.notesLabel,
+                        controller: _notesController,
+                        maxLines: 3,
+                        onChanged: (value) =>
+                            context.read<CartCubit>().updateNotes(value),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Container(
+                padding: AppPadding.screen,
+                decoration: BoxDecoration(
+                  color: AppColors.backgroundOf(context),
+                  border: Border(top: BorderSide(color: AppColors.borderOf(context))),
+                ),
+                child: SafeArea(
+                  top: false,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              l10n.subtotalLabel,
+                              style: context.textTheme.titleMedium,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          Flexible(
+                            child: Builder(
+                              builder: (context) {
+                                final usdToSyp = context
+                                    .watch<ExchangeRateCubit>()
+                                    .state
+                                    .usdToSyp;
+                                final sypText = formatSypApprox(
+                                  state.subtotalUsd,
+                                  usdToSyp,
+                                  l10n.currencySuffix,
+                                );
+                                return Wrap(
+                                  alignment: WrapAlignment.end,
+                                  crossAxisAlignment: WrapCrossAlignment.center,
+                                  spacing: AppSizes.spacingXSmall,
+                                  children: [
+                                    Text(
+                                      '\$${state.subtotalUsd}',
+                                      style: context.textTheme.titleLarge?.copyWith(
+                                        color: AppColors.primaryOf(context),
+                                      ),
+                                    ),
+                                    if (sypText != null)
+                                      SecondaryPriceHint(text: sypText),
+                                  ],
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
                       const SizedBox(height: AppSizes.spacingSmall),
-                  itemBuilder: (context, index) {
-                    final item = state.items[index];
-                    return CartItemTile(
-                      item: item,
-                      onQuantityChanged: (quantity) => context
-                          .read<CartCubit>()
-                          .updateQuantity(item.productId, quantity),
-                      onRemove: () =>
-                          context.read<CartCubit>().removeItem(item.productId),
-                    );
-                  },
-                ),
-              ),
-              Padding(
-                padding: AppPadding.screen,
-                child: AppTextField(
-                  label: l10n.notesLabel,
-                  controller: _notesController,
-                  onChanged: (value) =>
-                      context.read<CartCubit>().updateNotes(value),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSizes.spacingLarge,
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Flexible(
-                      child: Text(
-                        l10n.subtotalLabel,
-                        style: context.textTheme.titleMedium,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      PrimaryButton(
+                        label: l10n.submitOrderButton,
+                        isLoading: state.isSubmitting,
+                        onPressed: _confirmSubmit,
                       ),
-                    ),
-                    Flexible(
-                      child: Builder(
-                        builder: (context) {
-                          final usdToSyp = context
-                              .watch<ExchangeRateCubit>()
-                              .state
-                              .usdToSyp;
-                          final sypText = formatSypApprox(
-                            state.subtotalUsd,
-                            usdToSyp,
-                            l10n.currencySuffix,
-                          );
-                          return Wrap(
-                            alignment: WrapAlignment.end,
-                            crossAxisAlignment: WrapCrossAlignment.center,
-                            spacing: AppSizes.spacingXSmall,
-                            children: [
-                              Text(
-                                '\$${state.subtotalUsd}',
-                                style: context.textTheme.titleMedium?.copyWith(
-                                  color: AppColors.primaryOf(context),
-                                ),
-                              ),
-                              if (sypText != null)
-                                SecondaryPriceHint(text: sypText),
-                            ],
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: AppPadding.screen,
-                child: PrimaryButton(
-                  label: l10n.submitOrderButton,
-                  isLoading: state.isSubmitting,
-                  onPressed: _confirmSubmit,
+                    ],
+                  ),
                 ),
               ),
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+class _EmptyCart extends StatelessWidget {
+  const _EmptyCart({required this.onBrowse});
+
+  final VoidCallback onBrowse;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+
+    return Center(
+      child: Padding(
+        padding: AppPadding.screen,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 84,
+              height: 84,
+              decoration: BoxDecoration(color: AppColors.surfaceOf(context), borderRadius: AppRadius.large),
+              child: Icon(
+                Icons.remove_shopping_cart_outlined,
+                size: 40,
+                color: AppColors.textSecondaryOf(context),
+              ),
+            ),
+            const SizedBox(height: AppSizes.spacingMedium),
+            Text(l10n.cartEmptyMessage, style: context.textTheme.titleLarge, textAlign: TextAlign.center),
+            const SizedBox(height: AppSizes.spacingXSmall),
+            Text(
+              l10n.cartEmptyHint,
+              textAlign: TextAlign.center,
+              style: context.textTheme.bodyMedium?.copyWith(color: AppColors.textSecondaryOf(context)),
+            ),
+            const SizedBox(height: AppSizes.spacingLarge),
+            FilledButton(
+              onPressed: onBrowse,
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.primaryOf(context),
+                foregroundColor: Colors.white,
+                shape: const RoundedRectangleBorder(borderRadius: AppRadius.medium),
+                padding: const EdgeInsets.symmetric(horizontal: AppSizes.spacingLarge, vertical: 14),
+              ),
+              child: Text(l10n.browseCatalogButton),
+            ),
+          ],
+        ),
       ),
     );
   }

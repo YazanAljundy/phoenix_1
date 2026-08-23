@@ -14,11 +14,29 @@ class MyOrdersCubit extends Cubit<MyOrdersState> {
 
   final OrderRepository _orderRepository;
 
+  // Full reset - also what pull-to-refresh calls, so it always restarts
+  // pagination from page one rather than just re-fetching whatever the
+  // first page currently happens to be.
   Future<void> load() async {
-    emit(state.copyWith(status: MyOrdersStatus.loading, clearError: true));
+    emit(
+      state.copyWith(
+        status: MyOrdersStatus.loading,
+        clearError: true,
+        hasMore: false,
+        clearNextCursor: true,
+      ),
+    );
     try {
-      final orders = await _orderRepository.getOrders();
-      emit(state.copyWith(status: MyOrdersStatus.loaded, orders: orders));
+      final result = await _orderRepository.getOrders();
+      emit(
+        state.copyWith(
+          status: MyOrdersStatus.loaded,
+          orders: result.items,
+          hasMore: result.hasMore,
+          nextCursor: result.nextCursor,
+          clearNextCursor: result.nextCursor == null,
+        ),
+      );
     } on Failure catch (f) {
       emit(
         state.copyWith(
@@ -27,6 +45,26 @@ class MyOrdersCubit extends Cubit<MyOrdersState> {
           errorCode: f.code,
         ),
       );
+    }
+  }
+
+  Future<void> loadMore() async {
+    if (!state.hasMore || state.isLoadingMore || state.nextCursor == null) return;
+
+    emit(state.copyWith(isLoadingMore: true, clearLoadMoreError: true));
+    try {
+      final result = await _orderRepository.getOrders(after: state.nextCursor);
+      emit(
+        state.copyWith(
+          orders: [...state.orders, ...result.items],
+          hasMore: result.hasMore,
+          nextCursor: result.nextCursor,
+          clearNextCursor: result.nextCursor == null,
+          isLoadingMore: false,
+        ),
+      );
+    } on Failure catch (f) {
+      emit(state.copyWith(isLoadingMore: false, loadMoreErrorMessage: f.errMessage, loadMoreErrorCode: f.code));
     }
   }
 }
