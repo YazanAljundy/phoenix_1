@@ -32,17 +32,19 @@ class AuthRepositoryImpl implements AuthRepository {
     double? longitude,
   }) async {
     try {
-      final formData = FormData.fromMap({
-        'name': name,
-        'pharmacyName': pharmacyName,
-        'phone': phone,
-        'address': address,
-        'password': password,
-        'confirmPassword': password,
-        if (latitude != null && longitude != null) 'latitude': latitude.toString(),
-        if (latitude != null && longitude != null) 'longitude': longitude.toString(),
-      });
-      final response = await _apiClient.dio.post(Endpoints.register, data: formData);
+      final response = await _apiClient.dio.post(
+        Endpoints.register,
+        data: {
+          'name': name,
+          'pharmacyName': pharmacyName,
+          'phone': phone,
+          'address': address,
+          'password': password,
+          'confirmPassword': password,
+          if (latitude != null && longitude != null) 'latitude': latitude,
+          if (latitude != null && longitude != null) 'longitude': longitude,
+        },
+      );
       return AuthResponse.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
       throw ServerFailure.fromDioError(e);

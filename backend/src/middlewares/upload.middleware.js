@@ -9,10 +9,8 @@ const { ApiError } = require('../utils/ApiError');
 // ephemeral filesystem (Render, Railway) across restarts/redeploys - migrate
 // to Cloudflare R2 (see Section 15/env.r2) before any real production deploy.
 const UPLOAD_ROOT = path.join(__dirname, '../../uploads');
-const VERIFICATION_PHOTOS_DIR = path.join(UPLOAD_ROOT, 'verification-photos');
 const RETURN_PHOTOS_DIR = path.join(UPLOAD_ROOT, 'return-photos');
 const BANNER_IMAGES_DIR = path.join(UPLOAD_ROOT, 'banners');
-fs.mkdirSync(VERIFICATION_PHOTOS_DIR, { recursive: true });
 fs.mkdirSync(RETURN_PHOTOS_DIR, { recursive: true });
 fs.mkdirSync(BANNER_IMAGES_DIR, { recursive: true });
 
@@ -68,15 +66,6 @@ function wrapMulter(multerMiddleware, tooLargeMessage, tooManyMessage, tooManyCo
   };
 }
 
-const verificationPhotoUpload = wrapMulter(
-  multer({
-    storage: makeStorage(VERIFICATION_PHOTOS_DIR),
-    fileFilter: imageFileFilter,
-    limits: { fileSize: MAX_FILE_SIZE_BYTES },
-  }).single('verificationPhoto'),
-  'Verification photo must be smaller than 5MB.'
-);
-
 // Section 6.9/7: "more than one photo allowed" for a return request - capped
 // at MAX_RETURN_PHOTOS so a pharmacist can't attach an unbounded batch.
 const returnPhotosUpload = wrapMulter(
@@ -110,7 +99,8 @@ const catalogImportUpload = wrapMulter(
 );
 
 // Section: banner image - a single required photo, same shape as
-// verificationPhotoUpload above, just its own directory/field name.
+// returnPhotosUpload above (single file instead of an array), just its own
+// directory/field name.
 const bannerImageUpload = wrapMulter(
   multer({
     storage: makeStorage(BANNER_IMAGES_DIR),
@@ -147,12 +137,10 @@ function verifyImageMagicBytes(filePath) {
 }
 
 module.exports = {
-  verificationPhotoUpload,
   returnPhotosUpload,
   catalogImportUpload,
   bannerImageUpload,
   verifyImageMagicBytes,
-  VERIFICATION_PHOTOS_DIR,
   RETURN_PHOTOS_DIR,
   BANNER_IMAGES_DIR,
   MAX_RETURN_PHOTOS,

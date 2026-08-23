@@ -9,10 +9,12 @@ const pharmacySchema = new Schema(
     address: { type: String, required: true },
     city: { type: String, required: true },
     phone: { type: String, required: true },
-    // Photo of the pharmacy's storefront/sign, required at registration and
-    // used by the admin to verify the pharmacy physically exists before
-    // approving it. Entirely separate from licenseImage below (an official
-    // syndicate document, still unused/reserved).
+    // Photo of the pharmacy's storefront/sign, meant to help the admin verify
+    // the pharmacy physically exists before approving it. Not collected at
+    // registration (Section 6.2 update) - reserved for a future verification
+    // step, so it stays null unless/until that step is built. Entirely
+    // separate from licenseImage below (an official syndicate document,
+    // still unused/reserved).
     verificationPhoto: { type: String, default: null },
     // Reserved for a later stage - not used in the UI yet.
     licenseNumber: { type: String, default: null },

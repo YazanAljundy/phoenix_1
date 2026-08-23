@@ -1,5 +1,3 @@
-import 'package:image_picker/image_picker.dart';
-
 // Carries the registration form's field values from RegistrationView to
 // OtpVerificationView (passed as the go_router `extra`), so the whole form is
 // submitted together with the OTP code in a single /auth/register call.
@@ -10,7 +8,6 @@ class RegistrationDraft {
     required this.phone,
     required this.address,
     required this.password,
-    required this.verificationPhoto,
   });
 
   final String name;
@@ -18,5 +15,4 @@ class RegistrationDraft {
   final String phone;
   final String address;
   final String password;
-  final XFile verificationPhoto;
 }

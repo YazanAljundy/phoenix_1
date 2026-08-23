@@ -38,15 +38,14 @@ async function loadProfile(user) {
 // account back in and the freshly typed name/pharmacyName/address are discarded
 // rather than rejected with a conflict error. This also gracefully covers JWT
 // expiry (7 days) and reinstalls, without adding a screen the spec doesn't call
-// for. The same discard applies to password/verificationPhotoUrl (Section 6-2
-// update): both are only ever captured once, at the account's actual creation.
+// for. The same discard applies to password (Section 6-2 update): it's only
+// ever captured once, at the account's actual creation.
 async function registerOrLogin({
   name,
   pharmacyName,
   phone,
   address,
   password,
-  verificationPhotoUrl,
   location,
 }) {
   const existingUser = await User.findOne({ phone });
@@ -79,7 +78,6 @@ async function registerOrLogin({
     address,
     city: 'Latakia',
     phone,
-    verificationPhoto: verificationPhotoUrl,
     location: location || undefined,
     addedBy: 'self',
   });

@@ -1,11 +1,9 @@
-const fs = require('fs');
 const { asyncHandler } = require('../utils/asyncHandler');
 const { ApiError } = require('../utils/ApiError');
 const { normalizePhone, isValidPhone } = require('../utils/phone');
 const otpService = require('../services/otp.service');
 const authService = require('../services/auth.service');
 const authViewModel = require('../viewmodels/auth.viewmodel');
-const { verifyImageMagicBytes } = require('../middlewares/upload.middleware');
 
 const MIN_PASSWORD_LENGTH = 6;
 
@@ -53,64 +51,39 @@ const sendOtp = asyncHandler(async (req, res) => {
 });
 
 const register = asyncHandler(async (req, res) => {
-  // Multer has already saved the file to disk by this point (if one was
-  // sent) - on any validation failure below we must clean it up ourselves,
-  // otherwise a rejected registration attempt leaks an orphaned file.
-  const cleanupUploadedFile = () => {
-    if (req.file) fs.unlink(req.file.path, () => {});
-  };
-
-  try {
-    const phone = normalizePhone(req.body.phone);
-    if (!isValidPhone(phone)) {
-      throw ApiError.badRequest('Please enter a valid phone number.');
-    }
-
-    const name = requireNonEmptyString(req.body.name, 'Full name is required.');
-    const pharmacyName = requireNonEmptyString(req.body.pharmacyName, 'Pharmacy name is required.');
-    const address = requireNonEmptyString(req.body.address, 'Address is required.');
-    const password = requirePassword(req.body.password, 'Password is required.');
-    const confirmPassword = requireNonEmptyString(
-      req.body.confirmPassword,
-      'Please confirm your password.'
-    );
-    if (password !== confirmPassword) {
-      throw ApiError.badRequest('Passwords do not match.');
-    }
-
-    // Section 6.2 update: no longer collected at registration - the
-    // pharmacist verifies via a separate step after admin approval instead.
-    // The route/upload middleware stay wired for that future step, so a
-    // file is still accepted (and validated) here if one happens to be sent.
-    let verificationPhotoUrl;
-    if (req.file) {
-      if (!verifyImageMagicBytes(req.file.path)) {
-        throw ApiError.badRequest('Verification photo file content is not a valid image.');
-      }
-      verificationPhotoUrl = `${req.protocol}://${req.get('host')}/uploads/verification-photos/${req.file.filename}`;
-    }
-
-    const location = parseOptionalLocation(req.body);
-
-    const result = await authService.registerOrLogin({
-      name,
-      pharmacyName,
-      phone,
-      address,
-      password,
-      verificationPhotoUrl,
-      location,
-    });
-
-    res.status(201).json({
-      success: true,
-      message: 'Registration successful.',
-      ...authViewModel.toAuthResponse(result),
-    });
-  } catch (err) {
-    cleanupUploadedFile();
-    throw err;
+  const phone = normalizePhone(req.body.phone);
+  if (!isValidPhone(phone)) {
+    throw ApiError.badRequest('Please enter a valid phone number.');
   }
+
+  const name = requireNonEmptyString(req.body.name, 'Full name is required.');
+  const pharmacyName = requireNonEmptyString(req.body.pharmacyName, 'Pharmacy name is required.');
+  const address = requireNonEmptyString(req.body.address, 'Address is required.');
+  const password = requirePassword(req.body.password, 'Password is required.');
+  const confirmPassword = requireNonEmptyString(
+    req.body.confirmPassword,
+    'Please confirm your password.'
+  );
+  if (password !== confirmPassword) {
+    throw ApiError.badRequest('Passwords do not match.');
+  }
+
+  const location = parseOptionalLocation(req.body);
+
+  const result = await authService.registerOrLogin({
+    name,
+    pharmacyName,
+    phone,
+    address,
+    password,
+    location,
+  });
+
+  res.status(201).json({
+    success: true,
+    message: 'Registration successful.',
+    ...authViewModel.toAuthResponse(result),
+  });
 });
 
 // TODO(re-enable-otp): kept fully working, but no current client calls this.

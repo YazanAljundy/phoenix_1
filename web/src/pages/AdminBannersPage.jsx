@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../api/client';
+import { LoadMoreControl } from '../components/LoadMoreControl';
+import { usePaginatedData } from '../hooks/usePaginatedData';
 import { withArFallback } from '../utils/displayName';
+
+const PAGE_SIZE = 20;
 
 // Section: always-visible composer (mockup frame 1e) rather than a
 // "Publish new banner" button opening a modal - same state/validation/
@@ -194,30 +198,32 @@ function EditBannerModal({ banner, onClose, onSaved }) {
 export function AdminBannersPage() {
   const { t } = useTranslation();
   const bannerStatusLabel = useBannerStatusLabel();
-  const [banners, setBanners] = useState([]);
   const [products, setProducts] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [busyId, setBusyId] = useState(null);
+  const [actionError, setActionError] = useState(null);
   const [editingBanner, setEditingBanner] = useState(null);
 
-  const load = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const [bannersData, productsData] = await Promise.all([api.adminBanners('all'), api.adminProducts()]);
-      setBanners(bannersData.banners);
-      setProducts(productsData.products);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsLoading(false);
-    }
+  useEffect(() => {
+    api.adminProducts().then((data) => setProducts(data.products));
   }, []);
 
+  const fetchPage = useCallback(
+    (cursor) =>
+      api.adminBanners('all', { limit: PAGE_SIZE, after: cursor }).then((data) => ({
+        rows: data.banners,
+        hasMore: data.pagination.hasMore,
+        nextCursor: data.pagination.nextCursor,
+      })),
+    []
+  );
+
+  const { data: banners, isLoading, isLoadingMore, hasMore, error, loadMore, reset } =
+    usePaginatedData(fetchPage);
+
   useEffect(() => {
-    load();
-  }, [load]);
+    reset();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleApprove = async (banner) => {
     const confirmed = window.confirm(
@@ -226,12 +232,12 @@ export function AdminBannersPage() {
     if (!confirmed) return;
 
     setBusyId(banner.id);
-    setError(null);
+    setActionError(null);
     try {
       await api.approveBanner(banner.id);
-      await load();
+      reset();
     } catch (err) {
-      setError(err.message);
+      setActionError(err.message);
     } finally {
       setBusyId(null);
     }
@@ -242,12 +248,12 @@ export function AdminBannersPage() {
     if (!rejectionNote || !rejectionNote.trim()) return;
 
     setBusyId(banner.id);
-    setError(null);
+    setActionError(null);
     try {
       await api.rejectBanner(banner.id, rejectionNote.trim());
-      await load();
+      reset();
     } catch (err) {
-      setError(err.message);
+      setActionError(err.message);
     } finally {
       setBusyId(null);
     }
@@ -258,12 +264,12 @@ export function AdminBannersPage() {
     if (!confirmed) return;
 
     setBusyId(banner.id);
-    setError(null);
+    setActionError(null);
     try {
       await api.deleteAdminBanner(banner.id);
-      await load();
+      reset();
     } catch (err) {
-      setError(err.message);
+      setActionError(err.message);
     } finally {
       setBusyId(null);
     }
@@ -271,7 +277,7 @@ export function AdminBannersPage() {
 
   const handleSaved = () => {
     setEditingBanner(null);
-    load();
+    reset();
   };
 
   return (
@@ -280,7 +286,7 @@ export function AdminBannersPage() {
         <h1>{t('nav.banners')}</h1>
       </div>
 
-      {error && <p className="error-text">{error}</p>}
+      {(error || actionError) && <p className="error-text">{error || actionError}</p>}
 
       {isLoading ? (
         <p className="hint">{t('common.loading')}</p>
@@ -386,11 +392,17 @@ export function AdminBannersPage() {
                   </table>
                 </div>
                 <p className="adm-table-hint">{t('banners.admin.editDeleteHint')}</p>
+                <LoadMoreControl
+                  hasMore={hasMore}
+                  isLoadingMore={isLoadingMore}
+                  onLoadMore={loadMore}
+                  pageSize={PAGE_SIZE}
+                />
               </>
             )}
           </div>
 
-          <BannerComposer products={products} onCreated={load} />
+          <BannerComposer products={products} onCreated={reset} />
         </div>
       )}
 
