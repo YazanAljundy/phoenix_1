@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 
 // Override at build/run time with:
 // flutter run --dart-define=API_BASE_URL=http://localhost:5000/api

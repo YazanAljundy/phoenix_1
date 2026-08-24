@@ -21,6 +21,13 @@ const warehouseSchema = new Schema(
       enum: ['self', 'third_party'],
       default: 'self',
     },
+    // Per-warehouse order size limits, in USD - the same currency the cart
+    // totals in, so no conversion sits between what the pharmacist sees and
+    // what's enforced (order.service.js). Both are opt-in: 0 means "no
+    // minimum" and null means "no maximum", which is what every existing
+    // warehouse gets by default, leaving them unaffected.
+    minOrderAmountUsd: { type: Number, default: 0, min: 0 },
+    maxOrderAmountUsd: { type: Number, default: null, min: 0 },
     isActive: { type: Boolean, default: true },
   },
   { timestamps: true }
