@@ -9,9 +9,17 @@ const OFFER_RATE_LIMIT_MS = 24 * 60 * 60 * 1000;
 // Token error codes FCM returns for a token that will never work again -
 // cleaned up from the user's deviceTokens on sight rather than left to fail
 // silently on every future send forever.
+//
+// 'messaging/invalid-argument' is included so malformed tokens get purged
+// too, but it's FCM's generic "request was malformed" code - a bad message
+// payload (not the token) returns the same code, and would then wrongly
+// wipe every token in that batch, working ones included. Accepted
+// deliberately for now to auto-clean malformed tokens; if that ever
+// happens, this is why.
 const DEAD_TOKEN_ERROR_CODES = new Set([
   'messaging/invalid-registration-token',
   'messaging/registration-token-not-registered',
+  'messaging/invalid-argument',
 ]);
 
 function pickLang(user, payload) {

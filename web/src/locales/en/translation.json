@@ -53,7 +53,8 @@
     "discounts": "Discounts",
     "debts": "Debts",
     "returns": "Returns",
-    "reviews": "Reviews"
+    "reviews": "Reviews",
+    "settings": "Settings"
   },
   "auth": {
     "phoneLabel": "Phone number",
@@ -75,6 +76,7 @@
     "statusOutForDelivery": "Out for delivery",
     "statusDelivered": "Delivered",
     "statusCancelled": "Cancelled",
+    "statusModified": "Order modified",
     "advancePending": "Confirm order",
     "advanceConfirmed": "Start preparing",
     "advancePreparing": "Send out for delivery",
@@ -118,7 +120,18 @@
     "statusHistory": "Status history",
     "confirmApproveReturn": "Approve this return for order #{{number}}? This creates a new no-extra-charge replacement order and cannot be undone.",
     "promptRejectReturn": "Explain why this return (order #{{number}}) is being rejected - the pharmacist will see this note:",
-    "confirmAdvance": "{{action}}?"
+    "confirmAdvance": "{{action}}?",
+    "editItemsTitle": "Edit items",
+    "removeItemButton": "Remove",
+    "cannotRemoveLastItem": "Cannot remove the last item",
+    "confirmRemoveItem": "Remove this item from the order?",
+    "addItemTitle": "Add an item",
+    "selectProductPlaceholder": "Select a product",
+    "addItemButton": "Add",
+    "saveItemChanges": "Save changes",
+    "confirmSaveItemChanges": "This will recalculate the order price and notify the pharmacist.",
+    "itemChangesSaved": "Changes saved.",
+    "noAvailableProducts": "No available products to add."
   },
   "returns": {
     "reasonDamaged": "Damaged",
@@ -155,7 +168,8 @@
     "summary_one": "{{rating}} average · {{count}} review",
     "summary_other": "{{rating}} average · {{count}} reviews",
     "orderNumber": "Order #{{number}}",
-    "latest": "Latest reviews"
+    "latest": "Latest reviews",
+    "anonymousReviewer": "User"
   },
   "discounts": {
     "addTitle": "Add a manufacturer discount",
@@ -403,5 +417,19 @@
       "confirmSend": "Send \"{{title}}\" to every active user? This cannot be undone.",
       "sentSuccess": "Sent to {{count}} users."
     }
+  },
+  "warehouseSettings": {
+    "orderLimitsTitle": "Order limits",
+    "orderLimitsHint": "Set the smallest and largest order pharmacies may place from you. Leave a field empty for no limit.",
+    "minLabel": "Minimum order ($)",
+    "minPlaceholder": "Empty = no minimum",
+    "maxLabel": "Maximum order ($)",
+    "maxPlaceholder": "Empty = no maximum",
+    "saveButton": "Save settings",
+    "confirmSave": "Save these order limits? They apply to every new order from your warehouse.",
+    "saved": "Settings saved.",
+    "minInvalid": "The minimum order must be a number of 0 or more.",
+    "maxInvalid": "The maximum order must be a number of 0 or more.",
+    "minMustBeBelowMax": "The minimum order must be lower than the maximum."
   }
 }

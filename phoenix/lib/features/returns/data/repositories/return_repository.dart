@@ -1,6 +1,7 @@
 import 'package:image_picker/image_picker.dart';
 import 'package:phoenix/core/models/paginated_result.dart';
 import 'package:phoenix/features/returns/data/models/return_model.dart';
+import 'package:phoenix/features/returns/data/models/returnable_order_model.dart';
 
 // A single problem item being submitted as part of a return request - see
 // ReturnItemModel for the server's shape of the same thing once saved.
@@ -49,4 +50,8 @@ abstract class ReturnRepository {
   // Cursor pagination: `after` is the previous page's nextCursor, omitted
   // for the first page.
   Future<PaginatedResult<ReturnModel>> getReturns({int? limit, String? after});
+
+  // Delivered orders still inside the 48-hour return window. Eligibility
+  // (and the hours left) is decided entirely by the server.
+  Future<List<ReturnableOrderModel>> fetchReturnableOrders();
 }

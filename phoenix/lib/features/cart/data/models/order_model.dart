@@ -108,6 +108,19 @@ class OrderModel {
   bool get isCancelled => status == 'cancelled';
   bool get isCancellable => kOrderCancellableStatuses.contains(status);
 
+  // Section: the warehouse edited this order's items while it was still
+  // pending - order.status itself never becomes 'modified' (see
+  // order_status_label.dart), only statusHistory gets an entry for it, so
+  // this is the one place that actually checks for it.
+  bool get wasModified => statusHistory.any((entry) => entry.status == 'modified');
+
+  DateTime? get lastModifiedAt {
+    for (final entry in statusHistory.reversed) {
+      if (entry.status == 'modified') return entry.changedAt;
+    }
+    return null;
+  }
+
   // -1 when cancelled (outside the bar entirely), else 0-4.
   int get stageIndex => kOrderTrackedStages.indexOf(status);
 

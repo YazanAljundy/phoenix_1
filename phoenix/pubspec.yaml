@@ -56,11 +56,15 @@ dependencies:
   firebase_messaging: ^16.0.4
   flutter_local_notifications: ^19.4.2
   flutter_lints: ^5.0.0
+  mocktail: 
+  bloc_test: 
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_launcher_icons: 
+  flutter_launcher_icons: ^0.13.1
+  
+
 flutter_launcher_icons:
   android: true
   ios: true

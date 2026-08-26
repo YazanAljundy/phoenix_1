@@ -79,8 +79,12 @@ function validateRequiredStrings(data) {
 // is gone from the warehouse's own catalog too, not just the pharmacist-facing
 // one; there's no reactivate flow yet, so from the warehouse's side it's simply
 // no longer there.
-async function listProductsForWarehouse(warehouseId) {
-  const products = await Product.find({ warehouseId, isActive: true }).populate('masterProductId');
+async function listProductsForWarehouse(warehouseId, { availableOnly = false } = {}) {
+  const filter = { warehouseId, isActive: true };
+  if (availableOnly) {
+    filter.isAvailable = true;
+  }
+  const products = await Product.find(filter).populate('masterProductId');
   products.forEach(applyResolvedIdentity);
   products.sort((a, b) => (a.nameEn || a.nameAr || '').localeCompare(b.nameEn || b.nameAr || ''));
   return products;

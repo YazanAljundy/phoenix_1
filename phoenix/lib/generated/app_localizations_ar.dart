@@ -313,6 +313,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get noWarehouseReviewsYet => 'لا تقييمات بعد.';
 
   @override
+  String get anonymousReviewerName => 'مستخدم';
+
+  @override
   String get browseWarehouseProductsButton => 'تصفح منتجات هذا المستودع';
 
   @override
@@ -483,6 +486,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get stageCancelled => 'ملغى';
 
   @override
+  String get stageModified => 'تم تعديل الطلب';
+
+  @override
   String get statusHistoryTitle => 'سجل الحالة';
 
   @override
@@ -505,6 +511,9 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get contactWarehouseForChanges =>
       'لأي تغييرات الآن، يرجى التواصل مع المستودع مباشرة.';
+
+  @override
+  String get orderModifiedBannerTitle => 'تم تعديل هذا الطلب من قبل المستودع';
 
   @override
   String get errorOrderNotFound => 'تعذر العثور على هذا الطلب.';
@@ -788,4 +797,66 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get errorAlreadyReviewed => 'تم تقييم هذا الطلب من قبل.';
+
+  @override
+  String minOrderLabel(String amount) {
+    return 'الحد الأدنى للطلب: \$$amount';
+  }
+
+  @override
+  String maxOrderLabel(String amount) {
+    return 'الحد الأقصى للطلب: \$$amount';
+  }
+
+  @override
+  String addMoreToReachMinimum(String amount) {
+    return 'أضف \$$amount للوصول للحد الأدنى';
+  }
+
+  @override
+  String removeToMeetMaximum(String amount) {
+    return 'تجاوزت الحد الأقصى \$$amount، احذف بعض الأصناف';
+  }
+
+  @override
+  String orderBelowMinimum(String amount) {
+    return 'الحد الأدنى للطلب من هذا المستودع هو \$$amount.';
+  }
+
+  @override
+  String orderAboveMaximum(String amount) {
+    return 'الحد الأقصى للطلب من هذا المستودع هو \$$amount.';
+  }
+
+  @override
+  String get returnableSectionTitle => '🔄 طلبات مؤهلة للإرجاع';
+
+  @override
+  String get returnableSectionSubtitle =>
+      'يمكنك تقديم طلب إرجاع خلال 48 ساعة من التسليم';
+
+  @override
+  String returnableOrderNumber(String number) {
+    return 'طلب #$number';
+  }
+
+  @override
+  String returnableHoursLeft(String hours) {
+    return 'باقي $hours ساعة';
+  }
+
+  @override
+  String get returnableEndingSoon => 'ينتهي قريباً';
+
+  @override
+  String get returnableRequestButton => 'طلب إرجاع';
+
+  @override
+  String returnableMoreItems(String count) {
+    return '+$count أصناف أخرى';
+  }
+
+  @override
+  String get returnWindowExpired =>
+      'يجب تقديم طلب الإرجاع خلال 48 ساعة من التسليم.';
 }

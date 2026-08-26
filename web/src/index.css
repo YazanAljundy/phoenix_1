@@ -2953,3 +2953,20 @@ input {
   display: flex;
   gap: 8px;
 }
+
+/* --- warehouse order-limit settings --- */
+
+.wh-settings-card {
+  max-width: 520px;
+}
+
+.wh-settings-hint {
+  margin: -4px 0 14px;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.wh-settings-success {
+  color: var(--color-secondary);
+  font-weight: 600;
+}

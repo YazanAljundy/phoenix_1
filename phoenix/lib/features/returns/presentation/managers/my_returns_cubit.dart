@@ -1,6 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:phoenix/core/error/failure.dart';
 import 'package:phoenix/features/returns/data/repositories/return_repository.dart';
+import 'package:phoenix/features/returns/data/models/returnable_order_model.dart';
 
 import 'my_returns_state.dart';
 
@@ -24,11 +25,17 @@ class MyReturnsCubit extends Cubit<MyReturnsState> {
       ),
     );
     try {
+      // Both lists are what this screen shows, so they're fetched together -
+      // but the eligible-orders lookup is deliberately allowed to fail on
+      // its own: losing that section must never blank out the returns the
+      // pharmacist actually came here to see.
       final result = await _returnRepository.getReturns();
+      final returnable = await _fetchReturnableOrdersOrEmpty();
       emit(
         state.copyWith(
           status: MyReturnsStatus.loaded,
           returns: result.items,
+          returnableOrders: returnable,
           hasMore: result.hasMore,
           nextCursor: result.nextCursor,
           clearNextCursor: result.nextCursor == null,
@@ -42,6 +49,14 @@ class MyReturnsCubit extends Cubit<MyReturnsState> {
           errorCode: f.code,
         ),
       );
+    }
+  }
+
+  Future<List<ReturnableOrderModel>> _fetchReturnableOrdersOrEmpty() async {
+    try {
+      return await _returnRepository.fetchReturnableOrders();
+    } catch (_) {
+      return const [];
     }
   }
 

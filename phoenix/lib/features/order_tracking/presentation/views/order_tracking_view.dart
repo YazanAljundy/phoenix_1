@@ -225,6 +225,10 @@ class _OrderTrackingViewState extends State<OrderTrackingView> {
           StatusHistoryList(entries: order.statusHistory),
           if (order.items.isNotEmpty) ...[
             const SizedBox(height: AppSizes.spacingXLarge),
+            if (order.wasModified) ...[
+              _ModifiedOrderBanner(modifiedAt: order.lastModifiedAt),
+              const SizedBox(height: AppSizes.spacingMedium),
+            ],
             OrderInvoiceSection(
               items: order.items,
               totalPrice: order.totalPrice,
@@ -588,6 +592,59 @@ class _StarRatingRow extends StatelessWidget {
           ),
         );
       }),
+    );
+  }
+}
+
+// Section: the warehouse edited this order's items (still 'pending' - see
+// order_model.dart's wasModified) - a visible heads-up above the invoice so
+// the pharmacist notices the items/price below aren't what they originally
+// submitted, rather than silently trusting stale mental math. Exact colors
+// per the design (light orange fill + orange border), not the app's
+// semantic error/warning color - there's no warning token in AppColors yet.
+class _ModifiedOrderBanner extends StatelessWidget {
+  const _ModifiedOrderBanner({this.modifiedAt});
+
+  final DateTime? modifiedAt;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    const orange = Color(0xFFF57C00);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(AppSizes.spacingMedium),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF3E0),
+        borderRadius: AppRadius.large,
+        border: Border.all(color: orange),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(Icons.warning_amber_rounded, color: orange),
+          const SizedBox(width: AppSizes.spacingSmall),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  l10n.orderModifiedBannerTitle,
+                  style: context.textTheme.bodyMedium?.copyWith(color: orange, fontWeight: FontWeight.w600),
+                ),
+                if (modifiedAt != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    DateFormatter.formatDateTime(modifiedAt!),
+                    style: context.textTheme.bodySmall?.copyWith(color: orange),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

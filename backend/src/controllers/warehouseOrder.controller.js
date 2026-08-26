@@ -59,4 +59,19 @@ const advance = asyncHandler(async (req, res) => {
   });
 });
 
-module.exports = { list, getDetail, advance };
+const updateItems = asyncHandler(async (req, res) => {
+  const warehouse = await loadWarehouseOrThrow(req.user._id);
+  const { order, items, pharmacy, hasReturn } = await warehouseOrderService.updateOrderItems(
+    req.params.id,
+    warehouse._id,
+    req.user._id,
+    req.body
+  );
+  res.json({
+    success: true,
+    message: 'Order items updated.',
+    ...warehouseOrderViewModel.toWarehouseOrderDetailResponse({ order, items, pharmacy, hasReturn }),
+  });
+});
+
+module.exports = { list, getDetail, advance, updateItems };

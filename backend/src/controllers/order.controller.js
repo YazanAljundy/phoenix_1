@@ -98,4 +98,14 @@ const cancel = asyncHandler(async (req, res) => {
   });
 });
 
-module.exports = { create, list, getOne, cancel };
+// Section: GET /orders/returnable - orders still inside the 48-hour
+// return window. Scoped to the caller's own pharmacy, resolved from the
+// JWT rather than any client-supplied id.
+const listReturnable = asyncHandler(async (req, res) => {
+  const pharmacy = await loadPharmacyOrThrow(req.user._id);
+  const rows = await orderService.listReturnableOrders(pharmacy._id);
+  res.json({ success: true, ...orderViewModel.toReturnableOrdersResponse(rows) });
+});
+
+module.exports = {
+  listReturnable, create, list, getOne, cancel };

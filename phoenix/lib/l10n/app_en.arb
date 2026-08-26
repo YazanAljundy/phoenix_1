@@ -1,6 +1,5 @@
 {
   "@@locale": "en",
-
   "appName": "Phoenix",
   "login": "Login",
   "logout": "Logout",
@@ -17,7 +16,6 @@
   "welcome": "Welcome",
   "home": "Home",
   "profile": "Profile",
-
   "registrationTitle": "Create your pharmacy account",
   "registrationSubtitle": "Fill in the details below - your account is activated once the administration reviews your documents.",
   "fullNameLabel": "Full name",
@@ -36,7 +34,9 @@
   "passwordHint": "At least {min} characters",
   "@passwordHint": {
     "placeholders": {
-      "min": { "type": "String" }
+      "min": {
+        "type": "String"
+      }
     }
   },
   "passwordTooShort": "Password must be at least 6 characters.",
@@ -47,24 +47,23 @@
   "termsAgreementLabel": "I agree to the Terms of Use and Privacy Policy.",
   "termsAgreementRequiredError": "You must agree to the terms to continue.",
   "passwordsMustMatchHint": "Both passwords must match.",
-
   "passwordLoginTitle": "Log in with password",
   "passwordLoginSubtitle": "Enter your phone number and password",
   "backToRegistrationLink": "New here? Create an account",
-
   "otpTitle": "Enter verification code",
   "otpInstructionsPrefix": "Enter the 6-digit code sent to",
   "otpCodeLabel": "Verification code",
   "verifyButton": "Verify",
   "resendCodeButton": "Didn't get the code? Resend",
   "codeResent": "A new code has been sent.",
-
   "approvalPendingTitle": "Your account is under review",
   "approvalPendingMessage": "We're reviewing your registration. You'll be able to order as soon as it's approved.",
   "approvalPendingMessageWithName": "We're currently reviewing {pharmacyName}'s documents. You'll be able to order as soon as it's approved.",
   "@approvalPendingMessageWithName": {
     "placeholders": {
-      "pharmacyName": { "type": "String" }
+      "pharmacyName": {
+        "type": "String"
+      }
     }
   },
   "approvalPendingBlockedTitle": "Account blocked",
@@ -76,12 +75,10 @@
   "contactSupportButton": "Contact support",
   "contactSupportDialogTitle": "Contact support",
   "contactSupportDialogMessage": "For help with your account, please contact Al-Najah Warehouse support.",
-
   "fieldRequired": "This field is required.",
   "invalidPhoneNumber": "Please enter a valid phone number.",
   "invalidOtpCode": "Please enter the 6-digit code.",
   "close": "Close",
-
   "errorState": "Something went wrong.",
   "noMoreResultsText": "No more results",
   "retryButton": "Retry",
@@ -91,34 +88,42 @@
   "warehouseSelectedMessage": "{name} selected. The product catalog is coming soon.",
   "@warehouseSelectedMessage": {
     "placeholders": {
-      "name": { "type": "String" }
+      "name": {
+        "type": "String"
+      }
     }
   },
   "warehousesAvailableSubtitle": "{count, plural, zero{No warehouses available for your pharmacy} one{1 warehouse available for your pharmacy} other{{count} warehouses available for your pharmacy}}",
   "@warehousesAvailableSubtitle": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "searchWarehouseHint": "Search by warehouse or city",
   "noSearchResultsFound": "No results match your search.",
   "warehouseProfileButtonLabel": "Profile",
-
   "noManufacturersFound": "No manufacturers available for this warehouse.",
   "manufacturersCountSubtitle": "{count, plural, zero{No manufacturers} one{1 manufacturer} other{{count} manufacturers}}",
   "@manufacturersCountSubtitle": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
-
   "warehouseProfileTooltip": "Warehouse info",
   "deliveryInfoTitle": "Delivery Information",
   "deliveryHoursValue": "From {start} to {end}",
   "@deliveryHoursValue": {
     "placeholders": {
-      "start": { "type": "String" },
-      "end": { "type": "String" }
+      "start": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      }
     }
   },
   "deliveryHoursNotSet": "Not specified",
@@ -127,8 +132,8 @@
   "deliveryInfoDisclaimer": "This information is for display only and doesn't prevent placing an order.",
   "warehouseReviewsTitle": "Reviews",
   "noWarehouseReviewsYet": "No reviews yet.",
+  "anonymousReviewerName": "User",
   "browseWarehouseProductsButton": "Browse this warehouse's products",
-
   "searchProductsHint": "Search by name or manufacturer",
   "addToCartButton": "Add",
   "unavailableLabel": "Unavailable",
@@ -138,17 +143,20 @@
   "catalogItemsCountSubtitle": "{count, plural, zero{No items} one{1 item} other{{count} items}}",
   "@catalogItemsCountSubtitle": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "currencySuffix": "SYP",
   "addedToCartMessage": "{name} added to cart.",
   "@addedToCartMessage": {
     "placeholders": {
-      "name": { "type": "String" }
+      "name": {
+        "type": "String"
+      }
     }
   },
-
   "cartTitle": "Cart",
   "cartEmptyMessage": "Your cart is empty.",
   "cartEmptyHint": "Choose a warehouse and start adding medicines to your cart.",
@@ -161,21 +169,27 @@
   "submitOrderConfirmation": "Send this order to {warehouseName}?",
   "@submitOrderConfirmation": {
     "placeholders": {
-      "warehouseName": { "type": "String" }
+      "warehouseName": {
+        "type": "String"
+      }
     }
   },
   "orderSubmittedTitle": "Order submitted",
   "orderSubmittedMessage": "Your order #{orderNumber} has been submitted.",
   "@orderSubmittedMessage": {
     "placeholders": {
-      "orderNumber": { "type": "String" }
+      "orderNumber": {
+        "type": "String"
+      }
     }
   },
   "removeItemTitle": "Remove item?",
   "removeItemConfirmation": "Remove {name} from your cart?",
   "@removeItemConfirmation": {
     "placeholders": {
-      "name": { "type": "String" }
+      "name": {
+        "type": "String"
+      }
     }
   },
   "removeButton": "Remove",
@@ -183,12 +197,13 @@
   "cartConflictMessage": "Your cart has items from {name}. Adding this item will clear it and start a new order.",
   "@cartConflictMessage": {
     "placeholders": {
-      "name": { "type": "String" }
+      "name": {
+        "type": "String"
+      }
     }
   },
   "cartConflictConfirmButton": "Start new cart",
   "cartIconTooltip": "Cart",
-
   "errorInvalidRequest": "Something about this request wasn't valid. Please try again.",
   "errorPharmacyNotFound": "We couldn't find your pharmacy profile. Please contact support.",
   "errorWarehouseNotFound": "This warehouse is no longer available.",
@@ -197,23 +212,28 @@
   "errorProductUnavailable": "{name} is currently unavailable.",
   "@errorProductUnavailable": {
     "placeholders": {
-      "name": { "type": "String" }
+      "name": {
+        "type": "String"
+      }
     }
   },
   "errorProductNotFound": "{name} is no longer available.",
   "@errorProductNotFound": {
     "placeholders": {
-      "name": { "type": "String" }
+      "name": {
+        "type": "String"
+      }
     }
   },
   "thisItemFallback": "This item",
   "loading": "Loading...",
-
   "orderTrackingTitle": "Order Tracking",
   "orderNumberLabel": "Order #{number}",
   "@orderNumberLabel": {
     "placeholders": {
-      "number": { "type": "String" }
+      "number": {
+        "type": "String"
+      }
     }
   },
   "stageSent": "Sent",
@@ -222,11 +242,14 @@
   "stageOutForDelivery": "Out for delivery",
   "stageDelivered": "Delivered",
   "stageCancelled": "Cancelled",
+  "stageModified": "Order modified",
   "statusHistoryTitle": "Status history",
   "lastUpdatedLabel": "Last updated: {time}",
   "@lastUpdatedLabel": {
     "placeholders": {
-      "time": { "type": "String" }
+      "time": {
+        "type": "String"
+      }
     }
   },
   "cancelOrderTitle": "Cancel order?",
@@ -234,14 +257,16 @@
   "cancelOrderButton": "Cancel order",
   "orderCancelledMessage": "This order has been cancelled.",
   "contactWarehouseForChanges": "For any changes now, please contact the warehouse directly.",
+  "orderModifiedBannerTitle": "This order was modified by the warehouse",
   "errorOrderNotFound": "This order could not be found.",
   "errorOrderNotCancellable": "This order can no longer be cancelled from the app.",
-
   "myOrdersTitle": "My Orders",
   "myOrdersCountSubtitle": "{count, plural, zero{No orders yet} one{1 order · pull down to refresh} other{{count} orders · pull down to refresh}}",
   "@myOrdersCountSubtitle": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "refreshTooltip": "Refresh",
@@ -253,21 +278,26 @@
   "youSavedLabel": "💰 You saved {amount}",
   "@youSavedLabel": {
     "placeholders": {
-      "amount": { "type": "String" }
+      "amount": {
+        "type": "String"
+      }
     }
   },
   "totalSavingsLabel": "💰 Total savings: {amount} (including offer discounts and manufacturer discount)",
   "@totalSavingsLabel": {
     "placeholders": {
-      "amount": { "type": "String" }
+      "amount": {
+        "type": "String"
+      }
     }
   },
-
   "returnsTitle": "Returns",
   "returnsCountSubtitle": "{count, plural, zero{No return requests} one{1 return request} other{{count} return requests}}",
   "@returnsCountSubtitle": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "noReturnsYet": "You haven't requested any returns yet.",
@@ -312,22 +342,23 @@
   "returnPhotosLabel": "Photos (optional)",
   "returnPhotosHint": "Add photos of the item to help the warehouse verify the reason",
   "addPhotoButton": "Add photo",
-
   "navWarehouses": "Warehouses",
   "profileTitle": "Profile",
   "logoutConfirmTitle": "Log out?",
   "logoutConfirmMessage": "Are you sure you want to log out?",
-
   "yourRatingTitle": "Your rating",
   "noRatingsYet": "No warehouse has rated you yet.",
   "ratingSummary": "{average} average ({count} ratings)",
   "@ratingSummary": {
     "placeholders": {
-      "average": { "type": "String" },
-      "count": { "type": "String" }
+      "average": {
+        "type": "String"
+      },
+      "count": {
+        "type": "String"
+      }
     }
   },
-
   "myDebtsTitle": "My Debts",
   "noDebtsYet": "No debts right now.",
   "totalDebtsLabel": "Total debts",
@@ -338,7 +369,6 @@
   "deliveredOrdersTitle": "Delivered orders",
   "paymentsTitle": "Payments",
   "noPaymentsYet": "No payments recorded yet.",
-
   "rateWarehouseTitle": "Rate the warehouse",
   "rateWarehouseCommentLabel": "Comment (optional)",
   "submitReviewButton": "Submit rating",
@@ -347,8 +377,87 @@
   "reviewThankYouTitle": "Thanks — you rated this order {rating} stars",
   "@reviewThankYouTitle": {
     "placeholders": {
-      "rating": { "type": "String" }
+      "rating": {
+        "type": "String"
+      }
     }
   },
-  "errorAlreadyReviewed": "This order has already been rated."
+  "errorAlreadyReviewed": "This order has already been rated.",
+  "minOrderLabel": "Minimum order: ${amount}",
+  "maxOrderLabel": "Maximum order: ${amount}",
+  "addMoreToReachMinimum": "Add ${amount} more to reach the minimum",
+  "removeToMeetMaximum": "Over the ${amount} maximum — remove some items",
+  "orderBelowMinimum": "The minimum order from this warehouse is ${amount}.",
+  "orderAboveMaximum": "The maximum order from this warehouse is ${amount}.",
+  "@minOrderLabel": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "@maxOrderLabel": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "@addMoreToReachMinimum": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "@removeToMeetMaximum": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "@orderBelowMinimum": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "@orderAboveMaximum": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "returnableSectionTitle": "🔄 Orders eligible for return",
+  "returnableSectionSubtitle": "You can request a return within 48 hours of delivery",
+  "returnableOrderNumber": "Order #{number}",
+  "returnableHoursLeft": "{hours}h left",
+  "returnableEndingSoon": "Ending soon",
+  "returnableRequestButton": "Request a return",
+  "returnableMoreItems": "+{count} more",
+  "returnWindowExpired": "A return must be requested within 48 hours of delivery.",
+  "@returnableOrderNumber": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "@returnableHoursLeft": {
+    "placeholders": {
+      "hours": {
+        "type": "String"
+      }
+    }
+  },
+  "@returnableMoreItems": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  }
 }

@@ -7,3 +7,5 @@ npm-debug.log
 # Temporary local file storage (Section 15/6-2) - not for production, see
 # middlewares/upload.middleware.js for the R2 migration TODO.
 uploads/
+# Firebase Service Account
+firebase-service-account.json

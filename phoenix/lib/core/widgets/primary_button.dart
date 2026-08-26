@@ -15,7 +15,10 @@ class PrimaryButton extends StatelessWidget {
   });
 
   final String label;
-  final VoidCallback onPressed;
+  // Nullable so a screen can disable the button outright (a null callback
+  // is what ElevatedButton itself already treats as "disabled") - used by
+  // the cart when an order is outside the warehouse's size limits.
+  final VoidCallback? onPressed;
   final bool isLoading;
 
   @override

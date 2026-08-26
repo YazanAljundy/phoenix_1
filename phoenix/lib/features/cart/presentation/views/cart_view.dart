@@ -55,6 +55,18 @@ class _CartViewState extends State<CartView> {
       }
     }
 
+    // The server sends the limit back in details (order.service.js) so the
+    // rejection reads with the real figure even though the English message
+    // it ships with is only a fallback.
+    if (state.errorCode == 'ORDER_BELOW_MINIMUM') {
+      final amount = state.errorDetails?['minOrderAmountUsd'];
+      if (amount != null) return l10n.orderBelowMinimum('\$$amount');
+    }
+    if (state.errorCode == 'ORDER_ABOVE_MAXIMUM') {
+      final amount = state.errorDetails?['maxOrderAmountUsd'];
+      if (amount != null) return l10n.orderAboveMaximum('\$$amount');
+    }
+
     return translateErrorCode(
       l10n,
       state.errorCode,
@@ -226,11 +238,56 @@ class _CartViewState extends State<CartView> {
                           ),
                         ],
                       ),
+                      // Section: this warehouse's order-size limits. Shown
+                      // against the subtotal above - the same figure the
+                      // backend checks (order.service.js) - so the hint, the
+                      // button state and the server all agree. A warehouse
+                      // with no limits set renders nothing extra at all.
+                      if (state.minOrderAmountUsd > 0 || state.maxOrderAmountUsd != null) ...[
+                        const SizedBox(height: AppSizes.spacingXSmall),
+                        if (state.minOrderAmountUsd > 0)
+                          Text(
+                            l10n.minOrderLabel('\$${state.minOrderAmountUsd}'),
+                            style: context.textTheme.bodySmall?.copyWith(
+                              color: state.isBelowMinimum
+                                  ? AppColors.primaryOf(context)
+                                  : AppColors.textSecondaryOf(context),
+                              fontWeight: state.isBelowMinimum ? FontWeight.w600 : null,
+                            ),
+                          ),
+                        if (state.maxOrderAmountUsd != null)
+                          Text(
+                            l10n.maxOrderLabel('\$${state.maxOrderAmountUsd}'),
+                            style: context.textTheme.bodySmall?.copyWith(
+                              color: state.isAboveMaximum
+                                  ? AppColors.errorOf(context)
+                                  : AppColors.textSecondaryOf(context),
+                              fontWeight: state.isAboveMaximum ? FontWeight.w600 : null,
+                            ),
+                          ),
+                      ],
+                      if (state.isBelowMinimum || state.isAboveMaximum) ...[
+                        const SizedBox(height: AppSizes.spacingXSmall),
+                        Text(
+                          state.isBelowMinimum
+                              ? l10n.addMoreToReachMinimum('\$${state.amountToReachMinimum}')
+                              : l10n.removeToMeetMaximum('\$${state.maxOrderAmountUsd}'),
+                          style: context.textTheme.bodyMedium?.copyWith(
+                            color: state.isBelowMinimum
+                                ? AppColors.primaryOf(context)
+                                : AppColors.errorOf(context),
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: AppSizes.spacingSmall),
                       PrimaryButton(
                         label: l10n.submitOrderButton,
                         isLoading: state.isSubmitting,
-                        onPressed: _confirmSubmit,
+                        // Blocked locally so the pharmacist sees why before
+                        // spending a round trip; order.service.js enforces
+                        // the same rule regardless (double validation).
+                        onPressed: state.canSubmit ? _confirmSubmit : null,
                       ),
                     ],
                   ),

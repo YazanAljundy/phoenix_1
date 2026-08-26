@@ -16,6 +16,12 @@ String orderStatusLabel(AppLocalizations l10n, String status) {
       return l10n.stageDelivered;
     case 'cancelled':
       return l10n.stageCancelled;
+    // Not a real order.status value - only ever appears as a statusHistory
+    // entry pushed when the warehouse edits a still-pending order's items
+    // (see backend/src/services/warehouseOrder.service.js's
+    // updateOrderItems). The order's own status stays 'pending'.
+    case 'modified':
+      return l10n.stageModified;
     default:
       return status;
   }

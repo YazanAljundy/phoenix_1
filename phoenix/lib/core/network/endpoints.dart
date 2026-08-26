@@ -19,6 +19,8 @@ class Endpoints {
   static String orderDetail(String orderId) => '/orders/$orderId';
   static String cancelOrder(String orderId) => '/orders/$orderId/cancel';
 
+  static const String returnableOrders = '/orders/returnable';
+
   static const String returns = '/returns';
   static String returnDetail(String returnId) => '/returns/$returnId';
   static const String reviews = '/reviews';

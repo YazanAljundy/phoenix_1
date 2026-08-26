@@ -358,6 +358,11 @@ class _ReviewCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final reviewerName = review.reviewerName != null && review.reviewerName!.trim().isNotEmpty
+        ? review.reviewerName!
+        : l10n.anonymousReviewerName;
+
     return CustomCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -365,17 +370,40 @@ class _ReviewCard extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _StarRow(rating: review.rating, size: 14),
-              Text(
-                DateFormatter.formatDate(review.createdAt),
-                style: context.textTheme.bodySmall?.copyWith(color: AppColors.textSecondaryOf(context)),
+              Flexible(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.person_outline,
+                      size: AppSizes.iconSizeSmall,
+                      color: AppColors.textSecondaryOf(context),
+                    ),
+                    const SizedBox(width: AppSizes.spacingXSmall),
+                    Flexible(
+                      child: Text(
+                        reviewerName,
+                        style: context.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: AppSizes.spacingSmall),
+              _StarRow(rating: review.rating, size: 14),
             ],
           ),
           if (review.comment != null && review.comment!.isNotEmpty) ...[
             const SizedBox(height: AppSizes.spacingXSmall),
             Text(review.comment!, style: context.textTheme.bodyMedium),
           ],
+          const SizedBox(height: AppSizes.spacingXSmall),
+          Text(
+            DateFormatter.formatDate(review.createdAt),
+            style: context.textTheme.bodySmall?.copyWith(color: AppColors.textSecondaryOf(context)),
+          ),
         ],
       ),
     );

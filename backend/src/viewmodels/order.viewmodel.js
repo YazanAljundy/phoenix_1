@@ -59,6 +59,7 @@ function toOrderDetailResponse(order, warehouse, items = [], returnRequest = nul
       statusHistory: (order.statusHistory || []).map((entry) => ({
         status: entry.status,
         changedAt: entry.changedAt,
+        note: entry.note ?? null,
       })),
       createdAt: order.createdAt,
       items: items.map((item) => ({
@@ -105,3 +106,34 @@ function toOrderListResponse(items) {
 }
 
 module.exports = { toOrderResponse, toOrderDetailResponse, toOrderListResponse };
+
+// Section: an order the pharmacy could still return (order.service.js's
+// listReturnableOrders). hoursRemaining is computed on the server - the
+// client only renders it, so a device with a wrong clock can't widen or
+// shrink the window it sees.
+function serializeReturnableOrder({ order, deliveredAt, hoursRemaining, items, warehouse }) {
+  return {
+    id: order._id,
+    orderNumber: order.orderNumber,
+    warehouseId: order.warehouseId,
+    warehouseNameAr: warehouse ? warehouse.nameAr : null,
+    warehouseNameEn: warehouse ? warehouse.nameEn : null,
+    finalPrice: order.finalPrice,
+    deliveredAt,
+    hoursRemaining,
+    items: items.map((item) => ({
+      orderItemId: item._id,
+      productId: item.productId,
+      productNameAr: item.productNameAr,
+      productNameEn: item.productNameEn,
+      quantity: item.quantity,
+      discountPrice: item.discountPrice,
+    })),
+  };
+}
+
+function toReturnableOrdersResponse(rows) {
+  return { orders: rows.map(serializeReturnableOrder) };
+}
+
+module.exports.toReturnableOrdersResponse = toReturnableOrdersResponse;

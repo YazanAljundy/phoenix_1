@@ -1,4 +1,5 @@
 import 'package:phoenix/features/returns/data/models/return_model.dart';
+import 'package:phoenix/features/returns/data/models/returnable_order_model.dart';
 
 enum MyReturnsStatus { initial, loading, loaded, error }
 
@@ -6,6 +7,7 @@ class MyReturnsState {
   const MyReturnsState({
     this.status = MyReturnsStatus.initial,
     this.returns = const [],
+    this.returnableOrders = const [],
     this.errorMessage,
     this.errorCode,
     this.hasMore = false,
@@ -17,6 +19,10 @@ class MyReturnsState {
 
   final MyReturnsStatus status;
   final List<ReturnModel> returns;
+
+  // Delivered orders still inside the 48-hour window. Loaded alongside
+  // the returns list; an empty list simply hides the section.
+  final List<ReturnableOrderModel> returnableOrders;
   final String? errorMessage;
   final String? errorCode;
 
@@ -32,6 +38,7 @@ class MyReturnsState {
   MyReturnsState copyWith({
     MyReturnsStatus? status,
     List<ReturnModel>? returns,
+    List<ReturnableOrderModel>? returnableOrders,
     String? errorMessage,
     String? errorCode,
     bool clearError = false,
@@ -46,6 +53,7 @@ class MyReturnsState {
     return MyReturnsState(
       status: status ?? this.status,
       returns: returns ?? this.returns,
+      returnableOrders: returnableOrders ?? this.returnableOrders,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       errorCode: clearError ? null : (errorCode ?? this.errorCode),
       hasMore: hasMore ?? this.hasMore,

@@ -7,6 +7,7 @@ import 'package:phoenix/core/models/paginated_result.dart';
 import 'package:phoenix/core/network/api_client.dart';
 import 'package:phoenix/core/network/endpoints.dart';
 import 'package:phoenix/features/returns/data/models/return_model.dart';
+import 'package:phoenix/features/returns/data/models/returnable_order_model.dart';
 
 import 'return_repository.dart';
 
@@ -93,6 +94,19 @@ class ReturnRepositoryImpl implements ReturnRepository {
       );
       final data = response.data as Map<String, dynamic>;
       return PaginatedResult.fromJson(data, 'returns', ReturnModel.fromJson);
+    } on DioException catch (e) {
+      throw ServerFailure.fromDioError(e);
+    }
+  }
+
+  @override
+  Future<List<ReturnableOrderModel>> fetchReturnableOrders() async {
+    try {
+      final response = await _apiClient.dio.get(Endpoints.returnableOrders);
+      final data = response.data as Map<String, dynamic>;
+      return (data['orders'] as List)
+          .map((e) => ReturnableOrderModel.fromJson(e as Map<String, dynamic>))
+          .toList();
     } on DioException catch (e) {
       throw ServerFailure.fromDioError(e);
     }

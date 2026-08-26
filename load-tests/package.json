@@ -1,0 +1,10 @@
+{
+  "name": "phoenix-load-tests",
+  "private": true,
+  "scripts": {
+    "load-test": "node run-local.js",
+    "load-test:local": "node run-local.js",
+    "load-test:2000": "node run-2000.js",
+    "prepare-test-data": "node setup/prepare-test-data.js"
+  }
+}

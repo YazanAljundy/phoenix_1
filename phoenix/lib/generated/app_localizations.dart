@@ -620,6 +620,12 @@ abstract class AppLocalizations {
   /// **'No reviews yet.'**
   String get noWarehouseReviewsYet;
 
+  /// No description provided for @anonymousReviewerName.
+  ///
+  /// In en, this message translates to:
+  /// **'User'**
+  String get anonymousReviewerName;
+
   /// No description provided for @browseWarehouseProductsButton.
   ///
   /// In en, this message translates to:
@@ -896,6 +902,12 @@ abstract class AppLocalizations {
   /// **'Cancelled'**
   String get stageCancelled;
 
+  /// No description provided for @stageModified.
+  ///
+  /// In en, this message translates to:
+  /// **'Order modified'**
+  String get stageModified;
+
   /// No description provided for @statusHistoryTitle.
   ///
   /// In en, this message translates to:
@@ -937,6 +949,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'For any changes now, please contact the warehouse directly.'**
   String get contactWarehouseForChanges;
+
+  /// No description provided for @orderModifiedBannerTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'This order was modified by the warehouse'**
+  String get orderModifiedBannerTitle;
 
   /// No description provided for @errorOrderNotFound.
   ///
@@ -1417,6 +1435,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This order has already been rated.'**
   String get errorAlreadyReviewed;
+
+  /// No description provided for @minOrderLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimum order: \${amount}'**
+  String minOrderLabel(String amount);
+
+  /// No description provided for @maxOrderLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Maximum order: \${amount}'**
+  String maxOrderLabel(String amount);
+
+  /// No description provided for @addMoreToReachMinimum.
+  ///
+  /// In en, this message translates to:
+  /// **'Add \${amount} more to reach the minimum'**
+  String addMoreToReachMinimum(String amount);
+
+  /// No description provided for @removeToMeetMaximum.
+  ///
+  /// In en, this message translates to:
+  /// **'Over the \${amount} maximum — remove some items'**
+  String removeToMeetMaximum(String amount);
+
+  /// No description provided for @orderBelowMinimum.
+  ///
+  /// In en, this message translates to:
+  /// **'The minimum order from this warehouse is \${amount}.'**
+  String orderBelowMinimum(String amount);
+
+  /// No description provided for @orderAboveMaximum.
+  ///
+  /// In en, this message translates to:
+  /// **'The maximum order from this warehouse is \${amount}.'**
+  String orderAboveMaximum(String amount);
+
+  /// No description provided for @returnableSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'🔄 Orders eligible for return'**
+  String get returnableSectionTitle;
+
+  /// No description provided for @returnableSectionSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'You can request a return within 48 hours of delivery'**
+  String get returnableSectionSubtitle;
+
+  /// No description provided for @returnableOrderNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Order #{number}'**
+  String returnableOrderNumber(String number);
+
+  /// No description provided for @returnableHoursLeft.
+  ///
+  /// In en, this message translates to:
+  /// **'{hours}h left'**
+  String returnableHoursLeft(String hours);
+
+  /// No description provided for @returnableEndingSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Ending soon'**
+  String get returnableEndingSoon;
+
+  /// No description provided for @returnableRequestButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Request a return'**
+  String get returnableRequestButton;
+
+  /// No description provided for @returnableMoreItems.
+  ///
+  /// In en, this message translates to:
+  /// **'+{count} more'**
+  String returnableMoreItems(String count);
+
+  /// No description provided for @returnWindowExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'A return must be requested within 48 hours of delivery.'**
+  String get returnWindowExpired;
 }
 
 class _AppLocalizationsDelegate

@@ -52,7 +52,7 @@ async function getWarehouseProfile(warehouseId) {
     warehouse,
     averageRating,
     reviewsCount: reviews.length,
-    recentReviews: reviews.slice(0, 5).map((row) => row.review),
+    recentReviews: reviews.slice(0, 5),
   };
 }
 

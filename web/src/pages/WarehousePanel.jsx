@@ -11,6 +11,7 @@ import { WarehouseBannersPage } from './WarehouseBannersPage';
 import { WarehouseReturnsPage } from './WarehouseReturnsPage';
 import { WarehouseReturnDetailPage } from './WarehouseReturnDetailPage';
 import { WarehouseReviewsPage } from './WarehouseReviewsPage';
+import { WarehouseSettingsPage } from './WarehouseSettingsPage';
 import { WarehouseDiscountsPage } from './WarehouseDiscountsPage';
 import { WarehouseDebtsPage } from './WarehouseDebtsPage';
 
@@ -37,6 +38,7 @@ export function WarehousePanel() {
     { path: '/warehouse/debts', label: t('nav.debts') },
     { path: '/warehouse/returns', label: t('nav.returns') },
     { path: '/warehouse/reviews', label: t('nav.reviews') },
+    { path: '/warehouse/settings', label: t('nav.settings') },
   ];
 
   // Closing on every route change covers both a tab click and the
@@ -103,6 +105,7 @@ export function WarehousePanel() {
             <Route path="/warehouse/returns" element={<WarehouseReturnsPage />} />
             <Route path="/warehouse/returns/:returnId" element={<WarehouseReturnDetailPage />} />
             <Route path="/warehouse/reviews" element={<WarehouseReviewsPage />} />
+            <Route path="/warehouse/settings" element={<WarehouseSettingsPage />} />
             <Route path="*" element={<Navigate to="/warehouse/orders" replace />} />
           </Routes>
         </div>

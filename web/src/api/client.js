@@ -117,14 +117,22 @@ export const api = {
   warehouseOrderDetail: (orderId) => request(`/warehouse/orders/${orderId}`),
   advanceOrderStatus: (orderId) =>
     request(`/warehouse/orders/${orderId}/advance-status`, { method: 'POST' }),
+  updateOrderItems: (orderId, { addItems, removeItems, updateItems }) =>
+    request(`/warehouse/orders/${orderId}/items`, {
+      method: 'PATCH',
+      body: { addItems, removeItems, updateItems },
+    }),
   categories: () => request('/categories'),
   // No args: the full, alphabetical list - used by the banner/offer "linked
   // product" pickers, which need every product. Pass { limit, after } for
-  // the Products management page's own paginated, newest-first view.
-  warehouseProducts: ({ limit, after } = {}) => {
+  // the Products management page's own paginated, newest-first view. Pass
+  // { available: true } (the order-items editor's "add item" picker) to get
+  // only products the pharmacy could actually receive right now.
+  warehouseProducts: ({ limit, after, available } = {}) => {
     const params = new URLSearchParams();
     if (limit) params.set('limit', limit);
     if (after) params.set('after', after);
+    if (available) params.set('available', 'true');
     const qs = params.toString();
     return request(`/warehouse/products${qs ? `?${qs}` : ''}`);
   },
@@ -221,6 +229,12 @@ export const api = {
   createPayment: (data) => request('/warehouse/payments', { method: 'POST', body: data }),
   updatePayment: (id, changes) => request(`/warehouse/payments/${id}`, { method: 'PATCH', body: changes }),
   deletePayment: (id) => request(`/warehouse/payments/${id}`, { method: 'DELETE' }),
+  warehouseSettings: () => request('/warehouse/settings'),
+  updateWarehouseOrderLimits: ({ minOrderAmountUsd, maxOrderAmountUsd }) =>
+    request('/warehouse/settings', {
+      method: 'PATCH',
+      body: { minOrderAmountUsd, maxOrderAmountUsd },
+    }),
   warehouseBanners: ({ limit, after } = {}) => {
     const params = new URLSearchParams();
     if (limit) params.set('limit', limit);

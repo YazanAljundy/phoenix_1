@@ -23,7 +23,9 @@ const list = asyncHandler(async (req, res) => {
   const warehouse = await loadWarehouseOrThrow(req.user._id);
 
   if (req.query.limit === undefined) {
-    const products = await warehouseProductService.listProductsForWarehouse(warehouse._id);
+    const products = await warehouseProductService.listProductsForWarehouse(warehouse._id, {
+      availableOnly: req.query.available === 'true',
+    });
     res.json({ success: true, ...warehouseProductViewModel.toProductListResponse(products) });
     return;
   }

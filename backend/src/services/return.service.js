@@ -22,6 +22,49 @@ function assertDelivered(order) {
   }
 }
 
+// Section: a return has to be raised within 48 hours of delivery. The
+// window is anchored to the LAST 'delivered' entry in statusHistory rather
+// than the order's updatedAt, which moves for unrelated reasons (a review,
+// a balance recompute) and would silently extend or shorten the window.
+const RETURN_WINDOW_HOURS = 48;
+const RETURN_WINDOW_MS = RETURN_WINDOW_HOURS * 60 * 60 * 1000;
+
+function findDeliveredAt(order) {
+  let deliveredAt = null;
+  for (const entry of order.statusHistory ?? []) {
+    if (entry.status === 'delivered' && entry.changedAt) {
+      if (deliveredAt === null || entry.changedAt > deliveredAt) deliveredAt = entry.changedAt;
+    }
+  }
+  return deliveredAt;
+}
+
+// Hours left before the window shuts, rounded up so "1 hour left" never
+// shows as 0 while the return is in fact still allowed. Always computed
+// server-side - the client only ever displays this number.
+function hoursRemainingFor(deliveredAt, now = new Date()) {
+  const msLeft = deliveredAt.getTime() + RETURN_WINDOW_MS - now.getTime();
+  return msLeft <= 0 ? 0 : Math.ceil(msLeft / (60 * 60 * 1000));
+}
+
+// Re-checked at creation time, not just when the eligible list was built -
+// the window can lapse between the pharmacist seeing the card and tapping
+// the button.
+function assertWithinReturnWindow(order, now = new Date()) {
+  const deliveredAt = findDeliveredAt(order);
+  // A delivered order with no 'delivered' history entry predates status
+  // tracking; refusing it outright would strand those orders, so the window
+  // simply doesn't apply to them.
+  if (!deliveredAt) return;
+  if (now.getTime() - deliveredAt.getTime() > RETURN_WINDOW_MS) {
+    throw ApiError.badRequest(
+      `A return must be requested within ${RETURN_WINDOW_HOURS} hours of delivery.`,
+      { windowHours: RETURN_WINDOW_HOURS, deliveredAt },
+      'RETURN_WINDOW_EXPIRED'
+    );
+  }
+}
+
 // Section 6.9/8: validates and normalizes the `items` array shared by
 // create/update - every problem item in the order at once, each against the
 // order's own OrderItem rows (not against any other return, since there's
@@ -108,6 +151,7 @@ async function createReturn({ pharmacyId, orderId, items, notes, images }) {
     throw ApiError.notFound('Order not found.', 'ORDER_NOT_FOUND');
   }
   assertDelivered(order);
+  assertWithinReturnWindow(order);
 
   const existing = await Return.findOne({ orderId: order._id });
   if (existing) {
@@ -235,6 +279,9 @@ async function attachOrderContext(returns) {
 
 module.exports = {
   createReturn,
+  RETURN_WINDOW_MS,
+  findDeliveredAt,
+  hoursRemainingFor,
   updateReturn,
   deleteReturn,
   listReturnsForPharmacy,

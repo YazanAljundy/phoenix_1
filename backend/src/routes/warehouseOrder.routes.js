@@ -9,5 +9,6 @@ router.use(authenticate, authorize('warehouse'), requireActiveStatus);
 router.get('/', controller.list);
 router.get('/:id', controller.getDetail);
 router.post('/:id/advance-status', controller.advance);
+router.patch('/:id/items', controller.updateItems);
 
 module.exports = router;

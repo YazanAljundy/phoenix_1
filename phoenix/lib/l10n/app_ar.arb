@@ -1,6 +1,5 @@
 {
   "@@locale": "ar",
-
   "appName": "فينيكس",
   "login": "تسجيل الدخول",
   "logout": "تسجيل الخروج",
@@ -17,7 +16,6 @@
   "welcome": "مرحباً",
   "home": "الرئيسية",
   "profile": "الملف الشخصي",
-
   "registrationTitle": "إنشاء حساب الصيدلية",
   "registrationSubtitle": "املأ البيانات التالية، وسيتم تفعيل حسابك بعد مراجعة الوثائق من قِبل الإدارة.",
   "fullNameLabel": "الاسم الكامل",
@@ -36,7 +34,9 @@
   "passwordHint": "{min} أحرف على الأقل",
   "@passwordHint": {
     "placeholders": {
-      "min": { "type": "String" }
+      "min": {
+        "type": "String"
+      }
     }
   },
   "passwordTooShort": "يجب أن تتكون كلمة المرور من 6 أحرف على الأقل.",
@@ -47,24 +47,23 @@
   "termsAgreementLabel": "أوافق على شروط الاستخدام وسياسة الخصوصية.",
   "termsAgreementRequiredError": "يجب الموافقة على الشروط والأحكام للمتابعة.",
   "passwordsMustMatchHint": "يجب أن تتطابق كلمتا المرور.",
-
   "passwordLoginTitle": "تسجيل الدخول بكلمة السر",
   "passwordLoginSubtitle": "أدخل رقم هاتفك وكلمة السر",
   "backToRegistrationLink": "جديد هون؟ أنشئ حساب",
-
   "otpTitle": "أدخل رمز التحقق",
   "otpInstructionsPrefix": "أدخل الرمز المكوّن من 6 أرقام المُرسل إلى",
   "otpCodeLabel": "رمز التحقق",
   "verifyButton": "تحقق",
   "resendCodeButton": "لم يصلك الرمز؟ إعادة الإرسال",
   "codeResent": "تم إرسال رمز جديد.",
-
   "approvalPendingTitle": "حسابك قيد المراجعة",
   "approvalPendingMessage": "نقوم بمراجعة تسجيلك حالياً. ستتمكن من الطلب فور الموافقة على حسابك.",
   "approvalPendingMessageWithName": "نقوم بمراجعة وثائق صيدلية {pharmacyName} حالياً. ستتمكن من الطلب فور الموافقة على حسابك.",
   "@approvalPendingMessageWithName": {
     "placeholders": {
-      "pharmacyName": { "type": "String" }
+      "pharmacyName": {
+        "type": "String"
+      }
     }
   },
   "approvalPendingBlockedTitle": "الحساب محظور",
@@ -76,12 +75,10 @@
   "contactSupportButton": "تواصل مع الدعم",
   "contactSupportDialogTitle": "تواصل مع الدعم",
   "contactSupportDialogMessage": "للمساعدة بخصوص حسابك، يرجى التواصل مع دعم مستودع النجاح.",
-
   "fieldRequired": "هذا الحقل مطلوب.",
   "invalidPhoneNumber": "يرجى إدخال رقم هاتف صحيح.",
   "invalidOtpCode": "يرجى إدخال الرمز المكون من 6 أرقام.",
   "close": "إغلاق",
-
   "errorState": "حدث خطأ ما.",
   "noMoreResultsText": "لا توجد نتائج إضافية",
   "retryButton": "إعادة المحاولة",
@@ -91,34 +88,42 @@
   "warehouseSelectedMessage": "تم اختيار {name}. كتالوج المنتجات قادم قريباً.",
   "@warehouseSelectedMessage": {
     "placeholders": {
-      "name": { "type": "String" }
+      "name": {
+        "type": "String"
+      }
     }
   },
   "warehousesAvailableSubtitle": "{count, plural, zero{لا توجد مستودعات متاحة لصيدليتك} one{مستودع واحد متاح لصيدليتك} two{مستودعان متاحان لصيدليتك} few{{count} مستودعات متاحة لصيدليتك} many{{count} مستودعاً متاحاً لصيدليتك} other{{count} مستودع متاح لصيدليتك}}",
   "@warehousesAvailableSubtitle": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "searchWarehouseHint": "ابحث عن مستودع أو مدينة",
   "noSearchResultsFound": "ما في نتائج مطابقة لبحثك.",
   "warehouseProfileButtonLabel": "البروفايل",
-
   "noManufacturersFound": "لا توجد شركات مصنّعة متاحة بهذا المستودع.",
   "manufacturersCountSubtitle": "{count, plural, zero{لا توجد شركات مصنّعة} one{شركة مصنّعة واحدة} two{شركتان مصنّعتان} few{{count} شركات مصنّعة} many{{count} شركة مصنّعة} other{{count} شركة مصنّعة}}",
   "@manufacturersCountSubtitle": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
-
   "warehouseProfileTooltip": "معلومات المستودع",
   "deliveryInfoTitle": "معلومات التوصيل",
   "deliveryHoursValue": "من {start} إلى {end}",
   "@deliveryHoursValue": {
     "placeholders": {
-      "start": { "type": "String" },
-      "end": { "type": "String" }
+      "start": {
+        "type": "String"
+      },
+      "end": {
+        "type": "String"
+      }
     }
   },
   "deliveryHoursNotSet": "غير محدّدة",
@@ -127,8 +132,8 @@
   "deliveryInfoDisclaimer": "هذه المعلومات للعرض فقط، ولا تمنع تقديم الطلب.",
   "warehouseReviewsTitle": "التقييمات",
   "noWarehouseReviewsYet": "لا تقييمات بعد.",
+  "anonymousReviewerName": "مستخدم",
   "browseWarehouseProductsButton": "تصفح منتجات هذا المستودع",
-
   "searchProductsHint": "ابحث بالاسم أو الشركة المصنعة",
   "addToCartButton": "إضافة",
   "unavailableLabel": "غير متوفر",
@@ -138,17 +143,20 @@
   "catalogItemsCountSubtitle": "{count, plural, zero{لا توجد أصناف} one{صنف واحد} two{صنفان} few{{count} أصناف} many{{count} صنفاً} other{{count} صنف}}",
   "@catalogItemsCountSubtitle": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "currencySuffix": "ل.س",
   "addedToCartMessage": "تمت إضافة {name} إلى السلة.",
   "@addedToCartMessage": {
     "placeholders": {
-      "name": { "type": "String" }
+      "name": {
+        "type": "String"
+      }
     }
   },
-
   "cartTitle": "السلة",
   "cartEmptyMessage": "سلتك فارغة.",
   "cartEmptyHint": "اختر مستودعاً وابدأ بإضافة الأدوية إلى سلتك.",
@@ -161,21 +169,27 @@
   "submitOrderConfirmation": "إرسال هذا الطلب إلى {warehouseName}؟",
   "@submitOrderConfirmation": {
     "placeholders": {
-      "warehouseName": { "type": "String" }
+      "warehouseName": {
+        "type": "String"
+      }
     }
   },
   "orderSubmittedTitle": "تم إرسال الطلب",
   "orderSubmittedMessage": "تم إرسال طلبك رقم {orderNumber}.",
   "@orderSubmittedMessage": {
     "placeholders": {
-      "orderNumber": { "type": "String" }
+      "orderNumber": {
+        "type": "String"
+      }
     }
   },
   "removeItemTitle": "إزالة العنصر؟",
   "removeItemConfirmation": "إزالة {name} من سلتك؟",
   "@removeItemConfirmation": {
     "placeholders": {
-      "name": { "type": "String" }
+      "name": {
+        "type": "String"
+      }
     }
   },
   "removeButton": "إزالة",
@@ -183,12 +197,13 @@
   "cartConflictMessage": "سلتك تحتوي على عناصر من {name}. إضافة هذا العنصر ستفرغ السلة وتبدأ طلباً جديداً.",
   "@cartConflictMessage": {
     "placeholders": {
-      "name": { "type": "String" }
+      "name": {
+        "type": "String"
+      }
     }
   },
   "cartConflictConfirmButton": "بدء سلة جديدة",
   "cartIconTooltip": "السلة",
-
   "errorInvalidRequest": "هناك خطأ في هذا الطلب. يرجى المحاولة مرة أخرى.",
   "errorPharmacyNotFound": "لم نتمكن من العثور على ملف صيدليتك. يرجى التواصل مع الدعم.",
   "errorWarehouseNotFound": "هذا المستودع لم يعد متاحاً.",
@@ -197,23 +212,28 @@
   "errorProductUnavailable": "{name} غير متوفر حالياً.",
   "@errorProductUnavailable": {
     "placeholders": {
-      "name": { "type": "String" }
+      "name": {
+        "type": "String"
+      }
     }
   },
   "errorProductNotFound": "{name} لم يعد متوفراً.",
   "@errorProductNotFound": {
     "placeholders": {
-      "name": { "type": "String" }
+      "name": {
+        "type": "String"
+      }
     }
   },
   "thisItemFallback": "هذا العنصر",
   "loading": "جارِ التحميل...",
-
   "orderTrackingTitle": "تتبع الطلب",
   "orderNumberLabel": "الطلب رقم {number}",
   "@orderNumberLabel": {
     "placeholders": {
-      "number": { "type": "String" }
+      "number": {
+        "type": "String"
+      }
     }
   },
   "stageSent": "تم الإرسال",
@@ -222,11 +242,14 @@
   "stageOutForDelivery": "قيد التوصيل",
   "stageDelivered": "تم التوصيل",
   "stageCancelled": "ملغى",
+  "stageModified": "تم تعديل الطلب",
   "statusHistoryTitle": "سجل الحالة",
   "lastUpdatedLabel": "آخر تحديث: {time}",
   "@lastUpdatedLabel": {
     "placeholders": {
-      "time": { "type": "String" }
+      "time": {
+        "type": "String"
+      }
     }
   },
   "cancelOrderTitle": "إلغاء الطلب؟",
@@ -234,14 +257,16 @@
   "cancelOrderButton": "إلغاء الطلب",
   "orderCancelledMessage": "تم إلغاء هذا الطلب.",
   "contactWarehouseForChanges": "لأي تغييرات الآن، يرجى التواصل مع المستودع مباشرة.",
+  "orderModifiedBannerTitle": "تم تعديل هذا الطلب من قبل المستودع",
   "errorOrderNotFound": "تعذر العثور على هذا الطلب.",
   "errorOrderNotCancellable": "لم يعد بالإمكان إلغاء هذا الطلب من التطبيق.",
-
   "myOrdersTitle": "طلباتي",
   "myOrdersCountSubtitle": "{count, plural, zero{لا طلبات بعد} one{طلب واحد · اسحب للأسفل للتحديث} two{طلبان · اسحب للأسفل للتحديث} few{{count} طلبات · اسحب للأسفل للتحديث} many{{count} طلباً · اسحب للأسفل للتحديث} other{{count} طلب · اسحب للأسفل للتحديث}}",
   "@myOrdersCountSubtitle": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "refreshTooltip": "تحديث",
@@ -253,21 +278,26 @@
   "youSavedLabel": "💰 وفّرت {amount}",
   "@youSavedLabel": {
     "placeholders": {
-      "amount": { "type": "String" }
+      "amount": {
+        "type": "String"
+      }
     }
   },
   "totalSavingsLabel": "💰 إجمالي التوفير: {amount} (شامل خصم العروض وحسم الشركة المصنّعة)",
   "@totalSavingsLabel": {
     "placeholders": {
-      "amount": { "type": "String" }
+      "amount": {
+        "type": "String"
+      }
     }
   },
-
   "returnsTitle": "المرتجعات",
   "returnsCountSubtitle": "{count, plural, zero{لا طلبات إرجاع} one{طلب إرجاع واحد} two{طلبا إرجاع} few{{count} طلبات إرجاع} many{{count} طلب إرجاع} other{{count} طلب إرجاع}}",
   "@returnsCountSubtitle": {
     "placeholders": {
-      "count": { "type": "int" }
+      "count": {
+        "type": "int"
+      }
     }
   },
   "noReturnsYet": "لم تقدّم أي طلب إرجاع بعد.",
@@ -312,22 +342,23 @@
   "returnPhotosLabel": "صور (اختياري)",
   "returnPhotosHint": "أضف صور للمنتج تساعد المستودع يتحقق من السبب",
   "addPhotoButton": "إضافة صورة",
-
   "navWarehouses": "المستودعات",
   "profileTitle": "البروفايل",
   "logoutConfirmTitle": "تسجيل الخروج؟",
   "logoutConfirmMessage": "هل أنت متأكد من تسجيل الخروج؟",
-
   "yourRatingTitle": "تقييمك",
   "noRatingsYet": "ما في مستودع قيّمك لهلق.",
   "ratingSummary": "{average} بالمعدل ({count} تقييم)",
   "@ratingSummary": {
     "placeholders": {
-      "average": { "type": "String" },
-      "count": { "type": "String" }
+      "average": {
+        "type": "String"
+      },
+      "count": {
+        "type": "String"
+      }
     }
   },
-
   "myDebtsTitle": "ديوني",
   "noDebtsYet": "لا توجد ديون حالياً.",
   "totalDebtsLabel": "إجمالي الديون",
@@ -338,7 +369,6 @@
   "deliveredOrdersTitle": "الطلبات المسلّمة",
   "paymentsTitle": "الدفعات",
   "noPaymentsYet": "لا توجد دفعات مسجّلة.",
-
   "rateWarehouseTitle": "قيّم المستودع",
   "rateWarehouseCommentLabel": "تعليق (اختياري)",
   "submitReviewButton": "إرسال التقييم",
@@ -347,8 +377,24 @@
   "reviewThankYouTitle": "شكراً — قيّمت هذا الطلب بـ {rating} نجوم",
   "@reviewThankYouTitle": {
     "placeholders": {
-      "rating": { "type": "String" }
+      "rating": {
+        "type": "String"
+      }
     }
   },
-  "errorAlreadyReviewed": "تم تقييم هذا الطلب من قبل."
+  "errorAlreadyReviewed": "تم تقييم هذا الطلب من قبل.",
+  "minOrderLabel": "الحد الأدنى للطلب: ${amount}",
+  "maxOrderLabel": "الحد الأقصى للطلب: ${amount}",
+  "addMoreToReachMinimum": "أضف ${amount} للوصول للحد الأدنى",
+  "removeToMeetMaximum": "تجاوزت الحد الأقصى ${amount}، احذف بعض الأصناف",
+  "orderBelowMinimum": "الحد الأدنى للطلب من هذا المستودع هو ${amount}.",
+  "orderAboveMaximum": "الحد الأقصى للطلب من هذا المستودع هو ${amount}.",
+  "returnableSectionTitle": "🔄 طلبات مؤهلة للإرجاع",
+  "returnableSectionSubtitle": "يمكنك تقديم طلب إرجاع خلال 48 ساعة من التسليم",
+  "returnableOrderNumber": "طلب #{number}",
+  "returnableHoursLeft": "باقي {hours} ساعة",
+  "returnableEndingSoon": "ينتهي قريباً",
+  "returnableRequestButton": "طلب إرجاع",
+  "returnableMoreItems": "+{count} أصناف أخرى",
+  "returnWindowExpired": "يجب تقديم طلب الإرجاع خلال 48 ساعة من التسليم."
 }

@@ -55,6 +55,7 @@ function toWarehouseOrderDetailResponse({ order, items, pharmacy, hasReturn }) {
       statusHistory: (order.statusHistory || []).map((entry) => ({
         status: entry.status,
         changedAt: entry.changedAt,
+        note: entry.note ?? null,
       })),
       pharmacy: serializePharmacy(pharmacy),
       items: items.map((item) => ({
@@ -75,6 +76,7 @@ function toWarehouseOrderStatusResponse(order) {
       statusHistory: (order.statusHistory || []).map((entry) => ({
         status: entry.status,
         changedAt: entry.changedAt,
+        note: entry.note ?? null,
       })),
     },
   };

@@ -6,6 +6,8 @@ class WarehouseModel {
     required this.city,
     required this.phone,
     this.logo,
+    this.minOrderAmountUsd = 0,
+    this.maxOrderAmountUsd,
   });
 
   final String id;
@@ -14,6 +16,10 @@ class WarehouseModel {
   final String city;
   final String phone;
   final String? logo;
+  // Order-size limits set by the warehouse itself (backend:
+  // warehouse.model.js). 0 = no minimum, null = no maximum.
+  final num minOrderAmountUsd;
+  final num? maxOrderAmountUsd;
 
   factory WarehouseModel.fromJson(Map<String, dynamic> json) => WarehouseModel(
     id: json['id'] as String,
@@ -22,5 +28,7 @@ class WarehouseModel {
     city: json['city'] as String,
     phone: json['phone'] as String,
     logo: json['logo'] as String?,
+    minOrderAmountUsd: (json['minOrderAmountUsd'] as num?) ?? 0,
+    maxOrderAmountUsd: json['maxOrderAmountUsd'] as num?,
   );
 }

@@ -1,17 +1,27 @@
 // Section 17: one entry in a warehouse profile's "recent reviews" list -
-// just enough to display (rating/comment/date), no reviewer identity, same
-// shape the backend serializes (warehouse.viewmodel.js's serializeReview).
+// rating/comment/date plus the reviewing pharmacy's owner name, same shape
+// the backend serializes (warehouse.viewmodel.js's serializeReview).
+// reviewerName is never blank from the backend (it falls back to a fixed
+// placeholder there), but fromJson still guards against a missing/empty
+// value so the UI never renders an empty name.
 class WarehouseReviewModel {
-  const WarehouseReviewModel({required this.rating, this.comment, required this.createdAt});
+  const WarehouseReviewModel({
+    required this.rating,
+    this.comment,
+    required this.createdAt,
+    required this.reviewerName,
+  });
 
   final int rating;
   final String? comment;
   final DateTime createdAt;
+  final String? reviewerName;
 
   factory WarehouseReviewModel.fromJson(Map<String, dynamic> json) => WarehouseReviewModel(
     rating: json['rating'] as int,
     comment: json['comment'] as String?,
     createdAt: DateTime.parse(json['createdAt'] as String),
+    reviewerName: json['reviewerName'] as String?,
   );
 }
 
@@ -31,6 +41,8 @@ class WarehouseProfileModel {
     this.deliveryStartTime,
     this.deliveryEndTime,
     required this.deliveryType,
+    this.minOrderAmountUsd = 0,
+    this.maxOrderAmountUsd,
     required this.averageRating,
     required this.reviewsCount,
     required this.recentReviews,
@@ -46,6 +58,10 @@ class WarehouseProfileModel {
   final String? deliveryStartTime;
   final String? deliveryEndTime;
   final String deliveryType; // 'self' or 'third_party'
+  // Order-size limits - unlike the delivery fields above these ARE
+  // enforced, both here in the cart and again in order.service.js.
+  final num minOrderAmountUsd;
+  final num? maxOrderAmountUsd;
   final num averageRating;
   final int reviewsCount;
   final List<WarehouseReviewModel> recentReviews;
@@ -61,6 +77,8 @@ class WarehouseProfileModel {
     deliveryStartTime: json['deliveryStartTime'] as String?,
     deliveryEndTime: json['deliveryEndTime'] as String?,
     deliveryType: json['deliveryType'] as String,
+    minOrderAmountUsd: (json['minOrderAmountUsd'] as num?) ?? 0,
+    maxOrderAmountUsd: json['maxOrderAmountUsd'] as num?,
     averageRating: json['averageRating'] as num,
     reviewsCount: json['reviewsCount'] as int,
     recentReviews: (json['recentReviews'] as List)

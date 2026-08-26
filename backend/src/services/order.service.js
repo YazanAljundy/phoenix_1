@@ -9,6 +9,11 @@ const Counter = require('../models/counter.model');
 const Return = require('../models/return.model');
 const Review = require('../models/review.model');
 const { isWarehouseAvailable } = require('./warehouse.service');
+const {
+  RETURN_WINDOW_MS,
+  findDeliveredAt,
+  hoursRemainingFor,
+} = require('./return.service');
 const { getRate } = require('./exchangeRate.service');
 const { applyResolvedIdentity } = require('./productCatalog.service');
 const { getDiscountMapForWarehouse, computeDiscountedPriceUsd } = require('./manufacturerDiscount.service');
@@ -164,6 +169,11 @@ async function createOrder({ userId, pharmacyId, warehouseId, items, notes, isRe
   const offerByProductId = new Map(offers.map((o) => [o.productId.toString(), o]));
 
   let totalPrice = 0;
+  // Accumulated natively in USD rather than back-converted from the SYP
+  // figures below (same reasoning as savingsUsd) - this is the number the
+  // warehouse's order-size limits are checked against, and it matches the
+  // cart's own subtotal exactly, so the app's gate and this one agree.
+  let subtotalUsd = 0;
   const orderItemsData = merged.map((item) => {
     const product = productById.get(item.productId);
     const offer = offerByProductId.get(item.productId);
@@ -197,6 +207,7 @@ async function createOrder({ userId, pharmacyId, warehouseId, items, notes, isRe
     const savingsUsd = isReplacement
       ? 0
       : Math.round((product.price - discountedPriceUsd) * item.quantity * 100) / 100;
+    subtotalUsd += discountedPriceUsd * item.quantity;
 
     return {
       productId: product._id,
@@ -210,6 +221,28 @@ async function createOrder({ userId, pharmacyId, warehouseId, items, notes, isRe
       savingsUsd,
     };
   });
+
+  // Section: the warehouse's own order-size limits (warehouse.model.js).
+  // Replacement orders are exempt - they're zero-priced and created by
+  // approveReturn on the warehouse's own behalf, so enforcing a minimum
+  // here would block a return the warehouse had just approved.
+  if (!isReplacement) {
+    const orderSubtotalUsd = Math.round(subtotalUsd * 100) / 100;
+    if (warehouse.minOrderAmountUsd > 0 && orderSubtotalUsd < warehouse.minOrderAmountUsd) {
+      throw ApiError.badRequest(
+        `The minimum order from this warehouse is $${warehouse.minOrderAmountUsd}.`,
+        { minOrderAmountUsd: warehouse.minOrderAmountUsd, subtotalUsd: orderSubtotalUsd },
+        'ORDER_BELOW_MINIMUM'
+      );
+    }
+    if (warehouse.maxOrderAmountUsd != null && orderSubtotalUsd > warehouse.maxOrderAmountUsd) {
+      throw ApiError.badRequest(
+        `The maximum order from this warehouse is $${warehouse.maxOrderAmountUsd}.`,
+        { maxOrderAmountUsd: warehouse.maxOrderAmountUsd, subtotalUsd: orderSubtotalUsd },
+        'ORDER_ABOVE_MAXIMUM'
+      );
+    }
+  }
 
   const discountAmount = Math.round((totalPrice * warehouse.discountRate) / 100);
   const commissionAmount = Math.round((totalPrice * warehouse.commissionRate) / 100);
@@ -235,6 +268,61 @@ async function createOrder({ userId, pharmacyId, warehouseId, items, notes, isRe
   );
 
   return order;
+}
+
+// Section: the orders this pharmacy could still raise a return against -
+// delivered, not already returned, and still inside the 48-hour window
+// (return.service.js owns that rule; this reuses it rather than restating
+// it, so the list and the create-time check can't drift apart).
+async function listReturnableOrders(pharmacyId) {
+  const now = new Date();
+  const cutoff = new Date(now.getTime() - RETURN_WINDOW_MS);
+
+  // Narrowed in the query where it's cheap (delivered + updated recently),
+  // then filtered precisely on the real deliveredAt below. updatedAt only
+  // pre-filters - it can be later than delivery but never earlier, so this
+  // can't drop an order that is genuinely still eligible.
+  const candidates = await Order.find({
+    pharmacyId,
+    status: 'delivered',
+    updatedAt: { $gte: cutoff },
+  }).sort({ _id: -1 });
+  if (candidates.length === 0) return [];
+
+  const existingReturns = await Return.find(
+    { orderId: { $in: candidates.map((o) => o._id) } },
+    'orderId'
+  );
+  const returnedOrderIds = new Set(existingReturns.map((r) => r.orderId.toString()));
+
+  const eligible = [];
+  for (const order of candidates) {
+    if (returnedOrderIds.has(order._id.toString())) continue;
+    const deliveredAt = findDeliveredAt(order);
+    if (!deliveredAt) continue;
+    const hoursRemaining = hoursRemainingFor(deliveredAt, now);
+    if (hoursRemaining <= 0) continue;
+    eligible.push({ order, deliveredAt, hoursRemaining });
+  }
+  if (eligible.length === 0) return [];
+
+  const [items, warehouses] = await Promise.all([
+    OrderItem.find({ orderId: { $in: eligible.map((e) => e.order._id) } }),
+    Warehouse.find({ _id: { $in: [...new Set(eligible.map((e) => e.order.warehouseId.toString()))] } }),
+  ]);
+  const itemsByOrderId = new Map();
+  for (const item of items) {
+    const key = item.orderId.toString();
+    if (!itemsByOrderId.has(key)) itemsByOrderId.set(key, []);
+    itemsByOrderId.get(key).push(item);
+  }
+  const warehouseById = new Map(warehouses.map((w) => [w._id.toString(), w]));
+
+  return eligible.map((entry) => ({
+    ...entry,
+    items: itemsByOrderId.get(entry.order._id.toString()) ?? [],
+    warehouse: warehouseById.get(entry.order.warehouseId.toString()) ?? null,
+  }));
 }
 
 // IDOR guard: scoped to pharmacyId, not just orderId, so one pharmacy can
@@ -329,4 +417,11 @@ async function cancelOrder(orderId, pharmacyId, userId) {
   return { order, warehouse, items };
 }
 
-module.exports = { createOrder, getOrderForPharmacy, cancelOrder, listOrdersForPharmacy };
+module.exports = {
+  createOrder,
+  getOrderForPharmacy,
+  cancelOrder,
+  listOrdersForPharmacy,
+  listReturnableOrders,
+  stackedDiscountSyp,
+};

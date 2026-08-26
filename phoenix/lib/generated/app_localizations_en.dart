@@ -309,6 +309,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noWarehouseReviewsYet => 'No reviews yet.';
 
   @override
+  String get anonymousReviewerName => 'User';
+
+  @override
   String get browseWarehouseProductsButton =>
       'Browse this warehouse\'s products';
 
@@ -478,6 +481,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get stageCancelled => 'Cancelled';
 
   @override
+  String get stageModified => 'Order modified';
+
+  @override
   String get statusHistoryTitle => 'Status history';
 
   @override
@@ -501,6 +507,10 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get contactWarehouseForChanges =>
       'For any changes now, please contact the warehouse directly.';
+
+  @override
+  String get orderModifiedBannerTitle =>
+      'This order was modified by the warehouse';
 
   @override
   String get errorOrderNotFound => 'This order could not be found.';
@@ -785,4 +795,66 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get errorAlreadyReviewed => 'This order has already been rated.';
+
+  @override
+  String minOrderLabel(String amount) {
+    return 'Minimum order: \$$amount';
+  }
+
+  @override
+  String maxOrderLabel(String amount) {
+    return 'Maximum order: \$$amount';
+  }
+
+  @override
+  String addMoreToReachMinimum(String amount) {
+    return 'Add \$$amount more to reach the minimum';
+  }
+
+  @override
+  String removeToMeetMaximum(String amount) {
+    return 'Over the \$$amount maximum — remove some items';
+  }
+
+  @override
+  String orderBelowMinimum(String amount) {
+    return 'The minimum order from this warehouse is \$$amount.';
+  }
+
+  @override
+  String orderAboveMaximum(String amount) {
+    return 'The maximum order from this warehouse is \$$amount.';
+  }
+
+  @override
+  String get returnableSectionTitle => '🔄 Orders eligible for return';
+
+  @override
+  String get returnableSectionSubtitle =>
+      'You can request a return within 48 hours of delivery';
+
+  @override
+  String returnableOrderNumber(String number) {
+    return 'Order #$number';
+  }
+
+  @override
+  String returnableHoursLeft(String hours) {
+    return '${hours}h left';
+  }
+
+  @override
+  String get returnableEndingSoon => 'Ending soon';
+
+  @override
+  String get returnableRequestButton => 'Request a return';
+
+  @override
+  String returnableMoreItems(String count) {
+    return '+$count more';
+  }
+
+  @override
+  String get returnWindowExpired =>
+      'A return must be requested within 48 hours of delivery.';
 }

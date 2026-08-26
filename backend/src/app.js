@@ -9,6 +9,7 @@ const env = require('./config/env');
 const routes = require('./routes');
 const { apiLimiter } = require('./middlewares/rateLimiter');
 const { notFoundHandler, errorHandler } = require('./middlewares/errorHandler');
+const { log } = require('console');
 
 const app = express();
 
@@ -16,6 +17,7 @@ const app = express();
 // already taken - a fixed CORS_ORIGINS allowlist just breaks the panel every
 // time that happens, with no real security benefit on a local-only backend.
 // Production keeps the strict env-configured allowlist.
+
 function resolveCorsOrigin() {
   if (env.nodeEnv === 'production') {
     return env.corsOrigins.length > 0 ? env.corsOrigins : false;

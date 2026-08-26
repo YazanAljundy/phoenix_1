@@ -184,7 +184,10 @@ class MyApp extends StatelessWidget {
             ),
           ),
           BlocProvider(
-            create: (context) => CartCubit(orderRepository: orderRepository),
+            create: (context) => CartCubit(
+              orderRepository: orderRepository,
+              warehouseRepository: warehouseRepository,
+            ),
           ),
           BlocProvider(
             create: (context) => ExchangeRateCubit(

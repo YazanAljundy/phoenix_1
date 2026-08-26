@@ -12,6 +12,7 @@ import 'package:phoenix/core/widgets/app_loading.dart';
 import 'package:phoenix/core/widgets/app_snackbar.dart';
 import 'package:phoenix/core/widgets/error_view.dart';
 import 'package:phoenix/features/returns/data/models/return_model.dart';
+import 'package:phoenix/features/returns/data/models/returnable_order_model.dart';
 import 'package:phoenix/features/returns/presentation/managers/my_returns_cubit.dart';
 import 'package:phoenix/features/returns/presentation/managers/my_returns_state.dart';
 import 'package:phoenix/features/returns/presentation/widgets/request_return_sheet.dart';
@@ -55,6 +56,15 @@ class _MyReturnsViewState extends State<MyReturnsView> {
       orderId: returnRequest.orderId,
       existingReturn: returnRequest,
     );
+    if (result != null && context.mounted) {
+      context.read<MyReturnsCubit>().load();
+    }
+  }
+
+  // Reuses the same sheet the order-tracking screen opens - it loads the
+  // order's own items from orderId, so nothing extra has to be threaded in.
+  Future<void> _requestReturn(BuildContext context, ReturnableOrderModel order) async {
+    final result = await showRequestReturnSheet(context, orderId: order.id);
     if (result != null && context.mounted) {
       context.read<MyReturnsCubit>().load();
     }
@@ -128,7 +138,7 @@ class _MyReturnsViewState extends State<MyReturnsView> {
               onRetry: () => context.read<MyReturnsCubit>().load(),
             );
           }
-          if (state.returns.isEmpty) {
+          if (state.returns.isEmpty && state.returnableOrders.isEmpty) {
             return RefreshIndicator(
               onRefresh: () => context.read<MyReturnsCubit>().load(),
               child: _EmptyReturns(message: l10n.noReturnsYet),
@@ -137,26 +147,49 @@ class _MyReturnsViewState extends State<MyReturnsView> {
 
           return RefreshIndicator(
             onRefresh: () => context.read<MyReturnsCubit>().load(),
-            child: ListView.separated(
-              controller: _scrollController,
-              padding: const EdgeInsets.all(AppSizes.spacingMedium),
-              itemCount: state.returns.length + 1,
-              separatorBuilder: (context, index) => const SizedBox(height: AppSizes.spacingSmall),
-              itemBuilder: (context, index) {
-                if (index == state.returns.length) {
-                  return _PaginationFooter(hasMore: state.hasMore, isLoadingMore: state.isLoadingMore);
-                }
-                final returnRequest = state.returns[index];
-                return ReturnListTile(
-                  returnRequest: returnRequest,
-                  onEdit: returnRequest.isPending ? () => _edit(context, returnRequest) : null,
-                  onDelete: returnRequest.isPending ? () => _delete(context, returnRequest) : null,
-                  onViewReplacementOrder: returnRequest.replacementOrderId != null
-                      ? () => context.pushNamed(
-                          RouteNames.orderTracking,
-                          pathParameters: {'orderId': returnRequest.replacementOrderId!},
-                        )
-                      : null,
+            child: Builder(
+              builder: (context) {
+                // Built as an explicit list: the eligible-orders section
+                // trails the paginated returns, and index arithmetic across
+                // three different kinds of row is where this gets fragile.
+                final rows = <Widget>[
+                  if (state.returns.isEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: AppSizes.spacingSmall),
+                      child: Text(
+                        l10n.noReturnsYet,
+                        textAlign: TextAlign.center,
+                        style: context.textTheme.bodyMedium?.copyWith(
+                          color: AppColors.textSecondaryOf(context),
+                        ),
+                      ),
+                    ),
+                  for (final returnRequest in state.returns)
+                    ReturnListTile(
+                      returnRequest: returnRequest,
+                      onEdit: returnRequest.isPending ? () => _edit(context, returnRequest) : null,
+                      onDelete: returnRequest.isPending ? () => _delete(context, returnRequest) : null,
+                      onViewReplacementOrder: returnRequest.replacementOrderId != null
+                          ? () => context.pushNamed(
+                              RouteNames.orderTracking,
+                              pathParameters: {'orderId': returnRequest.replacementOrderId!},
+                            )
+                          : null,
+                    ),
+                  _PaginationFooter(hasMore: state.hasMore, isLoadingMore: state.isLoadingMore),
+                  if (state.returnableOrders.isNotEmpty)
+                    _ReturnableSection(
+                      orders: state.returnableOrders,
+                      onRequest: (order) => _requestReturn(context, order),
+                    ),
+                ];
+
+                return ListView.separated(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.all(AppSizes.spacingMedium),
+                  itemCount: rows.length,
+                  separatorBuilder: (context, index) => const SizedBox(height: AppSizes.spacingSmall),
+                  itemBuilder: (context, index) => rows[index],
                 );
               },
             ),
@@ -236,6 +269,190 @@ class _EmptyReturns extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+// Section: delivered orders still inside the 48-hour return window. Rendered
+// only when there's at least one - an empty list hides the whole section
+// (header included) rather than showing an empty shell.
+class _ReturnableSection extends StatelessWidget {
+  const _ReturnableSection({required this.orders, required this.onRequest});
+
+  final List<ReturnableOrderModel> orders;
+  final void Function(ReturnableOrderModel) onRequest;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: AppSizes.spacingMedium),
+        Divider(color: AppColors.borderOf(context), height: 1),
+        const SizedBox(height: AppSizes.spacingMedium),
+        Text(
+          l10n.returnableSectionTitle,
+          style: context.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: AppSizes.spacingXSmall),
+        Text(
+          l10n.returnableSectionSubtitle,
+          style: context.textTheme.bodySmall?.copyWith(
+            color: AppColors.textSecondaryOf(context),
+          ),
+        ),
+        const SizedBox(height: AppSizes.spacingMedium),
+        for (final order in orders) ...[
+          _ReturnableOrderCard(order: order, onRequest: () => onRequest(order)),
+          const SizedBox(height: AppSizes.spacingSmall),
+        ],
+      ],
+    );
+  }
+}
+
+class _ReturnableOrderCard extends StatelessWidget {
+  const _ReturnableOrderCard({required this.order, required this.onRequest});
+
+  final ReturnableOrderModel order;
+  final VoidCallback onRequest;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+    // Orange once the window is nearly up, so a card about to expire reads
+    // differently at a glance from one with a day and a half left.
+    final accent = order.isEndingSoon
+        ? AppColors.primaryOf(context)
+        : AppColors.navyOf(context);
+    final warehouseName =
+        (isArabic ? order.warehouseNameAr : order.warehouseNameEn) ??
+        order.warehouseNameAr ??
+        order.warehouseNameEn ??
+        '';
+    final shownItems = order.items.take(3).toList();
+    final hiddenCount = order.items.length - shownItems.length;
+
+    return Container(
+      padding: const EdgeInsets.all(AppSizes.spacingMedium),
+      decoration: BoxDecoration(
+        color: AppColors.backgroundOf(context),
+        borderRadius: AppRadius.large,
+        border: Border.all(
+          color: order.isEndingSoon ? accent : accent.withValues(alpha: 0.35),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: accent.withValues(alpha: 0.08),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.storefront_rounded, size: 18, color: AppColors.navyOf(context)),
+              const SizedBox(width: AppSizes.spacingXSmall),
+              Expanded(
+                child: Text(
+                  warehouseName,
+                  style: context.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(width: AppSizes.spacingSmall),
+              Text(
+                l10n.returnableOrderNumber('${order.orderNumber}'),
+                style: context.textTheme.bodySmall?.copyWith(
+                  color: AppColors.textSecondaryOf(context),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSizes.spacingSmall),
+          Divider(color: AppColors.borderOf(context), height: 1),
+          const SizedBox(height: AppSizes.spacingSmall),
+          Text(
+            shownItems
+                .map((item) => isArabic ? item.productNameAr : (item.productNameEn ?? item.productNameAr))
+                .join('، '),
+            style: context.textTheme.bodyMedium,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+          if (hiddenCount > 0) ...[
+            const SizedBox(height: AppSizes.spacingXSmall),
+            Text(
+              l10n.returnableMoreItems('$hiddenCount'),
+              style: context.textTheme.bodySmall?.copyWith(
+                color: AppColors.textSecondaryOf(context),
+              ),
+            ),
+          ],
+          const SizedBox(height: AppSizes.spacingSmall),
+          Text(
+            '${order.finalPrice} ${l10n.currencySuffix}',
+            style: context.textTheme.titleSmall?.copyWith(
+              color: AppColors.navyOf(context),
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+          const SizedBox(height: AppSizes.spacingSmall),
+          Row(
+            children: [
+              Icon(Icons.timer_outlined, size: 16, color: accent),
+              const SizedBox(width: AppSizes.spacingXSmall),
+              Text(
+                l10n.returnableHoursLeft('${order.hoursRemaining}'),
+                style: context.textTheme.bodySmall?.copyWith(
+                  color: accent,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              if (order.isEndingSoon) ...[
+                const SizedBox(width: AppSizes.spacingSmall),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                  child: Text(
+                    l10n.returnableEndingSoon,
+                    style: context.textTheme.labelSmall?.copyWith(
+                      color: accent,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: AppSizes.spacingMedium),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: onRequest,
+              icon: const Icon(Icons.assignment_return_rounded, size: 18),
+              label: Text(l10n.returnableRequestButton),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.navyOf(context),
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: const RoundedRectangleBorder(borderRadius: AppRadius.small),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

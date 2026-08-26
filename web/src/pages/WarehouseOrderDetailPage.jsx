@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api } from '../api/client';
 import { withArFallback } from '../utils/displayName';
+import { useExchangeRate } from '../context/ExchangeRateContext';
+import { formatPriceWithSyp } from '../utils/currency';
 
 function statusKeySuffix(status) {
   return status
@@ -101,6 +103,244 @@ function RecordPaymentModal({ pharmacyId, onClose, onRecorded }) {
           </div>
         </form>
       </div>
+    </div>
+  );
+}
+
+// Section: the warehouse correcting an order's items before it's confirmed
+// - only ever rendered while status is 'pending' (the parent gates it, see
+// WarehouseOrderDetailPage below); the backend rejects an edit past that
+// point regardless. Local draft state (quantities, staged removals, staged
+// new lines) lives here and is only ever sent to the server as one batched
+// PATCH from "Save changes" - nothing here calls the API per keystroke.
+function EditItemsSection({ order, onSaved }) {
+  const { t } = useTranslation();
+  const usdToSyp = useExchangeRate();
+
+  const [items, setItems] = useState([]);
+  const [removedIds, setRemovedIds] = useState(() => new Set());
+  const [newItems, setNewItems] = useState([]);
+  const [availableProducts, setAvailableProducts] = useState([]);
+  const [selectedProductId, setSelectedProductId] = useState('');
+  const [newQuantity, setNewQuantity] = useState(1);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState(null);
+  const [message, setMessage] = useState(null);
+
+  // Redraws the working draft from the server's own item list - runs on
+  // mount and again after every successful save (the parent re-fetches and
+  // hands down a fresh `order`), so the draft never lingers stale.
+  useEffect(() => {
+    setItems(
+      order.items.map((item) => ({
+        id: item.id,
+        productNameAr: item.productNameAr,
+        productNameEn: item.productNameEn,
+        quantity: item.quantity,
+      }))
+    );
+    setRemovedIds(new Set());
+    setNewItems([]);
+    setError(null);
+  }, [order.items]);
+
+  useEffect(() => {
+    api
+      .warehouseProducts({ available: true })
+      .then((data) => setAvailableProducts(data.products))
+      .catch(() => {
+        // Silent - the "add item" picker just stays empty; everything else
+        // on this section (quantity edits, removals) still works.
+      });
+  }, []);
+
+  const remainingCount = items.filter((item) => !removedIds.has(item.id)).length + newItems.length;
+
+  const handleQuantityChange = (id, value) => {
+    const quantity = Math.max(1, Math.trunc(Number(value)) || 1);
+    setItems((prev) => prev.map((item) => (item.id === id ? { ...item, quantity } : item)));
+  };
+
+  const handleRemove = (id) => {
+    if (!window.confirm(t('orderDetail.confirmRemoveItem'))) return;
+    setRemovedIds((prev) => new Set(prev).add(id));
+  };
+
+  const handleNewQuantityChange = (tempId, value) => {
+    const quantity = Math.max(1, Math.trunc(Number(value)) || 1);
+    setNewItems((prev) => prev.map((item) => (item.tempId === tempId ? { ...item, quantity } : item)));
+  };
+
+  const handleRemoveNew = (tempId) => {
+    if (!window.confirm(t('orderDetail.confirmRemoveItem'))) return;
+    setNewItems((prev) => prev.filter((item) => item.tempId !== tempId));
+  };
+
+  const handleAddItem = () => {
+    const product = availableProducts.find((p) => p.id === selectedProductId);
+    if (!product) return;
+    setNewItems((prev) => [
+      ...prev,
+      {
+        tempId: `${product.id}-${Date.now()}`,
+        productId: product.id,
+        productNameAr: product.nameAr,
+        productNameEn: product.nameEn,
+        quantity: Math.max(1, Math.trunc(Number(newQuantity)) || 1),
+      },
+    ]);
+    setSelectedProductId('');
+    setNewQuantity(1);
+  };
+
+  // The exact diff the PATCH endpoint expects - only items whose quantity
+  // actually changed from the server's own value end up in updateItems, so
+  // an untouched row never gets sent back.
+  const diff = useMemo(() => {
+    const originalQuantityById = new Map(order.items.map((item) => [item.id, item.quantity]));
+    const updateItems = items
+      .filter((item) => !removedIds.has(item.id) && originalQuantityById.get(item.id) !== item.quantity)
+      .map((item) => ({ orderItemId: item.id, quantity: item.quantity }));
+    const addItems = newItems.map((item) => ({ productId: item.productId, quantity: item.quantity }));
+    return { addItems, removeItems: [...removedIds], updateItems };
+  }, [items, removedIds, newItems, order.items]);
+
+  const hasChanges = diff.addItems.length > 0 || diff.removeItems.length > 0 || diff.updateItems.length > 0;
+
+  const handleSave = async () => {
+    // Belt and suspenders - the Save button is already disabled with
+    // nothing to send, but this is the one place that would actually fire
+    // the request, so it guards here too.
+    if (!hasChanges) return;
+    if (!window.confirm(t('orderDetail.confirmSaveItemChanges'))) return;
+
+    setIsSaving(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await api.updateOrderItems(order.id, diff);
+      setMessage(t('orderDetail.itemChangesSaved'));
+      await onSaved();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="wh-detail-card">
+      <h2 className="wh-detail-card-title">{t('orderDetail.editItemsTitle')}</h2>
+      <div className="table-scroll">
+        <table className="wh-table wh-table-compact">
+          <thead>
+            <tr>
+              <th>{t('orderDetail.product')}</th>
+              <th>{t('orderDetail.qty')}</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {items
+              .filter((item) => !removedIds.has(item.id))
+              .map((item) => (
+                <tr key={item.id}>
+                  <td>{withArFallback(item.productNameEn, item.productNameAr)}</td>
+                  <td className="wh-num">
+                    <input
+                      type="number"
+                      min="1"
+                      value={item.quantity}
+                      onChange={(e) => handleQuantityChange(item.id, e.target.value)}
+                      style={{ width: 70 }}
+                    />
+                  </td>
+                  <td>
+                    <button
+                      type="button"
+                      className="btn-reject"
+                      disabled={remainingCount <= 1}
+                      title={remainingCount <= 1 ? t('orderDetail.cannotRemoveLastItem') : undefined}
+                      onClick={() => handleRemove(item.id)}
+                    >
+                      {t('orderDetail.removeItemButton')}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            {newItems.map((item) => (
+              <tr key={item.tempId}>
+                <td>{withArFallback(item.productNameEn, item.productNameAr)}</td>
+                <td className="wh-num">
+                  <input
+                    type="number"
+                    min="1"
+                    value={item.quantity}
+                    onChange={(e) => handleNewQuantityChange(item.tempId, e.target.value)}
+                    style={{ width: 70 }}
+                  />
+                </td>
+                <td>
+                  <button
+                    type="button"
+                    className="btn-reject"
+                    disabled={remainingCount <= 1}
+                    title={remainingCount <= 1 ? t('orderDetail.cannotRemoveLastItem') : undefined}
+                    onClick={() => handleRemoveNew(item.tempId)}
+                  >
+                    {t('orderDetail.removeItemButton')}
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <h3 className="wh-detail-card-title" style={{ fontSize: '0.95rem', marginTop: 16 }}>
+        {t('orderDetail.addItemTitle')}
+      </h3>
+      {availableProducts.length === 0 ? (
+        <p className="hint">{t('orderDetail.noAvailableProducts')}</p>
+      ) : (
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <select
+            value={selectedProductId}
+            onChange={(e) => setSelectedProductId(e.target.value)}
+            style={{ flex: '1 1 240px' }}
+          >
+            <option value="">{t('orderDetail.selectProductPlaceholder')}</option>
+            {availableProducts.map((product) => (
+              <option key={product.id} value={product.id}>
+                {withArFallback(product.nameEn, product.nameAr)} ({formatPriceWithSyp(product.priceUsd, usdToSyp)})
+              </option>
+            ))}
+          </select>
+          <input
+            type="number"
+            min="1"
+            value={newQuantity}
+            onChange={(e) => setNewQuantity(e.target.value)}
+            style={{ width: 70 }}
+          />
+          <button type="button" className="btn-secondary" disabled={!selectedProductId} onClick={handleAddItem}>
+            {t('orderDetail.addItemButton')}
+          </button>
+        </div>
+      )}
+
+      {error && <p className="error-text">{error}</p>}
+      {message && <p className="hint">{message}</p>}
+
+      <button
+        type="button"
+        className="btn-primary"
+        style={{ marginTop: 16 }}
+        disabled={!hasChanges || isSaving}
+        onClick={handleSave}
+      >
+        {isSaving ? t('common.saving') : t('orderDetail.saveItemChanges')}
+      </button>
     </div>
   );
 }
@@ -326,6 +566,8 @@ export function WarehouseOrderDetailPage() {
                 </p>
               )}
             </div>
+
+            {order.status === 'pending' && <EditItemsSection order={order} onSaved={load} />}
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>

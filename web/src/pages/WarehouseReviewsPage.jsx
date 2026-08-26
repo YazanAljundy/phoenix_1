@@ -89,24 +89,27 @@ export function WarehouseReviewsPage() {
 
           <div className="wh-card" style={{ overflow: 'hidden' }}>
             <div className="wh-review-list-head">{t('reviews.latest')}</div>
-            {reviews.map((review) => (
-              <div className="wh-review-row" key={review.id}>
-                <div className="wh-review-avatar">{(review.pharmacyNameEn || '?').charAt(0)}</div>
-                <div style={{ minWidth: 0, flex: 1 }}>
-                  <div className="wh-review-row-head">
-                    <span className="wh-review-row-name">{review.pharmacyNameEn}</span>
-                    <StarRating value={review.rating} size={14} />
-                    <span className="wh-review-row-date wh-num">
-                      {new Date(review.createdAt).toLocaleDateString()}
-                    </span>
-                  </div>
-                  {review.comment && <div className="wh-review-row-comment">&ldquo;{review.comment}&rdquo;</div>}
-                  <div className="wh-review-row-order wh-num">
-                    {t('reviews.orderNumber', { number: review.orderNumber })}
+            {reviews.map((review) => {
+              const reviewerName = review.reviewerName?.trim() || t('reviews.anonymousReviewer');
+              return (
+                <div className="wh-review-row" key={review.id}>
+                  <div className="wh-review-avatar">{reviewerName.charAt(0)}</div>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div className="wh-review-row-head">
+                      <span className="wh-review-row-name">{reviewerName}</span>
+                      <StarRating value={review.rating} size={14} />
+                      <span className="wh-review-row-date wh-num">
+                        {new Date(review.createdAt).toLocaleDateString()}
+                      </span>
+                    </div>
+                    {review.comment && <div className="wh-review-row-comment">&ldquo;{review.comment}&rdquo;</div>}
+                    <div className="wh-review-row-order wh-num">
+                      {t('reviews.orderNumber', { number: review.orderNumber })}
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
           <LoadMoreControl
             hasMore={hasMore}

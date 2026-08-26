@@ -5,6 +5,11 @@ const statusHistoryEntrySchema = new Schema(
     status: { type: String, required: true },
     changedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     changedAt: { type: Date, default: Date.now },
+    // Only set for entries that aren't a plain status transition (e.g.
+    // 'modified' - the warehouse edited the order's items while it was still
+    // pending, see warehouseOrder.service.js's updateOrderItems). null for
+    // every ordinary status change.
+    note: { type: String, default: null },
   },
   { _id: false }
 );

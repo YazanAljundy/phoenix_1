@@ -53,7 +53,8 @@
     "discounts": "الحسومات",
     "debts": "الديون",
     "returns": "المرتجعات",
-    "reviews": "التقييمات"
+    "reviews": "التقييمات",
+    "settings": "الإعدادات"
   },
   "auth": {
     "phoneLabel": "رقم الهاتف",
@@ -79,6 +80,7 @@
     "statusOutForDelivery": "قيد التوصيل",
     "statusDelivered": "تم التسليم",
     "statusCancelled": "ملغى",
+    "statusModified": "تم تعديل الطلب",
     "advancePending": "تأكيد الطلب",
     "advanceConfirmed": "بدء التحضير",
     "advancePreparing": "إرسال للتوصيل",
@@ -122,7 +124,18 @@
     "statusHistory": "سجل الحالات",
     "confirmApproveReturn": "هل توافق على مرتجع الطلب رقم {{number}}؟ هذا الإجراء ينشئ طلب استبدال جديد بدون رسوم إضافية ولا يمكن التراجع عنه.",
     "promptRejectReturn": "اشرح سبب رفض هذا المرتجع (الطلب رقم {{number}}) - سيرى الصيدلاني هذه الملاحظة:",
-    "confirmAdvance": "{{action}}؟"
+    "confirmAdvance": "{{action}}؟",
+    "editItemsTitle": "تعديل الأصناف",
+    "removeItemButton": "حذف",
+    "cannotRemoveLastItem": "لا يمكن حذف الصنف الأخير",
+    "confirmRemoveItem": "حذف هذا الصنف من الطلب؟",
+    "addItemTitle": "إضافة صنف",
+    "selectProductPlaceholder": "اختر منتجاً",
+    "addItemButton": "إضافة",
+    "saveItemChanges": "حفظ التعديلات",
+    "confirmSaveItemChanges": "سيتم إعادة حساب سعر الطلب وإشعار الصيدلاني.",
+    "itemChangesSaved": "تم حفظ التعديلات.",
+    "noAvailableProducts": "لا توجد منتجات متاحة للإضافة."
   },
   "returns": {
     "reasonDamaged": "تالف",
@@ -163,7 +176,8 @@
     "summary_many": "{{rating}} بالمعدل · {{count}} تقييماً",
     "summary_other": "{{rating}} بالمعدل · {{count}} تقييمات",
     "orderNumber": "طلب رقم {{number}}",
-    "latest": "أحدث التقييمات"
+    "latest": "أحدث التقييمات",
+    "anonymousReviewer": "مستخدم"
   },
   "discounts": {
     "addTitle": "إضافة حسم لشركة مصنّعة",
@@ -411,5 +425,19 @@
       "confirmSend": "إرسال «{{title}}» إلى كل مستخدم نشط؟ لا يمكن التراجع عن هذا الإجراء.",
       "sentSuccess": "تم الإرسال إلى {{count}} مستخدماً."
     }
+  },
+  "warehouseSettings": {
+    "orderLimitsTitle": "حدود الطلب",
+    "orderLimitsHint": "حدّد أصغر وأكبر مبلغ للطلب الواحد من مستودعك. اترك الحقل فارغاً إذا ما بدك حد.",
+    "minLabel": "الحد الأدنى للطلب ($)",
+    "minPlaceholder": "فارغ = بدون حد أدنى",
+    "maxLabel": "الحد الأقصى للطلب ($)",
+    "maxPlaceholder": "فارغ = بدون حد أقصى",
+    "saveButton": "حفظ الإعدادات",
+    "confirmSave": "حفظ حدود الطلب؟ رح تنطبق على كل طلب جديد من مستودعك.",
+    "saved": "تم حفظ الإعدادات.",
+    "minInvalid": "الحد الأدنى لازم يكون رقم 0 أو أكثر.",
+    "maxInvalid": "الحد الأقصى لازم يكون رقم 0 أو أكثر.",
+    "minMustBeBelowMax": "الحد الأدنى لازم يكون أقل من الحد الأقصى."
   }
 }
