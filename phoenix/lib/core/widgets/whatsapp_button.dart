@@ -21,7 +21,14 @@ class WhatsAppButton extends StatelessWidget {
         child: SizedBox(
           width: size,
           height: size,
-          child: Icon(Icons.chat, color: _whatsappGreen, size: size * 0.5),
+          child: const Center(
+            child: Image(
+              image: AssetImage('assets/images/whatsapp_icon.png'),
+              width: 24,
+              height: 24,
+              fit: BoxFit.contain,
+            ),
+          ),
         ),
       ),
     );

@@ -20,7 +20,11 @@ class WarehouseSelectionCubit extends Cubit<WarehouseSelectionState> {
       );
     } on Failure catch (f) {
       emit(
-        state.copyWith(status: WarehouseListStatus.error, errorMessage: f.errMessage),
+        state.copyWith(
+          status: WarehouseListStatus.error,
+          errorMessage: f.errMessage,
+          errorCode: f.code,
+        ),
       );
     }
   }

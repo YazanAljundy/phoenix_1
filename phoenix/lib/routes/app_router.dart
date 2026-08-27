@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart'; // TEMP DIAGNOSTIC (router-lifecycle) - for debugPrint
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:phoenix/core/services/navigation_service.dart';
@@ -41,7 +42,16 @@ import 'route_paths.dart';
 import 'scaffold_with_bottom_nav.dart';
 
 class AppRouter {
-  AppRouter();
+  AppRouter() {
+    // TEMP DIAGNOSTIC (router-lifecycle) - remove after verifying. `router`
+    // below is `late final`, so exactly one GoRouter is built per AppRouter
+    // instance: this line must appear ONCE for the whole app session and
+    // never again on a theme/locale change.
+    debugPrint(
+      'ROUTER_DEBUG: AppRouter() constructed (#${identityHashCode(this)}) '
+      '- GoRouter initialLocation=${RoutePaths.splash}',
+    );
+  }
 
   late final GoRouter router = GoRouter(
     navigatorKey: NavigationService.instance.navigatorKey,

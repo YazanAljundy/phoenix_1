@@ -494,6 +494,42 @@ abstract class AppLocalizations {
   /// **'Something went wrong.'**
   String get errorState;
 
+  /// No description provided for @errorNetwork.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to connect to the internet. Check your connection and try again.'**
+  String get errorNetwork;
+
+  /// No description provided for @errorTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'The request took longer than expected. Please try again.'**
+  String get errorTimeout;
+
+  /// No description provided for @errorServer.
+  ///
+  /// In en, this message translates to:
+  /// **'A server error occurred. Please try again later.'**
+  String get errorServer;
+
+  /// No description provided for @errorNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'The requested data could not be found.'**
+  String get errorNotFound;
+
+  /// No description provided for @errorSessionExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Your session has expired. Please sign in again.'**
+  String get errorSessionExpired;
+
+  /// No description provided for @errorNoPermission.
+  ///
+  /// In en, this message translates to:
+  /// **'You don\'t have permission to perform this action.'**
+  String get errorNoPermission;
+
   /// No description provided for @noMoreResultsText.
   ///
   /// In en, this message translates to:
@@ -1262,6 +1298,12 @@ abstract class AppLocalizations {
   /// **'Please select at least one item to return.'**
   String get errorReturnItemsEmpty;
 
+  /// No description provided for @errorReturnPhotoRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please attach at least one photo of the item.'**
+  String get errorReturnPhotoRequired;
+
   /// No description provided for @errorDuplicateReturnItem.
   ///
   /// In en, this message translates to:
@@ -1277,7 +1319,7 @@ abstract class AppLocalizations {
   /// No description provided for @returnPhotosLabel.
   ///
   /// In en, this message translates to:
-  /// **'Photos (optional)'**
+  /// **'Photos (required)'**
   String get returnPhotosLabel;
 
   /// No description provided for @returnPhotosHint.
@@ -1519,6 +1561,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'A return must be requested within 48 hours of delivery.'**
   String get returnWindowExpired;
+
+  /// No description provided for @privacyPolicy.
+  ///
+  /// In en, this message translates to:
+  /// **'Privacy Policy'**
+  String get privacyPolicy;
+
+  /// No description provided for @privacyPolicyLastUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Last updated: {date}'**
+  String privacyPolicyLastUpdated(String date);
 }
 
 class _AppLocalizationsDelegate

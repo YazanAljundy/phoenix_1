@@ -221,6 +221,28 @@ class AppLocalizationsEn extends AppLocalizations {
   String get errorState => 'Something went wrong.';
 
   @override
+  String get errorNetwork =>
+      'Unable to connect to the internet. Check your connection and try again.';
+
+  @override
+  String get errorTimeout =>
+      'The request took longer than expected. Please try again.';
+
+  @override
+  String get errorServer => 'A server error occurred. Please try again later.';
+
+  @override
+  String get errorNotFound => 'The requested data could not be found.';
+
+  @override
+  String get errorSessionExpired =>
+      'Your session has expired. Please sign in again.';
+
+  @override
+  String get errorNoPermission =>
+      'You don\'t have permission to perform this action.';
+
+  @override
   String get noMoreResultsText => 'No more results';
 
   @override
@@ -702,6 +724,10 @@ class AppLocalizationsEn extends AppLocalizations {
       'Please select at least one item to return.';
 
   @override
+  String get errorReturnPhotoRequired =>
+      'Please attach at least one photo of the item.';
+
+  @override
   String get errorDuplicateReturnItem =>
       'Each item can only appear once in a return request.';
 
@@ -710,7 +736,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'Please explain why this return is being rejected.';
 
   @override
-  String get returnPhotosLabel => 'Photos (optional)';
+  String get returnPhotosLabel => 'Photos (required)';
 
   @override
   String get returnPhotosHint =>
@@ -857,4 +883,12 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get returnWindowExpired =>
       'A return must be requested within 48 hours of delivery.';
+
+  @override
+  String get privacyPolicy => 'Privacy Policy';
+
+  @override
+  String privacyPolicyLastUpdated(String date) {
+    return 'Last updated: $date';
+  }
 }

@@ -49,11 +49,9 @@ export function AdminPanel() {
       />
       <aside className={`adm-sidebar${isSidebarOpen ? ' adm-sidebar-open' : ''}`}>
         <div className="adm-sidebar-header">
-          <div className="adm-sidebar-logo">{t('nav.brandInitial')}</div>
-          <div>
-            <div className="adm-sidebar-brand">{t('nav.brandName')}</div>
-            <div className="adm-sidebar-subtitle">{t('nav.adminTitle')}</div>
-          </div>
+          <img className="adm-sidebar-logo" src="/images/feniq_logo.png" alt={t('nav.brandName')} />
+          <div className="adm-sidebar-brand">{t('nav.brandName')}</div>
+          <div className="adm-sidebar-subtitle">{t('nav.adminTitle')}</div>
         </div>
         <nav className="adm-nav">
           {TABS.map((tab) => (

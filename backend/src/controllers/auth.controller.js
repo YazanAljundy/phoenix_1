@@ -129,13 +129,28 @@ const me = asyncHandler(async (req, res) => {
 });
 
 const registerDeviceToken = asyncHandler(async (req, res) => {
+  // TEMP DIAGNOSTIC LOGS (see FCM_DEBUG task) - no full token/auth header.
+  // eslint-disable-next-line no-console
+  console.log('AUTH_DEBUG: POST /auth/device-token called');
+  // eslint-disable-next-line no-console
+  console.log(`AUTH_DEBUG: authenticated userId = ${req.user._id}`);
+
   const fcmToken = requireNonEmptyString(req.body.fcmToken, 'fcmToken is required.');
   const deviceType = req.body.deviceType;
   if (deviceType !== 'android' && deviceType !== 'ios') {
     throw ApiError.badRequest("deviceType must be 'android' or 'ios'.");
   }
 
+  // eslint-disable-next-line no-console
+  console.log(`AUTH_DEBUG: deviceType = ${deviceType}`);
+  // eslint-disable-next-line no-console
+  console.log(
+    `AUTH_DEBUG: fcmToken masked = ${fcmToken.length > 16 ? `${fcmToken.slice(0, 8)}...${fcmToken.slice(-8)}` : fcmToken}`
+  );
+
   await authService.registerDeviceToken(req.user._id, { fcmToken, deviceType });
+  // eslint-disable-next-line no-console
+  console.log('AUTH_DEBUG: database update succeeded');
   res.json({ success: true, message: 'Device registered.' });
 });
 

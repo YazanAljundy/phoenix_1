@@ -1,18 +1,10 @@
-const fs = require('fs');
-const path = require('path');
-const crypto = require('crypto');
 const multer = require('multer');
 const { ApiError } = require('../utils/ApiError');
 
-// TODO(production): this whole module stores files on the server's local
-// filesystem. That's fine for local dev but does NOT survive on hosts with an
-// ephemeral filesystem (Render, Railway) across restarts/redeploys - migrate
-// to Cloudflare R2 (see Section 15/env.r2) before any real production deploy.
-const UPLOAD_ROOT = path.join(__dirname, '../../uploads');
-const RETURN_PHOTOS_DIR = path.join(UPLOAD_ROOT, 'return-photos');
-const BANNER_IMAGES_DIR = path.join(UPLOAD_ROOT, 'banners');
-fs.mkdirSync(RETURN_PHOTOS_DIR, { recursive: true });
-fs.mkdirSync(BANNER_IMAGES_DIR, { recursive: true });
+// Every upload is held in memory only - the route handler streams the buffer
+// straight to Cloudinary (services/upload.service.js) and nothing ever
+// touches the server's own filesystem.
+const storage = multer.memoryStorage();
 
 const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024;
 const MAX_RETURN_PHOTOS = 5;
@@ -20,25 +12,15 @@ const MAX_CATALOG_IMPORT_SIZE_BYTES = 5 * 1024 * 1024;
 
 const XLSX_MIME_TYPE = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
-// Magic-byte signatures - checked against actual file content after upload,
-// not just the extension or the client-sent MIME type (both are spoofable).
+// Magic-byte signatures - checked against the actual buffer content, not
+// just the extension or the client-sent MIME type (both are spoofable).
 const MAGIC_BYTES = [
   { ext: '.jpg', bytes: [0xff, 0xd8, 0xff] },
   { ext: '.png', bytes: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a] },
-  { ext: '.webp', bytes: [0x52, 0x49, 0x46, 0x46], offset: 0, riff: true },
+  { ext: '.webp', bytes: [0x52, 0x49, 0x46, 0x46], riff: true },
 ];
 
 const ALLOWED_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp']);
-
-function makeStorage(destinationDir) {
-  return multer.diskStorage({
-    destination: (req, file, cb) => cb(null, destinationDir),
-    filename: (req, file, cb) => {
-      const ext = path.extname(file.originalname).toLowerCase() || '.jpg';
-      cb(null, `${crypto.randomUUID()}${ext}`);
-    },
-  });
-}
 
 function imageFileFilter(req, file, cb) {
   if (!ALLOWED_MIME_TYPES.has(file.mimetype)) {
@@ -70,7 +52,7 @@ function wrapMulter(multerMiddleware, tooLargeMessage, tooManyMessage, tooManyCo
 // at MAX_RETURN_PHOTOS so a pharmacist can't attach an unbounded batch.
 const returnPhotosUpload = wrapMulter(
   multer({
-    storage: makeStorage(RETURN_PHOTOS_DIR),
+    storage,
     fileFilter: imageFileFilter,
     limits: { fileSize: MAX_FILE_SIZE_BYTES, files: MAX_RETURN_PHOTOS },
   }).array('images', MAX_RETURN_PHOTOS),
@@ -80,12 +62,11 @@ const returnPhotosUpload = wrapMulter(
 );
 
 // Section 14: the master catalog's Excel import (productCatalog.service.js
-// reads straight from `file.buffer`, nothing touches disk) - memory storage
-// rather than makeStorage's disk-based one, since there's no reason to keep
-// the file around after it's parsed.
+// reads straight from `file.buffer`) - same memory storage, just an
+// xlsx-only filter and its own size limit.
 const catalogImportUpload = wrapMulter(
   multer({
-    storage: multer.memoryStorage(),
+    storage,
     fileFilter: (req, file, cb) => {
       if (file.mimetype !== XLSX_MIME_TYPE) {
         cb(ApiError.badRequest('File must be an .xlsx Excel workbook.'));
@@ -100,40 +81,33 @@ const catalogImportUpload = wrapMulter(
 
 // Section: banner image - a single required photo, same shape as
 // returnPhotosUpload above (single file instead of an array), just its own
-// directory/field name.
+// field name.
 const bannerImageUpload = wrapMulter(
   multer({
-    storage: makeStorage(BANNER_IMAGES_DIR),
+    storage,
     fileFilter: imageFileFilter,
     limits: { fileSize: MAX_FILE_SIZE_BYTES },
   }).single('image'),
   'Banner image must be smaller than 5MB.'
 );
 
-// Reads the first bytes of the saved file and checks them against known image
-// signatures - a spoofed extension/MIME type won't pass this. Deletes the
-// file and throws if the content doesn't actually match an allowed image type.
-function verifyImageMagicBytes(filePath) {
-  const buffer = Buffer.alloc(12);
-  const fd = fs.openSync(filePath, 'r');
-  fs.readSync(fd, buffer, 0, 12, 0);
-  fs.closeSync(fd);
+// Checks the first bytes of an in-memory upload against known image
+// signatures - a spoofed extension/MIME type won't pass this. Returns false
+// (the caller rejects the request) when the content isn't actually one of
+// the allowed image types.
+function verifyImageMagicBytes(buffer) {
+  if (!Buffer.isBuffer(buffer) || buffer.length < 12) return false;
+  const head = buffer.subarray(0, 12);
 
-  const matches = MAGIC_BYTES.some((sig) => {
+  return MAGIC_BYTES.some((sig) => {
     if (sig.riff) {
       return (
-        buffer.slice(0, 4).equals(Buffer.from(sig.bytes)) &&
-        buffer.slice(8, 12).toString('ascii') === 'WEBP'
+        head.subarray(0, 4).equals(Buffer.from(sig.bytes)) &&
+        head.subarray(8, 12).toString('ascii') === 'WEBP'
       );
     }
-    return buffer.slice(0, sig.bytes.length).equals(Buffer.from(sig.bytes));
+    return head.subarray(0, sig.bytes.length).equals(Buffer.from(sig.bytes));
   });
-
-  if (!matches) {
-    fs.unlinkSync(filePath);
-    return false;
-  }
-  return true;
 }
 
 module.exports = {
@@ -141,7 +115,5 @@ module.exports = {
   catalogImportUpload,
   bannerImageUpload,
   verifyImageMagicBytes,
-  RETURN_PHOTOS_DIR,
-  BANNER_IMAGES_DIR,
   MAX_RETURN_PHOTOS,
 };

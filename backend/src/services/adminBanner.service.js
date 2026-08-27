@@ -1,5 +1,3 @@
-const fs = require('fs');
-const path = require('path');
 const mongoose = require('mongoose');
 const { ApiError } = require('../utils/ApiError');
 const Banner = require('../models/banner.model');
@@ -7,6 +5,7 @@ const Warehouse = require('../models/warehouse.model');
 const Product = require('../models/product.model');
 const Counter = require('../models/counter.model');
 const { applyResolvedIdentity } = require('./productCatalog.service');
+const { deleteImageByUrl } = require('./upload.service');
 
 // Same atomic $inc pattern as Order's nextOrderNumber (order.service.js) -
 // shares the same 'banner_number' sequence as warehouseBanner.service.js's
@@ -32,11 +31,12 @@ function validateTitle(value) {
   return value.trim();
 }
 
-function deleteImageFile(url) {
+// Fire-and-forget Cloudinary cleanup for a deleted banner's image -
+// deleteImageByUrl swallows its own errors, an orphaned asset never blocks
+// the delete.
+function deleteBannerImage(url) {
   if (!url) return;
-  const filename = url.split('/').pop();
-  if (!filename) return;
-  fs.unlink(path.join(__dirname, '../../uploads/banners', filename), () => {});
+  deleteImageByUrl(url);
 }
 
 // The moderation queue by default (`status` omitted), oldest first - same
@@ -195,7 +195,7 @@ async function rejectBanner(bannerId, rejectionNote) {
 
 async function deleteBanner(bannerId) {
   const banner = await findBannerOrThrow(bannerId);
-  deleteImageFile(banner.imageUrl);
+  deleteBannerImage(banner.imageUrl);
   await banner.deleteOne();
 }
 

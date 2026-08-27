@@ -17,7 +17,7 @@ class DebtsCubit extends Cubit<DebtsState> {
       final debts = await _debtRepository.getMyDebts();
       emit(state.copyWith(status: DebtsStatus.loaded, debts: debts));
     } on Failure catch (f) {
-      emit(state.copyWith(status: DebtsStatus.error, errorMessage: f.errMessage));
+      emit(state.copyWith(status: DebtsStatus.error, errorMessage: f.errMessage, errorCode: f.code));
     }
   }
 }

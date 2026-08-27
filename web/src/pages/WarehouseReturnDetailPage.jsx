@@ -150,7 +150,8 @@ export function WarehouseReturnDetailPage() {
                     className="btn-approve"
                     onClick={() => handleCallPharmacyViaWhatsApp(returnRequest.pharmacyPhone)}
                   >
-                    💬 {t('orderDetail.whatsapp')}
+                    <img src="/images/whatsapp_icon.png" alt="" width="20" height="20" className="btn-icon" />
+                    {t('orderDetail.whatsapp')}
                   </button>
                 </div>
               )}

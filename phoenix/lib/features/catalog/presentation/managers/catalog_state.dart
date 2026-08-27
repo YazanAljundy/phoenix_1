@@ -11,10 +11,12 @@ class CatalogState {
     this.selectedCategoryId,
     this.searchQuery = '',
     this.errorMessage,
+    this.errorCode,
     this.hasMore = false,
     this.nextCursor,
     this.isLoadingMore = false,
     this.loadMoreErrorMessage,
+    this.loadMoreErrorCode,
   });
 
   final CatalogStatus status;
@@ -23,6 +25,8 @@ class CatalogState {
   final String? selectedCategoryId;
   final String searchQuery;
   final String? errorMessage;
+  // Machine-readable error id - see translateErrorCode.
+  final String? errorCode;
 
   // Cursor pagination - reset (hasMore: false, nextCursor: null) whenever
   // the manufacturer (fixed per screen instance, never changes), category,
@@ -35,6 +39,7 @@ class CatalogState {
   final String? nextCursor;
   final bool isLoadingMore;
   final String? loadMoreErrorMessage;
+  final String? loadMoreErrorCode;
 
   CatalogState copyWith({
     CatalogStatus? status,
@@ -44,11 +49,13 @@ class CatalogState {
     bool clearCategory = false,
     String? searchQuery,
     String? errorMessage,
+    String? errorCode,
     bool? hasMore,
     String? nextCursor,
     bool clearNextCursor = false,
     bool? isLoadingMore,
     String? loadMoreErrorMessage,
+    String? loadMoreErrorCode,
     bool clearLoadMoreError = false,
   }) {
     return CatalogState(
@@ -60,10 +67,12 @@ class CatalogState {
           : (selectedCategoryId ?? this.selectedCategoryId),
       searchQuery: searchQuery ?? this.searchQuery,
       errorMessage: errorMessage,
+      errorCode: errorCode,
       hasMore: hasMore ?? this.hasMore,
       nextCursor: clearNextCursor ? null : (nextCursor ?? this.nextCursor),
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,
       loadMoreErrorMessage: clearLoadMoreError ? null : (loadMoreErrorMessage ?? this.loadMoreErrorMessage),
+      loadMoreErrorCode: clearLoadMoreError ? null : (loadMoreErrorCode ?? this.loadMoreErrorCode),
     );
   }
 }

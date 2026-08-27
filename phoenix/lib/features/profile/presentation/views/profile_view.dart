@@ -5,11 +5,13 @@ import 'package:phoenix/core/constants/app_colors.dart';
 import 'package:phoenix/core/constants/app_padding.dart';
 import 'package:phoenix/core/constants/app_radius.dart';
 import 'package:phoenix/core/constants/app_sizes.dart';
+import 'package:phoenix/core/error/error_translator.dart';
 import 'package:phoenix/core/extensions/build_context_extensions.dart';
 import 'package:phoenix/core/utils/currency_formatter.dart';
 import 'package:phoenix/core/utils/date_formatter.dart';
 import 'package:phoenix/core/widgets/app_dialog.dart';
 import 'package:phoenix/core/widgets/custom_card.dart';
+import 'package:phoenix/core/widgets/failure_widget.dart';
 import 'package:phoenix/features/auth/presentation/managers/auth_cubit.dart';
 import 'package:phoenix/features/auth/presentation/managers/auth_state.dart';
 import 'package:phoenix/features/debts/data/models/warehouse_debt_model.dart';
@@ -132,6 +134,19 @@ class ProfileView extends StatelessWidget {
                       child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
                     );
                   }
+                  // A failed load must not masquerade as "no ratings yet".
+                  if (reviewsState.status == PharmacyReviewsStatus.error &&
+                      reviewsState.reviews.isEmpty) {
+                    return FailureWidget(
+                      dense: true,
+                      message: translateErrorCode(
+                        l10n,
+                        reviewsState.errorCode,
+                        reviewsState.errorMessage ?? l10n.errorState,
+                      ),
+                      onRetry: () => context.read<PharmacyReviewsCubit>().load(),
+                    );
+                  }
                   if (reviewsState.reviews.isEmpty) {
                     return Text(
                       l10n.noRatingsYet,
@@ -182,6 +197,18 @@ class ProfileView extends StatelessWidget {
                     return const SizedBox(
                       height: 24,
                       child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                    );
+                  }
+                  // A failed load must not masquerade as "no debts yet".
+                  if (debtsState.status == DebtsStatus.error && debtsState.debts.isEmpty) {
+                    return FailureWidget(
+                      dense: true,
+                      message: translateErrorCode(
+                        l10n,
+                        debtsState.errorCode,
+                        debtsState.errorMessage ?? l10n.errorState,
+                      ),
+                      onRetry: () => context.read<DebtsCubit>().load(),
                     );
                   }
                   if (debtsState.debts.isEmpty) {
@@ -251,8 +278,9 @@ class ProfileView extends StatelessWidget {
                     segments: _SegmentedControl<String>(
                       value: currentCode,
                       options: const [('ar', 'العربية'), ('en', 'English')],
-                      onChanged: (code) =>
-                          context.read<SettingsCubit>().changeLocale(Locale(code)),
+                      onChanged: (code) {
+                          context.read<SettingsCubit>().changeLocale(Locale(code));
+                          },
                     ),
                   );
                 },
@@ -282,6 +310,25 @@ class ProfileView extends StatelessWidget {
                     ),
                   );
                 },
+              ),
+
+              const SizedBox(height: AppSizes.spacingMedium),
+              CustomCard(
+                onTap: () => context.pushNamed(RouteNames.privacyPolicy),
+                child: Row(
+                  children: [
+                    Icon(Icons.privacy_tip_outlined, size: 22, color: AppColors.navyOf(context)),
+                    const SizedBox(width: AppSizes.spacingMedium),
+                    Expanded(
+                      child: Text(l10n.privacyPolicy, style: context.textTheme.titleSmall),
+                    ),
+                    Icon(
+                      Icons.chevron_right,
+                      size: AppSizes.iconSizeSmall,
+                      color: AppColors.textSecondaryOf(context),
+                    ),
+                  ],
+                ),
               ),
 
               const SizedBox(height: AppSizes.spacingXLarge),

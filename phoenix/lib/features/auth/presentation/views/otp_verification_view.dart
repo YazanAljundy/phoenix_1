@@ -8,6 +8,7 @@ import 'package:phoenix/core/constants/app_colors.dart';
 import 'package:phoenix/core/constants/app_padding.dart';
 import 'package:phoenix/core/constants/app_radius.dart';
 import 'package:phoenix/core/constants/app_sizes.dart';
+import 'package:phoenix/core/error/error_translator.dart';
 import 'package:phoenix/core/extensions/build_context_extensions.dart';
 import 'package:phoenix/core/utils/validators.dart';
 import 'package:phoenix/core/widgets/app_snackbar.dart';
@@ -124,7 +125,10 @@ class _OtpVerificationViewState extends State<OtpVerificationView> {
             current.errorMessage != null &&
             previous.errorMessage != current.errorMessage,
         listener: (context, state) {
-          AppSnackbar.show(context, state.errorMessage!);
+          AppSnackbar.show(
+            context,
+            translateErrorCode(context.l10n, state.errorCode, state.errorMessage!),
+          );
         },
         child: SafeArea(
           child: LayoutBuilder(

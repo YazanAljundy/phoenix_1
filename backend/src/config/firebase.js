@@ -15,7 +15,13 @@ function loadCredential() {
   const { serviceAccountPath, projectId, privateKey, clientEmail } = config.firebase;
 
   if (serviceAccountPath) {
-    if (!fs.existsSync(serviceAccountPath)) {
+    // TEMP DIAGNOSTIC LOGS (see FCM_DEBUG task) - no secrets, just presence.
+    // eslint-disable-next-line no-console
+    console.log('FIREBASE_DEBUG: service account path configured');
+    const serviceAccountFileExists = fs.existsSync(serviceAccountPath);
+    // eslint-disable-next-line no-console
+    console.log(`FIREBASE_DEBUG: service account file exists = ${serviceAccountFileExists}`);
+    if (!serviceAccountFileExists) {
       // eslint-disable-next-line no-console
       console.warn(
         `FIREBASE_SERVICE_ACCOUNT_PATH is set to "${serviceAccountPath}" but that file doesn't exist - push notifications are disabled until it's in place.`
@@ -43,5 +49,11 @@ const firebaseApp = credential ? initializeApp({ credential }) : null;
 // null when Firebase isn't configured - callers must check this rather than
 // assume it's always available (see notification.service.js).
 const messaging = firebaseApp ? getMessaging(firebaseApp) : null;
+
+// TEMP DIAGNOSTIC LOGS (see FCM_DEBUG task) - no secrets, just booleans.
+// eslint-disable-next-line no-console
+console.log(`FIREBASE_DEBUG: Firebase Admin initialized = ${Boolean(firebaseApp)}`);
+// eslint-disable-next-line no-console
+console.log(`FIREBASE_DEBUG: Messaging initialized = ${Boolean(messaging)}`);
 
 module.exports = { messaging };

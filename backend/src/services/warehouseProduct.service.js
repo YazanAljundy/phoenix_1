@@ -249,10 +249,13 @@ async function updateProduct(productId, warehouseId, userId, changes) {
 // Section 14 Part 2: bulk-adds/updates this warehouse's own products from an
 // Excel file shaped like generateWarehouseTemplateBuffer's output. Reuses
 // the exact same row-parsing as the admin's catalog import
-// (productCatalog.service.js) - the two-column/company-row shape is
-// identical, only what happens with each parsed row differs.
+// (productCatalog.service.js) - the three-column (name / price / currency)
+// company-row shape is identical, only what happens with each parsed row
+// differs. `candidates` come back already priced in USD (SYP rows converted
+// at the current rate; a missing rate has already aborted the whole import
+// by this point).
 async function importProductsFromExcel(warehouseId, userId, file) {
-  const { candidates, errors, manufacturers } = await loadAndParseUpload(file);
+  const { candidates, errors, manufacturers, exchangeRateUsed, convertedFromSyp } = await loadAndParseUpload(file);
 
   // Registers every manufacturer row recognized in the file - regardless of
   // whether any of its medicines matched the central catalog, so a
@@ -316,7 +319,7 @@ async function importProductsFromExcel(warehouseId, userId, file) {
     }
   }
 
-  return { added, updated, errors };
+  return { added, updated, errors, exchangeRateUsed, convertedFromSyp };
 }
 
 module.exports = {

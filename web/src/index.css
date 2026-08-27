@@ -86,6 +86,14 @@ input {
   box-shadow: 0 10px 30px rgba(11, 37, 69, 0.25);
 }
 
+.auth-logo {
+  display: block;
+  width: 160px;
+  height: auto;
+  object-fit: contain;
+  margin: 0 auto 16px;
+}
+
 .auth-card .brand {
   text-align: center;
   color: var(--color-navy);
@@ -152,6 +160,14 @@ input {
 .btn-approve {
   background: var(--color-secondary);
   color: #fff;
+}
+
+.btn-icon {
+  width: 20px;
+  height: 20px;
+  vertical-align: middle;
+  margin-inline-end: 6px;
+  object-fit: contain;
 }
 
 .btn-reject {
@@ -936,23 +952,17 @@ input {
 
 .wh-sidebar-header {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
   padding: 20px 20px 18px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.14);
 }
 
 .wh-sidebar-logo {
-  width: 34px;
-  height: 34px;
-  flex: none;
-  border-radius: 8px;
-  background: var(--wh-orange);
-  display: grid;
-  place-items: center;
-  font-weight: 700;
-  font-size: 15px;
-  color: #fff;
+  width: 120px;
+  height: auto;
+  object-fit: contain;
 }
 
 .wh-sidebar-brand {
@@ -960,6 +970,7 @@ input {
   font-size: 15px;
   line-height: 1.2;
   color: #fff;
+  margin-top: 4px;
 }
 
 .wh-sidebar-subtitle {
@@ -1180,6 +1191,17 @@ input {
    restyle only. */
 .warehouse-shell .exchange-rate-card {
   border-radius: 8px;
+}
+
+/* SYP->USD conversion summary line inside that import-report card. */
+.warehouse-shell .import-conversion-note {
+  padding: 10px 12px;
+  border-radius: 8px;
+  border-inline-start: 3px solid var(--wh-navy);
+  background: #e8eaf6;
+  color: var(--wh-navy);
+  font-size: 13px;
+  line-height: 1.7;
 }
 
 .wh-notice {
@@ -1939,22 +1961,17 @@ input {
 
 .adm-sidebar-header {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
   padding: 20px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.14);
 }
 
 .adm-sidebar-logo {
-  width: 34px;
-  height: 34px;
-  flex: none;
-  background: var(--adm-orange);
-  display: grid;
-  place-items: center;
-  font-weight: 700;
-  font-size: 15px;
-  color: #fff;
+  width: 120px;
+  height: auto;
+  object-fit: contain;
 }
 
 .adm-sidebar-brand {
@@ -1962,6 +1979,7 @@ input {
   font-size: 15px;
   line-height: 1.2;
   color: #fff;
+  margin-top: 4px;
 }
 
 .adm-sidebar-subtitle {
@@ -2849,6 +2867,17 @@ input {
   font-size: 12px;
   color: #5a6b87;
   margin-top: 6px;
+}
+
+.adm-import-conversion {
+  border: 1px solid var(--adm-border);
+  border-inline-start: 3px solid var(--adm-navy);
+  background: var(--adm-bg);
+  padding: 12px 14px;
+  margin-bottom: 18px;
+  font-size: 13px;
+  line-height: 1.7;
+  color: var(--adm-text);
 }
 
 .adm-import-errors {

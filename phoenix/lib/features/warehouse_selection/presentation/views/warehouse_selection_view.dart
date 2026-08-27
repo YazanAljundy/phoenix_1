@@ -8,10 +8,12 @@ import 'package:phoenix/core/constants/app_sizes.dart';
 import 'package:phoenix/core/extensions/build_context_extensions.dart';
 import 'package:phoenix/core/widgets/app_loading.dart';
 import 'package:phoenix/core/widgets/empty_view.dart';
-import 'package:phoenix/core/widgets/error_view.dart';
+import 'package:phoenix/core/error/error_translator.dart';
+import 'package:phoenix/core/widgets/failure_widget.dart';
 import 'package:phoenix/features/banners/data/models/banner_model.dart';
 import 'package:phoenix/features/banners/presentation/managers/banners_cubit.dart';
 import 'package:phoenix/features/banners/presentation/widgets/banner_slider.dart';
+import 'package:phoenix/features/cart/presentation/widgets/cart_button.dart';
 import 'package:phoenix/features/catalog/data/models/manufacturers_route_args.dart';
 import 'package:phoenix/features/exchange_rate/presentation/managers/exchange_rate_cubit.dart';
 import 'package:phoenix/features/warehouse_selection/data/models/warehouse_model.dart';
@@ -125,6 +127,14 @@ class _WarehouseSelectionViewState extends State<WarehouseSelectionView> {
               backgroundColor: AppColors.navyOf(context),
               foregroundColor: Colors.white,
               toolbarHeight: 68,
+              leading: const Padding(
+                padding: EdgeInsets.all(AppSizes.spacingSmall),
+                child: Image(
+                  image: AssetImage('assets/images/feniq_logo.png'),
+                  height: 32,
+                  fit: BoxFit.contain,
+                ),
+              ),
               title:
                   BlocBuilder<WarehouseSelectionCubit, WarehouseSelectionState>(
                     buildWhen: (previous, current) =>
@@ -155,6 +165,7 @@ class _WarehouseSelectionViewState extends State<WarehouseSelectionView> {
                       );
                     },
                   ),
+              actions: const [CartButton()],
               bottom: PreferredSize(
                 preferredSize: const Size.fromHeight(60),
                 child: Padding(
@@ -225,8 +236,12 @@ class _WarehouseSelectionViewState extends State<WarehouseSelectionView> {
                   case WarehouseListStatus.error:
                     return SliverFillRemaining(
                       hasScrollBody: false,
-                      child: ErrorView(
-                        message: state.errorMessage ?? l10n.errorState,
+                      child: FailureWidget(
+                        message: translateErrorCode(
+                          l10n,
+                          state.errorCode,
+                          state.errorMessage ?? l10n.errorState,
+                        ),
                         onRetry: () => context
                             .read<WarehouseSelectionCubit>()
                             .loadWarehouses(),

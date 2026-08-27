@@ -16,4 +16,5 @@ class RouteNames {
   static const String myReturns = 'my-returns';
   static const String profile = 'profile';
   static const String debtDetail = 'debt-detail';
+  static const String privacyPolicy = 'privacy-policy';
 }

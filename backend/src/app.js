@@ -1,4 +1,3 @@
-const path = require('path');
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -45,17 +44,9 @@ if (env.nodeEnv !== 'test') {
 }
 app.use(apiLimiter);
 
-// Verification photos need to load cross-origin into the Flutter web app and
-// React admin panel (different ports in dev, different origins in
-// production) - helmet's default same-origin CORP would silently block that.
-app.use(
-  '/uploads',
-  (req, res, next) => {
-    res.setHeader('Cross-Origin-Resource-Policy', 'cross-origin');
-    next();
-  },
-  express.static(path.join(__dirname, '../uploads'))
-);
+// Every user-uploaded image is served straight from Cloudinary now (see
+// services/upload.service.js) - the server keeps nothing on disk, so there
+// is no local /uploads route to expose.
 
 app.use('/api', routes);
 

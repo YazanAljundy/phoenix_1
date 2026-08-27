@@ -119,8 +119,11 @@ class RequestReturnCubit extends Cubit<RequestReturnState> {
   }
 
   // Section 7: reasonType='other' is the only case that requires elaboration.
+  // At least one photo (existing or newly picked) is required so the
+  // warehouse has something to verify the claim against.
   bool get isValid {
     if (state.selectedItemIds.isEmpty) return false;
+    if (state.existingImageUrls.isEmpty && state.newImages.isEmpty) return false;
     for (final orderItemId in state.selectedItemIds) {
       final reason = state.itemReasonType[orderItemId];
       if (reason == null) return false;

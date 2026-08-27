@@ -1,10 +1,10 @@
-const fs = require('fs');
 const { asyncHandler } = require('../utils/asyncHandler');
 const { ApiError } = require('../utils/ApiError');
 const Warehouse = require('../models/warehouse.model');
 const warehouseBannerService = require('../services/warehouseBanner.service');
 const warehouseBannerViewModel = require('../viewmodels/warehouseBanner.viewmodel');
 const { verifyImageMagicBytes } = require('../middlewares/upload.middleware');
+const { uploadImage, deleteImageByUrl } = require('../services/upload.service');
 const { parseCursorQuery, parseObjectIdCursor, paginationMeta } = require('../utils/pagination');
 
 async function loadWarehouseOrThrow(userId) {
@@ -31,40 +31,38 @@ const list = asyncHandler(async (req, res) => {
 });
 
 const create = asyncHandler(async (req, res) => {
-  // Multer has already saved the file to disk by this point - on any
-  // validation failure below we must clean it up ourselves, same pattern as
-  // auth.controller.js's register and return.controller.js's create.
-  const cleanupUploadedFile = () => {
-    if (req.file) fs.unlink(req.file.path, () => {});
-  };
+  if (!req.file) {
+    throw ApiError.badRequest('A banner image is required.', undefined, 'BANNER_IMAGE_REQUIRED');
+  }
+  if (!verifyImageMagicBytes(req.file.buffer)) {
+    throw ApiError.badRequest('Banner image file content is not a valid image.');
+  }
 
+  // Uploaded to Cloudinary first; if a later step (date validation, etc.)
+  // rejects the request, the just-uploaded image is removed so a user error
+  // doesn't leave an orphan behind.
+  const imageUrl = await uploadImage(req.file.buffer, 'banners');
+
+  let banner;
   try {
-    if (!req.file) {
-      throw ApiError.badRequest('A banner image is required.', undefined, 'BANNER_IMAGE_REQUIRED');
-    }
-    if (!verifyImageMagicBytes(req.file.path)) {
-      throw ApiError.badRequest('Banner image file content is not a valid image.');
-    }
-    const imageUrl = `${req.protocol}://${req.get('host')}/uploads/banners/${req.file.filename}`;
-
     const warehouse = await loadWarehouseOrThrow(req.user._id);
-    const banner = await warehouseBannerService.createBanner(warehouse._id, req.user._id, {
+    banner = await warehouseBannerService.createBanner(warehouse._id, req.user._id, {
       productId: req.body.productId,
       startDate: req.body.startDate,
       endDate: req.body.endDate,
       title: req.body.title,
       imageUrl,
     });
-
-    res.status(201).json({
-      success: true,
-      message: 'Banner submitted for approval.',
-      ...warehouseBannerViewModel.toWarehouseBannerResponse(banner),
-    });
   } catch (err) {
-    cleanupUploadedFile();
+    await deleteImageByUrl(imageUrl);
     throw err;
   }
+
+  res.status(201).json({
+    success: true,
+    message: 'Banner submitted for approval.',
+    ...warehouseBannerViewModel.toWarehouseBannerResponse(banner),
+  });
 });
 
 const remove = asyncHandler(async (req, res) => {

@@ -29,6 +29,7 @@ export function LoginPage() {
   return (
     <div className="auth-screen">
       <div className="auth-card">
+        <img className="auth-logo" src="/images/feniq_logo.png" alt={t('app.brand')} />
         <h1 className="brand">{t('app.brand')}</h1>
 
         <form onSubmit={handleSubmit}>

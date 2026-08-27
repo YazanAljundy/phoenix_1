@@ -7,7 +7,9 @@ import 'package:phoenix/core/constants/app_sizes.dart';
 import 'package:phoenix/core/extensions/build_context_extensions.dart';
 import 'package:phoenix/core/widgets/app_loading.dart';
 import 'package:phoenix/core/widgets/empty_view.dart';
-import 'package:phoenix/core/widgets/error_view.dart';
+import 'package:phoenix/core/error/error_translator.dart';
+import 'package:phoenix/core/widgets/failure_widget.dart';
+import 'package:phoenix/features/cart/presentation/widgets/cart_button.dart';
 import 'package:phoenix/features/catalog/data/models/catalog_route_args.dart';
 import 'package:phoenix/features/catalog/presentation/managers/manufacturers_cubit.dart';
 import 'package:phoenix/features/catalog/presentation/managers/manufacturers_state.dart';
@@ -86,6 +88,7 @@ class _ManufacturersViewState extends State<ManufacturersView> {
             );
           },
         ),
+        actions: const [CartButton()],
       ),
       body: BlocBuilder<ManufacturersCubit, ManufacturersState>(
         builder: (context, state) {
@@ -95,8 +98,8 @@ class _ManufacturersViewState extends State<ManufacturersView> {
             case ManufacturersStatus.loading:
               return const AppLoading();
             case ManufacturersStatus.error:
-              return ErrorView(
-                message: state.errorMessage ?? l10n.errorState,
+              return FailureWidget(
+                message: translateErrorCode(l10n, state.errorCode, state.errorMessage ?? l10n.errorState),
                 onRetry: () => context.read<ManufacturersCubit>().loadManufacturers(),
               );
             case ManufacturersStatus.loaded:

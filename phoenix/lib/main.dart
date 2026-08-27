@@ -41,6 +41,8 @@ import 'package:phoenix/routes/app_router.dart';
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  // TEMP DIAGNOSTIC LOG (see FCM_DEBUG task).
+  debugPrint('FCM_DEBUG: Firebase.initializeApp() succeeded');
   // Must be registered before any background/terminated message can be
   // received at all - see the handler's own doc comment in fcm_service.dart.
   FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
@@ -64,7 +66,7 @@ Future<void> main() async {
   final reviewRepository = ReviewRepositoryImpl(apiClient: apiClient);
   final debtRepository = DebtRepositoryImpl(apiClient: apiClient);
   final bannersRepository = BannersRepositoryImpl(apiClient: apiClient);
-
+  final appRouter = AppRouter();
   runApp(
     MyApp(
       initialState: initialState,
@@ -80,6 +82,7 @@ Future<void> main() async {
       debtRepository: debtRepository,
       bannersRepository: bannersRepository,
       fcmService: fcmService,
+      appRouter: appRouter,
     ),
   );
 }
@@ -129,6 +132,7 @@ class MyApp extends StatelessWidget {
     required this.debtRepository,
     required this.bannersRepository,
     required this.fcmService,
+    required this.appRouter,
     super.key,
   });
 
@@ -145,7 +149,7 @@ class MyApp extends StatelessWidget {
   final DebtRepositoryImpl debtRepository;
   final BannersRepositoryImpl bannersRepository;
   final FcmService fcmService;
-
+  final AppRouter appRouter;
   @override
   Widget build(BuildContext context) {
     return MultiRepositoryProvider(
@@ -202,10 +206,20 @@ class MyApp extends StatelessWidget {
         child: Builder(
           builder: (context) => BlocBuilder<SettingsCubit, SettingsState>(
             builder: (context, state) {
+              // TEMP DIAGNOSTIC (router-lifecycle) - remove after verifying.
+              debugPrint(
+                'ROUTER_DEBUG: MyApp build/rebuild - '
+                'locale=${state.locale?.languageCode ?? 'null'} '
+                'themeMode=${state.themeMode.name} '
+                'router=#${identityHashCode(appRouter.router)}',
+              );
               return MaterialApp.router(
                 themeMode: state.themeMode,
                 darkTheme: DarkTheme.data,
-                routerConfig: AppRouter().router,
+                // Stable instance created once in main() - NOT `AppRouter().router`,
+                // which builds a brand-new GoRouter (resetting navigation to the
+                // splash route) on every SettingsCubit rebuild.
+                routerConfig: appRouter.router,
                 debugShowCheckedModeBanner: false,
                 theme: LightTheme.data,
                 locale: state.locale,

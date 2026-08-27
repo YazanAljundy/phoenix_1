@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart'; // TEMP DIAGNOSTIC (router-lifecycle) - for debugPrint
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:phoenix/core/constants/storage_keys.dart';
 import 'package:phoenix/core/error/failure.dart';
@@ -25,15 +26,27 @@ class AuthCubit extends Cubit<AuthState> {
   final FcmService _fcmService;
 
   Future<void> checkSession() async {
+    // TEMP DIAGNOSTIC (router-lifecycle) - remove after verifying.
+    debugPrint(
+      'ROUTER_DEBUG: AuthCubit.checkSession() start - '
+      'sessionStatus(before)=${state.sessionStatus}',
+    );
     try {
       final token = await _secureStorage.read(StorageKeys.authToken);
       if (token == null || token.isEmpty) {
+        debugPrint(
+          'ROUTER_DEBUG: AuthCubit.checkSession() - no token -> unauthenticated',
+        );
         emit(state.copyWith(sessionStatus: SessionStatus.unauthenticated));
         return;
       }
 
       final me = await _authRepository.getMe();
       final sessionStatus = _sessionStatusFor(me.user);
+      // TEMP DIAGNOSTIC (router-lifecycle) - remove after verifying.
+      debugPrint(
+        'ROUTER_DEBUG: AuthCubit.checkSession() - sessionStatus(after)=$sessionStatus',
+      );
       emit(
         state.copyWith(
           sessionStatus: sessionStatus,
@@ -48,6 +61,9 @@ class AuthCubit extends Cubit<AuthState> {
       } catch (_) {
         // Best-effort cleanup - falling through to unauthenticated regardless.
       }
+      debugPrint(
+        'ROUTER_DEBUG: AuthCubit.checkSession() - error -> unauthenticated',
+      );
       emit(state.copyWith(sessionStatus: SessionStatus.unauthenticated));
     }
   }
@@ -61,7 +77,7 @@ class AuthCubit extends Cubit<AuthState> {
       emit(state.copyWith(isSubmitting: false, otpSent: true));
       return true;
     } on Failure catch (f) {
-      emit(state.copyWith(isSubmitting: false, errorMessage: f.errMessage));
+      emit(state.copyWith(isSubmitting: false, errorMessage: f.errMessage, errorCode: f.code));
       return false;
     }
   }
@@ -103,7 +119,7 @@ class AuthCubit extends Cubit<AuthState> {
       _registerForPushIfActive(sessionStatus);
       return true;
     } on Failure catch (f) {
-      emit(state.copyWith(isSubmitting: false, errorMessage: f.errMessage));
+      emit(state.copyWith(isSubmitting: false, errorMessage: f.errMessage, errorCode: f.code));
       return false;
     }
   }
@@ -127,7 +143,7 @@ class AuthCubit extends Cubit<AuthState> {
       _registerForPushIfActive(sessionStatus);
       return true;
     } on Failure catch (f) {
-      emit(state.copyWith(isSubmitting: false, errorMessage: f.errMessage));
+      emit(state.copyWith(isSubmitting: false, errorMessage: f.errMessage, errorCode: f.code));
       return false;
     }
   }

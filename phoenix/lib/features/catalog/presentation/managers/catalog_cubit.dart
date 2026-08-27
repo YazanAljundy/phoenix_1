@@ -41,7 +41,7 @@ class CatalogCubit extends Cubit<CatalogState> {
         ),
       );
     } on Failure catch (f) {
-      emit(state.copyWith(status: CatalogStatus.error, errorMessage: f.errMessage));
+      emit(state.copyWith(status: CatalogStatus.error, errorMessage: f.errMessage, errorCode: f.code));
     }
   }
 
@@ -79,7 +79,7 @@ class CatalogCubit extends Cubit<CatalogState> {
         ),
       );
     } on Failure catch (f) {
-      emit(state.copyWith(status: CatalogStatus.error, errorMessage: f.errMessage));
+      emit(state.copyWith(status: CatalogStatus.error, errorMessage: f.errMessage, errorCode: f.code));
     }
   }
 
@@ -110,7 +110,11 @@ class CatalogCubit extends Cubit<CatalogState> {
     } on Failure catch (f) {
       // The cursor/hasMore stay exactly as they were - a retry just repeats
       // this same call rather than needing any state to be rebuilt first.
-      emit(state.copyWith(isLoadingMore: false, loadMoreErrorMessage: f.errMessage));
+      emit(state.copyWith(
+        isLoadingMore: false,
+        loadMoreErrorMessage: f.errMessage,
+        loadMoreErrorCode: f.code,
+      ));
     }
   }
 

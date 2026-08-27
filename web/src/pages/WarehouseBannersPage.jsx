@@ -196,6 +196,7 @@ function BannerRequestSuccessModal({ warehouseId, bannerNumber, onClose }) {
             {t('common.close')}
           </button>
           <button className="btn-approve" onClick={handleContactAdmin}>
+            <img src="/images/whatsapp_icon.png" alt="" width="20" height="20" className="btn-icon" />
             {t('banners.warehouse.contactAdmin')}
           </button>
         </div>
@@ -284,6 +285,7 @@ export function WarehouseBannersPage() {
       </div>
 
       <button className="btn-secondary" style={{ width: 'auto' }} onClick={handleRequestBannerViaWhatsApp}>
+        <img src="/images/whatsapp_icon.png" alt="" width="20" height="20" className="btn-icon" />
         {t('banners.warehouse.whatsappRequest')}
       </button>
 

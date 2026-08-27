@@ -54,11 +54,9 @@ export function WarehousePanel() {
       />
       <aside className={`wh-sidebar${isSidebarOpen ? ' wh-sidebar-open' : ''}`}>
         <div className="wh-sidebar-header">
-          <div className="wh-sidebar-logo">{t('nav.brandInitial')}</div>
-          <div>
-            <div className="wh-sidebar-brand">{t('nav.brandName')}</div>
-            <div className="wh-sidebar-subtitle">{t('nav.warehouseTitleFallback')}</div>
-          </div>
+          <img className="wh-sidebar-logo" src="/images/feniq_logo.png" alt={t('nav.brandName')} />
+          <div className="wh-sidebar-brand">{t('nav.brandName')}</div>
+          <div className="wh-sidebar-subtitle">{t('nav.warehouseTitleFallback')}</div>
         </div>
         <nav className="wh-nav">
           {TABS.map((tab) => (

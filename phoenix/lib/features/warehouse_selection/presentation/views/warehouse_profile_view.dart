@@ -9,9 +9,11 @@ import 'package:phoenix/core/extensions/build_context_extensions.dart';
 import 'package:phoenix/core/utils/date_formatter.dart';
 import 'package:phoenix/core/widgets/app_loading.dart';
 import 'package:phoenix/core/widgets/custom_card.dart';
-import 'package:phoenix/core/widgets/error_view.dart';
+import 'package:phoenix/core/error/error_translator.dart';
+import 'package:phoenix/core/widgets/failure_widget.dart';
 import 'package:phoenix/core/widgets/primary_button.dart';
 import 'package:phoenix/core/widgets/whatsapp_button.dart';
+import 'package:phoenix/features/cart/presentation/widgets/cart_button.dart';
 import 'package:phoenix/features/catalog/data/models/manufacturers_route_args.dart';
 import 'package:phoenix/features/warehouse_selection/data/models/warehouse_profile_model.dart';
 import 'package:phoenix/features/warehouse_selection/presentation/managers/warehouse_profile_cubit.dart';
@@ -49,6 +51,7 @@ class WarehouseProfileView extends StatelessWidget {
         backgroundColor: AppColors.navyOf(context),
         foregroundColor: Colors.white,
         title: Text(warehouseName, maxLines: 1, overflow: TextOverflow.ellipsis),
+        actions: const [CartButton()],
       ),
       body: BlocBuilder<WarehouseProfileCubit, WarehouseProfileState>(
         builder: (context, state) {
@@ -57,8 +60,8 @@ class WarehouseProfileView extends StatelessWidget {
             return const AppLoading();
           }
           if (state.status == WarehouseProfileStatus.error || state.profile == null) {
-            return ErrorView(
-              message: state.errorMessage ?? l10n.errorState,
+            return FailureWidget(
+              message: translateErrorCode(l10n, state.errorCode, state.errorMessage ?? l10n.errorState),
               onRetry: () => context.read<WarehouseProfileCubit>().load(),
             );
           }

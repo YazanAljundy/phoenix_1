@@ -35,6 +35,14 @@ module.exports = {
     bucketName: process.env.R2_BUCKET_NAME || '',
     endpoint: process.env.R2_ENDPOINT || '',
   },
+  // Cloudinary is where every user-uploaded image actually lives (banner
+  // images, return photos) - the server itself keeps nothing on disk. See
+  // config/cloudinary.js and services/upload.service.js.
+  cloudinary: {
+    cloudName: process.env.CLOUDINARY_CLOUD_NAME || '',
+    apiKey: process.env.CLOUDINARY_API_KEY || '',
+    apiSecret: process.env.CLOUDINARY_API_SECRET || '',
+  },
   imageApiKey: process.env.IMAGE_API_KEY || '',
   exchangeRateApiKey: process.env.EXCHANGE_RATE_API_KEY || '',
 };

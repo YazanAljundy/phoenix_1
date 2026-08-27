@@ -1,10 +1,9 @@
-const fs = require('fs');
-const path = require('path');
 const mongoose = require('mongoose');
 const { ApiError } = require('../utils/ApiError');
 const Order = require('../models/order.model');
 const OrderItem = require('../models/orderItem.model');
 const Return = require('../models/return.model');
+const { deleteImageByUrl } = require('./upload.service');
 
 const REASON_TYPES = ['damaged', 'wrong_item', 'other'];
 
@@ -126,16 +125,29 @@ function validateItems(items, orderItemById) {
   });
 }
 
+// Section 6.9: a return must be backed by at least one photo so the
+// warehouse has something to verify the claim against.
+function assertHasPhoto(images) {
+  if (!Array.isArray(images) || images.length === 0) {
+    throw ApiError.badRequest(
+      'Please attach at least one photo of the item.',
+      undefined,
+      'RETURN_PHOTO_REQUIRED'
+    );
+  }
+}
+
 async function loadOrderItemsMap(orderId) {
   const orderItems = await OrderItem.find({ orderId });
   return new Map(orderItems.map((item) => [item._id.toString(), item]));
 }
 
-function deleteImageFiles(urls) {
+// Fire-and-forget Cloudinary cleanup for photos that are no longer part of
+// any return (dropped on edit, or the whole request deleted). deleteImageByUrl
+// swallows its own errors - an orphaned asset never blocks the operation.
+function deleteImages(urls) {
   for (const url of urls) {
-    const filename = url.split('/').pop();
-    if (!filename) continue;
-    fs.unlink(path.join(__dirname, '../../uploads/return-photos', filename), () => {});
+    deleteImageByUrl(url);
   }
 }
 
@@ -163,6 +175,7 @@ async function createReturn({ pharmacyId, orderId, items, notes, images }) {
 
   const orderItemById = await loadOrderItemsMap(order._id);
   const normalizedItems = validateItems(items, orderItemById);
+  assertHasPhoto(images);
 
   const trimmedNotes = typeof notes === 'string' && notes.trim() ? notes.trim() : null;
 
@@ -209,15 +222,18 @@ async function updateReturn({ pharmacyId, returnId, items, notes, keepImageUrls,
   const trimmedNotes = typeof notes === 'string' && notes.trim() ? notes.trim() : null;
 
   const keepSet = new Set(Array.isArray(keepImageUrls) ? keepImageUrls : returnRequest.images);
-  const droppedImages = returnRequest.images.filter((url) => !keepSet.has(url));
-  deleteImageFiles(droppedImages);
-
-  returnRequest.items = normalizedItems;
-  returnRequest.notes = trimmedNotes;
-  returnRequest.images = [
+  const updatedImages = [
     ...returnRequest.images.filter((url) => keepSet.has(url)),
     ...(Array.isArray(newImages) ? newImages : []),
   ];
+  assertHasPhoto(updatedImages);
+
+  const droppedImages = returnRequest.images.filter((url) => !keepSet.has(url));
+  deleteImages(droppedImages);
+
+  returnRequest.items = normalizedItems;
+  returnRequest.notes = trimmedNotes;
+  returnRequest.images = updatedImages;
   await returnRequest.save();
 
   return { returnRequest, orderItemById };
@@ -225,7 +241,7 @@ async function updateReturn({ pharmacyId, returnId, items, notes, keepImageUrls,
 
 async function deleteReturn({ pharmacyId, returnId }) {
   const returnRequest = await loadOwnPendingReturnOrThrow(returnId, pharmacyId);
-  deleteImageFiles(returnRequest.images);
+  deleteImages(returnRequest.images);
   await returnRequest.deleteOne();
 }
 

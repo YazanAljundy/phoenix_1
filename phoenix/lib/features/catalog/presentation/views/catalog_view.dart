@@ -1,23 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 import 'package:phoenix/core/constants/app_colors.dart';
 import 'package:phoenix/core/constants/app_padding.dart';
 import 'package:phoenix/core/constants/app_radius.dart';
 import 'package:phoenix/core/constants/app_sizes.dart';
+import 'package:phoenix/core/error/error_translator.dart';
 import 'package:phoenix/core/extensions/build_context_extensions.dart';
 import 'package:phoenix/core/widgets/app_dialog.dart';
 import 'package:phoenix/core/widgets/app_loading.dart';
 import 'package:phoenix/core/widgets/app_snackbar.dart';
 import 'package:phoenix/core/widgets/empty_view.dart';
-import 'package:phoenix/core/widgets/error_view.dart';
+import 'package:phoenix/core/widgets/failure_widget.dart';
 import 'package:phoenix/features/cart/presentation/managers/cart_cubit.dart';
-import 'package:phoenix/features/cart/presentation/managers/cart_state.dart';
+import 'package:phoenix/features/cart/presentation/widgets/cart_button.dart';
 import 'package:phoenix/features/catalog/data/models/product_model.dart';
 import 'package:phoenix/features/catalog/presentation/managers/catalog_cubit.dart';
 import 'package:phoenix/features/catalog/presentation/managers/catalog_state.dart';
 import 'package:phoenix/features/catalog/presentation/widgets/product_card.dart';
-import 'package:phoenix/routes/route_names.dart';
 
 class CatalogView extends StatefulWidget {
   const CatalogView({
@@ -43,7 +42,7 @@ class _CatalogViewState extends State<CatalogView> {
   final _scrollController = ScrollController();
   // Grid vs. list density - purely a local display preference (see
   // ProductCard's `isGrid`), never touches CatalogCubit/the fetched data.
-  bool _isGrid = true;
+  bool _isGrid = false;
 
   @override
   void initState() {
@@ -155,21 +154,7 @@ class _CatalogViewState extends State<CatalogView> {
               _isGrid ? Icons.view_list_outlined : Icons.grid_view_outlined,
             ),
           ),
-          BlocBuilder<CartCubit, CartState>(
-            buildWhen: (previous, current) =>
-                previous.itemCount != current.itemCount,
-            builder: (context, cartState) {
-              return IconButton(
-                tooltip: l10n.cartIconTooltip,
-                onPressed: () => context.pushNamed(RouteNames.cart),
-                icon: Badge(
-                  label: Text('${cartState.itemCount}'),
-                  isLabelVisible: cartState.itemCount > 0,
-                  child: const Icon(Icons.shopping_cart_outlined),
-                ),
-              );
-            },
-          ),
+          const CartButton(),
         ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(60),
@@ -228,7 +213,7 @@ class _CatalogViewState extends State<CatalogView> {
         listener: (context, state) {
           AppSnackbar.show(
             context,
-            state.loadMoreErrorMessage!,
+            translateErrorCode(l10n, state.loadMoreErrorCode, state.loadMoreErrorMessage!),
             actionLabel: l10n.retryButton,
             onAction: () => context.read<CatalogCubit>().loadMore(),
           );
@@ -238,8 +223,8 @@ class _CatalogViewState extends State<CatalogView> {
             return const AppLoading();
           }
           if (state.status == CatalogStatus.error && state.products.isEmpty) {
-            return ErrorView(
-              message: state.errorMessage ?? l10n.errorState,
+            return FailureWidget(
+              message: translateErrorCode(l10n, state.errorCode, state.errorMessage ?? l10n.errorState),
               onRetry: () => context.read<CatalogCubit>().initialize(),
             );
           }

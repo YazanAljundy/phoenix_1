@@ -1,11 +1,16 @@
+import 'package:phoenix/core/error/failure.dart';
 import 'package:phoenix/generated/app_localizations.dart';
 
-// Maps a backend error `code` (see backend/src/utils/ApiError.js) to a
-// localized string via the existing .arb/AppLocalizations system. Falls back
-// to the server's raw English `fallbackMessage` for any code this hasn't
-// been taught yet - which is every code from an endpoint that hasn't been
-// migrated to the code-based pattern (auth, catalog: still message-only by
-// design, see the cart error-code migration this was introduced for).
+// Maps an error `code` - either a backend domain code (see
+// backend/src/utils/ApiError.js) or one of [FailureCode] for a transport
+// error the client raised itself - to a localized, user-facing string via
+// the existing .arb/AppLocalizations system. Falls back to the raw English
+// `fallbackMessage` only for a code this hasn't been taught yet (endpoints
+// still on the message-only pattern, e.g. most of auth).
+//
+// This is the single place a technical error becomes a sentence the user
+// sees. Pass the result to FailureWidget / a SnackBar - never a raw
+// exception or Failure.errMessage.
 //
 // Cart's STOCK_CHECK_FAILED is deliberately not handled here: its per-item
 // `details.problems` need product names the client already holds locally
@@ -13,6 +18,23 @@ import 'package:phoenix/generated/app_localizations.dart';
 // this generic single-string translator has no access to.
 String translateErrorCode(AppLocalizations l10n, String? code, String fallbackMessage) {
   switch (code) {
+    // --- Transport / HTTP-status failures (FailureCode + synthesised HTTP_*).
+    case FailureCode.network:
+      return l10n.errorNetwork;
+    case FailureCode.timeout:
+      return l10n.errorTimeout;
+    case 'HTTP_401':
+      return l10n.errorSessionExpired;
+    case 'HTTP_403':
+      return l10n.errorNoPermission;
+    case 'HTTP_404':
+      return l10n.errorNotFound;
+    case 'HTTP_500':
+    case 'HTTP_502':
+    case 'HTTP_503':
+      return l10n.errorServer;
+
+    // --- Backend domain codes.
     case 'CART_EMPTY':
       return l10n.cartEmptyMessage;
     case 'INVALID_PRODUCT':
@@ -51,6 +73,8 @@ String translateErrorCode(AppLocalizations l10n, String? code, String fallbackMe
       return l10n.errorReturnNotEditable;
     case 'RETURN_ITEMS_EMPTY':
       return l10n.errorReturnItemsEmpty;
+    case 'RETURN_PHOTO_REQUIRED':
+      return l10n.errorReturnPhotoRequired;
     case 'DUPLICATE_RETURN_ITEM':
       return l10n.errorDuplicateReturnItem;
     case 'REJECTION_NOTE_REQUIRED':

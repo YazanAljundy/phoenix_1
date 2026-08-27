@@ -7,21 +7,26 @@ class DebtDetailState {
     this.status = DebtDetailStatus.initial,
     this.detail,
     this.errorMessage,
+    this.errorCode,
   });
 
   final DebtDetailStatus status;
   final DebtDetailModel? detail;
   final String? errorMessage;
+  // Machine-readable error id - see translateErrorCode.
+  final String? errorCode;
 
   DebtDetailState copyWith({
     DebtDetailStatus? status,
     DebtDetailModel? detail,
     String? errorMessage,
+    String? errorCode,
   }) {
     return DebtDetailState(
       status: status ?? this.status,
       detail: detail ?? this.detail,
       errorMessage: errorMessage,
+      errorCode: errorCode,
     );
   }
 }

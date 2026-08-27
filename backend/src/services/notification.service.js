@@ -62,9 +62,23 @@ async function isRateLimited(userId, type) {
 // a notification failure, so this is defensive on its own terms too.
 async function sendToUser(userId, payload) {
   try {
-    if (await isRateLimited(userId, payload.type)) return;
+    // TEMP DIAGNOSTIC LOGS (see FCM_DEBUG task) - no full tokens.
+    // eslint-disable-next-line no-console
+    console.log('NOTIFICATION_DEBUG: sendToUser started');
+    // eslint-disable-next-line no-console
+    console.log(`NOTIFICATION_DEBUG: userId = ${userId}`);
+    // eslint-disable-next-line no-console
+    console.log(`NOTIFICATION_DEBUG: notification type = ${payload.type}`);
+
+    if (await isRateLimited(userId, payload.type)) {
+      // eslint-disable-next-line no-console
+      console.log('NOTIFICATION_DEBUG: rate limited - skipping send');
+      return;
+    }
 
     const user = await User.findById(userId, 'deviceTokens lang');
+    // eslint-disable-next-line no-console
+    console.log(`NOTIFICATION_DEBUG: user found = ${Boolean(user)}`);
     if (!user) return;
 
     await Notification.create({
@@ -77,9 +91,19 @@ async function sendToUser(userId, payload) {
       relatedOrderId: payload.relatedOrderId ?? null,
       sentByAdminId: payload.sentByAdminId ?? null,
     });
+    // eslint-disable-next-line no-console
+    console.log('NOTIFICATION_DEBUG: Notification.create() succeeded');
 
     const tokens = user.deviceTokens.map((d) => d.fcmToken);
-    if (!messaging || tokens.length === 0) return;
+    // eslint-disable-next-line no-console
+    console.log(`NOTIFICATION_DEBUG: device token count = ${tokens.length}`);
+    // eslint-disable-next-line no-console
+    console.log(`NOTIFICATION_DEBUG: messaging initialized = ${Boolean(messaging)}`);
+    if (!messaging || tokens.length === 0) {
+      // eslint-disable-next-line no-console
+      console.log('NOTIFICATION_DEBUG: skipping FCM send (no messaging or no tokens)');
+      return;
+    }
 
     const { title, body } = pickLang(user, payload);
     const baseMessage = {
@@ -92,13 +116,25 @@ async function sendToUser(userId, payload) {
 
     const deadTokens = [];
     for (const tokenBatch of chunk(tokens, FCM_BATCH_SIZE)) {
+      // eslint-disable-next-line no-console
+      console.log(`NOTIFICATION_DEBUG: sending FCM multicast, batch size = ${tokenBatch.length}`);
       const response = await messaging.sendEachForMulticast({ ...baseMessage, tokens: tokenBatch });
+      // eslint-disable-next-line no-console
+      console.log(`NOTIFICATION_DEBUG: successCount = ${response.successCount}`);
+      // eslint-disable-next-line no-console
+      console.log(`NOTIFICATION_DEBUG: failureCount = ${response.failureCount}`);
       response.responses.forEach((result, index) => {
+        if (!result.success) {
+          // eslint-disable-next-line no-console
+          console.log(`NOTIFICATION_DEBUG: failure error.code = ${result.error?.code}`);
+        }
         if (!result.success && DEAD_TOKEN_ERROR_CODES.has(result.error?.code)) {
           deadTokens.push(tokenBatch[index]);
         }
       });
     }
+    // eslint-disable-next-line no-console
+    console.log(`NOTIFICATION_DEBUG: removeDeadTokens called = ${deadTokens.length > 0}`);
     await removeDeadTokens(userId, deadTokens);
   } catch (err) {
     // eslint-disable-next-line no-console

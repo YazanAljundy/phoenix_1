@@ -3,6 +3,7 @@ const ExcelJS = require('exceljs');
 const { ApiError } = require('../utils/ApiError');
 const ProductCatalog = require('../models/productCatalog.model');
 const Category = require('../models/category.model');
+const { getRate } = require('./exchangeRate.service');
 
 function escapeRegex(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -170,31 +171,43 @@ async function deactivateCatalogItem(id) {
 
 const HEADER_TEXT = 'اسم الدواء';
 const WAREHOUSE_HEADER_TEXT = 'اسم الدواء (من القائمة)';
-const PRICE_HEADER_TEXT = 'السعر (دولار)';
+const PRICE_HEADER_TEXT = 'السعر';
+const CURRENCY_HEADER_TEXT = 'العملة';
 const NOTE_TEXT =
   'صف بخلفية صفراء = اسم الشركة، الصفوف التالية = أدويتها، صف فاضي = فاصل';
 const WAREHOUSE_NOTE_TEXT =
   'صف بخلفية صفراء = اسم الشركة، الصفوف التالية = أدويتها، صف فاضي = فاصل. الأسماء لازم تطابق القائمة المركزية بالضبط.';
+// Appended (on its own line) below NOTE_TEXT inside the single merged
+// instruction row - see buildTemplateWorkbook. Kept a separate constant so
+// KNOWN_NOTE_TEXTS can also match an older template that put it on its own
+// row.
+const CURRENCY_NOTE_TEXT =
+  'العملة: SYP = ليرة سورية (يتحوّل تلقائياً للدولار حسب سعر الصرف الحالي)\nUSD = دولار أمريكي (يُخزَّن مباشرة)';
 const MANUFACTURER_FILL = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFF00' } };
+const CURRENCY_VALIDATION_LAST_ROW = 1000;
 
 // Shared by both templates below (admin's master-list template and the
 // warehouse's own import template, Section 14 Part 1 vs Part 2) - same
-// two-column/company-row shape, only the header/note text and example rows
-// differ.
+// three-column/company-row shape, only the header/note text and example
+// rows differ.
 async function buildTemplateWorkbook({ nameHeader, noteText, examples }) {
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet('Catalog', { views: [{ rightToLeft: true }] });
 
-  sheet.columns = [{ width: 42 }, { width: 18 }];
+  sheet.columns = [{ width: 42 }, { width: 14 }, { width: 12 }];
 
-  sheet.mergeCells('A1:B1');
+  // Row 1: a single merged instruction row - the company/medicine/separator
+  // legend and the currency explanation, each on its own line. Row 2 is the
+  // column header; data starts at row 3. That's exactly LEADING_ROWS_TO_SKIP
+  // (= 2, see parseWorkbookRows) rows before the first real manufacturer row.
+  sheet.mergeCells('A1:C1');
   const noteCell = sheet.getCell('A1');
-  noteCell.value = noteText;
+  noteCell.value = `${noteText}\n${CURRENCY_NOTE_TEXT}`;
   noteCell.font = { italic: true, color: { argb: 'FF5A6B87' } };
   noteCell.alignment = { wrapText: true, horizontal: 'right', readingOrder: 'rtl' };
-  sheet.getRow(1).height = 30;
+  sheet.getRow(1).height = 64;
 
-  const headerRow = sheet.addRow([nameHeader, PRICE_HEADER_TEXT]);
+  const headerRow = sheet.addRow([nameHeader, PRICE_HEADER_TEXT, CURRENCY_HEADER_TEXT]);
   headerRow.font = { bold: true };
   headerRow.eachCell((cell) => {
     cell.alignment = { horizontal: 'right', readingOrder: 'rtl' };
@@ -206,7 +219,7 @@ async function buildTemplateWorkbook({ nameHeader, noteText, examples }) {
   // than intended (an unwanted extra blank row).
   function addManufacturerRow(nameAr) {
     const row = sheet.addRow([`[${nameAr}]`]);
-    sheet.mergeCells(`A${row.number}:B${row.number}`);
+    sheet.mergeCells(`A${row.number}:C${row.number}`);
     row.font = { bold: true };
     row.eachCell((cell) => {
       cell.fill = MANUFACTURER_FILL;
@@ -214,20 +227,33 @@ async function buildTemplateWorkbook({ nameHeader, noteText, examples }) {
     });
   }
 
-  function addProductRow(nameAr, priceUsd) {
-    const row = sheet.addRow([nameAr, priceUsd]);
+  function addProductRow(nameAr, price, currency) {
+    const row = sheet.addRow([nameAr, price, currency]);
     row.getCell(1).alignment = { horizontal: 'right', readingOrder: 'rtl' };
   }
 
   for (const group of examples) {
     addManufacturerRow(group.manufacturerAr);
     for (const product of group.products) {
-      addProductRow(product.nameAr, product.priceUsd);
+      addProductRow(product.nameAr, product.price, product.currency);
     }
     if (group !== examples[examples.length - 1]) {
       sheet.addRow([]);
     }
   }
+
+  // Dropdown restricted to USD/SYP, from the first real data row (row 3)
+  // onward - a generous range so rows the admin/warehouse types in below
+  // the examples still get it, not just the pre-filled ones.
+  sheet.dataValidations.add(`C3:C${CURRENCY_VALIDATION_LAST_ROW}`, {
+    type: 'list',
+    allowBlank: true,
+    formulae: ['"USD,SYP"'],
+    showErrorMessage: true,
+    errorStyle: 'error',
+    errorTitle: 'عملة غير صالحة',
+    error: 'الرجاء اختيار USD أو SYP فقط.',
+  });
 
   return workbook;
 }
@@ -236,11 +262,11 @@ const ADMIN_EXAMPLES = [
   {
     manufacturerAr: 'شركة الشرق للأدوية',
     products: [
-      { nameAr: 'باراسيتامول 500 ملغ', priceUsd: 2.5 },
-      { nameAr: 'أموكسيسيلين 250 ملغ', priceUsd: 4.8 },
+      { nameAr: 'باراسيتامول 500 ملغ', price: 13000, currency: 'SYP' },
+      { nameAr: 'أموكسيسيلين 250 ملغ', price: 2.5, currency: 'USD' },
     ],
   },
-  { manufacturerAr: 'شركة سوريا فارم', products: [{ nameAr: 'فولتارين 50 ملغ', priceUsd: 3.2 }] },
+  { manufacturerAr: 'شركة سوريا فارم', products: [{ nameAr: 'فولتارين 50 ملغ', price: 15000, currency: 'SYP' }] },
 ];
 
 async function generateTemplateBuffer() {
@@ -294,17 +320,27 @@ function manufacturerNameFrom(nameText) {
 // buildTemplateWorkbook above) - a warehouse importing its own template
 // needs its header/note rows recognized just as reliably as the admin's.
 const KNOWN_HEADER_TEXTS = new Set([HEADER_TEXT, WAREHOUSE_HEADER_TEXT]);
-const KNOWN_NOTE_TEXTS = new Set([NOTE_TEXT, WAREHOUSE_NOTE_TEXT]);
+// Both the standalone note strings (older templates that put the currency
+// explanation on its own row) and the combined single-cell form the current
+// template writes - so a note row that lands past LEADING_ROWS_TO_SKIP (a
+// file with an extra hand-added title row on top) is still recognized.
+const KNOWN_NOTE_TEXTS = new Set([
+  NOTE_TEXT,
+  WAREHOUSE_NOTE_TEXT,
+  CURRENCY_NOTE_TEXT,
+  `${NOTE_TEXT}\n${CURRENCY_NOTE_TEXT}`,
+  `${WAREHOUSE_NOTE_TEXT}\n${CURRENCY_NOTE_TEXT}`,
+]);
 
-// Real-world uploaded files (as opposed to our own generated template) have
-// been seen with a leading file-title row on top of the note/header rows -
-// three header-ish rows total before any real data. Content-based matching
-// alone (KNOWN_HEADER_TEXTS/KNOWN_NOTE_TEXTS below) only catches rows whose
-// text matches one of our own template's exact strings, so a hand-edited
-// title row slips through and gets misread as a medicine with no
-// manufacturer above it. Rows 1-3 are always skipped outright, regardless of
-// content, before any interpretation happens.
-const LEADING_ROWS_TO_SKIP = 3;
+// The generated template has two rows before any data: one merged
+// instruction row, then the column header (see buildTemplateWorkbook). Both
+// are skipped by position. A real uploaded file sometimes carries an extra
+// hand-added title row on top, pushing the column header down to row 3 -
+// it's still caught there by content (KNOWN_HEADER_TEXTS above), so parsing
+// survives that too. Only a file with two or more unrecognized rows stacked
+// above the data misreads the first of them, and that costs a single
+// row-level error, never the whole import.
+const LEADING_ROWS_TO_SKIP = 2;
 
 // Parses an uploaded workbook against either template's shape, but by
 // content rather than fixed row positions (Section 14): a manufacturer row
@@ -318,7 +354,16 @@ const LEADING_ROWS_TO_SKIP = 3;
 // catalog import (Section 14 Part 1) passes `requirePrice: false`: the
 // project owner's decision is that a priceless medicine is still worth
 // having in the master list (a warehouse fills the price in later), so
-// those rows become candidates with `priceUsd: null` instead of errors.
+// those rows become candidates with `rawPrice: null` instead of errors.
+//
+// Candidates carry `rawPrice`/`currency` here, not yet a converted
+// `priceUsd` - the SYP-to-USD conversion needs the current exchange rate,
+// an async lookup that only needs to happen once for the whole file (and
+// must be able to abort the entire import before anything is written if
+// the rate is missing, see resolvePricesInUsd) rather than once per row.
+const MIN_SYP_PRICE = 1;
+const MIN_USD_PRICE = 0.01;
+
 function parseWorkbookRows(sheet, { requirePrice = true } = {}) {
   const candidates = [];
   const errors = [];
@@ -351,13 +396,52 @@ function parseWorkbookRows(sheet, { requirePrice = true } = {}) {
       return;
     }
 
-    const priceCell = row.getCell(2);
-    const priceRaw = priceCell.value;
-    const priceUsd = typeof priceRaw === 'number' ? priceRaw : Number(cellText(priceCell));
-    const hasValidPrice = Number.isFinite(priceUsd) && priceUsd > 0;
+    // Currency column (row[2]). A blank cell - an old two-column file, or a
+    // cleared cell in the new template - is SYP with no complaint (the
+    // project owner's call: most Syrian warehouses price in lira). A value
+    // that isn't USD/SYP is still handled as SYP, but recorded so the
+    // importer knows it was guessed.
+    const currencyText = cellText(row.getCell(3)).toUpperCase();
+    let currency = 'SYP';
+    if (currencyText === 'USD' || currencyText === 'SYP') {
+      currency = currencyText;
+    } else if (currencyText) {
+      errors.push({
+        row: rowNumber,
+        reason: `عملة غير معروفة "${currencyText}" — تم التعامل معها كـ SYP`,
+        code: 'UNKNOWN_CURRENCY',
+      });
+    }
 
-    if (!hasValidPrice && requirePrice) {
-      errors.push({ row: rowNumber, reason: 'Missing or invalid price.' });
+    // Price column (row[1]). parseFloat (not Number) so a stray unit like
+    // "13000 ل.س" still reads as 13000; a number-typed cell is taken as-is.
+    const priceCell = row.getCell(2);
+    const priceText = cellText(priceCell);
+    const rawPrice = typeof priceCell.value === 'number' ? priceCell.value : parseFloat(priceText);
+
+    if (priceText === '') {
+      // No price at all. The warehouse import requires one; the central
+      // catalog keeps the row as a priceless entry (a warehouse fills the
+      // price in later - project owner's call).
+      if (requirePrice) {
+        errors.push({ row: rowNumber, reason: 'Missing or invalid price.', code: 'INVALID_PRICE' });
+        return;
+      }
+      candidates.push({
+        rowNumber,
+        nameAr: nameText,
+        manufacturerAr: currentManufacturer,
+        rawPrice: null,
+        currency,
+      });
+      return;
+    }
+
+    // Not a number (NaN), or under the floor for its currency (SYP < 1,
+    // USD < 0.01). Row-level - never aborts the whole import.
+    const minPrice = currency === 'USD' ? MIN_USD_PRICE : MIN_SYP_PRICE;
+    if (!Number.isFinite(rawPrice) || rawPrice < minPrice) {
+      errors.push({ row: rowNumber, reason: 'Invalid price.', code: 'INVALID_PRICE' });
       return;
     }
 
@@ -365,11 +449,74 @@ function parseWorkbookRows(sheet, { requirePrice = true } = {}) {
       rowNumber,
       nameAr: nameText,
       manufacturerAr: currentManufacturer,
-      priceUsd: hasValidPrice ? priceUsd : null,
+      rawPrice,
+      currency,
     });
   });
 
   return { candidates, errors, manufacturers: [...manufacturers] };
+}
+
+// Turns every candidate's rawPrice (in that row's own currency) into a USD
+// priceUsd, fetching the exchange rate at most once for the whole file and
+// only when a row actually needs it - an all-USD file imports fine with no
+// rate configured at all.
+//
+// The rate lookup, and the EXCHANGE_RATE_UNAVAILABLE abort it can raise,
+// happen here: after the (side-effect-free) row parse but before either
+// import function writes a single product. A file with any SYP row and no
+// usable rate fails whole, up front - never partway through.
+//
+// A row whose converted price rounds below the USD floor is dropped into
+// `errors` and left out of the returned candidates (row-level, same as a
+// bad price caught during parsing).
+async function resolvePricesInUsd(candidates, errors) {
+  const needsConversion = candidates.some((c) => c.rawPrice !== null && c.currency === 'SYP');
+
+  let usdToSyp = null;
+  if (needsConversion) {
+    const rate = await getRate();
+    if (!(rate?.usdToSyp > 0)) {
+      throw ApiError.badRequest(
+        'سعر الصرف غير متوفر — أضف سعر الصرف من لوحة الأدمن أولاً',
+        undefined,
+        'EXCHANGE_RATE_UNAVAILABLE'
+      );
+    }
+    usdToSyp = rate.usdToSyp;
+  }
+
+  const priced = [];
+  let convertedFromSyp = 0;
+
+  for (const candidate of candidates) {
+    if (candidate.rawPrice === null) {
+      candidate.priceUsd = null; // priceless central-catalog entry, kept as-is
+      priced.push(candidate);
+      continue;
+    }
+
+    let priceUsd;
+    if (candidate.currency === 'SYP') {
+      // e.g. 13000 SYP ÷ 130 = $100.00
+      priceUsd = Math.round((candidate.rawPrice / usdToSyp) * 100) / 100;
+    } else {
+      priceUsd = Math.round(candidate.rawPrice * 100) / 100;
+    }
+
+    if (priceUsd < MIN_USD_PRICE) {
+      // A tiny SYP amount can round down to $0.00 once converted - reject it
+      // with the same floor a directly-entered USD price gets.
+      errors.push({ row: candidate.rowNumber, reason: 'Invalid price.', code: 'INVALID_PRICE' });
+      continue;
+    }
+
+    candidate.priceUsd = priceUsd;
+    if (candidate.currency === 'SYP') convertedFromSyp += 1;
+    priced.push(candidate);
+  }
+
+  return { candidates: priced, exchangeRateUsed: usdToSyp, convertedFromSyp };
 }
 
 // Shared by both import endpoints (admin's catalog import and the
@@ -393,11 +540,27 @@ async function loadAndParseUpload(file, { requirePrice = true } = {}) {
     throw ApiError.badRequest('The uploaded file has no worksheet.', undefined, 'INVALID_IMPORT_FILE');
   }
 
-  return parseWorkbookRows(sheet, { requirePrice });
+  const { candidates, errors, manufacturers } = parseWorkbookRows(sheet, { requirePrice });
+  // Pricing + the EXCHANGE_RATE_UNAVAILABLE check, both before either import
+  // function below writes anything (see resolvePricesInUsd). Post-conversion
+  // price failures are appended to `errors` and their rows dropped from the
+  // returned candidates.
+  const { candidates: pricedCandidates, exchangeRateUsed, convertedFromSyp } =
+    await resolvePricesInUsd(candidates, errors);
+
+  return {
+    candidates: pricedCandidates,
+    errors,
+    manufacturers,
+    exchangeRateUsed,
+    convertedFromSyp,
+  };
 }
 
 async function importFromExcel(file) {
-  const { candidates, errors } = await loadAndParseUpload(file, { requirePrice: false });
+  const { candidates, errors, exchangeRateUsed, convertedFromSyp } = await loadAndParseUpload(file, {
+    requirePrice: false,
+  });
 
   let added = 0;
   let updated = 0;
@@ -437,7 +600,7 @@ async function importFromExcel(file) {
     }
   }
 
-  return { added, updated, errors };
+  return { added, updated, errors, exchangeRateUsed, convertedFromSyp };
 }
 
 module.exports = {

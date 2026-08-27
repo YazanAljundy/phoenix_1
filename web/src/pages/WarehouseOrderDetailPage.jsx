@@ -517,7 +517,8 @@ export function WarehouseOrderDetailPage() {
               {order.pharmacy?.phone && (
                 <div className="wh-pharmacy-actions">
                   <button className="btn-approve" onClick={() => handleCallPharmacyViaWhatsApp(order.pharmacy.phone)}>
-                    💬 {t('orderDetail.whatsapp')}
+                    <img src="/images/whatsapp_icon.png" alt="" width="20" height="20" className="btn-icon" />
+                    {t('orderDetail.whatsapp')}
                   </button>
                 </div>
               )}

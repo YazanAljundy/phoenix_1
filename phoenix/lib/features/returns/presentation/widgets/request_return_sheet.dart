@@ -9,6 +9,7 @@ import 'package:phoenix/core/constants/app_sizes.dart';
 import 'package:phoenix/core/error/error_translator.dart';
 import 'package:phoenix/core/extensions/build_context_extensions.dart';
 import 'package:phoenix/core/widgets/app_loading.dart';
+import 'package:phoenix/core/widgets/app_network_image.dart';
 import 'package:phoenix/core/widgets/app_snackbar.dart';
 import 'package:phoenix/core/widgets/app_text_field.dart';
 import 'package:phoenix/core/widgets/primary_button.dart';
@@ -349,7 +350,9 @@ class _ExistingPhotoThumbnail extends StatelessWidget {
   Widget build(BuildContext context) {
     return _PhotoThumbnailFrame(
       onRemove: onRemove,
-      child: Image.network(url, width: 64, height: 64, fit: BoxFit.cover),
+      // A dead photo URL (404/expired link) must not throw or show a broken
+      // glyph inside the sheet - AppNetworkImage falls back to a placeholder.
+      child: AppNetworkImage(url: url, width: 64, height: 64),
     );
   }
 }

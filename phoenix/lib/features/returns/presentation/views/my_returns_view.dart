@@ -10,7 +10,7 @@ import 'package:phoenix/core/extensions/build_context_extensions.dart';
 import 'package:phoenix/core/widgets/app_dialog.dart';
 import 'package:phoenix/core/widgets/app_loading.dart';
 import 'package:phoenix/core/widgets/app_snackbar.dart';
-import 'package:phoenix/core/widgets/error_view.dart';
+import 'package:phoenix/core/widgets/failure_widget.dart';
 import 'package:phoenix/features/returns/data/models/return_model.dart';
 import 'package:phoenix/features/returns/data/models/returnable_order_model.dart';
 import 'package:phoenix/features/returns/presentation/managers/my_returns_cubit.dart';
@@ -133,7 +133,7 @@ class _MyReturnsViewState extends State<MyReturnsView> {
             return const AppLoading();
           }
           if (state.status == MyReturnsStatus.error && state.returns.isEmpty) {
-            return ErrorView(
+            return FailureWidget(
               message: translateErrorCode(l10n, state.errorCode, state.errorMessage ?? l10n.errorState),
               onRetry: () => context.read<MyReturnsCubit>().load(),
             );

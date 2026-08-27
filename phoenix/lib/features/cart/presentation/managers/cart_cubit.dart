@@ -56,6 +56,13 @@ class CartCubit extends Cubit<CartState> {
     required String warehouseName,
     required int quantity,
   }) {
+    // One-warehouse-per-order (Section 6.6): addProduct must never build a
+    // mixed cart. The UI resolves a cross-warehouse add first - confirm
+    // dialog, then replaceWithProduct - so on the normal path this is never
+    // true. It's here so the invariant holds at the cubit level regardless
+    // of the caller: a skipped check yields a no-op, not a corrupted cart.
+    if (hasConflictingWarehouse(warehouseId)) return;
+
     final existingIndex = state.items.indexWhere((item) => item.productId == product.id);
     final List<CartItem> updated;
     if (existingIndex >= 0) {

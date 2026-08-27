@@ -44,6 +44,7 @@ void main() {
         final failure = ServerFailure.fromDioError(dioError);
 
         expect(failure.errMessage, equals('Connection timeout with ApiServer'));
+        expect(failure.code, equals(FailureCode.timeout));
       });
 
       test('handles send timeout', () {
@@ -105,6 +106,31 @@ void main() {
         final failure = ServerFailure.fromDioError(dioError);
 
         expect(failure.errMessage, equals('No Internet Connection'));
+        expect(failure.code, equals(FailureCode.network));
+      });
+
+      test('unknown error is coded, never leaks the raw exception string', () {
+        final dioError = DioException(
+          requestOptions: RequestOptions(path: '/x'),
+          type: DioExceptionType.unknown,
+          message: 'DioException [connection error]: SomeInternalDetail',
+        );
+
+        final failure = ServerFailure.fromDioError(dioError);
+
+        expect(failure.code, equals(FailureCode.unexpected));
+        expect(failure.errMessage, isNot(contains('DioException')));
+      });
+
+      test('connectionError maps to the network code', () {
+        final dioError = DioException(
+          requestOptions: RequestOptions(path: ''),
+          type: DioExceptionType.connectionError,
+        );
+
+        final failure = ServerFailure.fromDioError(dioError);
+
+        expect(failure.code, equals(FailureCode.network));
       });
 
       test('handles unknown error', () {
@@ -184,6 +210,22 @@ void main() {
           failure.errMessage,
           equals('Oops! There was an Error, Please try again'),
         );
+      });
+
+      test('a message-less 404 is tagged HTTP_404 so the UI can localize it', () {
+        final failure = ServerFailure.fromResponse(404, <String, dynamic>{});
+        expect(failure.code, equals('HTTP_404'));
+      });
+
+      test('a 401 that carries a server message keeps that message and no HTTP code', () {
+        // Login sends "Incorrect phone number or password." - it must survive,
+        // not be replaced by a generic "session expired".
+        final failure = ServerFailure.fromResponse(
+          401,
+          {'message': 'Incorrect phone number or password.'},
+        );
+        expect(failure.errMessage, equals('Incorrect phone number or password.'));
+        expect(failure.code, isNull);
       });
 
       test('handles string response', () {

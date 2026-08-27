@@ -5,6 +5,7 @@ import 'package:phoenix/core/constants/app_colors.dart';
 import 'package:phoenix/core/constants/app_padding.dart';
 import 'package:phoenix/core/constants/app_radius.dart';
 import 'package:phoenix/core/constants/app_sizes.dart';
+import 'package:phoenix/core/error/error_translator.dart';
 import 'package:phoenix/core/extensions/build_context_extensions.dart';
 import 'package:phoenix/core/utils/validators.dart';
 import 'package:phoenix/core/widgets/app_snackbar.dart';
@@ -117,7 +118,10 @@ class _RegistrationViewState extends State<RegistrationView> {
             current.errorMessage != null &&
             previous.errorMessage != current.errorMessage,
         listener: (context, state) {
-          AppSnackbar.show(context, state.errorMessage!);
+          AppSnackbar.show(
+            context,
+            translateErrorCode(context.l10n, state.errorCode, state.errorMessage!),
+          );
         },
         child: SafeArea(
           child: LayoutBuilder(
@@ -239,7 +243,23 @@ class _RegistrationViewState extends State<RegistrationView> {
                                 if (_agreedToTerms) _termsError = null;
                               }),
                             ),
-                            const SizedBox(height: AppSizes.spacingXLarge),
+                            Align(
+                              alignment: AlignmentDirectional.centerStart,
+                              child: TextButton.icon(
+                                onPressed: () =>
+                                    context.pushNamed(RouteNames.privacyPolicy),
+                                style: TextButton.styleFrom(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: AppSizes.spacingXSmall,
+                                  ),
+                                  minimumSize: Size.zero,
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                ),
+                                icon: const Icon(Icons.privacy_tip_outlined, size: 16),
+                                label: Text(l10n.privacyPolicy),
+                              ),
+                            ),
+                            const SizedBox(height: AppSizes.spacingLarge),
                             BlocBuilder<AuthCubit, AuthState>(
                               buildWhen: (previous, current) =>
                                   previous.isSubmitting != current.isSubmitting,
@@ -283,11 +303,10 @@ class _Header extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          width: 56,
-          height: 56,
-          decoration: BoxDecoration(color: AppColors.navyOf(context), borderRadius: AppRadius.large),
-          child: const Icon(Icons.local_pharmacy_rounded, color: Colors.white, size: 30),
+        const Image(
+          image: AssetImage('assets/images/feniq_logo.png'),
+          width: 150,
+          fit: BoxFit.contain,
         ),
         const SizedBox(height: AppSizes.spacingMedium),
         Text(l10n.registrationTitle, style: context.textTheme.displaySmall),

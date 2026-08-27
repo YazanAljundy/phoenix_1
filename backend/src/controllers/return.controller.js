@@ -1,10 +1,10 @@
-const fs = require('fs');
 const { asyncHandler } = require('../utils/asyncHandler');
 const { ApiError } = require('../utils/ApiError');
 const Pharmacy = require('../models/pharmacy.model');
 const returnService = require('../services/return.service');
 const returnViewModel = require('../viewmodels/return.viewmodel');
 const { verifyImageMagicBytes } = require('../middlewares/upload.middleware');
+const { uploadImage, deleteImageByUrl } = require('../services/upload.service');
 const { parseCursorQuery, parseObjectIdCursor, paginationMeta } = require('../utils/pagination');
 
 const RETURNS_DEFAULT_LIMIT = 15;
@@ -29,9 +29,13 @@ function parseJsonField(raw, fallback, code) {
   }
 }
 
-function verifyAndBuildImageUrls(req, files) {
+// Verifies every attached buffer is really an image, then streams them all
+// to Cloudinary under `returns/` and returns their delivery URLs. The
+// magic-byte check runs first so a junk file is rejected before any upload
+// is spent.
+async function verifyAndUploadImages(files) {
   for (const file of files) {
-    if (!verifyImageMagicBytes(file.path)) {
+    if (!verifyImageMagicBytes(file.buffer)) {
       throw ApiError.badRequest(
         'One of the attached photos is not a valid image.',
         undefined,
@@ -39,59 +43,55 @@ function verifyAndBuildImageUrls(req, files) {
       );
     }
   }
-  return files.map(
-    (file) => `${req.protocol}://${req.get('host')}/uploads/return-photos/${file.filename}`
-  );
+  return Promise.all(files.map((file) => uploadImage(file.buffer, 'returns')));
 }
 
 const create = asyncHandler(async (req, res) => {
   const files = req.files ?? [];
-  const cleanupUploadedFiles = () => {
-    for (const file of files) fs.unlink(file.path, () => {});
-  };
 
+  const { orderId, notes } = req.body;
+  if (typeof orderId !== 'string') {
+    throw ApiError.notFound('Order not found.', 'ORDER_NOT_FOUND');
+  }
+  const items = parseJsonField(req.body.items, null, 'INVALID_ITEMS_FORMAT');
+
+  const images = await verifyAndUploadImages(files);
+
+  let result;
   try {
-    const { orderId, notes } = req.body;
-    if (typeof orderId !== 'string') {
-      throw ApiError.notFound('Order not found.', 'ORDER_NOT_FOUND');
-    }
-    const items = parseJsonField(req.body.items, null, 'INVALID_ITEMS_FORMAT');
-
-    const images = verifyAndBuildImageUrls(req, files);
     const pharmacy = await loadPharmacyOrThrow(req.user._id);
-
-    const { returnRequest, orderItemById } = await returnService.createReturn({
+    result = await returnService.createReturn({
       pharmacyId: pharmacy._id,
       orderId,
       items,
       notes,
       images,
     });
-
-    res.status(201).json({
-      success: true,
-      message: 'Return request submitted.',
-      ...returnViewModel.toReturnResponse(returnRequest, orderItemById),
-    });
   } catch (err) {
-    cleanupUploadedFiles();
+    // The return was rejected (window expired, bad item, …) after the photos
+    // were already uploaded - drop them so the failure leaves no orphans.
+    await Promise.all(images.map((url) => deleteImageByUrl(url)));
     throw err;
   }
+
+  res.status(201).json({
+    success: true,
+    message: 'Return request submitted.',
+    ...returnViewModel.toReturnResponse(result.returnRequest, result.orderItemById),
+  });
 });
 
 const update = asyncHandler(async (req, res) => {
   const files = req.files ?? [];
-  const cleanupUploadedFiles = () => {
-    for (const file of files) fs.unlink(file.path, () => {});
-  };
 
+  const items = parseJsonField(req.body.items, null, 'INVALID_ITEMS_FORMAT');
+  const keepImageUrls = parseJsonField(req.body.keepImageUrls, [], 'INVALID_KEEP_IMAGES_FORMAT');
+  const newImages = await verifyAndUploadImages(files);
+
+  let result;
   try {
-    const items = parseJsonField(req.body.items, null, 'INVALID_ITEMS_FORMAT');
-    const keepImageUrls = parseJsonField(req.body.keepImageUrls, [], 'INVALID_KEEP_IMAGES_FORMAT');
-    const newImages = verifyAndBuildImageUrls(req, files);
-
     const pharmacy = await loadPharmacyOrThrow(req.user._id);
-    const { returnRequest, orderItemById } = await returnService.updateReturn({
+    result = await returnService.updateReturn({
       pharmacyId: pharmacy._id,
       returnId: req.params.id,
       items,
@@ -99,16 +99,16 @@ const update = asyncHandler(async (req, res) => {
       keepImageUrls,
       newImages,
     });
-
-    res.json({
-      success: true,
-      message: 'Return request updated.',
-      ...returnViewModel.toReturnResponse(returnRequest, orderItemById),
-    });
   } catch (err) {
-    cleanupUploadedFiles();
+    await Promise.all(newImages.map((url) => deleteImageByUrl(url)));
     throw err;
   }
+
+  res.json({
+    success: true,
+    message: 'Return request updated.',
+    ...returnViewModel.toReturnResponse(result.returnRequest, result.orderItemById),
+  });
 });
 
 const remove = asyncHandler(async (req, res) => {

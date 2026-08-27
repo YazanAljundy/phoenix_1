@@ -220,6 +220,27 @@ class AppLocalizationsAr extends AppLocalizations {
   String get errorState => 'حدث خطأ ما.';
 
   @override
+  String get errorNetwork =>
+      'تعذر الاتصال بالإنترنت. تحقق من اتصالك وحاول مرة أخرى.';
+
+  @override
+  String get errorTimeout =>
+      'استغرق الطلب وقتاً أطول من المتوقع. حاول مرة أخرى.';
+
+  @override
+  String get errorServer => 'حدث خطأ في الخادم. يرجى المحاولة مرة أخرى لاحقاً.';
+
+  @override
+  String get errorNotFound => 'تعذر العثور على البيانات المطلوبة.';
+
+  @override
+  String get errorSessionExpired =>
+      'انتهت جلسة تسجيل الدخول. يرجى تسجيل الدخول مرة أخرى.';
+
+  @override
+  String get errorNoPermission => 'ليس لديك صلاحية لتنفيذ هذا الإجراء.';
+
+  @override
   String get noMoreResultsText => 'لا توجد نتائج إضافية';
 
   @override
@@ -706,6 +727,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get errorReturnItemsEmpty => 'يرجى اختيار صنف واحد على الأقل للإرجاع.';
 
   @override
+  String get errorReturnPhotoRequired =>
+      'يرجى إرفاق صورة واحدة على الأقل للمنتج.';
+
+  @override
   String get errorDuplicateReturnItem =>
       'كل صنف ممكن يظهر مرة وحدة بس بطلب الإرجاع.';
 
@@ -713,7 +738,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get errorRejectionNoteRequired => 'يرجى توضيح سبب رفض هذا المرتجع.';
 
   @override
-  String get returnPhotosLabel => 'صور (اختياري)';
+  String get returnPhotosLabel => 'صور (مطلوب)';
 
   @override
   String get returnPhotosHint => 'أضف صور للمنتج تساعد المستودع يتحقق من السبب';
@@ -859,4 +884,12 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get returnWindowExpired =>
       'يجب تقديم طلب الإرجاع خلال 48 ساعة من التسليم.';
+
+  @override
+  String get privacyPolicy => 'سياسة الخصوصية';
+
+  @override
+  String privacyPolicyLastUpdated(String date) {
+    return 'آخر تحديث: $date';
+  }
 }

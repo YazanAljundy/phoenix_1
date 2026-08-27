@@ -80,6 +80,12 @@
   "invalidOtpCode": "Please enter the 6-digit code.",
   "close": "Close",
   "errorState": "Something went wrong.",
+  "errorNetwork": "Unable to connect to the internet. Check your connection and try again.",
+  "errorTimeout": "The request took longer than expected. Please try again.",
+  "errorServer": "A server error occurred. Please try again later.",
+  "errorNotFound": "The requested data could not be found.",
+  "errorSessionExpired": "Your session has expired. Please sign in again.",
+  "errorNoPermission": "You don't have permission to perform this action.",
   "noMoreResultsText": "No more results",
   "retryButton": "Retry",
   "warehouseSelectionTitle": "Choose a warehouse",
@@ -337,9 +343,10 @@
   "errorReturnAlreadyExists": "A return request has already been submitted for this order.",
   "errorReturnNotEditable": "This return request has already been decided and can no longer be changed.",
   "errorReturnItemsEmpty": "Please select at least one item to return.",
+  "errorReturnPhotoRequired": "Please attach at least one photo of the item.",
   "errorDuplicateReturnItem": "Each item can only appear once in a return request.",
   "errorRejectionNoteRequired": "Please explain why this return is being rejected.",
-  "returnPhotosLabel": "Photos (optional)",
+  "returnPhotosLabel": "Photos (required)",
   "returnPhotosHint": "Add photos of the item to help the warehouse verify the reason",
   "addPhotoButton": "Add photo",
   "navWarehouses": "Warehouses",
@@ -439,6 +446,15 @@
   "returnableRequestButton": "Request a return",
   "returnableMoreItems": "+{count} more",
   "returnWindowExpired": "A return must be requested within 48 hours of delivery.",
+  "privacyPolicy": "Privacy Policy",
+  "privacyPolicyLastUpdated": "Last updated: {date}",
+  "@privacyPolicyLastUpdated": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "@returnableOrderNumber": {
     "placeholders": {
       "number": {

@@ -5,6 +5,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:phoenix/core/constants/app_colors.dart';
 import 'package:phoenix/core/constants/app_radius.dart';
 import 'package:phoenix/core/constants/app_sizes.dart';
+import 'package:phoenix/core/widgets/app_network_image.dart';
 import 'package:phoenix/features/banners/data/models/banner_model.dart';
 import 'package:phoenix/features/banners/presentation/managers/banners_cubit.dart';
 import 'package:phoenix/features/banners/presentation/managers/banners_state.dart';
@@ -121,17 +122,10 @@ class _BannerCarouselState extends State<_BannerCarousel> {
                         final banner = widget.banners[index];
                         return GestureDetector(
                           onTap: banner.isTappable ? () => widget.onTap?.call(banner) : null,
-                          child: Image.network(
-                            banner.imageUrl,
+                          child: AppNetworkImage(
+                            url: banner.imageUrl,
                             fit: BoxFit.cover,
                             width: double.infinity,
-                            errorBuilder: (context, error, stackTrace) => Container(
-                              color: AppColors.surfaceOf(context),
-                              child: Icon(
-                                Icons.image_not_supported_outlined,
-                                color: AppColors.textSecondaryOf(context),
-                              ),
-                            ),
                           ),
                         );
                       },

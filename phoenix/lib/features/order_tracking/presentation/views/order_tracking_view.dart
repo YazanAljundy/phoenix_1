@@ -13,7 +13,7 @@ import 'package:phoenix/core/widgets/app_dialog.dart';
 import 'package:phoenix/core/widgets/app_loading.dart';
 import 'package:phoenix/core/widgets/app_text_field.dart';
 import 'package:phoenix/core/widgets/custom_card.dart';
-import 'package:phoenix/core/widgets/error_view.dart';
+import 'package:phoenix/core/widgets/failure_widget.dart';
 import 'package:phoenix/core/widgets/primary_button.dart';
 import 'package:phoenix/core/widgets/whatsapp_button.dart';
 import 'package:phoenix/features/cart/data/models/order_model.dart';
@@ -197,7 +197,7 @@ class _OrderTrackingViewState extends State<OrderTrackingView> {
       return const AppLoading();
     }
     if (state.status == OrderTrackingStatus.error && state.order == null) {
-      return ErrorView(
+      return FailureWidget(
         message: translateErrorCode(
           l10n,
           state.errorCode,

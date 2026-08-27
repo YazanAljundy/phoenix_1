@@ -1,9 +1,9 @@
-const fs = require('fs');
 const { asyncHandler } = require('../utils/asyncHandler');
 const { ApiError } = require('../utils/ApiError');
 const adminBannerService = require('../services/adminBanner.service');
 const adminBannerViewModel = require('../viewmodels/adminBanner.viewmodel');
 const { verifyImageMagicBytes } = require('../middlewares/upload.middleware');
+const { uploadImage, deleteImageByUrl } = require('../services/upload.service');
 const { parseCursorQuery, parseObjectIdCursor, paginationMeta } = require('../utils/pagination');
 
 // Two shapes on one endpoint: the Dashboard's pending-count calls this with
@@ -32,36 +32,37 @@ const list = asyncHandler(async (req, res) => {
 });
 
 const create = asyncHandler(async (req, res) => {
-  const cleanupUploadedFile = () => {
-    if (req.file) fs.unlink(req.file.path, () => {});
-  };
+  if (!req.file) {
+    throw ApiError.badRequest('A banner image is required.', undefined, 'BANNER_IMAGE_REQUIRED');
+  }
+  if (!verifyImageMagicBytes(req.file.buffer)) {
+    throw ApiError.badRequest('Banner image file content is not a valid image.');
+  }
 
+  // Uploaded to Cloudinary first; removed again if a later step (date
+  // validation, product lookup) rejects the request, so a user error never
+  // leaves an orphan behind.
+  const imageUrl = await uploadImage(req.file.buffer, 'banners');
+
+  let banner;
   try {
-    if (!req.file) {
-      throw ApiError.badRequest('A banner image is required.', undefined, 'BANNER_IMAGE_REQUIRED');
-    }
-    if (!verifyImageMagicBytes(req.file.path)) {
-      throw ApiError.badRequest('Banner image file content is not a valid image.');
-    }
-    const imageUrl = `${req.protocol}://${req.get('host')}/uploads/banners/${req.file.filename}`;
-
-    const banner = await adminBannerService.createAdminBanner(req.user._id, {
+    banner = await adminBannerService.createAdminBanner(req.user._id, {
       productId: req.body.productId,
       startDate: req.body.startDate,
       endDate: req.body.endDate,
       title: req.body.title,
       imageUrl,
     });
-
-    res.status(201).json({
-      success: true,
-      message: 'Banner published.',
-      ...adminBannerViewModel.toAdminBannerResponse(banner),
-    });
   } catch (err) {
-    cleanupUploadedFile();
+    await deleteImageByUrl(imageUrl);
     throw err;
   }
+
+  res.status(201).json({
+    success: true,
+    message: 'Banner published.',
+    ...adminBannerViewModel.toAdminBannerResponse(banner),
+  });
 });
 
 const approve = asyncHandler(async (req, res) => {

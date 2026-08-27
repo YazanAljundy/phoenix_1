@@ -21,7 +21,7 @@ class DebtDetailCubit extends Cubit<DebtDetailState> {
       final detail = await _debtRepository.getDebtDetail(_warehouseId);
       emit(state.copyWith(status: DebtDetailStatus.loaded, detail: detail));
     } on Failure catch (f) {
-      emit(state.copyWith(status: DebtDetailStatus.error, errorMessage: f.errMessage));
+      emit(state.copyWith(status: DebtDetailStatus.error, errorMessage: f.errMessage, errorCode: f.code));
     }
   }
 }

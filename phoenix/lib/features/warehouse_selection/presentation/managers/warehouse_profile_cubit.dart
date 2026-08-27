@@ -21,7 +21,11 @@ class WarehouseProfileCubit extends Cubit<WarehouseProfileState> {
       final profile = await _warehouseRepository.getWarehouseProfile(_warehouseId);
       emit(state.copyWith(status: WarehouseProfileStatus.loaded, profile: profile));
     } on Failure catch (f) {
-      emit(state.copyWith(status: WarehouseProfileStatus.error, errorMessage: f.errMessage));
+      emit(state.copyWith(
+        status: WarehouseProfileStatus.error,
+        errorMessage: f.errMessage,
+        errorCode: f.code,
+      ));
     }
   }
 }

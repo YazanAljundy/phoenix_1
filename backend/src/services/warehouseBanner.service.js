@@ -1,11 +1,10 @@
-const fs = require('fs');
-const path = require('path');
 const mongoose = require('mongoose');
 const { ApiError } = require('../utils/ApiError');
 const Banner = require('../models/banner.model');
 const Counter = require('../models/counter.model');
 const { findOwnedProductOrThrow } = require('./warehouseProduct.service');
 const { applyResolvedIdentity } = require('./productCatalog.service');
+const { deleteImageByUrl } = require('./upload.service');
 
 // Same atomic $inc pattern as Order's nextOrderNumber (order.service.js).
 async function nextBannerNumber() {
@@ -29,11 +28,12 @@ function validateTitle(value) {
   return value.trim();
 }
 
-function deleteImageFile(url) {
+// Fire-and-forget Cloudinary cleanup for a deleted banner's image -
+// deleteImageByUrl swallows its own errors, an orphaned asset never blocks
+// the delete.
+function deleteBannerImage(url) {
   if (!url) return;
-  const filename = url.split('/').pop();
-  if (!filename) return;
-  fs.unlink(path.join(__dirname, '../../uploads/banners', filename), () => {});
+  deleteImageByUrl(url);
 }
 
 // Section: a banner always starts 'pending' - only an admin can move it to
@@ -120,7 +120,7 @@ async function deleteBanner(bannerId, warehouseId) {
       'BANNER_NOT_DELETABLE'
     );
   }
-  deleteImageFile(banner.imageUrl);
+  deleteBannerImage(banner.imageUrl);
   await banner.deleteOne();
 }
 

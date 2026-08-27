@@ -8,7 +8,8 @@ import 'package:phoenix/core/constants/app_sizes.dart';
 import 'package:phoenix/core/error/error_translator.dart';
 import 'package:phoenix/core/extensions/build_context_extensions.dart';
 import 'package:phoenix/core/widgets/app_snackbar.dart';
-import 'package:phoenix/core/widgets/error_view.dart';
+import 'package:phoenix/core/widgets/failure_widget.dart';
+import 'package:phoenix/features/cart/presentation/widgets/cart_button.dart';
 import 'package:phoenix/features/my_orders/presentation/managers/my_orders_cubit.dart';
 import 'package:phoenix/features/my_orders/presentation/managers/my_orders_state.dart';
 import 'package:phoenix/features/my_orders/presentation/widgets/order_list_tile.dart';
@@ -72,7 +73,13 @@ class _MyOrdersViewState extends State<MyOrdersView> {
             );
           },
         ),
-        actions: const [Padding(padding: EdgeInsets.only(left: AppSizes.spacingSmall), child: _RefreshButton())],
+        // Same shared cart affordance as the shopping screens - the cart is
+        // app-wide (one CartCubit at the root), so it stays reachable from
+        // here too. CartButton reads that cubit; it never creates one.
+        actions: const [
+          Padding(padding: EdgeInsets.only(left: AppSizes.spacingSmall), child: _RefreshButton()),
+          CartButton(),
+        ],
       ),
       body: BlocConsumer<MyOrdersCubit, MyOrdersState>(
         listenWhen: (previous, current) =>
@@ -92,7 +99,7 @@ class _MyOrdersViewState extends State<MyOrdersView> {
             return const _OrdersSkeletonList();
           }
           if (state.status == MyOrdersStatus.error && state.orders.isEmpty) {
-            return ErrorView(
+            return FailureWidget(
               message: translateErrorCode(l10n, state.errorCode, state.errorMessage ?? l10n.errorState),
               onRetry: () => context.read<MyOrdersCubit>().load(),
             );

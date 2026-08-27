@@ -136,6 +136,17 @@ export function WarehouseProductsPage() {
                   : '',
             })}
           </p>
+          {importReport.convertedFromSyp > 0 && (
+            <p className="import-conversion-note">
+              {t('products.importConverted', { count: importReport.convertedFromSyp })}
+              {importReport.exchangeRateUsed != null && (
+                <>
+                  <br />
+                  {t('products.importConvertedRate', { rate: importReport.exchangeRateUsed })}
+                </>
+              )}
+            </p>
+          )}
           {importReport.errors.length > 0 && (
             <ul>
               {importReport.errors.map((e, index) => (

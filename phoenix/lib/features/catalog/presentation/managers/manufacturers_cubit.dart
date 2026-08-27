@@ -23,7 +23,7 @@ class ManufacturersCubit extends Cubit<ManufacturersState> {
         state.copyWith(status: ManufacturersStatus.loaded, manufacturers: manufacturers),
       );
     } on Failure catch (f) {
-      emit(state.copyWith(status: ManufacturersStatus.error, errorMessage: f.errMessage));
+      emit(state.copyWith(status: ManufacturersStatus.error, errorMessage: f.errMessage, errorCode: f.code));
     }
   }
 }

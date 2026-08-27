@@ -125,6 +125,14 @@ function ImportResultModal({ report, fileName, onClose }) {
             <div className="adm-import-stat-label">{t('admin.catalog.importResultFailed')}</div>
           </div>
         </div>
+        {report.convertedFromSyp > 0 && (
+          <div className="adm-import-conversion">
+            <div>{t('admin.catalog.importConverted', { count: report.convertedFromSyp })}</div>
+            {report.exchangeRateUsed != null && (
+              <div>{t('admin.catalog.importConvertedRate', { rate: report.exchangeRateUsed })}</div>
+            )}
+          </div>
+        )}
         {report.errors.length > 0 && (
           <div className="adm-import-errors">
             <div className="adm-import-errors-head">{t('admin.catalog.importErrorsTitle')}</div>

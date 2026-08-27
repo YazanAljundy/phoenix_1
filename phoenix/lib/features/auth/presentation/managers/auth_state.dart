@@ -9,6 +9,7 @@ class AuthState {
     this.sessionStatus = SessionStatus.unknown,
     this.isSubmitting = false,
     this.errorMessage,
+    this.errorCode,
     this.otpSent = false,
     this.user,
     this.pharmacy,
@@ -17,6 +18,10 @@ class AuthState {
   final SessionStatus sessionStatus;
   final bool isSubmitting;
   final String? errorMessage;
+  // Machine-readable error id (a FailureCode for transport errors) so the
+  // view can localize it via translateErrorCode. Null for the auth
+  // endpoints that only send an English message.
+  final String? errorCode;
   final bool otpSent;
   final UserModel? user;
   final PharmacyModel? pharmacy;
@@ -25,6 +30,7 @@ class AuthState {
     SessionStatus? sessionStatus,
     bool? isSubmitting,
     String? errorMessage,
+    String? errorCode,
     bool clearError = false,
     bool? otpSent,
     UserModel? user,
@@ -34,6 +40,7 @@ class AuthState {
       sessionStatus: sessionStatus ?? this.sessionStatus,
       isSubmitting: isSubmitting ?? this.isSubmitting,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
+      errorCode: clearError ? null : (errorCode ?? this.errorCode),
       otpSent: otpSent ?? this.otpSent,
       user: user ?? this.user,
       pharmacy: pharmacy ?? this.pharmacy,

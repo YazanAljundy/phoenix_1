@@ -1,3 +1,5 @@
+import 'dart:developer';
+
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -15,7 +17,13 @@ import 'package:phoenix/routes/route_names.dart';
 // only exists because onBackgroundMessage requires *some* handler to be
 // registered before it will deliver background messages at all.
 @pragma('vm:entry-point')
-Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {}
+Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  // TEMP DIAGNOSTIC LOG (see FCM_DEBUG task) - runs in its own isolate, so
+  // it can't use FcmService's _logger; dart:developer's log() is the one
+  // already imported in this file and works from a background isolate.
+  log('FCM_DEBUG: BACKGROUND MESSAGE RECEIVED');
+  log('FCM_DEBUG: messageId = ${message.messageId}');
+}
 
 const _androidChannel = AndroidNotificationChannel(
   'phoenix_default_channel',
@@ -34,7 +42,8 @@ const _androidChannel = AndroidNotificationChannel(
 // a nice-to-have layered on top of an already-successful login, never a
 // reason to block or break it.
 class FcmService {
-  FcmService({required AuthRepository authRepository}) : _authRepository = authRepository;
+  FcmService({required AuthRepository authRepository})
+    : _authRepository = authRepository;
 
   final AuthRepository _authRepository;
   // Accessed lazily (not as a field initializer) - FcmService itself is
@@ -43,28 +52,61 @@ class FcmService {
   // all); FirebaseMessaging.instance throws immediately if Firebase isn't
   // ready yet, so this must only be touched once initialize() actually runs.
   FirebaseMessaging get _messaging => FirebaseMessaging.instance;
-  final FlutterLocalNotificationsPlugin _localNotifications = FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin _localNotifications =
+      FlutterLocalNotificationsPlugin();
   final _logger = LoggerService();
   bool _handlersReady = false;
 
   Future<void> initialize() async {
     try {
-      await _messaging.requestPermission();
+      // TEMP DIAGNOSTIC LOGS (see FCM_DEBUG task).
+      _logger.info('FCM_DEBUG: requesting notification permission');
+      final settings = await _messaging.requestPermission();
+      _logger.info(
+        'FCM_DEBUG: notification permission status = ${settings.authorizationStatus}',
+      );
+
       await _setupHandlers();
 
+      _logger.info('FCM_DEBUG: calling getToken()');
       final token = await _messaging.getToken();
-      if (token != null) await _registerToken(token);
-      _messaging.onTokenRefresh.listen(_registerToken);
+      _logger.info('FCM_DEBUG: getToken() returned null = ${token == null}');
+      if (token != null) {
+        _logger.info('FCM_DEBUG: FCM token = ${_maskedToken(token)}');
+        await _registerToken(token);
+      }
+      _messaging.onTokenRefresh.listen((refreshedToken) {
+        _logger.info('FCM_DEBUG: FCM token refreshed');
+        _logger.info('FCM_DEBUG: registering refreshed token with backend');
+        _registerToken(refreshedToken);
+      });
     } catch (e) {
       _logger.error('FcmService.initialize failed', e);
     }
   }
 
+  // TEMP DIAGNOSTIC HELPER (see FCM_DEBUG task) - never logs the full token.
+  String _maskedToken(String token) {
+    if (token.length <= 16) return token;
+    return '${token.substring(0, 8)}...${token.substring(token.length - 8)}';
+  }
+
   Future<void> _registerToken(String token) async {
     try {
-      final deviceType = defaultTargetPlatform == TargetPlatform.iOS ? 'ios' : 'android';
-      await _authRepository.registerDeviceToken(fcmToken: token, deviceType: deviceType);
+      // TEMP DIAGNOSTIC LOG (see FCM_DEBUG task).
+      _logger.info('FCM_DEBUG: registering FCM token with backend');
+      final deviceType = defaultTargetPlatform == TargetPlatform.iOS
+          ? 'ios'
+          : 'android';
+      await _authRepository.registerDeviceToken(
+        fcmToken: token,
+        deviceType: deviceType,
+      );
+      // TEMP DIAGNOSTIC LOG (see FCM_DEBUG task).
+      _logger.info('FCM_DEBUG: backend token registration succeeded');
     } catch (e) {
+      // TEMP DIAGNOSTIC LOG (see FCM_DEBUG task).
+      _logger.info('FCM_DEBUG: backend token registration failed: $e');
       _logger.error('Failed to register device token', e);
     }
   }
@@ -82,56 +124,103 @@ class FcmService {
         iOS: DarwinInitializationSettings(),
       ),
       onDidReceiveNotificationResponse: (response) {
+        // TEMP DIAGNOSTIC LOGS (see FCM_DEBUG task).
+        _logger.info('FCM_DEBUG: notification tap received (onDidReceiveNotificationResponse)');
         final orderId = response.payload;
-        if (orderId != null && orderId.isNotEmpty) _openOrderTracking(orderId);
+        _logger.info('FCM_DEBUG: relatedOrderId (from payload) = $orderId');
+        if (orderId != null && orderId.isNotEmpty) {
+          _logger.info('FCM_DEBUG: calling _openOrderTracking() from onDidReceiveNotificationResponse');
+          _openOrderTracking(orderId);
+        }
       },
     );
+    // TEMP DIAGNOSTIC LOG (see FCM_DEBUG task).
+    _logger.info('FCM_DEBUG: creating Android notification channel');
     await _localNotifications
-        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >()
         ?.createNotificationChannel(_androidChannel);
+    // TEMP DIAGNOSTIC LOG (see FCM_DEBUG task).
+    _logger.info('FCM_DEBUG: notification channel created');
 
     // Foreground: FCM never shows a system banner on its own while the app
     // is open - this mirrors it via a local notification so a foreground
     // pharmacist still sees order/offer updates arrive.
     FirebaseMessaging.onMessage.listen((message) {
+      // TEMP DIAGNOSTIC LOGS (see FCM_DEBUG task).
+      _logger.info('FCM_DEBUG: onMessage RECEIVED');
+      _logger.info('FCM_DEBUG: messageId = ${message.messageId}');
       final notification = message.notification;
+      _logger.info('FCM_DEBUG: notification title = ${notification?.title}');
+      _logger.info('FCM_DEBUG: notification body = ${notification?.body}');
+      _logger.info('FCM_DEBUG: data keys = ${message.data.keys.toList()}');
+      _logger.info('FCM_DEBUG: relatedOrderId = ${message.data['relatedOrderId']}');
       if (notification == null) return;
-      _localNotifications.show(
-        notification.hashCode,
-        notification.title,
-        notification.body,
-        NotificationDetails(
-          android: AndroidNotificationDetails(
-            _androidChannel.id,
-            _androidChannel.name,
-            channelDescription: _androidChannel.description,
-            importance: Importance.high,
-            priority: Priority.high,
-          ),
-          iOS: const DarwinNotificationDetails(),
-        ),
-        payload: message.data['relatedOrderId'] as String?,
-      );
+      _logger.info('FCM_DEBUG: showing foreground local notification');
+      _localNotifications
+          .show(
+            notification.hashCode,
+            notification.title,
+            notification.body,
+            NotificationDetails(
+              android: AndroidNotificationDetails(
+                _androidChannel.id,
+                _androidChannel.name,
+                channelDescription: _androidChannel.description,
+                importance: Importance.high,
+                priority: Priority.high,
+              ),
+              iOS: const DarwinNotificationDetails(),
+            ),
+            payload: message.data['relatedOrderId'] as String?,
+          )
+          // TEMP DIAGNOSTIC LOGS (see FCM_DEBUG task) - observes the same
+          // Future .show() already returned (previously left unawaited/
+          // unobserved) without changing when or how it runs.
+          .then((_) => _logger.info('FCM_DEBUG: local notification show completed'))
+          .catchError((e) => _logger.info('FCM_DEBUG: local notification show FAILED: $e'));
     });
 
     // Background -> the user taps the OS-rendered notification, bringing
     // the already-running app to the foreground.
     FirebaseMessaging.onMessageOpenedApp.listen((message) {
+      // TEMP DIAGNOSTIC LOGS (see FCM_DEBUG task).
+      _logger.info('FCM_DEBUG: notification OPENED (onMessageOpenedApp)');
       final orderId = message.data['relatedOrderId'] as String?;
-      if (orderId != null && orderId.isNotEmpty) _openOrderTracking(orderId);
+      _logger.info('FCM_DEBUG: relatedOrderId = $orderId');
+      if (orderId != null && orderId.isNotEmpty) {
+        _logger.info('FCM_DEBUG: calling _openOrderTracking() from onMessageOpenedApp');
+        _openOrderTracking(orderId);
+      }
     });
 
     // Terminated -> tapping a notification is what launches the app fresh,
     // rather than resuming it - onMessageOpenedApp never fires for this
     // case, only getInitialMessage does.
+    // TEMP DIAGNOSTIC LOG (see FCM_DEBUG task).
+    _logger.info('FCM_DEBUG: calling getInitialMessage()');
     final initialMessage = await _messaging.getInitialMessage();
+    _logger.info(
+      'FCM_DEBUG: getInitialMessage() returned null = ${initialMessage == null}',
+    );
     final initialOrderId = initialMessage?.data['relatedOrderId'] as String?;
-    if (initialOrderId != null && initialOrderId.isNotEmpty) _openOrderTracking(initialOrderId);
+    _logger.info('FCM_DEBUG: initial relatedOrderId = $initialOrderId');
+    if (initialOrderId != null && initialOrderId.isNotEmpty) {
+      _logger.info('FCM_DEBUG: calling _openOrderTracking() from getInitialMessage');
+      _openOrderTracking(initialOrderId);
+    }
   }
 
   void _openOrderTracking(String orderId) {
+    // TEMP DIAGNOSTIC LOGS (see FCM_DEBUG task).
+    _logger.info('FCM_DEBUG: _openOrderTracking() called with orderId = $orderId');
     final context = NavigationService.instance.navigatorKey.currentContext;
+    _logger.info('FCM_DEBUG: navigator context available = ${context != null}');
     if (context == null) return;
-    context.pushNamed(RouteNames.orderTracking, pathParameters: {'orderId': orderId});
+    context.pushNamed(
+      RouteNames.orderTracking,
+      pathParameters: {'orderId': orderId},
+    );
   }
 }
