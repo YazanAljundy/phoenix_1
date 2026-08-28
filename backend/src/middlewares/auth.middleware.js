@@ -4,12 +4,15 @@ const { ApiError } = require('../utils/ApiError');
 const { asyncHandler } = require('../utils/asyncHandler');
 const User = require('../models/user.model');
 
-// Verifies the JWT and attaches the current user to req.user.
-// Every non-public route must use this before any handler runs (Section 16b).
-const authenticate = asyncHandler(async (req, res, next) => {
-  const header = req.headers.authorization || '';
-  const token = header.startsWith('Bearer ') ? header.slice(7) : null;
-
+// Verifies a raw JWT and resolves the User it belongs to, applying the same
+// "still allowed in" rules every authenticated HTTP request goes through.
+// Throws ApiError on any failure; never returns a blocked/unknown user.
+//
+// Extracted from `authenticate` below (whose behavior is unchanged) so the
+// Socket.IO handshake authenticates against this exact same logic instead of
+// growing a second, independently-maintained auth path - see
+// realtime/index.js.
+async function authenticateToken(token) {
   if (!token) {
     throw ApiError.unauthorized('Authentication token is required.');
   }
@@ -29,7 +32,16 @@ const authenticate = asyncHandler(async (req, res, next) => {
     throw ApiError.forbidden('This account has been blocked.');
   }
 
-  req.user = user;
+  return user;
+}
+
+// Verifies the JWT and attaches the current user to req.user.
+// Every non-public route must use this before any handler runs (Section 16b).
+const authenticate = asyncHandler(async (req, res, next) => {
+  const header = req.headers.authorization || '';
+  const token = header.startsWith('Bearer ') ? header.slice(7) : null;
+
+  req.user = await authenticateToken(token);
   next();
 });
 
@@ -55,4 +67,4 @@ function requireActiveStatus(req, res, next) {
   next();
 }
 
-module.exports = { authenticate, authorize, requireActiveStatus };
+module.exports = { authenticate, authenticateToken, authorize, requireActiveStatus };

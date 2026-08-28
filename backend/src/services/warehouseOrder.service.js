@@ -14,6 +14,7 @@ const { stackedDiscountSyp } = require('./order.service');
 const { getRate } = require('./exchangeRate.service');
 const { applyResolvedIdentity } = require('./productCatalog.service');
 const { getDiscountMapForWarehouse, computeDiscountedPriceUsd } = require('./manufacturerDiscount.service');
+const { emitToWarehouse, EVENTS } = require('../realtime');
 
 // Section 7/13b: the warehouse only ever moves an order forward through this
 // fixed sequence, one stage at a time - no skipping, no picking an arbitrary
@@ -115,6 +116,16 @@ async function advanceOrderStatus(orderId, warehouseId, userId) {
   order.status = next;
   order.statusHistory.push({ status: next, changedBy: userId, changedAt: now });
   await order.save();
+
+  // Persisted - now tell this warehouse's other open dashboards/tabs. The tab
+  // that made the change updates from its own HTTP response as it always has;
+  // this is what keeps a second operator's screen from going stale.
+  emitToWarehouse(order.warehouseId, EVENTS.ORDER_STATUS_UPDATED, {
+    orderId: order._id.toString(),
+    orderNumber: order.orderNumber,
+    warehouseId: order.warehouseId.toString(),
+    status: next,
+  });
 
   // Section 16: a delivered order is what actually creates the debt - the
   // balance cache is rebuilt right away so it never has to wait on a

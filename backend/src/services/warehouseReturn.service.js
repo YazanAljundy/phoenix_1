@@ -5,6 +5,7 @@ const Order = require('../models/order.model');
 const Pharmacy = require('../models/pharmacy.model');
 const { createOrder } = require('./order.service');
 const { attachOrderContext } = require('./return.service');
+const { emitToWarehouse, EVENTS } = require('../realtime');
 
 const WAREHOUSE_RETURNS_DEFAULT_LIMIT = 15;
 
@@ -138,6 +139,16 @@ async function approveReturn(returnId, warehouseId, userId) {
   returnRequest.resolvedAt = new Date();
   await returnRequest.save();
 
+  // Note the replacement order created above already emitted its own
+  // order.created through createOrder - this is only the return's own status
+  // transition, so the returns queue and the orders queue each update.
+  emitToWarehouse(returnRequest.warehouseId, EVENTS.RETURN_STATUS_UPDATED, {
+    returnId: returnRequest._id.toString(),
+    orderId: returnRequest.orderId.toString(),
+    warehouseId: returnRequest.warehouseId.toString(),
+    status: 'approved',
+  });
+
   return { returnRequest, replacementOrder };
 }
 
@@ -158,6 +169,13 @@ async function rejectReturn(returnId, warehouseId, userId, rejectionNote) {
   returnRequest.resolvedBy = userId;
   returnRequest.resolvedAt = new Date();
   await returnRequest.save();
+
+  emitToWarehouse(returnRequest.warehouseId, EVENTS.RETURN_STATUS_UPDATED, {
+    returnId: returnRequest._id.toString(),
+    orderId: returnRequest.orderId.toString(),
+    warehouseId: returnRequest.warehouseId.toString(),
+    status: 'rejected',
+  });
 
   return returnRequest;
 }

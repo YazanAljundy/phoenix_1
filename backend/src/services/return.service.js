@@ -4,6 +4,7 @@ const Order = require('../models/order.model');
 const OrderItem = require('../models/orderItem.model');
 const Return = require('../models/return.model');
 const { deleteImageByUrl } = require('./upload.service');
+const { emitToWarehouse, EVENTS } = require('../realtime');
 
 const REASON_TYPES = ['damaged', 'wrong_item', 'other'];
 
@@ -186,6 +187,15 @@ async function createReturn({ pharmacyId, orderId, items, notes, images }) {
     items: normalizedItems,
     notes: trimmedNotes,
     images: Array.isArray(images) ? images : [],
+  });
+
+  // The return inherits the order's warehouse (set just above), so it routes
+  // to exactly the one warehouse that fulfilled the order.
+  emitToWarehouse(returnRequest.warehouseId, EVENTS.RETURN_CREATED, {
+    returnId: returnRequest._id.toString(),
+    orderId: order._id.toString(),
+    orderNumber: order.orderNumber,
+    warehouseId: returnRequest.warehouseId.toString(),
   });
 
   return { returnRequest, orderItemById };

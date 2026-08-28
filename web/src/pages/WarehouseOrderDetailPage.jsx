@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../api/client';
 import { withArFallback } from '../utils/displayName';
 import { useExchangeRate } from '../context/ExchangeRateContext';
+import { REALTIME_EVENTS, useRealtimeSync } from '../realtime/useRealtimeSync';
 import { formatPriceWithSyp } from '../utils/currency';
 
 function statusKeySuffix(status) {
@@ -423,6 +424,25 @@ export function WarehouseOrderDetailPage() {
     load();
     loadPendingReturn();
   }, [load, loadPendingReturn]);
+
+  // Realtime: only re-read when the event is about the order on screen -
+  // another order changing in the same warehouse is irrelevant here. A
+  // reconnect (payload null) always resyncs, since we can't know what was
+  // missed. Keeps a second operator's screen, or a pharmacy's cancellation,
+  // from leaving this page acting on stale state.
+  useRealtimeSync(
+    [
+      REALTIME_EVENTS.ORDER_CANCELLED,
+      REALTIME_EVENTS.ORDER_STATUS_UPDATED,
+      REALTIME_EVENTS.RETURN_CREATED,
+      REALTIME_EVENTS.RETURN_STATUS_UPDATED,
+    ],
+    (payload) => {
+      if (payload && payload.orderId !== orderId) return;
+      load();
+      loadPendingReturn();
+    }
+  );
 
   const handleAdvance = async () => {
     if (!window.confirm(t('orderDetail.confirmAdvance', { action: t(ADVANCE_KEYS[order.status]) }))) return;

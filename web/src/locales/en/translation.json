@@ -69,6 +69,8 @@
     "itemCountColumn": "Items",
     "actionColumn": "Action",
     "clickRowHint": "Click any row to view the order's details",
+    "newOrdersArrived_one": "{{count}} new order arrived — show it",
+    "newOrdersArrived_other": "{{count}} new orders arrived — show them",
     "statusPending": "Pending review",
     "statusConfirmed": "Confirmed",
     "statusPreparing": "Preparing",

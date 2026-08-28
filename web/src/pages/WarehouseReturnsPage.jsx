@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../api/client';
 import { LoadMoreControl } from '../components/LoadMoreControl';
 import { usePaginatedData } from '../hooks/usePaginatedData';
+import { REALTIME_EVENTS, useRealtimeSync } from '../realtime/useRealtimeSync';
 
 const PAGE_SIZE = 15;
 
@@ -47,6 +48,14 @@ export function WarehouseReturnsPage() {
     reset();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Realtime: same signal-then-refetch shape as the orders queue. A return
+  // filed by a pharmacy has a customer waiting on the decision, so the queue
+  // shouldn't sit stale until someone reloads the browser.
+  useRealtimeSync(
+    [REALTIME_EVENTS.RETURN_CREATED, REALTIME_EVENTS.RETURN_STATUS_UPDATED],
+    () => reset()
+  );
 
   const handleApprove = async (returnRequest) => {
     const confirmed = window.confirm(t('returns.confirmApprove', { number: returnRequest.orderNumber }));

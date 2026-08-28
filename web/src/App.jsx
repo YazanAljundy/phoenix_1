@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { AuthProvider, useAuth } from './auth/AuthContext';
 import { LoginPage } from './auth/LoginPage';
 import { ExchangeRateProvider } from './context/ExchangeRateContext';
+import { RealtimeProvider } from './realtime/RealtimeProvider';
 import { AdminPanel } from './pages/AdminPanel';
 import { WarehousePanel } from './pages/WarehousePanel';
 
@@ -27,10 +28,16 @@ function Gate() {
     return <LoginPage />;
   }
 
+  // Realtime is mounted for the warehouse panel only - warehouse rooms are
+  // the only subscriptions the server hands out today (see
+  // backend/src/realtime/index.js's resolveRoomsFor), so an admin session has
+  // nothing to connect for.
   if (user?.role === 'warehouse') {
     return (
       <ExchangeRateProvider>
-        <WarehousePanel />
+        <RealtimeProvider>
+          <WarehousePanel />
+        </RealtimeProvider>
       </ExchangeRateProvider>
     );
   }

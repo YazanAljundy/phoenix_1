@@ -17,6 +17,7 @@ const {
 const { getRate } = require('./exchangeRate.service');
 const { applyResolvedIdentity } = require('./productCatalog.service');
 const { getDiscountMapForWarehouse, computeDiscountedPriceUsd } = require('./manufacturerDiscount.service');
+const { emitToWarehouse, EVENTS } = require('../realtime');
 
 // Section 15: applies an Offer percentage then a manufacturer-discount
 // percentage, in SYP, rounding to the nearest lira after each stage (same
@@ -267,6 +268,17 @@ async function createOrder({ userId, pharmacyId, warehouseId, items, notes, isRe
     orderItemsData.map((item) => ({ ...item, orderId: order._id }))
   );
 
+  // Realtime signal to this order's own warehouse dashboard - emitted only
+  // now, once both the order and its items are durable, and never able to
+  // throw back into this function (emitToWarehouse swallows its own errors).
+  // Carries ids only: the dashboard re-reads the order through the same
+  // /warehouse/orders endpoint it already uses.
+  emitToWarehouse(order.warehouseId, EVENTS.ORDER_CREATED, {
+    orderId: order._id.toString(),
+    orderNumber: order.orderNumber,
+    warehouseId: order.warehouseId.toString(),
+  });
+
   return order;
 }
 
@@ -413,6 +425,15 @@ async function cancelOrder(orderId, pharmacyId, userId) {
   order.cancelledBy = userId;
   order.statusHistory.push({ status: 'cancelled', changedBy: userId, changedAt: now });
   await order.save();
+
+  // Only after the cancellation is persisted. This is the one order event the
+  // warehouse has no other way of learning about promptly - it's the pharmacy
+  // that cancels, and there's no FCM to warehouses today.
+  emitToWarehouse(order.warehouseId, EVENTS.ORDER_CANCELLED, {
+    orderId: order._id.toString(),
+    orderNumber: order.orderNumber,
+    warehouseId: order.warehouseId.toString(),
+  });
 
   return { order, warehouse, items };
 }

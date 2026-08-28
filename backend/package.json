@@ -8,6 +8,7 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
+    "test": "node --test \"test/**/*.test.js\"",
     "create-admin": "node scripts/create-admin.js",
     "create-warehouse": "node scripts/create-warehouse.js",
     "seed-catalog": "node scripts/seed-catalog.js",
@@ -29,10 +30,12 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.9.5",
     "morgan": "^1.10.0",
-    "multer": "^2.2.0"
+    "multer": "^2.2.0",
+    "socket.io": "^4.8.3"
   },
   "devDependencies": {
-    "nodemon": "^3.1.9"
+    "nodemon": "^3.1.9",
+    "socket.io-client": "^4.8.3"
   },
   "engines": {
     "node": ">=18"

@@ -5,6 +5,7 @@ import { api } from '../api/client';
 import { StarRating } from '../components/StarRating';
 import { LoadMoreControl } from '../components/LoadMoreControl';
 import { usePaginatedData } from '../hooks/usePaginatedData';
+import { REALTIME_EVENTS, useRealtimeSync } from '../realtime/useRealtimeSync';
 import { withArFallback } from '../utils/displayName';
 
 const PAGE_SIZE = 20;
@@ -82,6 +83,10 @@ export function WarehouseOrdersPage() {
   const [busyId, setBusyId] = useState(null);
   const [actionError, setActionError] = useState(null);
   const [rateModalOrder, setRateModalOrder] = useState(null);
+  // Orders that arrived over the socket since the operator last acknowledged
+  // them - the list itself is always refreshed, this is just the "look here"
+  // cue so an arrival isn't missed while working another tab.
+  const [newOrderCount, setNewOrderCount] = useState(0);
 
   const statusLabel = useCallback((status) => t(`orders.status${statusKeySuffix(status)}`), [t]);
 
@@ -111,6 +116,30 @@ export function WarehouseOrdersPage() {
     reset();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter]);
+
+  // Realtime: the socket only tells us *that* something changed - the list is
+  // then re-read through the same paginated endpoint used on mount, so what
+  // renders is always the server's own answer. Rapid bursts are already
+  // coalesced into one call by RealtimeClient, and a reconnect fires this too
+  // (events may have been missed while the socket was down).
+  //
+  // A new order that arrives while the operator is on another tab would
+  // otherwise vanish from view, so it's also surfaced as a dismissable pill.
+  useRealtimeSync(
+    [
+      REALTIME_EVENTS.ORDER_CREATED,
+      REALTIME_EVENTS.ORDER_CANCELLED,
+      REALTIME_EVENTS.ORDER_STATUS_UPDATED,
+    ],
+    (payload, event, coalescedCount) => {
+      if (event === REALTIME_EVENTS.ORDER_CREATED) {
+        // coalescedCount, not 1: several orders arriving inside one coalesce
+        // window are a single refetch but still several orders to announce.
+        setNewOrderCount((count) => count + (coalescedCount || 1));
+      }
+      reset();
+    }
+  );
 
   const handleAdvance = async (order) => {
     setBusyId(order.id);
@@ -156,6 +185,20 @@ export function WarehouseOrdersPage() {
           </button>
         ))}
       </div>
+
+      {newOrderCount > 0 && (
+        <button
+          type="button"
+          className="wh-realtime-pill"
+          onClick={() => {
+            setNewOrderCount(0);
+            setStatusFilter('pending');
+            reset();
+          }}
+        >
+          {t('orders.newOrdersArrived', { count: newOrderCount })}
+        </button>
+      )}
 
       {(error || actionError) && <p className="error-text">{error || actionError}</p>}
 

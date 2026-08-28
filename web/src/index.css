@@ -1311,6 +1311,31 @@ input {
   color: #fff;
 }
 
+/* "N new orders arrived" - the one realtime cue in the warehouse panel.
+   Deliberately an inline banner in the page flow rather than a floating
+   toast: warehouse staff work this screen continuously, and something that
+   covers rows or steals focus mid-action is worse than useless. Uses the
+   existing orange CTA colour, same pill geometry as .wh-pill above. */
+.wh-realtime-pill {
+  display: block;
+  width: 100%;
+  margin-bottom: 12px;
+  padding: 10px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--wh-orange);
+  background: rgba(245, 124, 0, 0.08);
+  color: var(--wh-orange);
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  cursor: pointer;
+}
+
+.wh-realtime-pill:hover {
+  background: rgba(245, 124, 0, 0.14);
+}
+
 .wh-card {
   background: #fff;
   border: 1px solid var(--wh-border);
