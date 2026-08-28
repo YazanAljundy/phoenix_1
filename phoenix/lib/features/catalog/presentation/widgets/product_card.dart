@@ -5,7 +5,9 @@ import 'package:phoenix/core/constants/app_radius.dart';
 import 'package:phoenix/core/constants/app_sizes.dart';
 import 'package:phoenix/core/extensions/build_context_extensions.dart';
 import 'package:phoenix/core/utils/currency_formatter.dart';
+import 'package:phoenix/core/widgets/app_network_image.dart';
 import 'package:phoenix/core/widgets/custom_card.dart';
+import 'package:phoenix/core/widgets/quantity_stepper.dart';
 import 'package:phoenix/core/widgets/secondary_price_hint.dart';
 import 'package:phoenix/core/widgets/status_badge.dart';
 import 'package:phoenix/features/catalog/data/models/product_model.dart';
@@ -15,13 +17,31 @@ import 'package:phoenix/features/exchange_rate/presentation/managers/exchange_ra
 // Two layouts sharing the same data/logic: a grid tile (image on top,
 // details below - the default) and a compact list row, toggled from
 // CatalogView. Both keep the exact same rules: unavailable products stay
-// visible but faded (never hidden), and tapping "add" always goes through
-// the quantity picker sheet.
+// visible but faded (never hidden). When the product isn't in the cart yet the
+// "add" action goes through the quantity picker sheet; once it's in the cart
+// the same slot shows a [QuantityStepper] wired straight to the cart
+// ([cartQuantity] + [onCartQuantityChanged] / [onCartRemove], supplied by
+// CatalogView).
 class ProductCard extends StatelessWidget {
-  const ProductCard({super.key, required this.product, required this.onAdd, this.isGrid = true});
+  const ProductCard({
+    super.key,
+    required this.product,
+    required this.onAdd,
+    this.cartQuantity = 0,
+    this.onCartQuantityChanged,
+    this.onCartRemove,
+    this.isGrid = true,
+  });
 
   final ProductModel product;
   final ValueChanged<int> onAdd;
+
+  // Quantity of this product currently in the cart (0 when it isn't). > 0
+  // swaps the "Add" button for a live stepper: [onCartQuantityChanged] carries
+  // a typed or stepped value, [onCartRemove] fires when it's taken below 1.
+  final int cartQuantity;
+  final ValueChanged<int>? onCartQuantityChanged;
+  final VoidCallback? onCartRemove;
   final bool isGrid;
 
   Future<void> _handleAddTap(BuildContext context) async {
@@ -35,19 +55,39 @@ class ProductCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Opacity(
       opacity: product.isAvailable ? 1.0 : 0.55,
-      child: isGrid ? _GridCard(product: product, onAddTap: () => _handleAddTap(context)) : _ListRow(
-        product: product,
-        onAddTap: () => _handleAddTap(context),
-      ),
+      child: isGrid
+          ? _GridCard(
+              product: product,
+              cartQuantity: cartQuantity,
+              onAddTap: () => _handleAddTap(context),
+              onCartQuantityChanged: onCartQuantityChanged,
+              onCartRemove: onCartRemove,
+            )
+          : _ListRow(
+              product: product,
+              cartQuantity: cartQuantity,
+              onAddTap: () => _handleAddTap(context),
+              onCartQuantityChanged: onCartQuantityChanged,
+              onCartRemove: onCartRemove,
+            ),
     );
   }
 }
 
 class _GridCard extends StatelessWidget {
-  const _GridCard({required this.product, required this.onAddTap});
+  const _GridCard({
+    required this.product,
+    required this.cartQuantity,
+    required this.onAddTap,
+    required this.onCartQuantityChanged,
+    required this.onCartRemove,
+  });
 
   final ProductModel product;
+  final int cartQuantity;
   final VoidCallback onAddTap;
+  final ValueChanged<int>? onCartQuantityChanged;
+  final VoidCallback? onCartRemove;
 
   @override
   Widget build(BuildContext context) {
@@ -102,7 +142,20 @@ class _GridCard extends StatelessWidget {
                 const SizedBox(height: AppSizes.spacingXSmall),
                 _PriceDisplay(product: product),
                 const SizedBox(height: AppSizes.spacingSmall),
-                _AddButton(available: product.isAvailable, onTap: onAddTap),
+                if (product.isAvailable && cartQuantity > 0)
+                  Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: QuantityStepper(
+                      quantity: cartQuantity,
+                      compact: true,
+                      decrementTooltip: l10n.decreaseQuantityLabel,
+                      incrementTooltip: l10n.increaseQuantityLabel,
+                      onChanged: onCartQuantityChanged ?? (_) {},
+                      onBelowMin: onCartRemove,
+                    ),
+                  )
+                else
+                  _AddButton(available: product.isAvailable, onTap: onAddTap),
               ],
             ),
           ),
@@ -113,10 +166,19 @@ class _GridCard extends StatelessWidget {
 }
 
 class _ListRow extends StatelessWidget {
-  const _ListRow({required this.product, required this.onAddTap});
+  const _ListRow({
+    required this.product,
+    required this.cartQuantity,
+    required this.onAddTap,
+    required this.onCartQuantityChanged,
+    required this.onCartRemove,
+  });
 
   final ProductModel product;
+  final int cartQuantity;
   final VoidCallback onAddTap;
+  final ValueChanged<int>? onCartQuantityChanged;
+  final VoidCallback? onCartRemove;
 
   @override
   Widget build(BuildContext context) {
@@ -159,6 +221,15 @@ class _ListRow extends StatelessWidget {
           const SizedBox(width: AppSizes.spacingSmall),
           if (!product.isAvailable)
             StatusBadge(label: l10n.unavailableLabel, tone: StatusBadgeTone.danger)
+          else if (cartQuantity > 0)
+            QuantityStepper(
+              quantity: cartQuantity,
+              compact: true,
+              decrementTooltip: l10n.decreaseQuantityLabel,
+              incrementTooltip: l10n.increaseQuantityLabel,
+              onChanged: onCartQuantityChanged ?? (_) {},
+              onBelowMin: onCartRemove,
+            )
           else
             _AddButton(available: true, onTap: onAddTap, compact: true),
         ],
@@ -281,20 +352,17 @@ class _ProductImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // TODO(seed-images): swap this placeholder for a real network image once
-    // an image API (Unsplash/Pexels/Pixabay) is chosen (Section 14). Until
-    // then `product.image` is always null, so this always renders the icon.
-    final placeholder = Container(
-      color: AppColors.surfaceOf(context),
-      child: Icon(Icons.medication_outlined, color: AppColors.textSecondaryOf(context)),
+    // TODO(seed-images): `product.image` is still always null (no image API
+    // chosen yet, Section 14) - so this renders the icon today. When real
+    // URLs land, AppNetworkImage already handles Cloudinary right-sizing +
+    // caching + graceful failure with no further change here.
+    final image = AppNetworkImage(
+      url: url,
+      fit: BoxFit.cover,
+      width: size,
+      height: size,
+      fallbackIcon: Icons.medication_outlined,
     );
-    final image = url == null || url!.isEmpty
-        ? placeholder
-        : Image.network(
-            url!,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) => placeholder,
-          );
 
     if (size != null) {
       return SizedBox(width: size, height: size, child: image);

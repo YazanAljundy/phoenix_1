@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:phoenix/core/error/failure.dart';
@@ -118,6 +121,22 @@ class RequestReturnCubit extends Cubit<RequestReturnState> {
     emit(state.copyWith(existingImageUrls: state.existingImageUrls.where((u) => u != url).toList()));
   }
 
+  // image_picker stores each processed (resized) pick as a file in the OS
+  // cache directory and does not clean it up itself. Once the upload is
+  // done these are dead weight - delete them best-effort. No-op on web
+  // (blob URLs, no dart:io filesystem); never throws.
+  Future<void> _discardPickedFiles(List<XFile> files) async {
+    if (kIsWeb) return;
+    for (final file in files) {
+      try {
+        final f = File(file.path);
+        if (await f.exists()) await f.delete();
+      } catch (_) {
+        // Leftover cache file is harmless; the OS reclaims this dir anyway.
+      }
+    }
+  }
+
   // Section 7: reasonType='other' is the only case that requires elaboration.
   // At least one photo (existing or newly picked) is required so the
   // warehouse has something to verify the claim against.
@@ -168,6 +187,10 @@ class RequestReturnCubit extends Cubit<RequestReturnState> {
             );
 
       emit(state.copyWith(status: RequestReturnStatus.submitted));
+      // Upload succeeded - image_picker's resized cache copies are done with.
+      // Best-effort cleanup so they don't linger; a leftover cache file is
+      // harmless, so failures here are ignored.
+      await _discardPickedFiles(state.newImages);
       return result;
     } on Failure catch (f) {
       emit(

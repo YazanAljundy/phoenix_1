@@ -752,6 +752,18 @@ abstract class AppLocalizations {
   /// **'Quantity'**
   String get quantityLabel;
 
+  /// No description provided for @decreaseQuantityLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Decrease quantity'**
+  String get decreaseQuantityLabel;
+
+  /// No description provided for @increaseQuantityLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Increase quantity'**
+  String get increaseQuantityLabel;
+
   /// No description provided for @notesLabel.
   ///
   /// In en, this message translates to:
@@ -835,6 +847,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Cart'**
   String get cartIconTooltip;
+
+  /// No description provided for @notificationsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Notifications'**
+  String get notificationsTitle;
+
+  /// No description provided for @noNotificationsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'No notifications yet'**
+  String get noNotificationsYet;
+
+  /// No description provided for @noNotificationsYetHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Order updates and offers will show up here.'**
+  String get noNotificationsYetHint;
+
+  /// No description provided for @markAllAsRead.
+  ///
+  /// In en, this message translates to:
+  /// **'Mark all as read'**
+  String get markAllAsRead;
 
   /// No description provided for @errorInvalidRequest.
   ///
@@ -1334,6 +1370,36 @@ abstract class AppLocalizations {
   /// **'Add photo'**
   String get addPhotoButton;
 
+  /// No description provided for @cameraOption.
+  ///
+  /// In en, this message translates to:
+  /// **'Take a photo'**
+  String get cameraOption;
+
+  /// No description provided for @galleryOption.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose from gallery'**
+  String get galleryOption;
+
+  /// No description provided for @permissionRequiredTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Permission needed'**
+  String get permissionRequiredTitle;
+
+  /// No description provided for @cameraPermissionDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'Camera access is needed to take a photo. You can enable it in Settings.'**
+  String get cameraPermissionDenied;
+
+  /// No description provided for @openSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Settings'**
+  String get openSettings;
+
   /// No description provided for @navWarehouses.
   ///
   /// In en, this message translates to:
@@ -1345,6 +1411,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Profile'**
   String get profileTitle;
+
+  /// No description provided for @personalInfoTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Personal information'**
+  String get personalInfoTitle;
+
+  /// No description provided for @cityLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'City'**
+  String get cityLabel;
 
   /// No description provided for @logoutConfirmTitle.
   ///

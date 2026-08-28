@@ -99,6 +99,7 @@ class _RegistrationViewState extends State<RegistrationView> {
         context.goNamed(RouteNames.warehouseSelection);
       case SessionStatus.unknown:
       case SessionStatus.unauthenticated:
+      case SessionStatus.offline:
         break;
     }
   }

@@ -396,6 +396,12 @@ class AppLocalizationsAr extends AppLocalizations {
   String get quantityLabel => 'الكمية';
 
   @override
+  String get decreaseQuantityLabel => 'إنقاص الكمية';
+
+  @override
+  String get increaseQuantityLabel => 'زيادة الكمية';
+
+  @override
   String get notesLabel => 'ملاحظات (اختياري)';
 
   @override
@@ -444,6 +450,18 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get cartIconTooltip => 'السلة';
+
+  @override
+  String get notificationsTitle => 'الإشعارات';
+
+  @override
+  String get noNotificationsYet => 'لا توجد إشعارات بعد';
+
+  @override
+  String get noNotificationsYetHint => 'ستظهر هنا تحديثات الطلبات والعروض.';
+
+  @override
+  String get markAllAsRead => 'تعليم الكل كمقروء';
 
   @override
   String get errorInvalidRequest =>
@@ -747,10 +765,32 @@ class AppLocalizationsAr extends AppLocalizations {
   String get addPhotoButton => 'إضافة صورة';
 
   @override
+  String get cameraOption => 'التقاط صورة';
+
+  @override
+  String get galleryOption => 'اختيار من المعرض';
+
+  @override
+  String get permissionRequiredTitle => 'الصلاحية مطلوبة';
+
+  @override
+  String get cameraPermissionDenied =>
+      'نحتاج صلاحية الكاميرا لالتقاط صورة. يمكنك تفعيلها من الإعدادات.';
+
+  @override
+  String get openSettings => 'فتح الإعدادات';
+
+  @override
   String get navWarehouses => 'المستودعات';
 
   @override
   String get profileTitle => 'البروفايل';
+
+  @override
+  String get personalInfoTitle => 'المعلومات الشخصية';
+
+  @override
+  String get cityLabel => 'المدينة';
 
   @override
   String get logoutConfirmTitle => 'تسجيل الخروج؟';

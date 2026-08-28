@@ -182,6 +182,7 @@ void main() {
       test('has correct values', () {
         expect(SessionStatus.unknown, isNotNull);
         expect(SessionStatus.unauthenticated, isNotNull);
+        expect(SessionStatus.offline, isNotNull);
         expect(SessionStatus.pendingApproval, isNotNull);
         expect(SessionStatus.blocked, isNotNull);
         expect(SessionStatus.active, isNotNull);

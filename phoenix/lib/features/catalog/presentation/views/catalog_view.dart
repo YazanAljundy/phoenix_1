@@ -110,9 +110,34 @@ class _CatalogViewState extends State<CatalogView> {
     AppSnackbar.show(context, l10n.addedToCartMessage(name));
   }
 
+  // Once a product is in the cart, its card shows a stepper wired straight to
+  // CartCubit instead of the "Add" button - so a typed or stepped value goes
+  // through updateQuantity and the number on the card is always
+  // CartItem.quantity, never a copy. Taking it below 1 removes the line.
+  // Scoped to this warehouse: a cart bound to a different warehouse leaves
+  // every card here on the "Add" button (which then runs the usual
+  // conflicting-warehouse confirmation).
+  void _setCartQuantity(ProductModel product, int quantity) {
+    context.read<CartCubit>().updateQuantity(product.id, quantity);
+  }
+
+  void _removeFromCart(ProductModel product) {
+    context.read<CartCubit>().removeItem(product.id);
+  }
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
+
+    final cartState = context.watch<CartCubit>().state;
+    final cartBoundToThisWarehouse = cartState.warehouseId == widget.warehouseId;
+    int cartQuantityFor(String productId) {
+      if (!cartBoundToThisWarehouse) return 0;
+      for (final item in cartState.items) {
+        if (item.productId == productId) return item.quantity;
+      }
+      return 0;
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -251,15 +276,21 @@ class _CatalogViewState extends State<CatalogView> {
                           // 250 wasn't enough: with an active offer, the price
                           // row (strikethrough + discounted + SYP hint) can
                           // wrap to two lines on a narrow card and overflow
-                          // the cell - this leaves headroom for that case.
-                          mainAxisExtent: 284,
+                          // the cell - this leaves headroom for that case, plus
+                          // the in-cart quantity stepper that can replace the
+                          // "Add" button.
+                          mainAxisExtent: 300,
                         ),
                         delegate: SliverChildBuilderDelegate(
                           (context, index) {
                             final product = state.products[index];
+                            final cartQuantity = cartQuantityFor(product.id);
                             return ProductCard(
                               product: product,
+                              cartQuantity: cartQuantity,
                               onAdd: (quantity) => _handleAdd(product, quantity),
+                              onCartQuantityChanged: (quantity) => _setCartQuantity(product, quantity),
+                              onCartRemove: () => _removeFromCart(product),
                             );
                           },
                           childCount: state.products.length,
@@ -270,12 +301,16 @@ class _CatalogViewState extends State<CatalogView> {
                           (context, index) {
                             final product = state.products[index];
                             final isLast = index == state.products.length - 1;
+                            final cartQuantity = cartQuantityFor(product.id);
                             return Padding(
                               padding: EdgeInsets.only(bottom: isLast ? 0 : AppSizes.spacingSmall),
                               child: ProductCard(
                                 product: product,
                                 isGrid: false,
+                                cartQuantity: cartQuantity,
                                 onAdd: (quantity) => _handleAdd(product, quantity),
+                                onCartQuantityChanged: (quantity) => _setCartQuantity(product, quantity),
+                                onCartRemove: () => _removeFromCart(product),
                               ),
                             );
                           },

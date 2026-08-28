@@ -3,11 +3,14 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:phoenix/core/constants/app_colors.dart';
 import 'package:phoenix/core/constants/app_radius.dart';
 import 'package:phoenix/core/constants/app_sizes.dart';
+import 'package:phoenix/core/constants/image_upload.dart';
 import 'package:phoenix/core/error/error_translator.dart';
 import 'package:phoenix/core/extensions/build_context_extensions.dart';
+import 'package:phoenix/core/widgets/app_dialog.dart';
 import 'package:phoenix/core/widgets/app_loading.dart';
 import 'package:phoenix/core/widgets/app_network_image.dart';
 import 'package:phoenix/core/widgets/app_snackbar.dart';
@@ -86,11 +89,97 @@ class _RequestReturnSheetBodyState extends State<_RequestReturnSheetBody> {
     super.dispose();
   }
 
+  // "Add photo" now offers a choice: shoot one now, or pick from the gallery.
+  // Both paths hand XFiles to the same cubit.addImages() -> readAsBytes() ->
+  // MultipartFile -> Cloudinary route (see ReturnRepositoryImpl); the camera
+  // adds no second compression step.
+  Future<void> _pickPhotoWithSourceChoice(RequestReturnCubit cubit) async {
+    final remaining =
+        kMaxReturnPhotos - cubit.state.existingImageUrls.length - cubit.state.newImages.length;
+    if (remaining <= 0) return;
+
+    final l10n = context.l10n;
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt_rounded),
+              title: Text(l10n.cameraOption),
+              onTap: () => Navigator.pop(sheetContext, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_rounded),
+              title: Text(l10n.galleryOption),
+              onTap: () => Navigator.pop(sheetContext, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (source == null || !mounted) return;
+
+    if (source == ImageSource.camera) {
+      await _capturePhotoFromCamera(cubit);
+    } else {
+      await _addPhotos(cubit);
+    }
+  }
+
+  Future<void> _capturePhotoFromCamera(RequestReturnCubit cubit) async {
+    // Gallery needs no runtime permission (Android system photo picker /
+    // iOS PHPicker); only the camera does.
+    final status = await Permission.camera.request();
+    if (!mounted) return;
+
+    if (!status.isGranted) {
+      final l10n = context.l10n;
+      final permanentlyBlocked = status.isPermanentlyDenied || status.isRestricted;
+      await AppDialog.show(
+        context: context,
+        title: l10n.permissionRequiredTitle,
+        content: l10n.cameraPermissionDenied,
+        actionLabel: permanentlyBlocked ? l10n.openSettings : null,
+        onAction: permanentlyBlocked ? () => openAppSettings() : null,
+      );
+      return;
+    }
+
+    // Same native resize + re-encode the gallery path uses (see the note on
+    // _addPhotos and kReturnPhotoMaxDimension / kReturnPhotoQuality).
+    final XFile? photo = await ImagePicker().pickImage(
+      source: ImageSource.camera,
+      maxWidth: kReturnPhotoMaxDimension,
+      maxHeight: kReturnPhotoMaxDimension,
+      imageQuality: kReturnPhotoQuality,
+    );
+    if (photo == null || !mounted) return;
+    cubit.addImages([photo]);
+  }
+
   Future<void> _addPhotos(RequestReturnCubit cubit) async {
     final remaining =
         kMaxReturnPhotos - cubit.state.existingImageUrls.length - cubit.state.newImages.length;
     if (remaining <= 0) return;
-    final picked = await ImagePicker().pickMultiImage(imageQuality: 85, limit: remaining);
+    // Image pipeline (Section: image-upload optimisation). image_picker does
+    // the whole processing step natively, in one pass, before the file ever
+    // leaves the picker:
+    //   - maxWidth/maxHeight: 1600 -> a 12MP camera shot (4032x3024) comes
+    //     back ~1600x1200. Aspect ratio kept; small images are never
+    //     upscaled.
+    //   - imageQuality: 80 -> re-encoded JPEG (return photos need no
+    //     transparency); good visual quality, ~10x smaller file.
+    // The XFile handed back points at this processed copy, so
+    // ReturnRepositoryImpl.readAsBytes()/upload sees the processed bytes,
+    // not the original. See kReturnPhotoMaxDimension / kReturnPhotoQuality.
+    final picked = await ImagePicker().pickMultiImage(
+      maxWidth: kReturnPhotoMaxDimension,
+      maxHeight: kReturnPhotoMaxDimension,
+      imageQuality: kReturnPhotoQuality,
+      limit: remaining,
+    );
     if (picked.isEmpty || !mounted) return;
     cubit.addImages(picked);
   }
@@ -180,7 +269,7 @@ class _RequestReturnSheetBodyState extends State<_RequestReturnSheetBody> {
                       ),
                     if (state.existingImageUrls.length + state.newImages.length < kMaxReturnPhotos)
                       InkWell(
-                        onTap: () => _addPhotos(cubit),
+                        onTap: () => _pickPhotoWithSourceChoice(cubit),
                         borderRadius: AppRadius.small,
                         child: Container(
                           width: 64,
@@ -317,23 +406,54 @@ class _ReturnItemTile extends StatelessWidget {
   }
 }
 
-class _NewPhotoThumbnail extends StatelessWidget {
+class _NewPhotoThumbnail extends StatefulWidget {
   const _NewPhotoThumbnail({required this.image, required this.onRemove});
 
   final XFile image;
   final VoidCallback onRemove;
 
   @override
+  State<_NewPhotoThumbnail> createState() => _NewPhotoThumbnailState();
+}
+
+class _NewPhotoThumbnailState extends State<_NewPhotoThumbnail> {
+  // Read once and held - the sheet is a BlocBuilder that rebuilds on every
+  // keystroke in the notes field / item toggle, and re-reading the file plus
+  // re-decoding a ~1600px JPEG on each of those (per photo) is pure waste.
+  late Future<Uint8List> _bytes = widget.image.readAsBytes();
+
+  @override
+  void didUpdateWidget(covariant _NewPhotoThumbnail oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // The list has no keys, so removing a photo shifts XFiles between element
+    // slots - re-read only when this slot's file actually changed.
+    if (oldWidget.image.path != widget.image.path) {
+      _bytes = widget.image.readAsBytes();
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return _PhotoThumbnailFrame(
-      onRemove: onRemove,
+      onRemove: widget.onRemove,
       child: FutureBuilder<Uint8List>(
-        future: image.readAsBytes(),
+        future: _bytes,
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
             return Container(width: 64, height: 64, color: AppColors.borderOf(context));
           }
-          return Image.memory(snapshot.data!, width: 64, height: 64, fit: BoxFit.cover);
+          // Decode to the thumbnail size, not the full ~1600px picked image -
+          // a 64pt box at up to 3x DPR. Only one dimension is pinned so the
+          // photo's aspect ratio is preserved (BoxFit.cover then crops the
+          // 64x64 box). Does not affect the bytes uploaded - return_repository
+          // reads the XFile separately.
+          return Image.memory(
+            snapshot.data!,
+            width: 64,
+            height: 64,
+            fit: BoxFit.cover,
+            cacheWidth: 192,
+          );
         },
       ),
     );

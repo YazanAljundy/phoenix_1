@@ -392,6 +392,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get quantityLabel => 'Quantity';
 
   @override
+  String get decreaseQuantityLabel => 'Decrease quantity';
+
+  @override
+  String get increaseQuantityLabel => 'Increase quantity';
+
+  @override
   String get notesLabel => 'Notes (optional)';
 
   @override
@@ -440,6 +446,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get cartIconTooltip => 'Cart';
+
+  @override
+  String get notificationsTitle => 'Notifications';
+
+  @override
+  String get noNotificationsYet => 'No notifications yet';
+
+  @override
+  String get noNotificationsYetHint =>
+      'Order updates and offers will show up here.';
+
+  @override
+  String get markAllAsRead => 'Mark all as read';
 
   @override
   String get errorInvalidRequest =>
@@ -746,10 +765,32 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addPhotoButton => 'Add photo';
 
   @override
+  String get cameraOption => 'Take a photo';
+
+  @override
+  String get galleryOption => 'Choose from gallery';
+
+  @override
+  String get permissionRequiredTitle => 'Permission needed';
+
+  @override
+  String get cameraPermissionDenied =>
+      'Camera access is needed to take a photo. You can enable it in Settings.';
+
+  @override
+  String get openSettings => 'Open Settings';
+
+  @override
   String get navWarehouses => 'Warehouses';
 
   @override
   String get profileTitle => 'Profile';
+
+  @override
+  String get personalInfoTitle => 'Personal information';
+
+  @override
+  String get cityLabel => 'City';
 
   @override
   String get logoutConfirmTitle => 'Log out?';

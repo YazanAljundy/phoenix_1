@@ -17,4 +17,5 @@ class RoutePaths {
   static const String profile = '/profile';
   static const String debtDetail = '/debts/:warehouseId';
   static const String privacyPolicy = '/privacy-policy';
+  static const String notifications = '/notifications';
 }

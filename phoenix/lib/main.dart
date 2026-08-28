@@ -26,6 +26,8 @@ import 'package:phoenix/features/debts/data/repositories/debt_repository_impl.da
 import 'package:phoenix/features/exchange_rate/data/repositories/exchange_rate_repository.dart';
 import 'package:phoenix/features/exchange_rate/data/repositories/exchange_rate_repository_impl.dart';
 import 'package:phoenix/features/exchange_rate/presentation/managers/exchange_rate_cubit.dart';
+import 'package:phoenix/features/notifications/data/repositories/notification_repository.dart';
+import 'package:phoenix/features/notifications/presentation/managers/notification_cubit.dart';
 import 'package:phoenix/features/returns/data/repositories/return_repository.dart';
 import 'package:phoenix/features/returns/data/repositories/return_repository_impl.dart';
 import 'package:phoenix/features/reviews/data/repositories/review_repository.dart';
@@ -55,7 +57,11 @@ Future<void> main() async {
   final secureStorage = SecureStorageService();
   final apiClient = ApiClient(secureStorage: secureStorage);
   final authRepository = AuthRepositoryImpl(apiClient: apiClient);
-  final fcmService = FcmService(authRepository: authRepository);
+  final notificationRepository = NotificationRepository(storageService);
+  final fcmService = FcmService(
+    authRepository: authRepository,
+    notificationRepository: notificationRepository,
+  );
   final warehouseRepository = WarehouseRepositoryImpl(apiClient: apiClient);
   final catalogRepository = CatalogRepositoryImpl(apiClient: apiClient);
   final exchangeRateRepository = ExchangeRateRepositoryImpl(
@@ -81,6 +87,7 @@ Future<void> main() async {
       reviewRepository: reviewRepository,
       debtRepository: debtRepository,
       bannersRepository: bannersRepository,
+      notificationRepository: notificationRepository,
       fcmService: fcmService,
       appRouter: appRouter,
     ),
@@ -131,6 +138,7 @@ class MyApp extends StatelessWidget {
     required this.reviewRepository,
     required this.debtRepository,
     required this.bannersRepository,
+    required this.notificationRepository,
     required this.fcmService,
     required this.appRouter,
     super.key,
@@ -148,6 +156,7 @@ class MyApp extends StatelessWidget {
   final ReviewRepositoryImpl reviewRepository;
   final DebtRepositoryImpl debtRepository;
   final BannersRepositoryImpl bannersRepository;
+  final NotificationRepository notificationRepository;
   final FcmService fcmService;
   final AppRouter appRouter;
   @override
@@ -202,39 +211,97 @@ class MyApp extends StatelessWidget {
             create: (context) =>
                 BannersCubit(bannersRepository: bannersRepository),
           ),
+          BlocProvider(
+            create: (context) =>
+                NotificationCubit(repository: notificationRepository),
+          ),
         ],
-        child: Builder(
-          builder: (context) => BlocBuilder<SettingsCubit, SettingsState>(
-            builder: (context, state) {
-              // TEMP DIAGNOSTIC (router-lifecycle) - remove after verifying.
-              debugPrint(
-                'ROUTER_DEBUG: MyApp build/rebuild - '
-                'locale=${state.locale?.languageCode ?? 'null'} '
-                'themeMode=${state.themeMode.name} '
-                'router=#${identityHashCode(appRouter.router)}',
-              );
-              return MaterialApp.router(
-                themeMode: state.themeMode,
-                darkTheme: DarkTheme.data,
-                // Stable instance created once in main() - NOT `AppRouter().router`,
-                // which builds a brand-new GoRouter (resetting navigation to the
-                // splash route) on every SettingsCubit rebuild.
-                routerConfig: appRouter.router,
-                debugShowCheckedModeBanner: false,
-                theme: LightTheme.data,
-                locale: state.locale,
-                localizationsDelegates: const [
-                  AppLocalizations.delegate,
-                  GlobalMaterialLocalizations.delegate,
-                  GlobalWidgetsLocalizations.delegate,
-                  GlobalCupertinoLocalizations.delegate,
-                ],
-                supportedLocales: AppLocalizations.supportedLocales,
-              );
-            },
+        // Audit P5: revalidate the session when the app is brought back to
+        // the foreground after being backgrounded. Placed inside the provider
+        // scope so it can reach AuthCubit; throttling + "only when it matters"
+        // logic lives in AuthCubit.revalidateOnResume.
+        child: _SessionLifecycleObserver(
+          child: Builder(
+            builder: (context) => BlocBuilder<SettingsCubit, SettingsState>(
+              builder: (context, state) {
+                // TEMP DIAGNOSTIC (router-lifecycle) - remove after verifying.
+                debugPrint(
+                  'ROUTER_DEBUG: MyApp build/rebuild - '
+                  'locale=${state.locale?.languageCode ?? 'null'} '
+                  'themeMode=${state.themeMode.name} '
+                  'router=#${identityHashCode(appRouter.router)}',
+                );
+                return MaterialApp.router(
+                  themeMode: state.themeMode,
+                  darkTheme: DarkTheme.data,
+                  // Stable instance created once in main() - NOT `AppRouter().router`,
+                  // which builds a brand-new GoRouter (resetting navigation to the
+                  // splash route) on every SettingsCubit rebuild.
+                  routerConfig: appRouter.router,
+                  debugShowCheckedModeBanner: false,
+                  theme: LightTheme.data,
+                  locale: state.locale,
+                  localizationsDelegates: const [
+                    AppLocalizations.delegate,
+                    GlobalMaterialLocalizations.delegate,
+                    GlobalWidgetsLocalizations.delegate,
+                    GlobalCupertinoLocalizations.delegate,
+                  ],
+                  supportedLocales: AppLocalizations.supportedLocales,
+                );
+              },
+            ),
           ),
         ),
       ),
     );
   }
+}
+
+// Watches the OS app-lifecycle and asks AuthCubit to re-check the session
+// when the app returns from the background (audit P5). Only a full
+// paused -> resumed transition counts, so a brief permission dialog / camera
+// / app-switcher glance does not trigger a network call; AuthCubit adds a
+// time-based throttle and never signs the user out on a resume network
+// failure.
+class _SessionLifecycleObserver extends StatefulWidget {
+  const _SessionLifecycleObserver({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_SessionLifecycleObserver> createState() =>
+      _SessionLifecycleObserverState();
+}
+
+class _SessionLifecycleObserverState extends State<_SessionLifecycleObserver>
+    with WidgetsBindingObserver {
+  AppLifecycleState? _previous;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed &&
+        _previous == AppLifecycleState.paused) {
+      context.read<AuthCubit>().revalidateOnResume();
+      // Pick up any notification the FCM background isolate saved while the
+      // app was away, so the badge is right the moment the user is back.
+      context.read<NotificationCubit>().refresh();
+    }
+    _previous = state;
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }

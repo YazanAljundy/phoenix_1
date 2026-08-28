@@ -23,6 +23,7 @@ import 'package:phoenix/features/debts/presentation/managers/debts_cubit.dart';
 import 'package:phoenix/features/debts/presentation/views/debt_detail_view.dart';
 import 'package:phoenix/features/my_orders/presentation/managers/my_orders_cubit.dart';
 import 'package:phoenix/features/my_orders/presentation/views/my_orders_view.dart';
+import 'package:phoenix/features/notifications/presentation/views/notification_center_view.dart';
 import 'package:phoenix/features/order_tracking/presentation/managers/order_tracking_cubit.dart';
 import 'package:phoenix/features/order_tracking/presentation/views/order_tracking_view.dart';
 import 'package:phoenix/features/profile/presentation/views/profile_view.dart';
@@ -90,15 +91,19 @@ class AppRouter {
       GoRoute(
         name: RouteNames.approvalPending,
         path: RoutePaths.approvalPending,
-        pageBuilder: (context, state) =>
-            buildPageTransition(state: state, child: const ApprovalPendingView()),
+        pageBuilder: (context, state) => buildPageTransition(
+          state: state,
+          child: const ApprovalPendingView(),
+        ),
       ),
       GoRoute(
         name: RouteNames.warehouseProfile,
         path: RoutePaths.warehouseProfile,
         pageBuilder: (context, state) {
           final warehouseId = state.pathParameters['warehouseId']!;
-          final warehouseName = state.extra is String ? state.extra as String : '';
+          final warehouseName = state.extra is String
+              ? state.extra as String
+              : '';
           return buildPageTransition(
             state: state,
             child: BlocProvider(
@@ -106,7 +111,10 @@ class AppRouter {
                 warehouseRepository: context.read<WarehouseRepository>(),
                 warehouseId: warehouseId,
               )..load(),
-              child: WarehouseProfileView(warehouseId: warehouseId, warehouseName: warehouseName),
+              child: WarehouseProfileView(
+                warehouseId: warehouseId,
+                warehouseName: warehouseName,
+              ),
             ),
           );
         },
@@ -140,7 +148,9 @@ class AppRouter {
         path: RoutePaths.catalog,
         pageBuilder: (context, state) {
           final warehouseId = state.pathParameters['warehouseId']!;
-          final args = state.extra is CatalogRouteArgs ? state.extra as CatalogRouteArgs : null;
+          final args = state.extra is CatalogRouteArgs
+              ? state.extra as CatalogRouteArgs
+              : null;
           return buildPageTransition(
             state: state,
             child: BlocProvider(
@@ -161,14 +171,25 @@ class AppRouter {
       GoRoute(
         name: RouteNames.cart,
         path: RoutePaths.cart,
-        pageBuilder: (context, state) => buildPageTransition(state: state, child: const CartView()),
+        pageBuilder: (context, state) =>
+            buildPageTransition(state: state, child: const CartView()),
+      ),
+      GoRoute(
+        name: RouteNames.notifications,
+        path: RoutePaths.notifications,
+        pageBuilder: (context, state) => buildPageTransition(
+          state: state,
+          child: const NotificationCenterView(),
+        ),
       ),
       GoRoute(
         name: RouteNames.debtDetail,
         path: RoutePaths.debtDetail,
         pageBuilder: (context, state) {
           final warehouseId = state.pathParameters['warehouseId']!;
-          final warehouseName = state.extra is String ? state.extra as String : '';
+          final warehouseName = state.extra is String
+              ? state.extra as String
+              : '';
           return buildPageTransition(
             state: state,
             child: BlocProvider(
@@ -224,8 +245,9 @@ class AppRouter {
                 path: RoutePaths.myOrders,
                 builder: (context, state) {
                   return BlocProvider(
-                    create: (context) =>
-                        MyOrdersCubit(orderRepository: context.read<OrderRepository>())..load(),
+                    create: (context) => MyOrdersCubit(
+                      orderRepository: context.read<OrderRepository>(),
+                    )..load(),
                     child: const MyOrdersView(),
                   );
                 },
@@ -239,9 +261,9 @@ class AppRouter {
                 path: RoutePaths.myReturns,
                 builder: (context, state) {
                   return BlocProvider(
-                    create: (context) =>
-                        MyReturnsCubit(returnRepository: context.read<ReturnRepository>())
-                          ..load(),
+                    create: (context) => MyReturnsCubit(
+                      returnRepository: context.read<ReturnRepository>(),
+                    )..load(),
                     child: const MyReturnsView(),
                   );
                 },
@@ -257,13 +279,14 @@ class AppRouter {
                   return MultiBlocProvider(
                     providers: [
                       BlocProvider(
-                        create: (context) =>
-                            PharmacyReviewsCubit(reviewRepository: context.read<ReviewRepository>())
-                              ..load(),
+                        create: (context) => PharmacyReviewsCubit(
+                          reviewRepository: context.read<ReviewRepository>(),
+                        )..load(),
                       ),
                       BlocProvider(
-                        create: (context) =>
-                            DebtsCubit(debtRepository: context.read<DebtRepository>())..load(),
+                        create: (context) => DebtsCubit(
+                          debtRepository: context.read<DebtRepository>(),
+                        )..load(),
                       ),
                     ],
                     child: const ProfileView(),

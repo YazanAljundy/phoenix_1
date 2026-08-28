@@ -10,12 +10,14 @@ import 'package:phoenix/core/widgets/app_loading.dart';
 import 'package:phoenix/core/widgets/empty_view.dart';
 import 'package:phoenix/core/error/error_translator.dart';
 import 'package:phoenix/core/widgets/failure_widget.dart';
+import 'package:phoenix/features/auth/presentation/managers/auth_cubit.dart';
 import 'package:phoenix/features/banners/data/models/banner_model.dart';
 import 'package:phoenix/features/banners/presentation/managers/banners_cubit.dart';
 import 'package:phoenix/features/banners/presentation/widgets/banner_slider.dart';
 import 'package:phoenix/features/cart/presentation/widgets/cart_button.dart';
 import 'package:phoenix/features/catalog/data/models/manufacturers_route_args.dart';
 import 'package:phoenix/features/exchange_rate/presentation/managers/exchange_rate_cubit.dart';
+import 'package:phoenix/features/notifications/presentation/widgets/notification_button.dart';
 import 'package:phoenix/features/warehouse_selection/data/models/warehouse_model.dart';
 import 'package:phoenix/features/warehouse_selection/presentation/managers/warehouse_selection_cubit.dart';
 import 'package:phoenix/features/warehouse_selection/presentation/managers/warehouse_selection_state.dart';
@@ -37,6 +39,11 @@ class _WarehouseSelectionViewState extends State<WarehouseSelectionView> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      // The one guaranteed post-auth landing screen (splash / login / register
+      // / approval-pending all navigate here). Tells the auth layer the shell
+      // is up so a cold-start FCM notification deep link can be processed now
+      // rather than racing the splash navigation (audit P7).
+      context.read<AuthCubit>().notifyAppShellReady();
       context.read<WarehouseSelectionCubit>().loadWarehouses();
       // This screen is the one guaranteed landing point after every
       // successful auth path (splash/login/register/approval-pending all
@@ -165,7 +172,7 @@ class _WarehouseSelectionViewState extends State<WarehouseSelectionView> {
                       );
                     },
                   ),
-              actions: const [CartButton()],
+              actions: const [NotificationButton(), CartButton()],
               bottom: PreferredSize(
                 preferredSize: const Size.fromHeight(60),
                 child: Padding(

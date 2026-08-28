@@ -38,7 +38,16 @@ abstract class Failure {
 }
 
 class ServerFailure extends Failure {
-  ServerFailure(super.errMessage, {super.code, super.details});
+  ServerFailure(super.errMessage, {super.code, super.details, this.statusCode});
+
+  /// The HTTP status code, when this failure came from an actual HTTP
+  /// response (`fromResponse`). Null for transport-level errors that never
+  /// reached a response - timeout, no connection, cancel.
+  ///
+  /// Lets the session layer tell a real 401/403 token rejection apart from
+  /// "couldn't reach the server", so a network blip never deletes a valid
+  /// token. See AuthCubit.checkSession.
+  final int? statusCode;
 
   factory ServerFailure.fromDioError(DioException dioError) {
     switch (dioError.type) {
@@ -96,16 +105,24 @@ class ServerFailure extends Failure {
     // one (e.g. "Incorrect phone number or password."). Its own `code`, if
     // any, still lets the translator localize it.
     if (serverMessage is String && serverMessage.isNotEmpty) {
-      return ServerFailure(serverMessage, code: code, details: details);
+      return ServerFailure(serverMessage, code: code, details: details, statusCode: statusCode);
     }
 
     // No usable message: fall back to a status-derived code so the UI can
     // still say something friendly and localized for the common statuses.
     final fallbackCode = code ?? _httpFallbackCode(statusCode);
     if (statusCode == 500) {
-      return ServerFailure('Internal Server error, Please try later', code: fallbackCode);
+      return ServerFailure(
+        'Internal Server error, Please try later',
+        code: fallbackCode,
+        statusCode: statusCode,
+      );
     }
-    return ServerFailure('Oops! There was an Error, Please try again', code: fallbackCode);
+    return ServerFailure(
+      'Oops! There was an Error, Please try again',
+      code: fallbackCode,
+      statusCode: statusCode,
+    );
   }
 
   // Only the statuses translateErrorCode has canonical localized copy for -

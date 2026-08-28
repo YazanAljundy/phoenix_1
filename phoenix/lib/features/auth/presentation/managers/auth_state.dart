@@ -2,7 +2,12 @@ import 'package:phoenix/features/auth/data/models/pharmacy_model.dart';
 import 'package:phoenix/features/auth/data/models/user_model.dart';
 
 // Drives routing decisions (splash -> registration / approval-pending / home).
-enum SessionStatus { unknown, unauthenticated, pendingApproval, blocked, active }
+//
+// `offline` is distinct from `unauthenticated`: a stored token is still
+// present and untouched, but the server could not be reached to validate it
+// on startup. The splash screen shows a "no connection / retry" state for
+// this instead of logging the user out. See AuthCubit.checkSession.
+enum SessionStatus { unknown, unauthenticated, offline, pendingApproval, blocked, active }
 
 class AuthState {
   const AuthState({

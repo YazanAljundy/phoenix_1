@@ -17,6 +17,7 @@ import 'package:phoenix/features/cart/data/repositories/order_repository_impl.da
 import 'package:phoenix/features/catalog/data/repositories/catalog_repository_impl.dart';
 import 'package:phoenix/features/debts/data/repositories/debt_repository_impl.dart';
 import 'package:phoenix/features/exchange_rate/data/repositories/exchange_rate_repository_impl.dart';
+import 'package:phoenix/features/notifications/data/repositories/notification_repository.dart';
 import 'package:phoenix/features/returns/data/repositories/return_repository_impl.dart';
 import 'package:phoenix/features/reviews/data/repositories/review_repository_impl.dart';
 import 'package:phoenix/features/settings/presentation/managers/settings_cubit.dart';
@@ -40,7 +41,11 @@ Future<AppRouter> _pumpApp(WidgetTester tester) async {
   final reviewRepository = ReviewRepositoryImpl(apiClient: apiClient);
   final debtRepository = DebtRepositoryImpl(apiClient: apiClient);
   final bannersRepository = BannersRepositoryImpl(apiClient: apiClient);
-  final fcmService = FcmService(authRepository: authRepository);
+  final notificationRepository = NotificationRepository(storageService);
+  final fcmService = FcmService(
+    authRepository: authRepository,
+    notificationRepository: notificationRepository,
+  );
   final appRouter = AppRouter();
 
   await tester.pumpWidget(
@@ -57,6 +62,7 @@ Future<AppRouter> _pumpApp(WidgetTester tester) async {
       reviewRepository: reviewRepository,
       debtRepository: debtRepository,
       bannersRepository: bannersRepository,
+      notificationRepository: notificationRepository,
       fcmService: fcmService,
       appRouter: appRouter,
     ),

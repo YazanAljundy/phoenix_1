@@ -8,6 +8,7 @@ import 'package:phoenix/core/constants/app_sizes.dart';
 import 'package:phoenix/core/extensions/build_context_extensions.dart';
 import 'package:phoenix/core/utils/date_formatter.dart';
 import 'package:phoenix/core/widgets/app_loading.dart';
+import 'package:phoenix/core/widgets/app_network_image.dart';
 import 'package:phoenix/core/widgets/custom_card.dart';
 import 'package:phoenix/core/error/error_translator.dart';
 import 'package:phoenix/core/widgets/failure_widget.dart';
@@ -124,23 +125,18 @@ class _ProfileHeader extends StatelessWidget {
           borderRadius: AppRadius.large,
           child: AspectRatio(
             aspectRatio: 2.2,
-            child: Container(
-              color: AppColors.surfaceOf(context),
-              child: profile.logo == null || profile.logo!.isEmpty
-                  ? Icon(
-                      Icons.local_shipping_outlined,
-                      color: AppColors.navyOf(context),
-                      size: AppSizes.iconSizeLarge,
-                    )
-                  : Image.network(
-                      profile.logo!,
-                      fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) => Icon(
-                        Icons.local_shipping_outlined,
-                        color: AppColors.navyOf(context),
-                        size: AppSizes.iconSizeLarge,
-                      ),
-                    ),
+            child: AppNetworkImage(
+              url: profile.logo,
+              fit: BoxFit.cover,
+              fallback: Container(
+                color: AppColors.surfaceOf(context),
+                alignment: Alignment.center,
+                child: Icon(
+                  Icons.local_shipping_outlined,
+                  color: AppColors.navyOf(context),
+                  size: AppSizes.iconSizeLarge,
+                ),
+              ),
             ),
           ),
         ),

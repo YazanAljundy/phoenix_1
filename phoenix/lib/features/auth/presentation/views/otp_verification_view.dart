@@ -92,6 +92,7 @@ class _OtpVerificationViewState extends State<OtpVerificationView> {
         context.goNamed(RouteNames.warehouseSelection);
       case SessionStatus.unknown:
       case SessionStatus.unauthenticated:
+      case SessionStatus.offline:
         break;
     }
   }

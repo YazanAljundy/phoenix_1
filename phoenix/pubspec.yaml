@@ -45,6 +45,11 @@ dependencies:
   shared_preferences: ^2.5.5
   flutter_bloc: ^9.1.1
   image_picker: ^1.2.0
+  # 12.x resolves permission_handler_android 13.x (AGP 8 / Groovy build). 13.x
+  # pulls permission_handler_android 14, which requires AGP 9 + Kotlin 2.3 and
+  # does not build on this Flutter/AGP toolchain.
+  permission_handler: ^12.0.1
+  cached_network_image: ^3.4.1
   url_launcher: ^6.3.1
   google_fonts: ^6.2.1
   flutter_map: ^6.1.0
@@ -56,8 +61,8 @@ dependencies:
   firebase_messaging: ^16.0.4
   flutter_local_notifications: ^19.4.2
   flutter_lints: ^5.0.0
-  mocktail: 
-  bloc_test: 
+  mocktail:
+  bloc_test:
 
 dev_dependencies:
   flutter_test:

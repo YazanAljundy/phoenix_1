@@ -3,6 +3,7 @@ import 'package:phoenix/core/constants/app_colors.dart';
 import 'package:phoenix/core/constants/app_radius.dart';
 import 'package:phoenix/core/constants/app_sizes.dart';
 import 'package:phoenix/core/extensions/build_context_extensions.dart';
+import 'package:phoenix/core/widgets/app_network_image.dart';
 import 'package:phoenix/core/widgets/whatsapp_button.dart';
 import 'package:phoenix/features/warehouse_selection/data/models/warehouse_model.dart';
 
@@ -107,19 +108,18 @@ class _LogoBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     return AspectRatio(
       aspectRatio: 1.7,
-      child: Container(
-        color: AppColors.surfaceOf(context),
-        child: url == null || url!.isEmpty
-            ? Icon(Icons.local_shipping_outlined, color: AppColors.navyOf(context), size: AppSizes.iconSizeLarge)
-            : Image.network(
-                url!,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Icon(
-                  Icons.local_shipping_outlined,
-                  color: AppColors.navyOf(context),
-                  size: AppSizes.iconSizeLarge,
-                ),
-              ),
+      child: AppNetworkImage(
+        url: url,
+        fit: BoxFit.cover,
+        fallback: Container(
+          color: AppColors.surfaceOf(context),
+          alignment: Alignment.center,
+          child: Icon(
+            Icons.local_shipping_outlined,
+            color: AppColors.navyOf(context),
+            size: AppSizes.iconSizeLarge,
+          ),
+        ),
       ),
     );
   }

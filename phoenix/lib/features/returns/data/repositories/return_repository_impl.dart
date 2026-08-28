@@ -1,6 +1,9 @@
 import 'dart:convert';
+import 'dart:developer' as developer;
+import 'dart:ui' as ui;
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:phoenix/core/error/failure.dart';
 import 'package:phoenix/core/models/paginated_result.dart';
@@ -16,12 +19,43 @@ class ReturnRepositoryImpl implements ReturnRepository {
 
   final ApiClient _apiClient;
 
+  // The [XFile]s handed in here have already been through image_picker's
+  // resize + JPEG re-encode pass (see request_return_sheet.dart /
+  // core/constants/image_upload.dart) - `readAsBytes()` therefore returns
+  // the *processed* bytes, and those exact bytes are what get wrapped in the
+  // multipart body and sent on. The backend streams the same buffer to
+  // Cloudinary untouched (backend/src/services/upload.service.js), so the
+  // processed image is what Cloudinary stores.
   Future<List<MultipartFile>> _toMultipartFiles(List<XFile> images) {
     return Future.wait(
       images.map((image) async {
         final bytes = await image.readAsBytes();
+        await _logProcessedImage(image.name, bytes);
         return MultipartFile.fromBytes(bytes, filename: image.name);
       }),
+    );
+  }
+
+  // TEMPORARY DEBUG LOG (image-upload optimisation task). Confirms the file
+  // actually leaving the app for Cloudinary is the processed one - size and
+  // pixel dimensions after image_picker's pass. Debug builds only; never
+  // logs the image content, a URL, or anything sensitive. Safe to delete.
+  Future<void> _logProcessedImage(String name, Uint8List bytes) async {
+    if (!kDebugMode) return;
+    var dimensions = 'unknown';
+    try {
+      final codec = await ui.instantiateImageCodec(bytes);
+      final frame = await codec.getNextFrame();
+      dimensions = '${frame.image.width}x${frame.image.height}';
+      frame.image.dispose();
+      codec.dispose();
+    } catch (_) {
+      // dimensions stay 'unknown' - this is only a diagnostic.
+    }
+    final kb = (bytes.lengthInBytes / 1024).toStringAsFixed(1);
+    developer.log(
+      'uploading processed photo "$name": $kb KB, $dimensions px -> Cloudinary',
+      name: 'ImageUpload',
     );
   }
 

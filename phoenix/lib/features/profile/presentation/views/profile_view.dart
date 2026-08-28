@@ -29,6 +29,12 @@ import 'package:phoenix/routes/route_names.dart';
 // last screen for the pharmacist. Theme switching rides along too (it was
 // already working via SettingsCubit before this screen existed); it's just
 // not the focus, so it's a secondary control rather than a primary one.
+//
+// Visual-polish pass: the screen is now laid out as labelled sections
+// (identity header -> personal information -> rating -> debts -> settings ->
+// account actions) so it reads like a formal account screen rather than a
+// stack of loose widgets. Every cubit, handler, route and piece of state is
+// exactly as it was - this pass only touches layout, spacing and styling.
 class ProfileView extends StatelessWidget {
   const ProfileView({super.key});
 
@@ -66,298 +72,488 @@ class ProfileView extends StatelessWidget {
           final pharmacyName = pharmacy == null
               ? null
               : (isArabic ? pharmacy.nameAr : pharmacy.nameEn);
-          final subtitleParts = [
-            if (pharmacyName != null) pharmacyName,
-            if (pharmacy?.city != null) pharmacy!.city,
+          final city = pharmacy?.city;
+
+          // The same values the header used to show, now also presented as a
+          // labelled record. Nothing new is fetched - these all come straight
+          // from the already-loaded auth state.
+          final infoRows = <({String label, String value})>[
+            if ((user?.name ?? '').isNotEmpty)
+              (label: l10n.fullNameLabel, value: user!.name),
+            if (pharmacyName != null && pharmacyName.isNotEmpty)
+              (label: l10n.pharmacyNameLabel, value: pharmacyName),
+            if (city != null && city.isNotEmpty)
+              (label: l10n.cityLabel, value: city),
+            if ((user?.phone ?? '').isNotEmpty)
+              (label: l10n.phoneLabel, value: user!.phone),
           ];
 
-          return ListView(
-            padding: AppPadding.screen,
-            children: [
-              CustomCard(
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    CircleAvatar(
-                      radius: 31,
-                      backgroundColor: AppColors.primaryOf(context).withValues(alpha: 0.1),
-                      child: Icon(Icons.person, color: AppColors.primaryOf(context), size: 34),
-                    ),
-                    const SizedBox(width: AppSizes.spacingMedium),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            user?.name ?? '',
-                            style: context.textTheme.titleLarge,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          if (subtitleParts.isNotEmpty) ...[
-                            const SizedBox(height: 2),
-                            Text(
-                              subtitleParts.join(' · '),
-                              style: context.textTheme.bodySmall?.copyWith(
-                                color: AppColors.textSecondaryOf(context),
-                                fontWeight: FontWeight.w700,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
-                          const SizedBox(height: 2),
-                          Text(
-                            user?.phone ?? '',
-                            style: context.textTheme.bodySmall?.copyWith(
-                              color: AppColors.textSecondaryOf(context),
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
+          // Single column on phones, centred with a comfortable max width on
+          // tablet / desktop / web so lines never stretch too wide.
+          return Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 640),
+              child: ListView(
+                padding: AppPadding.screen,
+                children: [
+                  _IdentityHeader(
+                    name: user?.name ?? '',
+                    pharmacyName: pharmacyName,
+                    city: city,
+                  ),
+
+                  if (infoRows.isNotEmpty) ...[
+                    const SizedBox(height: AppSizes.spacingXLarge),
+                    _SectionHeader(l10n.personalInfoTitle),
+                    const SizedBox(height: AppSizes.spacingSmall),
+                    _PersonalInfoCard(rows: infoRows),
                   ],
-                ),
-              ),
 
-              const SizedBox(height: AppSizes.spacingXLarge),
-              Text(l10n.yourRatingTitle, style: context.textTheme.titleMedium),
-              const SizedBox(height: AppSizes.spacingSmall),
-              BlocBuilder<PharmacyReviewsCubit, PharmacyReviewsState>(
-                builder: (context, reviewsState) {
-                  if (reviewsState.status == PharmacyReviewsStatus.loading ||
-                      reviewsState.status == PharmacyReviewsStatus.initial) {
-                    return const SizedBox(
-                      height: 24,
-                      child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                    );
-                  }
-                  // A failed load must not masquerade as "no ratings yet".
-                  if (reviewsState.status == PharmacyReviewsStatus.error &&
-                      reviewsState.reviews.isEmpty) {
-                    return FailureWidget(
-                      dense: true,
-                      message: translateErrorCode(
-                        l10n,
-                        reviewsState.errorCode,
-                        reviewsState.errorMessage ?? l10n.errorState,
-                      ),
-                      onRetry: () => context.read<PharmacyReviewsCubit>().load(),
-                    );
-                  }
-                  if (reviewsState.reviews.isEmpty) {
-                    return Text(
-                      l10n.noRatingsYet,
-                      style: context.textTheme.bodyMedium?.copyWith(
-                        color: AppColors.textSecondaryOf(context),
-                      ),
-                    );
-                  }
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
+                  const SizedBox(height: AppSizes.spacingXLarge),
+                  _SectionHeader(l10n.yourRatingTitle),
+                  const SizedBox(height: AppSizes.spacingSmall),
+                  BlocBuilder<PharmacyReviewsCubit, PharmacyReviewsState>(
+                    builder: (context, reviewsState) {
+                      if (reviewsState.status == PharmacyReviewsStatus.loading ||
+                          reviewsState.status == PharmacyReviewsStatus.initial) {
+                        return const SizedBox(
+                          height: 24,
+                          child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                        );
+                      }
+                      // A failed load must not masquerade as "no ratings yet".
+                      if (reviewsState.status == PharmacyReviewsStatus.error &&
+                          reviewsState.reviews.isEmpty) {
+                        return FailureWidget(
+                          dense: true,
+                          message: translateErrorCode(
+                            l10n,
+                            reviewsState.errorCode,
+                            reviewsState.errorMessage ?? l10n.errorState,
+                          ),
+                          onRetry: () => context.read<PharmacyReviewsCubit>().load(),
+                        );
+                      }
+                      if (reviewsState.reviews.isEmpty) {
+                        return _EmptyHint(l10n.noRatingsYet);
+                      }
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          _StarRow(rating: reviewsState.averageRating.round()),
-                          const SizedBox(width: AppSizes.spacingSmall),
-                          Flexible(
-                            child: Text(
-                              l10n.ratingSummary(
-                                reviewsState.averageRating.toStringAsFixed(1),
-                                reviewsState.reviews.length.toString(),
-                              ),
-                              style: context.textTheme.bodyMedium?.copyWith(
-                                color: AppColors.textSecondaryOf(context),
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                          CustomCard(
+                            child: Row(
+                              children: [
+                                _StarRow(rating: reviewsState.averageRating.round()),
+                                const SizedBox(width: AppSizes.spacingSmall),
+                                Flexible(
+                                  child: Text(
+                                    l10n.ratingSummary(
+                                      reviewsState.averageRating.toStringAsFixed(1),
+                                      reviewsState.reviews.length.toString(),
+                                    ),
+                                    style: context.textTheme.bodyMedium?.copyWith(
+                                      color: AppColors.textSecondaryOf(context),
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
+                          for (final review in reviewsState.reviews.take(3)) ...[
+                            const SizedBox(height: AppSizes.spacingSmall),
+                            _ReviewCard(review: review, isArabic: isArabic),
+                          ],
                         ],
-                      ),
-                      const SizedBox(height: AppSizes.spacingSmall),
-                      for (final review in reviewsState.reviews.take(3)) ...[
-                        _ReviewCard(review: review, isArabic: isArabic),
-                        const SizedBox(height: AppSizes.spacingSmall),
-                      ],
-                    ],
-                  );
-                },
-              ),
+                      );
+                    },
+                  ),
 
-              const SizedBox(height: AppSizes.spacingXLarge),
-              Text(l10n.myDebtsTitle, style: context.textTheme.titleMedium),
-              const SizedBox(height: AppSizes.spacingSmall),
-              BlocBuilder<DebtsCubit, DebtsState>(
-                builder: (context, debtsState) {
-                  if (debtsState.status == DebtsStatus.loading ||
-                      debtsState.status == DebtsStatus.initial) {
-                    return const SizedBox(
-                      height: 24,
-                      child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                    );
-                  }
-                  // A failed load must not masquerade as "no debts yet".
-                  if (debtsState.status == DebtsStatus.error && debtsState.debts.isEmpty) {
-                    return FailureWidget(
-                      dense: true,
-                      message: translateErrorCode(
-                        l10n,
-                        debtsState.errorCode,
-                        debtsState.errorMessage ?? l10n.errorState,
-                      ),
-                      onRetry: () => context.read<DebtsCubit>().load(),
-                    );
-                  }
-                  if (debtsState.debts.isEmpty) {
-                    return Text(
-                      l10n.noDebtsYet,
-                      style: context.textTheme.bodyMedium?.copyWith(
-                        color: AppColors.textSecondaryOf(context),
-                      ),
-                    );
-                  }
-                  final usdToSyp = context.watch<ExchangeRateCubit>().state.usdToSyp;
-                  final total = debtsState.debts.fold<num>(0, (sum, d) => sum + d.balanceUsd);
-                  final totalSypText = formatSypApprox(total, usdToSyp, l10n.currencySuffix);
+                  const SizedBox(height: AppSizes.spacingXLarge),
+                  _SectionHeader(l10n.myDebtsTitle),
+                  const SizedBox(height: AppSizes.spacingSmall),
+                  BlocBuilder<DebtsCubit, DebtsState>(
+                    builder: (context, debtsState) {
+                      if (debtsState.status == DebtsStatus.loading ||
+                          debtsState.status == DebtsStatus.initial) {
+                        return const SizedBox(
+                          height: 24,
+                          child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                        );
+                      }
+                      // A failed load must not masquerade as "no debts yet".
+                      if (debtsState.status == DebtsStatus.error && debtsState.debts.isEmpty) {
+                        return FailureWidget(
+                          dense: true,
+                          message: translateErrorCode(
+                            l10n,
+                            debtsState.errorCode,
+                            debtsState.errorMessage ?? l10n.errorState,
+                          ),
+                          onRetry: () => context.read<DebtsCubit>().load(),
+                        );
+                      }
+                      if (debtsState.debts.isEmpty) {
+                        return _EmptyHint(l10n.noDebtsYet);
+                      }
+                      final usdToSyp = context.watch<ExchangeRateCubit>().state.usdToSyp;
+                      final total = debtsState.debts.fold<num>(0, (sum, d) => sum + d.balanceUsd);
+                      final totalSypText = formatSypApprox(total, usdToSyp, l10n.currencySuffix);
 
-                  return CustomCard(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppSizes.spacingMedium,
-                      vertical: AppSizes.spacingSmall,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        for (final debt in debtsState.debts)
-                          _DebtTile(debt: debt, isArabic: isArabic, usdToSyp: usdToSyp),
-                        const Divider(height: AppSizes.spacingLarge),
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: AppSizes.spacingSmall),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            crossAxisAlignment: CrossAxisAlignment.end,
-                            children: [
-                              Text(l10n.totalDebtsLabel, style: context.textTheme.titleSmall),
-                              Column(
+                      return CustomCard(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSizes.spacingMedium,
+                          vertical: AppSizes.spacingSmall,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            for (final debt in debtsState.debts)
+                              _DebtTile(debt: debt, isArabic: isArabic, usdToSyp: usdToSyp),
+                            Divider(height: AppSizes.spacingLarge, color: AppColors.borderOf(context)),
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: AppSizes.spacingSmall),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 crossAxisAlignment: CrossAxisAlignment.end,
                                 children: [
-                                  Text(
-                                    '\$$total',
-                                    style: context.textTheme.titleMedium?.copyWith(
-                                      color: AppColors.errorOf(context),
-                                    ),
-                                  ),
-                                  if (totalSypText != null)
-                                    Text(
-                                      totalSypText,
-                                      style: context.textTheme.bodySmall?.copyWith(
-                                        color: AppColors.textSecondaryOf(context),
+                                  Text(l10n.totalDebtsLabel, style: context.textTheme.titleSmall),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Text(
+                                        '\$$total',
+                                        style: context.textTheme.titleMedium?.copyWith(
+                                          color: AppColors.errorOf(context),
+                                        ),
                                       ),
-                                    ),
+                                      if (totalSypText != null)
+                                        Text(
+                                          totalSypText,
+                                          style: context.textTheme.bodySmall?.copyWith(
+                                            color: AppColors.textSecondaryOf(context),
+                                          ),
+                                        ),
+                                    ],
+                                  ),
                                 ],
                               ),
-                            ],
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+
+                  const SizedBox(height: AppSizes.spacingXLarge),
+                  _SectionHeader(l10n.settings),
+                  const SizedBox(height: AppSizes.spacingSmall),
+                  BlocBuilder<SettingsCubit, SettingsState>(
+                    builder: (context, settingsState) {
+                      final currentCode = settingsState.locale?.languageCode ?? 'ar';
+                      return _SettingsCard(
+                        icon: Icons.translate,
+                        label: l10n.language,
+                        segments: _SegmentedControl<String>(
+                          value: currentCode,
+                          options: const [('ar', 'العربية'), ('en', 'English')],
+                          onChanged: (code) {
+                              context.read<SettingsCubit>().changeLocale(Locale(code));
+                              },
+                        ),
+                      );
+                    },
+                  ),
+
+                  const SizedBox(height: AppSizes.spacingMedium),
+                  BlocBuilder<SettingsCubit, SettingsState>(
+                    builder: (context, settingsState) {
+                      final mode = settingsState.themeMode;
+                      final modeLabel = switch (mode) {
+                        ThemeMode.light => l10n.light,
+                        ThemeMode.dark => l10n.dark,
+                        ThemeMode.system => l10n.system,
+                      };
+                      return _SettingsCard(
+                        icon: Icons.dark_mode_outlined,
+                        label: l10n.theme,
+                        subtitle: modeLabel,
+                        segments: _SegmentedControl<ThemeMode>(
+                          value: mode,
+                          options: [
+                            (ThemeMode.light, l10n.light),
+                            (ThemeMode.dark, l10n.dark),
+                            (ThemeMode.system, l10n.system),
+                          ],
+                          onChanged: (m) => context.read<SettingsCubit>().changeTheme(m),
+                        ),
+                      );
+                    },
+                  ),
+
+                  const SizedBox(height: AppSizes.spacingMedium),
+                  CustomCard(
+                    onTap: () => context.pushNamed(RouteNames.privacyPolicy),
+                    child: Row(
+                      children: [
+                        Icon(Icons.privacy_tip_outlined, size: 22, color: AppColors.navyOf(context)),
+                        const SizedBox(width: AppSizes.spacingMedium),
+                        Expanded(
+                          child: Text(l10n.privacyPolicy, style: context.textTheme.titleSmall),
+                        ),
+                        Icon(
+                          Icons.chevron_right,
+                          size: AppSizes.iconSizeSmall,
+                          color: AppColors.textSecondaryOf(context),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: AppSizes.spacingXLarge),
+                  SizedBox(
+                    width: double.infinity,
+                    height: AppSizes.buttonHeight,
+                    child: OutlinedButton.icon(
+                      onPressed: () => _confirmLogout(context),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.errorOf(context),
+                        side: BorderSide(color: AppColors.errorOf(context), width: 1.5),
+                        shape: const RoundedRectangleBorder(borderRadius: AppRadius.medium),
+                        padding: AppPadding.button,
+                      ),
+                      icon: const Icon(Icons.logout),
+                      label: Text(l10n.logout),
+                    ),
+                  ),
+                  const SizedBox(height: AppSizes.spacingMedium),
+                  Text(
+                    l10n.appName,
+                    textAlign: TextAlign.center,
+                    style: context.textTheme.bodySmall?.copyWith(
+                      color: AppColors.textSecondaryOf(context),
+                    ),
+                  ),
+                  const SizedBox(height: AppSizes.spacingSmall),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+// A short, left-aligned section label with a small navy accent bar - the
+// shared heading for every block on the screen, so the page scans as a set
+// of clearly separated sections.
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 3,
+          height: 15,
+          decoration: BoxDecoration(
+            color: AppColors.navyOf(context),
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(width: AppSizes.spacingSmall),
+        Expanded(
+          child: Text(
+            text,
+            style: context.textTheme.titleMedium,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// The identity block: avatar, name, and - when present - the pharmacy as a
+// quiet navy chip and the city as a secondary line. Same three values the
+// old header row carried, just given room to breathe.
+class _IdentityHeader extends StatelessWidget {
+  const _IdentityHeader({
+    required this.name,
+    required this.pharmacyName,
+    required this.city,
+  });
+
+  final String name;
+  final String? pharmacyName;
+  final String? city;
+
+  @override
+  Widget build(BuildContext context) {
+    final primary = AppColors.primaryOf(context);
+    final navy = AppColors.navyOf(context);
+
+    return CustomCard(
+      padding: const EdgeInsets.all(AppSizes.spacingLarge),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: primary.withValues(alpha: 0.25), width: 2),
+            ),
+            child: CircleAvatar(
+              radius: 30,
+              backgroundColor: primary.withValues(alpha: 0.12),
+              child: Icon(Icons.person, color: primary, size: 32),
+            ),
+          ),
+          const SizedBox(width: AppSizes.spacingMedium),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  name,
+                  style: context.textTheme.titleLarge,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (pharmacyName != null && pharmacyName!.isNotEmpty) ...[
+                  const SizedBox(height: AppSizes.spacingSmall),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: navy.withValues(alpha: 0.10),
+                      borderRadius: AppRadius.badge,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.local_pharmacy_outlined, size: 13, color: navy),
+                        const SizedBox(width: AppSizes.spacingXSmall),
+                        Flexible(
+                          child: Text(
+                            pharmacyName!,
+                            style: context.textTheme.bodySmall?.copyWith(
+                              color: navy,
+                              fontWeight: FontWeight.w700,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
                     ),
-                  );
-                },
-              ),
-
-              const SizedBox(height: AppSizes.spacingXLarge),
-              BlocBuilder<SettingsCubit, SettingsState>(
-                builder: (context, settingsState) {
-                  final currentCode = settingsState.locale?.languageCode ?? 'ar';
-                  return _SettingsCard(
-                    icon: Icons.translate,
-                    label: l10n.language,
-                    segments: _SegmentedControl<String>(
-                      value: currentCode,
-                      options: const [('ar', 'العربية'), ('en', 'English')],
-                      onChanged: (code) {
-                          context.read<SettingsCubit>().changeLocale(Locale(code));
-                          },
-                    ),
-                  );
-                },
-              ),
-
-              const SizedBox(height: AppSizes.spacingMedium),
-              BlocBuilder<SettingsCubit, SettingsState>(
-                builder: (context, settingsState) {
-                  final mode = settingsState.themeMode;
-                  final modeLabel = switch (mode) {
-                    ThemeMode.light => l10n.light,
-                    ThemeMode.dark => l10n.dark,
-                    ThemeMode.system => l10n.system,
-                  };
-                  return _SettingsCard(
-                    icon: Icons.dark_mode_outlined,
-                    label: l10n.theme,
-                    subtitle: modeLabel,
-                    segments: _SegmentedControl<ThemeMode>(
-                      value: mode,
-                      options: [
-                        (ThemeMode.light, l10n.light),
-                        (ThemeMode.dark, l10n.dark),
-                        (ThemeMode.system, l10n.system),
-                      ],
-                      onChanged: (m) => context.read<SettingsCubit>().changeTheme(m),
-                    ),
-                  );
-                },
-              ),
-
-              const SizedBox(height: AppSizes.spacingMedium),
-              CustomCard(
-                onTap: () => context.pushNamed(RouteNames.privacyPolicy),
-                child: Row(
-                  children: [
-                    Icon(Icons.privacy_tip_outlined, size: 22, color: AppColors.navyOf(context)),
-                    const SizedBox(width: AppSizes.spacingMedium),
-                    Expanded(
-                      child: Text(l10n.privacyPolicy, style: context.textTheme.titleSmall),
-                    ),
-                    Icon(
-                      Icons.chevron_right,
-                      size: AppSizes.iconSizeSmall,
-                      color: AppColors.textSecondaryOf(context),
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: AppSizes.spacingXLarge),
-              SizedBox(
-                width: double.infinity,
-                height: AppSizes.buttonHeight,
-                child: OutlinedButton.icon(
-                  onPressed: () => _confirmLogout(context),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.errorOf(context),
-                    side: BorderSide(color: AppColors.errorOf(context), width: 1.5),
-                    shape: const RoundedRectangleBorder(borderRadius: AppRadius.medium),
-                    padding: AppPadding.button,
                   ),
-                  icon: const Icon(Icons.logout),
-                  label: Text(l10n.logout),
-                ),
+                ],
+                if (city != null && city!.isNotEmpty) ...[
+                  const SizedBox(height: AppSizes.spacingXSmall + 2),
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.location_on_outlined,
+                        size: 14,
+                        color: AppColors.textSecondaryOf(context),
+                      ),
+                      const SizedBox(width: AppSizes.spacingXSmall),
+                      Flexible(
+                        child: Text(
+                          city!,
+                          style: context.textTheme.bodySmall?.copyWith(
+                            color: AppColors.textSecondaryOf(context),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// The labelled record - one card, each field as a small secondary label
+// sitting above its value, thin dividers between rows. Deliberately plain:
+// no icons, no colour, so it reads as a formal information panel.
+class _PersonalInfoCard extends StatelessWidget {
+  const _PersonalInfoCard({required this.rows});
+
+  final List<({String label, String value})> rows;
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomCard(
+      padding: const EdgeInsets.symmetric(horizontal: AppSizes.spacingMedium),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var i = 0; i < rows.length; i++) ...[
+            if (i > 0) Divider(height: 1, color: AppColors.borderOf(context)),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: AppSizes.spacingMedium),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    rows[i].label,
+                    style: context.textTheme.bodySmall?.copyWith(
+                      color: AppColors.textSecondaryOf(context),
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(rows[i].value, style: context.textTheme.bodyLarge),
+                ],
               ),
-              const SizedBox(height: AppSizes.spacingMedium),
-              Text(
-                l10n.appName,
-                textAlign: TextAlign.center,
-                style: context.textTheme.bodySmall?.copyWith(
-                  color: AppColors.textSecondaryOf(context),
-                ),
-              ),
-            ],
-          );
-        },
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+// The "nothing here yet" line for the rating / debts sections - a soft
+// bordered strip rather than bare text, so an empty section still looks
+// intentional.
+class _EmptyHint extends StatelessWidget {
+  const _EmptyHint(this.text);
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSizes.spacingMedium,
+        vertical: AppSizes.spacingMedium,
+      ),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceOf(context),
+        borderRadius: AppRadius.medium,
+        border: Border.all(color: AppColors.borderOf(context)),
+      ),
+      child: Text(
+        text,
+        style: context.textTheme.bodyMedium?.copyWith(
+          color: AppColors.textSecondaryOf(context),
+        ),
       ),
     );
   }

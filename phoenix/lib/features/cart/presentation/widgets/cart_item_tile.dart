@@ -6,12 +6,14 @@ import 'package:phoenix/core/constants/app_sizes.dart';
 import 'package:phoenix/core/extensions/build_context_extensions.dart';
 import 'package:phoenix/core/utils/currency_formatter.dart';
 import 'package:phoenix/core/widgets/app_dialog.dart';
+import 'package:phoenix/core/widgets/app_network_image.dart';
 import 'package:phoenix/core/widgets/custom_card.dart';
+import 'package:phoenix/core/widgets/quantity_stepper.dart';
 import 'package:phoenix/core/widgets/secondary_price_hint.dart';
 import 'package:phoenix/features/cart/data/models/cart_item.dart';
 import 'package:phoenix/features/exchange_rate/presentation/managers/exchange_rate_cubit.dart';
 
-class CartItemTile extends StatefulWidget {
+class CartItemTile extends StatelessWidget {
   const CartItemTile({
     super.key,
     required this.item,
@@ -23,85 +25,26 @@ class CartItemTile extends StatefulWidget {
   final ValueChanged<int> onQuantityChanged;
   final VoidCallback onRemove;
 
-  @override
-  State<CartItemTile> createState() => _CartItemTileState();
-}
-
-class _CartItemTileState extends State<CartItemTile> {
-  late final TextEditingController _controller = TextEditingController(
-    text: '${widget.item.quantity}',
-  );
-  late final FocusNode _focusNode = FocusNode()..addListener(_handleFocusChange);
-
-  @override
-  void didUpdateWidget(covariant CartItemTile oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    // Keeps the field in sync with quantity changes from elsewhere (e.g. the
-    // same product re-added from the catalog) without clobbering whatever
-    // the pharmacist is actively typing right now.
-    if (oldWidget.item.quantity != widget.item.quantity && !_focusNode.hasFocus) {
-      _controller.text = '${widget.item.quantity}';
-    }
-  }
-
-  @override
-  void dispose() {
-    _focusNode.dispose();
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _handleFocusChange() {
-    if (!_focusNode.hasFocus) _commit();
-  }
-
-  Future<void> _commit() async {
-    final text = _controller.text.trim();
-
-    if (text.isEmpty) {
-      await _confirmRemoval();
-      return;
-    }
-
-    final parsed = int.tryParse(text);
-    if (parsed == null || parsed < 0) {
-      // Not a number, or negative - ignored, back to the last real value.
-      _controller.text = '${widget.item.quantity}';
-      return;
-    }
-
-    if (parsed == 0) {
-      await _confirmRemoval();
-      return;
-    }
-
-    if (parsed != widget.item.quantity) {
-      widget.onQuantityChanged(parsed);
-    }
-  }
-
-  Future<void> _confirmRemoval() async {
+  // Reducing the quantity below 1 is the existing "remove this line" gesture
+  // (the numeric field this stepper replaced already worked this way): the
+  // stepper's `−` at quantity 1 opens the same confirmation the trash icon does.
+  Future<void> _confirmRemoval(BuildContext context) async {
     final l10n = context.l10n;
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
-    final name = isArabic ? widget.item.nameAr : (widget.item.nameEn ?? widget.item.nameAr);
+    final name = isArabic ? item.nameAr : (item.nameEn ?? item.nameAr);
 
     await AppDialog.show(
       context: context,
       title: l10n.removeItemTitle,
       content: l10n.removeItemConfirmation(name),
       actionLabel: l10n.removeButton,
-      onAction: widget.onRemove,
+      onAction: onRemove,
     );
-    if (!mounted) return;
-    // Cancelled - show the real quantity again. (If confirmed instead, this
-    // tile is about to be removed from the list anyway.)
-    _controller.text = '${widget.item.quantity}';
   }
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final item = widget.item;
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
     final name = isArabic ? item.nameAr : (item.nameEn ?? item.nameAr);
     final usdToSyp = context.watch<ExchangeRateCubit>().state.usdToSyp;
@@ -176,53 +119,42 @@ class _CartItemTileState extends State<CartItemTile> {
               ),
               IconButton(
                 icon: Icon(Icons.delete_outline, color: AppColors.errorOf(context)),
-                onPressed: _confirmRemoval,
+                onPressed: () => _confirmRemoval(context),
               ),
             ],
           ),
           const Divider(height: AppSizes.spacingLarge),
           Row(
             children: [
-              Text(
-                l10n.quantityLabel,
-                style: context.textTheme.bodySmall?.copyWith(color: AppColors.textSecondaryOf(context)),
+              // The real cart quantity - QuantityStepper holds no number of its
+              // own, it renders item.quantity and forwards a typed or stepped
+              // value straight back to the cart. Taking it below 1 (typing 0,
+              // clearing the field, or − at 1) opens the remove confirmation.
+              QuantityStepper(
+                quantity: item.quantity,
+                compact: true,
+                decrementTooltip: l10n.decreaseQuantityLabel,
+                incrementTooltip: l10n.increaseQuantityLabel,
+                onChanged: onQuantityChanged,
+                onBelowMin: () => _confirmRemoval(context),
               ),
-              const SizedBox(width: AppSizes.spacingSmall),
-              // Section: a directly-editable numeric field, deliberately not
-              // +/- stepper buttons - project owner's explicit call (see the
-              // commit/confirm-removal logic above), kept exactly as-is here.
-              SizedBox(
-                width: 64,
-                child: TextField(
-                  controller: _controller,
-                  focusNode: _focusNode,
-                  keyboardType: TextInputType.number,
-                  textInputAction: TextInputAction.done,
-                  textAlign: TextAlign.center,
-                  style: context.textTheme.titleSmall,
-                  onEditingComplete: () => _focusNode.unfocus(),
-                  decoration: InputDecoration(
-                    isDense: true,
-                    contentPadding: const EdgeInsets.symmetric(vertical: 8),
-                    filled: true,
-                    fillColor: AppColors.surfaceOf(context),
-                    border: OutlineInputBorder(
-                      borderRadius: AppRadius.small,
-                      borderSide: BorderSide.none,
-                    ),
+              Expanded(
+                child: Align(
+                  alignment: AlignmentDirectional.centerEnd,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '\$${item.lineTotalUsd}',
+                        style: context.textTheme.titleSmall,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      if (sypText != null) SecondaryPriceHint(text: sypText),
+                    ],
                   ),
                 ),
-              ),
-              const Spacer(),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    '\$${item.lineTotalUsd}',
-                    style: context.textTheme.titleSmall,
-                  ),
-                  if (sypText != null) SecondaryPriceHint(text: sypText),
-                ],
               ),
             ],
           ),
@@ -239,25 +171,16 @@ class _ItemImage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // TODO(seed-images): same placeholder note as ProductCard - see
-    // features/catalog/presentation/widgets/product_card.dart.
-    return ClipRRect(
+    // TODO(seed-images): same note as ProductCard - `item.image` is still
+    // always null. AppNetworkImage covers Cloudinary right-sizing + caching
+    // for when real URLs land.
+    return AppNetworkImage(
+      url: url,
+      width: 56,
+      height: 56,
+      fit: BoxFit.cover,
       borderRadius: AppRadius.small,
-      child: Container(
-        width: 56,
-        height: 56,
-        color: AppColors.surfaceOf(context),
-        child: url == null || url!.isEmpty
-            ? Icon(Icons.medication_outlined, color: AppColors.textSecondaryOf(context))
-            : Image.network(
-                url!,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) => Icon(
-                  Icons.medication_outlined,
-                  color: AppColors.textSecondaryOf(context),
-                ),
-              ),
-      ),
+      fallbackIcon: Icons.medication_outlined,
     );
   }
 }
