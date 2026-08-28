@@ -232,6 +232,99 @@ describe('duplicate event protection', () => {
   });
 });
 
+describe('admin events', () => {
+  it('deduplicates by userId (account.pending)', () => {
+    const client = newClient();
+    client.connect('token-1');
+    const handler = vi.fn();
+    client.on('account.pending', handler);
+
+    sockets[0].fire('account.pending', { userId: 'u-1' });
+    flush();
+    sockets[0].fire('account.pending', { userId: 'u-1' });
+    flush();
+    sockets[0].fire('account.pending', { userId: 'u-2' });
+    flush();
+
+    expect(handler).toHaveBeenCalledTimes(2);
+  });
+
+  it('deduplicates by offerId and bannerId too', () => {
+    const client = newClient();
+    client.connect('token-1');
+    const offers = vi.fn();
+    const banners = vi.fn();
+    client.on('offer.pending', offers);
+    client.on('banner.pending', banners);
+
+    sockets[0].fire('offer.pending', { offerId: 'of-1' });
+    flush();
+    sockets[0].fire('offer.pending', { offerId: 'of-1' });
+    flush();
+    sockets[0].fire('banner.pending', { bannerId: 'b-1' });
+    flush();
+    sockets[0].fire('banner.pending', { bannerId: 'b-1' });
+    flush();
+
+    expect(offers).toHaveBeenCalledTimes(1);
+    expect(banners).toHaveBeenCalledTimes(1);
+  });
+
+  it('an approve then reject on the same entity are both delivered', () => {
+    const client = newClient();
+    client.connect('token-1');
+    const handler = vi.fn();
+    client.on('account.status.updated', handler);
+
+    sockets[0].fire('account.status.updated', { userId: 'u-1', status: 'active' });
+    flush();
+    sockets[0].fire('account.status.updated', { userId: 'u-1', status: 'blocked' });
+    flush();
+
+    expect(handler).toHaveBeenCalledTimes(2);
+  });
+
+  it('an UNRELATED event never triggers a subscriber (no wasted refetch)', () => {
+    const client = newClient();
+    client.connect('token-1');
+    const offersPage = vi.fn();
+    const accountsPage = vi.fn();
+    client.on('offer.pending', offersPage);
+    client.on('account.pending', accountsPage);
+
+    // An order event, and an admin event this page didn't subscribe to.
+    sockets[0].fire('order.created', { orderId: 'o-1' });
+    sockets[0].fire('banner.pending', { bannerId: 'b-1' });
+    sockets[0].fire('account.pending', { userId: 'u-1' });
+    flush();
+
+    expect(offersPage).not.toHaveBeenCalled();
+    expect(accountsPage).toHaveBeenCalledTimes(1);
+  });
+
+  it('admin and warehouse events coalesce independently of each other', () => {
+    const client = new RealtimeClient({ factory, url: 'http://test', coalesceMs: 400 });
+    client.connect('token-1');
+    const accounts = vi.fn();
+    const offers = vi.fn();
+    client.on('account.pending', accounts);
+    client.on('offer.pending', offers);
+
+    for (let i = 0; i < 5; i += 1) {
+      sockets[0].fire('account.pending', { userId: `u-${i}` });
+      sockets[0].fire('offer.pending', { offerId: `of-${i}` });
+    }
+    vi.advanceTimersByTime(400);
+
+    // Each event name gets its own timer: one refetch per affected page, not
+    // one per event and not one shared across unrelated pages.
+    expect(accounts).toHaveBeenCalledTimes(1);
+    expect(accounts).toHaveBeenCalledWith({ userId: 'u-4' }, 5);
+    expect(offers).toHaveBeenCalledTimes(1);
+    expect(offers).toHaveBeenCalledWith({ offerId: 'of-4' }, 5);
+  });
+});
+
 describe('coalescing', () => {
   it('a burst of distinct events causes ONE refresh, not one per event', () => {
     const client = new RealtimeClient({ factory, url: 'http://test', coalesceMs: 400 });

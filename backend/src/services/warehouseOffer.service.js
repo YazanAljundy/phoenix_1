@@ -3,6 +3,7 @@ const Offer = require('../models/offer.model');
 const Product = require('../models/product.model');
 const { findOwnedProductOrThrow } = require('./warehouseProduct.service');
 const { applyResolvedIdentity } = require('./productCatalog.service');
+const { emitToAdmins, EVENTS } = require('../realtime');
 
 function validateTitle(value, field) {
   if (typeof value !== 'string' || !value.trim()) {
@@ -54,6 +55,13 @@ async function createOffer(warehouseId, data) {
     startDate,
     endDate,
     status: 'pending',
+  });
+
+  // Straight into the admin moderation queue - an offer cannot go live until
+  // an admin approves it, so the warehouse is blocked on that decision.
+  emitToAdmins(EVENTS.OFFER_PENDING, {
+    offerId: offer._id.toString(),
+    warehouseId: String(warehouseId),
   });
 
   return { offer, product };

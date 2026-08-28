@@ -2,7 +2,7 @@ const { Server } = require('socket.io');
 const env = require('../config/env');
 const { authenticateToken } = require('../middlewares/auth.middleware');
 const Warehouse = require('../models/warehouse.model');
-const { EVENTS, warehouseRoom } = require('./events');
+const { EVENTS, warehouseRoom, ADMIN_ROOM } = require('./events');
 
 // The realtime layer for the React admin/warehouse dashboard.
 //
@@ -63,21 +63,33 @@ function extractToken(socket) {
   return header.startsWith('Bearer ') ? header.slice(7) : null;
 }
 
-// Which warehouse rooms this connection is allowed in - resolved entirely
-// server-side from the authenticated user's own profile. A client cannot ask
-// for a room: there is no join handler at all (see registerConnection), so
-// the only way into `warehouse:X` is to actually own warehouse X.
+// Which rooms this connection is allowed in - resolved entirely server-side
+// from the authenticated user's own role and profile. A client cannot ask for
+// a room: there is no join handler at all (see registerConnection), so the
+// only way into `warehouse:X` is to actually own warehouse X, and the only way
+// into `admin` is to actually be an admin.
 //
-// A 'warehouse' user gets exactly the warehouse whose `userId` is theirs.
-// Admins get none: no admin dashboard screen consumes these events today
-// (there is no cross-warehouse order endpoint for the admin role), so
-// subscribing them would leak every warehouse's activity for no feature.
+// The two branches are mutually exclusive by construction, which is what
+// guarantees both directions of isolation:
+//   - a warehouse user can never reach the admin room, and
+//   - an admin never joins any warehouse room, so admins receive none of the
+//     per-warehouse order/return traffic (they have no page for it anyway -
+//     see the note in events.js).
+//
+// `pharmacy` falls through to [] and is refused at the handshake: the Flutter
+// app stays on HTTP + FCM and has no dashboard to feed.
 async function resolveRoomsFor(user) {
-  if (user.role !== 'warehouse') return [];
+  if (user.role === 'admin') {
+    return [ADMIN_ROOM];
+  }
 
-  const warehouse = await Warehouse.findOne({ userId: user._id }, '_id');
-  if (!warehouse) return [];
-  return [warehouseRoom(warehouse._id)];
+  if (user.role === 'warehouse') {
+    const warehouse = await Warehouse.findOne({ userId: user._id }, '_id');
+    if (!warehouse) return [];
+    return [warehouseRoom(warehouse._id)];
+  }
+
+  return [];
 }
 
 async function handshakeAuth(socket, next) {
@@ -148,23 +160,36 @@ function initRealtime(httpServer) {
   return io;
 }
 
-// The single emit path. Every caller is a service that has ALREADY persisted
-// its change - see the call sites - so an event never announces something the
-// database didn't accept.
+// The one place anything is ever sent. Every caller is a service that has
+// ALREADY persisted its change - see the call sites - so an event never
+// announces something the database didn't accept.
 //
 // Never throws: a realtime hiccup must not roll back or fail an HTTP request
 // that already succeeded. Same defensive contract the FCM calls in these same
 // services already follow.
-function emitToWarehouse(warehouseId, event, payload) {
+function emitToRoom(room, event, payload) {
   try {
-    if (!io || !warehouseId) return;
-    const room = warehouseRoom(warehouseId);
+    if (!io || !room) return;
     io.to(room).emit(event, { ...payload, eventType: event });
     log('emit', event, '->', room, JSON.stringify(payload));
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error('Realtime emit failed.', event, err.message);
   }
+}
+
+// Order/return traffic: exactly one warehouse, derived from the entity's own
+// stored warehouseId. A falsy id sends to nobody rather than broadcasting.
+function emitToWarehouse(warehouseId, event, payload) {
+  if (!warehouseId) return;
+  emitToRoom(warehouseRoom(warehouseId), event, payload);
+}
+
+// Admin-queue traffic: the shared `admin` room. Payloads stay id-only for the
+// same reason the warehouse ones do - the panel re-reads the authoritative
+// record through the REST endpoint it already uses.
+function emitToAdmins(event, payload) {
+  emitToRoom(ADMIN_ROOM, event, payload);
 }
 
 // Test seam: lets the socket tests drive a real server, and resets module
@@ -176,8 +201,10 @@ function _setIoForTesting(instance) {
 module.exports = {
   initRealtime,
   emitToWarehouse,
+  emitToAdmins,
   EVENTS,
   warehouseRoom,
+  ADMIN_ROOM,
   _setIoForTesting,
   _handshakeAuth: handshakeAuth,
   _registerConnection: registerConnection,

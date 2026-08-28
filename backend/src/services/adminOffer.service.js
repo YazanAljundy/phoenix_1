@@ -6,6 +6,7 @@ const Pharmacy = require('../models/pharmacy.model');
 const Warehouse = require('../models/warehouse.model');
 const { applyResolvedIdentity } = require('./productCatalog.service');
 const notificationService = require('./notification.service');
+const { emitToAdmins, EVENTS } = require('../realtime');
 
 // Section 13c: the admin's review queue - oldest first, same FIFO reasoning
 // as the warehouse's own order queue (Section 13b).
@@ -93,6 +94,15 @@ async function approveOffer(offerId, userId) {
   offer.approvedAt = new Date();
   await offer.save();
 
+  // Clears this offer from every other admin's open queue. Emitted before the
+  // FCM block below because that block is best-effort and slow (a fan-out to
+  // every active pharmacy) - the queue shouldn't wait on it.
+  emitToAdmins(EVENTS.OFFER_STATUS_UPDATED, {
+    offerId: offer._id.toString(),
+    warehouseId: offer.warehouseId.toString(),
+    status: 'approved',
+  });
+
   // Fan out to every active pharmacy - never lets a notification hiccup
   // undo the approval above, which already succeeded. sendToAll's own
   // per-user rate limiting (notification.service.js) caps this at one
@@ -129,6 +139,15 @@ async function approveOffer(offerId, userId) {
 async function rejectOffer(offerId) {
   const offer = await findPendingOfferOrThrow(offerId);
   await offer.deleteOne();
+
+  // 'rejected' is this event's own vocabulary, not a stored status - the Offer
+  // schema has no rejected state, a rejection just removes the row (see the
+  // note above this function). Either way the queue must drop it.
+  emitToAdmins(EVENTS.OFFER_STATUS_UPDATED, {
+    offerId: offer._id.toString(),
+    warehouseId: offer.warehouseId.toString(),
+    status: 'rejected',
+  });
 }
 
 module.exports = { listPendingOffers, listPaginatedPendingOffers, approveOffer, rejectOffer };

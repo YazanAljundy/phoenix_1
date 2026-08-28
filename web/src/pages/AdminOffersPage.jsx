@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../api/client';
 import { LoadMoreControl } from '../components/LoadMoreControl';
 import { usePaginatedData } from '../hooks/usePaginatedData';
+import { REALTIME_EVENTS, useRealtimeSync } from '../realtime/useRealtimeSync';
 import { withArFallback } from '../utils/displayName';
 
 const PAGE_SIZE = 20;
@@ -35,6 +36,15 @@ export function AdminOffersPage() {
     reset();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Realtime: a warehouse submitting an offer, or another admin deciding one,
+  // both change this queue. `reset()` re-reads page one through the same
+  // endpoint - which also refreshes the "Pending (N)" total, since the backend
+  // computes that independently of pagination.
+  useRealtimeSync(
+    [REALTIME_EVENTS.OFFER_PENDING, REALTIME_EVENTS.OFFER_STATUS_UPDATED],
+    () => reset()
+  );
 
   const handleDecision = async (offer, action) => {
     const confirmed = window.confirm(

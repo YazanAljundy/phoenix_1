@@ -6,6 +6,7 @@ const User = require('../models/user.model');
 const Pharmacy = require('../models/pharmacy.model');
 const Warehouse = require('../models/warehouse.model');
 const otpService = require('./otp.service');
+const { emitToAdmins, EVENTS } = require('../realtime');
 
 const BCRYPT_SALT_ROUNDS = 10;
 
@@ -80,6 +81,16 @@ async function registerOrLogin({
     phone,
     location: location || undefined,
     addedBy: 'self',
+  });
+
+  // A brand-new pharmacy lands in the admin's approval queue, and until an
+  // admin acts it cannot order at all - so the wait is the pharmacy's, not
+  // just the admin's. Emitted only now, once both the User and its Pharmacy
+  // profile are durable (a User with no profile would render as a broken row).
+  // Ids only; the panel re-reads GET /admin/pending-accounts.
+  emitToAdmins(EVENTS.ACCOUNT_PENDING, {
+    userId: user._id.toString(),
+    role: user.role,
   });
 
   return { user, pharmacy, warehouse: null, token: issueToken(user) };

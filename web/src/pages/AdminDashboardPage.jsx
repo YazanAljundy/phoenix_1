@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { api } from '../api/client';
+import { REALTIME_EVENTS, useRealtimeSync } from '../realtime/useRealtimeSync';
 
 function accountName(account) {
   return account.pharmacy?.nameEn || account.warehouse?.nameEn || account.user.name;
@@ -56,6 +57,24 @@ export function AdminDashboardPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // Realtime: every stat card and both recent-lists on this screen are
+  // derived from the three admin queues, so any of these six events makes the
+  // whole aggregate stale. `load()` is the page's own existing refetch - the
+  // five parallel REST calls stay the source of truth, the socket only decides
+  // when to re-run them. RealtimeClient already collapses a burst into one
+  // call and fires this again after a reconnect.
+  useRealtimeSync(
+    [
+      REALTIME_EVENTS.ACCOUNT_PENDING,
+      REALTIME_EVENTS.ACCOUNT_STATUS_UPDATED,
+      REALTIME_EVENTS.OFFER_PENDING,
+      REALTIME_EVENTS.OFFER_STATUS_UPDATED,
+      REALTIME_EVENTS.BANNER_PENDING,
+      REALTIME_EVENTS.BANNER_STATUS_UPDATED,
+    ],
+    load
+  );
 
   const stats = [
     {

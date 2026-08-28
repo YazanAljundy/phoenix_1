@@ -28,23 +28,19 @@ function Gate() {
     return <LoginPage />;
   }
 
-  // Realtime is mounted for the warehouse panel only - warehouse rooms are
-  // the only subscriptions the server hands out today (see
-  // backend/src/realtime/index.js's resolveRoomsFor), so an admin session has
-  // nothing to connect for.
-  if (user?.role === 'warehouse') {
-    return (
-      <ExchangeRateProvider>
-        <RealtimeProvider>
-          <WarehousePanel />
-        </RealtimeProvider>
-      </ExchangeRateProvider>
-    );
-  }
-
+  // One RealtimeProvider around both panels - it is role-agnostic (it just
+  // connects with the stored token) and the SERVER decides which room the
+  // connection belongs to from the authenticated user's role: `admin` for an
+  // admin, `warehouse:<own id>` for a warehouse. Mounting it once here rather
+  // than per-panel keeps a single connection and a single lifecycle for both.
+  //
+  // It sits inside the authenticated branch only, so an unauthenticated
+  // visitor never opens a socket.
   return (
     <ExchangeRateProvider>
-      <AdminPanel />
+      <RealtimeProvider>
+        {user?.role === 'warehouse' ? <WarehousePanel /> : <AdminPanel />}
+      </RealtimeProvider>
     </ExchangeRateProvider>
   );
 }

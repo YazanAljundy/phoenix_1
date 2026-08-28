@@ -39,12 +39,23 @@ export function useRealtimeSync(events, onSync) {
   }, [client, key]);
 }
 
-// The event names the dashboard listens for. Mirrors
+// The event names the dashboards listen for. Mirrors
 // backend/src/realtime/events.js.
 export const REALTIME_EVENTS = {
+  // Warehouse panel (room: warehouse:<id>).
   ORDER_CREATED: 'order.created',
   ORDER_CANCELLED: 'order.cancelled',
   ORDER_STATUS_UPDATED: 'order.status.updated',
   RETURN_CREATED: 'return.created',
   RETURN_STATUS_UPDATED: 'return.status.updated',
+
+  // Admin panel (room: admin). Subscribing to one of these from the warehouse
+  // panel would be harmless but pointless - the server never puts a warehouse
+  // connection in the admin room, so nothing would ever arrive.
+  ACCOUNT_PENDING: 'account.pending',
+  ACCOUNT_STATUS_UPDATED: 'account.status.updated',
+  OFFER_PENDING: 'offer.pending',
+  OFFER_STATUS_UPDATED: 'offer.status.updated',
+  BANNER_PENDING: 'banner.pending',
+  BANNER_STATUS_UPDATED: 'banner.status.updated',
 };

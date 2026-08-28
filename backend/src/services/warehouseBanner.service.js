@@ -5,6 +5,7 @@ const Counter = require('../models/counter.model');
 const { findOwnedProductOrThrow } = require('./warehouseProduct.service');
 const { applyResolvedIdentity } = require('./productCatalog.service');
 const { deleteImageByUrl } = require('./upload.service');
+const { emitToAdmins, EVENTS } = require('../realtime');
 
 // Same atomic $inc pattern as Order's nextOrderNumber (order.service.js).
 async function nextBannerNumber() {
@@ -62,7 +63,7 @@ async function createBanner(warehouseId, userId, { productId, startDate, endDate
 
   const bannerNumber = await nextBannerNumber();
 
-  return Banner.create({
+  const banner = await Banner.create({
     bannerNumber,
     warehouseId,
     imageUrl,
@@ -74,6 +75,17 @@ async function createBanner(warehouseId, userId, { productId, startDate, endDate
     endDate: parsedEnd,
     createdBy: userId,
   });
+
+  // Into the admin moderation queue - same as offers, a warehouse banner never
+  // goes live on its own. Emitted after Banner.create resolves, so a failed
+  // insert announces nothing.
+  emitToAdmins(EVENTS.BANNER_PENDING, {
+    bannerId: banner._id.toString(),
+    bannerNumber: banner.bannerNumber,
+    warehouseId: String(warehouseId),
+  });
+
+  return banner;
 }
 
 const WAREHOUSE_BANNERS_DEFAULT_LIMIT = 15;

@@ -187,7 +187,15 @@ export class RealtimeClient {
   // so the second is discarded rather than refreshing (or double-counting) a
   // second time.
   _isDuplicate(event, payload) {
-    const id = payload?.orderId ?? payload?.returnId;
+    // One id field per entity kind across both dashboards. An event carrying
+    // none of them simply isn't deduped (it still coalesces) rather than being
+    // silently collapsed against unrelated events.
+    const id =
+      payload?.orderId ??
+      payload?.returnId ??
+      payload?.userId ??
+      payload?.offerId ??
+      payload?.bannerId;
     if (!id) return false;
     // A status change legitimately repeats for one id (pending -> confirmed
     // -> preparing), so the status is part of the key; a pure "created" never

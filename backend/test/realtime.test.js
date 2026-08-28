@@ -34,13 +34,23 @@ stubModule('models/warehouse.model.js', {
   findOne: async (filter) => warehousesByUserId.get(String(filter.userId)) ?? null,
 });
 
-const { initRealtime, emitToWarehouse, EVENTS, _setIoForTesting } = require('../src/realtime');
+const {
+  initRealtime,
+  emitToWarehouse,
+  emitToAdmins,
+  EVENTS,
+  _setIoForTesting,
+} = require('../src/realtime');
 
 // --- Fixtures --------------------------------------------------------------
 const WAREHOUSE_A_USER = 'aaaaaaaaaaaaaaaaaaaaaaa1';
 const WAREHOUSE_B_USER = 'bbbbbbbbbbbbbbbbbbbbbbb1';
 const PHARMACY_USER = 'ccccccccccccccccccccccc1';
 const BLOCKED_USER = 'ddddddddddddddddddddddd1';
+const ADMIN_USER = 'eeeeeeeeeeeeeeeeeeeeeee1';
+const ADMIN_USER_2 = 'eeeeeeeeeeeeeeeeeeeeeee2';
+const BLOCKED_ADMIN_USER = 'fffffffffffffffffffffff1';
+const PENDING_ADMIN_USER = 'fffffffffffffffffffffff2';
 const WAREHOUSE_A_ID = 'a0a0a0a0a0a0a0a0a0a0a0a0';
 const WAREHOUSE_B_ID = 'b0b0b0b0b0b0b0b0b0b0b0b0';
 
@@ -52,12 +62,25 @@ function seedFixtures() {
   users.set(WAREHOUSE_B_USER, { _id: WAREHOUSE_B_USER, role: 'warehouse', status: 'active' });
   users.set(PHARMACY_USER, { _id: PHARMACY_USER, role: 'pharmacy', status: 'active' });
   users.set(BLOCKED_USER, { _id: BLOCKED_USER, role: 'warehouse', status: 'blocked' });
+  users.set(ADMIN_USER, { _id: ADMIN_USER, role: 'admin', status: 'active' });
+  users.set(ADMIN_USER_2, { _id: ADMIN_USER_2, role: 'admin', status: 'active' });
+  users.set(BLOCKED_ADMIN_USER, { _id: BLOCKED_ADMIN_USER, role: 'admin', status: 'blocked' });
+  users.set(PENDING_ADMIN_USER, { _id: PENDING_ADMIN_USER, role: 'admin', status: 'pending' });
 
   warehousesByUserId.set(WAREHOUSE_A_USER, { _id: WAREHOUSE_A_ID, userId: WAREHOUSE_A_USER });
   warehousesByUserId.set(WAREHOUSE_B_USER, { _id: WAREHOUSE_B_ID, userId: WAREHOUSE_B_USER });
   warehousesByUserId.set(BLOCKED_USER, { _id: WAREHOUSE_A_ID, userId: BLOCKED_USER });
+  // Deliberately also gives the admin users a warehouse profile: if
+  // resolveRoomsFor ever fell through to the warehouse branch for an admin,
+  // these fixtures would let it silently succeed - and the "admin joins no
+  // warehouse room" test below would catch it.
+  warehousesByUserId.set(ADMIN_USER, { _id: WAREHOUSE_A_ID, userId: ADMIN_USER });
 }
 
+// The `role` claim in the JWT is deliberately WRONG for most of these (always
+// 'warehouse'), which is the point: the server must derive role from the User
+// document it loads, never from the token payload. See the explicit test for
+// that below.
 function tokenFor(userId) {
   return jwt.sign({ sub: userId, role: 'warehouse' }, process.env.JWT_SECRET, { expiresIn: '1h' });
 }
@@ -163,6 +186,52 @@ test('a pharmacy account gets no dashboard subscription', async () => {
   client.close();
 });
 
+// --- 1b. Admin authentication ----------------------------------------------
+
+test('a valid admin token connects successfully', async () => {
+  const client = connectClient({ token: tokenFor(ADMIN_USER) });
+  assert.strictEqual(await settle(client), 'connected');
+  client.close();
+});
+
+test('a blocked admin is rejected', async () => {
+  const client = connectClient({ token: tokenFor(BLOCKED_ADMIN_USER) });
+  assert.strictEqual(await settle(client), 'rejected:UNAUTHORIZED');
+  client.close();
+});
+
+test('a non-active (pending) admin is rejected', async () => {
+  const client = connectClient({ token: tokenFor(PENDING_ADMIN_USER) });
+  assert.strictEqual(await settle(client), 'rejected:FORBIDDEN');
+  client.close();
+});
+
+test('role comes from the database, not the JWT claim', async () => {
+  // This token claims role 'warehouse' for a user who is really an admin (see
+  // tokenFor). If the server trusted the claim it would look for a warehouse
+  // profile; because it loads the User instead, this connects as an admin.
+  // The room assertion is in the isolation section below.
+  const forgedRoleToken = jwt.sign(
+    { sub: ADMIN_USER, role: 'warehouse' },
+    process.env.JWT_SECRET,
+    { expiresIn: '1h' }
+  );
+  const client = connectClient({ token: forgedRoleToken });
+  assert.strictEqual(await settle(client), 'connected');
+
+  // Proof it landed in the admin room and NOT warehouse:A - despite the
+  // fixtures giving ADMIN_USER a warehouse profile at WAREHOUSE_A_ID.
+  const warehouseTraffic = collect(client, EVENTS.ORDER_CREATED);
+  const adminTraffic = collect(client, EVENTS.ACCOUNT_PENDING);
+  await new Promise((resolve) => setTimeout(resolve, 50));
+  emitToWarehouse(WAREHOUSE_A_ID, EVENTS.ORDER_CREATED, { orderId: 'o-forge' });
+  emitToAdmins(EVENTS.ACCOUNT_PENDING, { userId: 'u-forge' });
+
+  assert.deepStrictEqual(await warehouseTraffic, [], 'a claimed role must not grant a warehouse room');
+  assert.strictEqual((await adminTraffic).length, 1, 'the real role from the DB decides the room');
+  client.close();
+});
+
 // --- 2. Room authorization -------------------------------------------------
 
 test('a client cannot join another warehouse room by asking for it', async () => {
@@ -193,33 +262,109 @@ const ISOLATION_CASES = [
   [EVENTS.RETURN_STATUS_UPDATED, { returnId: 'r2', orderId: 'o5', status: 'approved' }],
 ];
 
-// One connected pair, reused across the five cases - each case removes its
-// own listeners (see collect). Reconnecting a fresh pair per case churned
-// through sockets fast enough to start timing out.
+// Warehouse A, warehouse B and an admin, all connected at once - each case
+// removes its own listeners (see collect). Reconnecting fresh clients per case
+// churned through sockets fast enough to start timing out.
 let isolationA;
 let isolationB;
+let isolationAdmin;
 
-test('isolation fixture: both warehouse dashboards are connected', async () => {
+test('isolation fixture: two warehouses and an admin are connected', async () => {
   isolationA = connectClient({ token: tokenFor(WAREHOUSE_A_USER) });
   isolationB = connectClient({ token: tokenFor(WAREHOUSE_B_USER) });
+  isolationAdmin = connectClient({ token: tokenFor(ADMIN_USER_2) });
   assert.strictEqual(await settle(isolationA), 'connected');
   assert.strictEqual(await settle(isolationB), 'connected');
+  assert.strictEqual(await settle(isolationAdmin), 'connected');
 });
 
 for (const [event, payload] of ISOLATION_CASES) {
-  test(`${event} reaches only the owning warehouse`, async () => {
+  test(`${event} reaches only the owning warehouse - not the other, not admins`, async () => {
     const receivedA = collect(isolationA, event);
     const receivedB = collect(isolationB, event);
+    const receivedAdmin = collect(isolationAdmin, event);
     await new Promise((resolve) => setTimeout(resolve, 50));
 
     emitToWarehouse(WAREHOUSE_A_ID, event, { ...payload, warehouseId: WAREHOUSE_A_ID });
 
-    const [a, b] = await Promise.all([receivedA, receivedB]);
+    const [a, b, admin] = await Promise.all([receivedA, receivedB, receivedAdmin]);
     assert.strictEqual(a.length, 1, `warehouse A should receive exactly one ${event}`);
     assert.strictEqual(a[0].eventType, event, 'payload carries its own event type');
     assert.strictEqual(b.length, 0, `warehouse B must never receive ${event} for warehouse A`);
+    assert.strictEqual(admin.length, 0, `admins must not receive per-warehouse ${event}`);
   });
 }
+
+// --- 3b. Admin-room isolation ----------------------------------------------
+
+const ADMIN_EVENT_CASES = [
+  [EVENTS.ACCOUNT_PENDING, { userId: 'u1', role: 'pharmacy' }],
+  [EVENTS.ACCOUNT_STATUS_UPDATED, { userId: 'u2', role: 'pharmacy', status: 'active' }],
+  [EVENTS.OFFER_PENDING, { offerId: 'of1', warehouseId: WAREHOUSE_A_ID }],
+  [EVENTS.OFFER_STATUS_UPDATED, { offerId: 'of2', warehouseId: WAREHOUSE_A_ID, status: 'approved' }],
+  [EVENTS.BANNER_PENDING, { bannerId: 'b1', bannerNumber: 7, warehouseId: WAREHOUSE_A_ID }],
+  [EVENTS.BANNER_STATUS_UPDATED, { bannerId: 'b2', bannerNumber: 8, status: 'approved' }],
+];
+
+for (const [event, payload] of ADMIN_EVENT_CASES) {
+  test(`${event} reaches admins only - no warehouse receives it`, async () => {
+    const receivedAdmin = collect(isolationAdmin, event);
+    const receivedA = collect(isolationA, event);
+    const receivedB = collect(isolationB, event);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    emitToAdmins(event, payload);
+
+    const [admin, a, b] = await Promise.all([receivedAdmin, receivedA, receivedB]);
+    assert.strictEqual(admin.length, 1, `admin should receive exactly one ${event}`);
+    assert.strictEqual(admin[0].eventType, event, 'payload carries its own event type');
+    assert.strictEqual(a.length, 0, `warehouse A must never receive admin event ${event}`);
+    assert.strictEqual(b.length, 0, `warehouse B must never receive admin event ${event}`);
+  });
+}
+
+test('every connected admin receives the same admin event', async () => {
+  const secondAdmin = connectClient({ token: tokenFor(ADMIN_USER) });
+  assert.strictEqual(await settle(secondAdmin), 'connected');
+
+  const first = collect(isolationAdmin, EVENTS.ACCOUNT_PENDING);
+  const second = collect(secondAdmin, EVENTS.ACCOUNT_PENDING);
+  await new Promise((resolve) => setTimeout(resolve, 50));
+
+  emitToAdmins(EVENTS.ACCOUNT_PENDING, { userId: 'shared-1' });
+
+  // The queues are global, so both admins' screens must go stale together.
+  assert.strictEqual((await first).length, 1);
+  assert.strictEqual((await second).length, 1);
+  secondAdmin.close();
+});
+
+test('a warehouse client cannot talk its way into the admin room', async () => {
+  // No join handler exists server-side, so these are ignored outright. The
+  // assertion is the proof: A still receives no admin traffic afterwards.
+  isolationA.emit('join', 'admin');
+  isolationA.emit('join-room', 'admin');
+  isolationA.emit('subscribe', 'admin');
+  isolationA.emit('subscribe', { room: 'admin' });
+
+  const received = collect(isolationA, EVENTS.ACCOUNT_PENDING);
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  emitToAdmins(EVENTS.ACCOUNT_PENDING, { userId: 'u-secret' });
+
+  assert.deepStrictEqual(await received, [], 'a warehouse user must never enter the admin room');
+});
+
+test('an admin cannot talk its way into a warehouse room', async () => {
+  isolationAdmin.emit('join', `warehouse:${WAREHOUSE_B_ID}`);
+  isolationAdmin.emit('join-room', `warehouse:${WAREHOUSE_B_ID}`);
+  isolationAdmin.emit('subscribe', `warehouse:${WAREHOUSE_B_ID}`);
+
+  const received = collect(isolationAdmin, EVENTS.ORDER_CREATED);
+  await new Promise((resolve) => setTimeout(resolve, 100));
+  emitToWarehouse(WAREHOUSE_B_ID, EVENTS.ORDER_CREATED, { orderId: 'o-b' });
+
+  assert.deepStrictEqual(await received, [], 'an admin must not gain a warehouse room by asking');
+});
 
 // --- 4. Emit safety --------------------------------------------------------
 
@@ -247,4 +392,11 @@ test('emitToWarehouse ignores a missing warehouseId instead of broadcasting', as
 
   assert.deepStrictEqual(await received, [], 'a warehouse-less emit must reach nobody');
   clientA.close();
+});
+
+test('emitToAdmins never throws when the realtime layer is not running', () => {
+  const live = liveIo;
+  _setIoForTesting(null);
+  assert.doesNotThrow(() => emitToAdmins(EVENTS.ACCOUNT_PENDING, { userId: 'x' }));
+  _setIoForTesting(live);
 });

@@ -6,6 +6,7 @@ const Product = require('../models/product.model');
 const Counter = require('../models/counter.model');
 const { applyResolvedIdentity } = require('./productCatalog.service');
 const { deleteImageByUrl } = require('./upload.service');
+const { emitToAdmins, EVENTS } = require('../realtime');
 
 // Same atomic $inc pattern as Order's nextOrderNumber (order.service.js) -
 // shares the same 'banner_number' sequence as warehouseBanner.service.js's
@@ -174,6 +175,14 @@ async function approveBanner(bannerId, userId) {
   banner.approvedBy = userId;
   banner.rejectionNote = null;
   await banner.save();
+
+  // Same multi-admin reasoning as the account/offer decisions.
+  emitToAdmins(EVENTS.BANNER_STATUS_UPDATED, {
+    bannerId: banner._id.toString(),
+    bannerNumber: banner.bannerNumber,
+    status: banner.status,
+  });
+
   return banner;
 }
 
@@ -187,9 +196,17 @@ function requireRejectionNote(value) {
 async function rejectBanner(bannerId, rejectionNote) {
   const banner = await findBannerOrThrow(bannerId);
   banner.status = 'rejected';
+  // Validated before the write, so an empty note throws without ever emitting.
   banner.rejectionNote = requireRejectionNote(rejectionNote);
   banner.approvedBy = null;
   await banner.save();
+
+  emitToAdmins(EVENTS.BANNER_STATUS_UPDATED, {
+    bannerId: banner._id.toString(),
+    bannerNumber: banner.bannerNumber,
+    status: banner.status,
+  });
+
   return banner;
 }
 

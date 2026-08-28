@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../api/client';
 import { LoadMoreControl } from '../components/LoadMoreControl';
 import { usePaginatedData } from '../hooks/usePaginatedData';
+import { REALTIME_EVENTS, useRealtimeSync } from '../realtime/useRealtimeSync';
 
 const PAGE_SIZE = 20;
 
@@ -247,6 +248,16 @@ export function PendingAccountsPage() {
     reset();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeRole]);
+
+  // Realtime: a pharmacy that just registered is blocked from ordering until
+  // someone here approves it, so this queue going stale has a real cost at the
+  // other end. `reset()` re-reads the active role's page one and, with it, the
+  // pharmacy/warehouse tab counts the backend returns on every request - so
+  // the inactive tab's badge stays correct too.
+  useRealtimeSync(
+    [REALTIME_EVENTS.ACCOUNT_PENDING, REALTIME_EVENTS.ACCOUNT_STATUS_UPDATED],
+    () => reset()
+  );
 
   const handleDecision = async (account, action) => {
     const confirmed = window.confirm(

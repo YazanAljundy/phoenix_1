@@ -5,6 +5,7 @@ const User = require('../models/user.model');
 const Pharmacy = require('../models/pharmacy.model');
 const Warehouse = require('../models/warehouse.model');
 const notificationService = require('./notification.service');
+const { emitToAdmins, EVENTS } = require('../realtime');
 
 const BCRYPT_SALT_ROUNDS = 10;
 const MIN_PASSWORD_LENGTH = 6;
@@ -104,10 +105,21 @@ async function findPendingUserOrThrow(userId) {
   return user;
 }
 
+// The decision events below exist for the multi-admin case: whoever acted
+// already updates from their own HTTP response, but a second admin looking at
+// the same queue would otherwise keep seeing - and could try to act on - an
+// account that's already been handled.
 async function approveAccount(userId) {
   const user = await findPendingUserOrThrow(userId);
   user.status = 'active';
   await user.save();
+
+  emitToAdmins(EVENTS.ACCOUNT_STATUS_UPDATED, {
+    userId: user._id.toString(),
+    role: user.role,
+    status: user.status,
+  });
+
   return user;
 }
 
@@ -118,6 +130,13 @@ async function rejectAccount(userId) {
   const user = await findPendingUserOrThrow(userId);
   user.status = 'blocked';
   await user.save();
+
+  emitToAdmins(EVENTS.ACCOUNT_STATUS_UPDATED, {
+    userId: user._id.toString(),
+    role: user.role,
+    status: user.status,
+  });
+
   return user;
 }
 

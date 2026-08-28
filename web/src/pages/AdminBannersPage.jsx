@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../api/client';
 import { LoadMoreControl } from '../components/LoadMoreControl';
 import { usePaginatedData } from '../hooks/usePaginatedData';
+import { REALTIME_EVENTS, useRealtimeSync } from '../realtime/useRealtimeSync';
 import { withArFallback } from '../utils/displayName';
 
 const PAGE_SIZE = 20;
@@ -224,6 +225,14 @@ export function AdminBannersPage() {
     reset();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Realtime: same moderation-queue reasoning as offers - a warehouse's banner
+  // stays unpublished until an admin decides, and a second admin shouldn't be
+  // looking at a row that's already been handled.
+  useRealtimeSync(
+    [REALTIME_EVENTS.BANNER_PENDING, REALTIME_EVENTS.BANNER_STATUS_UPDATED],
+    () => reset()
+  );
 
   const handleApprove = async (banner) => {
     const confirmed = window.confirm(
