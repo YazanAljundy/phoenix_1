@@ -38,8 +38,19 @@ const orderSchema = new Schema(
   { timestamps: true }
 );
 
-orderSchema.index({ pharmacyId: 1 });
-orderSchema.index({ warehouseId: 1 });
-orderSchema.index({ status: 1 });
+// Level 2 (see docs/PERFORMANCE_OPTIMIZATION.md). Each index matches one real
+// query's Equality-Sort-Range shape; the three former single-field indexes
+// (`pharmacyId`, `warehouseId`, `status`) are each a prefix of one of these
+// and are dropped by scripts/level2-index-migration.js.
+//
+// listOrdersForPharmacy: find({ pharmacyId, orderNumber:{$lt} }).sort({ orderNumber:-1 })
+orderSchema.index({ pharmacyId: 1, orderNumber: -1 });
+// listOrdersForWarehouse (status tab): find({ warehouseId, status, orderNumber:{$gt} }).sort({ orderNumber:1 })
+orderSchema.index({ warehouseId: 1, status: 1, orderNumber: 1 });
+// listOrdersForWarehouse ("all" tab, no status): find({ warehouseId, orderNumber:{$gt} }).sort({ orderNumber:1 })
+orderSchema.index({ warehouseId: 1, orderNumber: 1 });
+// listReturnableOrders: find({ pharmacyId, status:'delivered', updatedAt:{$gte} })
+// (its { pharmacyId, status } prefix also serves pharmacyBalance.recomputeBalance)
+orderSchema.index({ pharmacyId: 1, status: 1, updatedAt: -1 });
 
 module.exports = model('Order', orderSchema);

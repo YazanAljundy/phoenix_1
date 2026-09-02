@@ -15,6 +15,8 @@ const mongoose = require('mongoose');
 
 const emitted = [];
 
+const { modelQuery } = require('./helpers/model-query-stub');
+
 function stubModule(relativePath, exportsValue) {
   const resolved = require.resolve(path.join(__dirname, '..', 'src', relativePath));
   require.cache[resolved] = { id: resolved, filename: resolved, loaded: true, exports: exportsValue };
@@ -59,12 +61,19 @@ function buildOrder() {
 // Mutated in place, never reassigned: order.service captured this exact
 // object at require time, so swapping require.cache's `exports` wholesale
 // after the fact would have no effect on it.
+// The order itself stays a bare promise-returning stub: cancelOrder mutates
+// and saves that document, so it is deliberately not a .lean() read. The
+// sibling reads below ARE lean, hence modelQuery - see the note in
+// helpers/model-query-stub.js. Resolved values are unchanged.
 const orderModelStub = { findOne: async () => buildOrder() };
 stubModule('models/order.model.js', orderModelStub);
-stubModule('models/warehouse.model.js', { findById: async () => ({ _id: WAREHOUSE_ID }) });
-stubModule('models/orderItem.model.js', { find: async () => [] });
-stubModule('models/return.model.js', { findOne: async () => null });
-stubModule('models/review.model.js', { findOne: async () => null });
+stubModule('models/warehouse.model.js', { findById: modelQuery(() => ({ _id: WAREHOUSE_ID })) });
+stubModule('models/orderItem.model.js', { find: modelQuery(() => []) });
+stubModule('models/return.model.js', { findOne: modelQuery(() => null) });
+stubModule('models/review.model.js', { findOne: modelQuery(() => null) });
+// getOrderForPharmacy (called by cancelOrder) now also reads the order's
+// complaints - stubbed like its siblings so this stays DB-free.
+stubModule('models/complaint.model.js', { find: modelQuery(() => []) });
 
 const orderService = require('../src/services/order.service');
 

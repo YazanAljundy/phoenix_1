@@ -195,7 +195,8 @@ export class RealtimeClient {
       payload?.returnId ??
       payload?.userId ??
       payload?.offerId ??
-      payload?.bannerId;
+      payload?.bannerId ??
+      payload?.complaintId;
     if (!id) return false;
     // A status change legitimately repeats for one id (pending -> confirmed
     // -> preparing), so the status is part of the key; a pure "created" never

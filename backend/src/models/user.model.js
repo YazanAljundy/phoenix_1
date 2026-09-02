@@ -30,4 +30,10 @@ const userSchema = new Schema(
   { timestamps: true }
 );
 
+// Level 2 (see docs/PERFORMANCE_OPTIMIZATION.md). warehouse.listAvailableWarehouses
+// (`find({ role:'warehouse', status:'active' })`, on the browsing path) plus the
+// admin pending-account list/count and the broadcast recipient scan all filtered
+// role + status with no supporting index - a full users scan each time.
+userSchema.index({ role: 1, status: 1 });
+
 module.exports = model('User', userSchema);

@@ -8,10 +8,20 @@ const { listReviewsForWarehouse } = require('./warehouseReview.service');
 // admin-approved (users.status = 'active'), and warehouses.isActive lets an
 // already-approved warehouse be temporarily paused without losing approval.
 async function listAvailableWarehouses() {
-  const activeWarehouseUsers = await User.find({ role: 'warehouse', status: 'active' }).select('_id');
+  const activeWarehouseUsers = await User.find({ role: 'warehouse', status: 'active' })
+    .select('_id')
+    .lean();
   const userIds = activeWarehouseUsers.map((u) => u._id);
 
-  return Warehouse.find({ userId: { $in: userIds }, isActive: true }).sort({ nameEn: 1 });
+  // .lean(): these go straight to warehouse.viewmodel.js and are never saved.
+  // .select(): warehouse.viewmodel.js's serializeWarehouse (the card shape)
+  // reads exactly these seven fields plus _id; userId is only the join key
+  // used just above, and address/rates/delivery windows/rating counters are
+  // the profile screen's concern, not the list.
+  return Warehouse.find({ userId: { $in: userIds }, isActive: true })
+    .select('nameAr nameEn city phone logo minOrderAmountUsd maxOrderAmountUsd')
+    .sort({ nameEn: 1 })
+    .lean();
 }
 
 // Same availability rule as above, for a single warehouse - used by the
@@ -21,11 +31,19 @@ async function isWarehouseAvailable(warehouseId) {
   if (!mongoose.Types.ObjectId.isValid(warehouseId)) {
     return false;
   }
-  const warehouse = await Warehouse.findOne({ _id: warehouseId, isActive: true });
+  // Runs on every catalog, profile and order request. Both queries are pure
+  // existence checks whose results are discarded (only `userId` is read on to
+  // the second one), so nothing beyond those two fields needs to leave the
+  // database, and nothing needs to become a Mongoose document.
+  const warehouse = await Warehouse.findOne({ _id: warehouseId, isActive: true })
+    .select('userId')
+    .lean();
   if (!warehouse) {
     return false;
   }
-  const user = await User.findOne({ _id: warehouse.userId, role: 'warehouse', status: 'active' });
+  const user = await User.findOne({ _id: warehouse.userId, role: 'warehouse', status: 'active' })
+    .select('_id')
+    .lean();
   return Boolean(user);
 }
 
@@ -43,8 +61,16 @@ async function getWarehouseProfile(warehouseId) {
     throw ApiError.notFound('Warehouse not found.', 'WAREHOUSE_NOT_FOUND');
   }
 
+  // .lean(): read-only, straight into warehouse.viewmodel.js.
+  // .select(): warehouse.viewmodel.js's toWarehouseProfileResponse reads
+  // exactly these fields (averageRating/reviewsCount are computed live from
+  // `reviews` here, not taken off the doc - see this function's own comment).
   const [warehouse, { reviews, averageRating }] = await Promise.all([
-    Warehouse.findById(warehouseId),
+    Warehouse.findById(warehouseId)
+      .select(
+        'nameAr nameEn address city phone logo deliveryStartTime deliveryEndTime deliveryType minOrderAmountUsd maxOrderAmountUsd'
+      )
+      .lean(),
     listReviewsForWarehouse(warehouseId),
   ]);
 

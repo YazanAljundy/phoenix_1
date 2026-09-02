@@ -9,7 +9,10 @@ const { parseCursorQuery, parseNumericCursor, paginationMeta } = require('../uti
 const ORDERS_DEFAULT_LIMIT = 15;
 
 async function loadPharmacyOrThrow(userId) {
-  const pharmacy = await Pharmacy.findOne({ userId });
+  // Runs on every order/return/review/debt request and only ever yields
+  // `pharmacy._id` to its callers, so neither the rest of the document nor
+  // Mongoose hydration is needed.
+  const pharmacy = await Pharmacy.findOne({ userId }).select('_id').lean();
   if (!pharmacy) {
     throw ApiError.notFound('Pharmacy profile not found.', 'PHARMACY_NOT_FOUND');
   }
@@ -78,13 +81,18 @@ const list = asyncHandler(async (req, res) => {
 
 const getOne = asyncHandler(async (req, res) => {
   const pharmacy = await loadPharmacyOrThrow(req.user._id);
-  const { order, warehouse, items, returnRequest, myReview } = await orderService.getOrderForPharmacy(
-    req.params.id,
-    pharmacy._id
-  );
+  const { order, warehouse, items, returnRequest, myReview, complaints } =
+    await orderService.getOrderForPharmacy(req.params.id, pharmacy._id);
   res.json({
     success: true,
-    ...orderViewModel.toOrderDetailResponse(order, warehouse, items, returnRequest, myReview),
+    ...orderViewModel.toOrderDetailResponse(
+      order,
+      warehouse,
+      items,
+      returnRequest,
+      myReview,
+      complaints
+    ),
   });
 });
 
@@ -107,5 +115,16 @@ const listReturnable = asyncHandler(async (req, res) => {
   res.json({ success: true, ...orderViewModel.toReturnableOrdersResponse(rows) });
 });
 
+// Section: POST /orders/:id/reorder - builds a cart-ready payload from a past
+// delivered order. Creates NOTHING: no order, no document. pharmacyId comes
+// from the authenticated user's own profile (never the body), and
+// prepareReorder scopes the lookup to it - a pharmacy can only reorder its
+// own orders.
+const reorder = asyncHandler(async (req, res) => {
+  const pharmacy = await loadPharmacyOrThrow(req.user._id);
+  const preparation = await orderService.prepareReorder(req.params.id, pharmacy._id);
+  res.json({ success: true, ...orderViewModel.toReorderResponse(preparation) });
+});
+
 module.exports = {
-  listReturnable, create, list, getOne, cancel };
+  listReturnable, create, list, getOne, cancel, reorder };

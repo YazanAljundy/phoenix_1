@@ -49,4 +49,7 @@ function toProductListResponse(items) {
   return { products: items.map(serializeProductWithOffer) };
 }
 
-module.exports = { toProductListResponse };
+// serializeProductWithOffer is exported so the reorder endpoint
+// (order.viewmodel.js) can emit the exact same product shape the catalog
+// browse does - one serializer, so the cart parses both identically.
+module.exports = { toProductListResponse, serializeProductWithOffer };

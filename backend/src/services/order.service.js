@@ -8,6 +8,7 @@ const Warehouse = require('../models/warehouse.model');
 const Counter = require('../models/counter.model');
 const Return = require('../models/return.model');
 const Review = require('../models/review.model');
+const Complaint = require('../models/complaint.model');
 const { isWarehouseAvailable } = require('./warehouse.service');
 const {
   RETURN_WINDOW_MS,
@@ -294,17 +295,26 @@ async function listReturnableOrders(pharmacyId) {
   // then filtered precisely on the real deliveredAt below. updatedAt only
   // pre-filters - it can be later than delivery but never earlier, so this
   // can't drop an order that is genuinely still eligible.
+  // .lean() here and on the three reads below: listReturnableOrders is
+  // read-only, straight into order.viewmodel.js. findDeliveredAt only walks
+  // statusHistory, which is a plain array on a lean document.
+  // .select(): findDeliveredAt walks statusHistory, and order.viewmodel.js's
+  // serializeReturnableOrder reads orderNumber/warehouseId/finalPrice.
+  // pharmacyId/status/updatedAt are the filter.
   const candidates = await Order.find({
     pharmacyId,
     status: 'delivered',
     updatedAt: { $gte: cutoff },
-  }).sort({ _id: -1 });
+  })
+    .select('orderNumber warehouseId finalPrice statusHistory')
+    .sort({ _id: -1 })
+    .lean();
   if (candidates.length === 0) return [];
 
   const existingReturns = await Return.find(
     { orderId: { $in: candidates.map((o) => o._id) } },
     'orderId'
-  );
+  ).lean();
   const returnedOrderIds = new Set(existingReturns.map((r) => r.orderId.toString()));
 
   const eligible = [];
@@ -319,8 +329,14 @@ async function listReturnableOrders(pharmacyId) {
   if (eligible.length === 0) return [];
 
   const [items, warehouses] = await Promise.all([
-    OrderItem.find({ orderId: { $in: eligible.map((e) => e.order._id) } }),
-    Warehouse.find({ _id: { $in: [...new Set(eligible.map((e) => e.order.warehouseId.toString()))] } }),
+    // serializeReturnableOrder's item shape: productId/productNameAr/
+    // productNameEn/quantity/discountPrice, keyed back to its order by orderId.
+    OrderItem.find({ orderId: { $in: eligible.map((e) => e.order._id) } })
+      .select('orderId productId productNameAr productNameEn quantity discountPrice')
+      .lean(),
+    Warehouse.find({ _id: { $in: [...new Set(eligible.map((e) => e.order.warehouseId.toString()))] } })
+      .select('nameAr nameEn')
+      .lean(),
   ]);
   const itemsByOrderId = new Map();
   for (const item of items) {
@@ -348,7 +364,9 @@ async function listReturnableOrders(pharmacyId) {
 //
 // Section 6.9: also carries the order's linked return (if any) - the
 // tracking/invoice screen must always show it, never leave it disconnected
-// from the original order.
+// from the original order. Same reasoning for `complaints`: the order-tracking
+// screen shows the complaints filed about this order (complaint Section 9), and
+// its "file a complaint about this order" CTA seeds the order context from here.
 async function getOrderForPharmacy(orderId, pharmacyId) {
   if (!mongoose.Types.ObjectId.isValid(orderId)) {
     throw ApiError.notFound('Order not found.', 'ORDER_NOT_FOUND');
@@ -359,13 +377,35 @@ async function getOrderForPharmacy(orderId, pharmacyId) {
   }
   // myReview: this pharmacy's own rating of the warehouse for this order, if
   // it's submitted one already (Section 8/13c).
-  const [warehouse, items, returnRequest, myReview] = await Promise.all([
-    Warehouse.findById(order.warehouseId),
-    OrderItem.find({ orderId: order._id }),
-    Return.findOne({ orderId: order._id }),
-    Review.findOne({ orderId: order._id, reviewerType: 'pharmacy' }),
+  //
+  // `order` above is deliberately NOT lean: cancelOrder calls this function
+  // and then mutates and saves that document. The four below are only ever
+  // read - both this function's callers pass them straight to
+  // order.viewmodel.js - so they skip hydration. `items` is the one that
+  // matters, being the only unbounded set of the four.
+  // .select() throughout: order.viewmodel.js's toOrderDetailResponse reads
+  // only the warehouse's two names, the item lines' snapshot fields, the
+  // linked return's status/rejectionNote/replacementOrderId, and myReview's
+  // rating/comment/createdAt.
+  const [warehouse, items, returnRequest, myReview, complaints] = await Promise.all([
+    Warehouse.findById(order.warehouseId).select('nameAr nameEn').lean(),
+    OrderItem.find({ orderId: order._id })
+      .select('productId productNameAr productNameEn manufacturerAr manufacturerEn quantity unitPrice discountPrice savingsUsd')
+      .lean(),
+    Return.findOne({ orderId: order._id }).select('status rejectionNote replacementOrderId').lean(),
+    Review.findOne({ orderId: order._id, reviewerType: 'pharmacy' })
+      .select('rating comment createdAt')
+      .lean(),
+    // Scoped to this pharmacy too (defence in depth - the order is already
+    // this pharmacy's). Newest first, covered by the { relatedOrderId, _id }
+    // index. Just enough for the tracking screen's list; the full detail is
+    // fetched when a row is tapped.
+    Complaint.find({ relatedOrderId: order._id, pharmacyId })
+      .select('complaintNumber subject status createdAt')
+      .sort({ _id: -1 })
+      .lean(),
   ]);
-  return { order, warehouse, items, returnRequest, myReview };
+  return { order, warehouse, items, returnRequest, myReview, complaints };
 }
 
 const DEFAULT_ORDERS_LIMIT = 15;
@@ -385,9 +425,18 @@ async function listOrdersForPharmacy(pharmacyId, { limit = DEFAULT_ORDERS_LIMIT,
     filter.orderNumber = { $lt: after };
   }
 
+  // .lean(): this list is read-only - the controller hands the rows straight
+  // to order.viewmodel.js. (getOrderForPharmacy stays non-lean because
+  // cancelOrder saves the document it returns; this path has no such caller.)
+  // .select(): order.viewmodel.js's toOrderListItemSummary reads the pricing
+  // fields + orderNumber/status/createdAt; warehouseId is the join key. The
+  // list row carries no items and no statusHistory (that's the detail
+  // response), so the statusHistory array never leaves the database here.
   const orders = await Order.find(filter)
+    .select('orderNumber status totalPrice discountAmount commissionAmount finalPrice createdAt warehouseId')
     .sort({ orderNumber: -1 })
-    .limit(limit + 1);
+    .limit(limit + 1)
+    .lean();
   const hasMore = orders.length > limit;
   const page = hasMore ? orders.slice(0, limit) : orders;
   // Stringified even though orderNumber is a Number - the pagination
@@ -396,7 +445,7 @@ async function listOrdersForPharmacy(pharmacyId, { limit = DEFAULT_ORDERS_LIMIT,
   const nextCursor = page.length > 0 ? String(page[page.length - 1].orderNumber) : null;
 
   const warehouseIds = [...new Set(page.map((o) => o.warehouseId.toString()))];
-  const warehouses = await Warehouse.find({ _id: { $in: warehouseIds } });
+  const warehouses = await Warehouse.find({ _id: { $in: warehouseIds } }).select('nameAr nameEn').lean();
   const warehouseById = new Map(warehouses.map((w) => [w._id.toString(), w]));
 
   const rows = page.map((order) => ({
@@ -438,11 +487,119 @@ async function cancelOrder(orderId, pharmacyId, userId) {
   return { order, warehouse, items };
 }
 
+// Section: "Reorder an existing order" - prepares a cart from a past order
+// WITHOUT creating anything. It never touches the original order, never writes
+// a document, and never trusts a client-supplied warehouse/price: the
+// warehouse is the original order's own stored value and every price/
+// availability figure is read live from the current catalog (the same way the
+// browse endpoint reads them), so checkout stays the single authority for
+// pricing and validation.
+const REORDERABLE_STATUSES = ['delivered'];
+
+async function prepareReorder(orderId, pharmacyId) {
+  if (!mongoose.Types.ObjectId.isValid(orderId)) {
+    throw ApiError.notFound('Order not found.', 'ORDER_NOT_FOUND');
+  }
+  // IDOR: scoped to the caller's own pharmacy, exactly like getOrderForPharmacy
+  // - a pharmacy can never reorder another pharmacy's order by guessing an id.
+  const order = await Order.findOne({ _id: orderId, pharmacyId })
+    .select('status warehouseId')
+    .lean();
+  if (!order) {
+    throw ApiError.notFound('Order not found.', 'ORDER_NOT_FOUND');
+  }
+  // Section 10: only a completed (delivered) order is eligible - reorder must
+  // never resurrect a pending/cancelled order or bypass any existing rule.
+  if (!REORDERABLE_STATUSES.includes(order.status)) {
+    throw ApiError.badRequest(
+      'Only delivered orders can be reordered.',
+      undefined,
+      'ORDER_NOT_REORDERABLE'
+    );
+  }
+
+  // Same availability gate the catalog browse uses - a warehouse that's been
+  // paused or blocked can't be reordered from, just as it can't be browsed.
+  const warehouseAvailable = await isWarehouseAvailable(order.warehouseId);
+  if (!warehouseAvailable) {
+    throw ApiError.notFound('This warehouse is no longer available.', 'WAREHOUSE_NOT_FOUND');
+  }
+
+  // The snapshotted line items - productId + quantity are all reorder needs
+  // (name is kept only to describe an item that has since disappeared).
+  const orderItems = await OrderItem.find({ orderId: order._id })
+    .select('productId quantity productNameAr productNameEn')
+    .lean();
+
+  const quantityByProductId = new Map(
+    orderItems.map((item) => [item.productId.toString(), item.quantity])
+  );
+  const productIds = orderItems.map((item) => item.productId);
+
+  // Only the products this order actually needs - never the whole catalog
+  // (Section 16). Same base filter + identity resolution + offer/discount
+  // stacking as product.service.listWarehouseProducts, so the payload is
+  // byte-compatible with the catalog browse response the cart already parses.
+  const products = productIds.length
+    ? await Product.find({
+        _id: { $in: productIds },
+        warehouseId: order.warehouseId,
+        isActive: true,
+      })
+        .select(
+          'categoryId nameAr nameEn manufacturerAr manufacturerEn image unitAr unitEn price isAvailable masterProductId'
+        )
+        .populate({ path: 'masterProductId', select: 'nameAr nameEn manufacturerAr manufacturerEn' })
+        .lean()
+    : [];
+  products.forEach(applyResolvedIdentity);
+
+  const now = new Date();
+  const [offers, manufacturerDiscountByName, warehouse] = await Promise.all([
+    products.length
+      ? Offer.find({
+          warehouseId: order.warehouseId,
+          status: 'approved',
+          startDate: { $lte: now },
+          endDate: { $gte: now },
+          productId: { $in: products.map((p) => p._id) },
+        }).select('productId discountPercentage titleAr titleEn')
+      : [],
+    getDiscountMapForWarehouse(order.warehouseId),
+    Warehouse.findById(order.warehouseId).select('nameAr nameEn').lean(),
+  ]);
+  const offerByProductId = new Map(offers.map((o) => [o.productId.toString(), o]));
+
+  const items = products.map((product) => ({
+    product,
+    offer: offerByProductId.get(product._id.toString()) ?? null,
+    manufacturerDiscountPercentage: manufacturerDiscountByName.get(product.manufacturerAr) ?? null,
+    quantity: quantityByProductId.get(product._id.toString()),
+  }));
+
+  // Items on the original order that this warehouse no longer sells (deleted,
+  // deactivated, or the product moved warehouse). Reported to the client so it
+  // can tell the pharmacist - never silently dropped, never forced into the
+  // cart where it would fail validation anyway.
+  const availableProductIds = new Set(products.map((p) => p._id.toString()));
+  const unavailableItems = orderItems
+    .filter((item) => !availableProductIds.has(item.productId.toString()))
+    .map((item) => ({
+      productId: item.productId,
+      productNameAr: item.productNameAr,
+      productNameEn: item.productNameEn,
+      quantity: item.quantity,
+    }));
+
+  return { warehouse, items, unavailableItems };
+}
+
 module.exports = {
   createOrder,
   getOrderForPharmacy,
   cancelOrder,
   listOrdersForPharmacy,
   listReturnableOrders,
+  prepareReorder,
   stackedDiscountSyp,
 };

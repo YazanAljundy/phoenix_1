@@ -63,6 +63,8 @@ dependencies:
   flutter_lints: ^5.0.0
   mocktail:
   bloc_test:
+  firebase_remote_config: ^6.6.0
+  package_info_plus: ^9.0.1
 
 dev_dependencies:
   flutter_test:

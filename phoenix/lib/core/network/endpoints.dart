@@ -18,11 +18,17 @@ class Endpoints {
   static const String orders = '/orders';
   static String orderDetail(String orderId) => '/orders/$orderId';
   static String cancelOrder(String orderId) => '/orders/$orderId/cancel';
+  // Builds a cart payload from a past delivered order - creates no order.
+  static String reorder(String orderId) => '/orders/$orderId/reorder';
 
   static const String returnableOrders = '/orders/returnable';
 
   static const String returns = '/returns';
   static String returnDetail(String returnId) => '/returns/$returnId';
+
+  static const String complaints = '/complaints';
+  static String complaintDetail(String complaintId) => '/complaints/$complaintId';
+
   static const String reviews = '/reviews';
   static const String exchangeRate = '/exchange-rate';
 

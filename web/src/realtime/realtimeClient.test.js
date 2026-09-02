@@ -270,6 +270,29 @@ describe('admin events', () => {
     expect(banners).toHaveBeenCalledTimes(1);
   });
 
+  it('deduplicates complaint events by complaintId, but a status change still comes through', () => {
+    const client = newClient();
+    client.connect('token-1');
+    const created = vi.fn();
+    const updated = vi.fn();
+    client.on('complaint.created', created);
+    client.on('complaint.updated', updated);
+
+    sockets[0].fire('complaint.created', { complaintId: 'c-1', status: 'pending' });
+    flush();
+    sockets[0].fire('complaint.created', { complaintId: 'c-1', status: 'pending' });
+    flush();
+    expect(created).toHaveBeenCalledTimes(1);
+
+    sockets[0].fire('complaint.updated', { complaintId: 'c-1', status: 'in_review' });
+    flush();
+    sockets[0].fire('complaint.updated', { complaintId: 'c-1', status: 'in_review' });
+    flush();
+    sockets[0].fire('complaint.updated', { complaintId: 'c-1', status: 'resolved' });
+    flush();
+    expect(updated).toHaveBeenCalledTimes(2);
+  });
+
   it('an approve then reject on the same entity are both delivered', () => {
     const client = newClient();
     client.connect('token-1');

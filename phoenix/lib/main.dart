@@ -3,11 +3,15 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:phoenix/core/network/api_client.dart';
+import 'package:phoenix/core/services/app_update_service.dart';
 import 'package:phoenix/core/services/fcm_service.dart';
+import 'package:phoenix/core/services/remote_config_service.dart';
 import 'package:phoenix/core/services/secure_storage_service.dart';
 import 'package:phoenix/core/services/storage_service.dart';
+import 'package:phoenix/features/app_update/presentation/app_update_gate.dart';
 import 'package:phoenix/firebase_options.dart';
 import 'package:phoenix/core/theme/dark_theme.dart';
 import 'package:phoenix/core/theme/light_theme.dart';
@@ -21,6 +25,8 @@ import 'package:phoenix/features/cart/data/repositories/order_repository_impl.da
 import 'package:phoenix/features/cart/presentation/managers/cart_cubit.dart';
 import 'package:phoenix/features/catalog/data/repositories/catalog_repository.dart';
 import 'package:phoenix/features/catalog/data/repositories/catalog_repository_impl.dart';
+import 'package:phoenix/features/complaints/data/repositories/complaint_repository.dart';
+import 'package:phoenix/features/complaints/data/repositories/complaint_repository_impl.dart';
 import 'package:phoenix/features/debts/data/repositories/debt_repository.dart';
 import 'package:phoenix/features/debts/data/repositories/debt_repository_impl.dart';
 import 'package:phoenix/features/exchange_rate/data/repositories/exchange_rate_repository.dart';
@@ -39,6 +45,7 @@ import 'package:phoenix/features/warehouse_selection/data/repositories/warehouse
 import 'package:phoenix/features/warehouse_selection/presentation/managers/warehouse_selection_cubit.dart';
 import 'package:phoenix/generated/app_localizations.dart';
 import 'package:phoenix/routes/app_router.dart';
+import 'package:phoenix/routes/route_paths.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -53,6 +60,18 @@ Future<void> main() async {
   final storageService = StorageService(prefs);
 
   final initialState = await _loadInitialSettings(storageService);
+
+  // Update checker (Firebase Remote Config). initialize() only sets config +
+  // defaults and activates already-fetched values - it never blocks startup
+  // and never hits the network; the once-a-day fetch happens later, inside
+  // AppUpdateGate, behind AppUpdateService's own 24h gate.
+  final remoteConfigService = RemoteConfigService();
+  await remoteConfigService.initialize();
+  final appUpdateService = AppUpdateService(
+    remoteConfigService: remoteConfigService,
+    storageService: storageService,
+    currentVersion: await _currentAppVersion(),
+  );
 
   final secureStorage = SecureStorageService();
   final apiClient = ApiClient(secureStorage: secureStorage);
@@ -69,6 +88,7 @@ Future<void> main() async {
   );
   final orderRepository = OrderRepositoryImpl(apiClient: apiClient);
   final returnRepository = ReturnRepositoryImpl(apiClient: apiClient);
+  final complaintRepository = ComplaintRepositoryImpl(apiClient: apiClient);
   final reviewRepository = ReviewRepositoryImpl(apiClient: apiClient);
   final debtRepository = DebtRepositoryImpl(apiClient: apiClient);
   final bannersRepository = BannersRepositoryImpl(apiClient: apiClient);
@@ -77,6 +97,7 @@ Future<void> main() async {
     MyApp(
       initialState: initialState,
       storageService: storageService,
+      appUpdateService: appUpdateService,
       secureStorage: secureStorage,
       authRepository: authRepository,
       warehouseRepository: warehouseRepository,
@@ -84,6 +105,7 @@ Future<void> main() async {
       exchangeRateRepository: exchangeRateRepository,
       orderRepository: orderRepository,
       returnRepository: returnRepository,
+      complaintRepository: complaintRepository,
       reviewRepository: reviewRepository,
       debtRepository: debtRepository,
       bannersRepository: bannersRepository,
@@ -92,6 +114,17 @@ Future<void> main() async {
       appRouter: appRouter,
     ),
   );
+}
+
+// The installed app version ("1.0.0"), build metadata dropped. Guarded so a
+// platform-channel failure here can never stop Phoenix from starting - an
+// empty string just means the update checker does nothing.
+Future<String> _currentAppVersion() async {
+  try {
+    return (await PackageInfo.fromPlatform()).version;
+  } catch (_) {
+    return '';
+  }
 }
 
 Future<SettingsState> _loadInitialSettings(
@@ -128,6 +161,7 @@ class MyApp extends StatelessWidget {
   const MyApp({
     required this.initialState,
     required this.storageService,
+    required this.appUpdateService,
     required this.secureStorage,
     required this.authRepository,
     required this.warehouseRepository,
@@ -135,6 +169,7 @@ class MyApp extends StatelessWidget {
     required this.exchangeRateRepository,
     required this.orderRepository,
     required this.returnRepository,
+    required this.complaintRepository,
     required this.reviewRepository,
     required this.debtRepository,
     required this.bannersRepository,
@@ -146,6 +181,7 @@ class MyApp extends StatelessWidget {
 
   final SettingsState initialState;
   final StorageService storageService;
+  final AppUpdateService appUpdateService;
   final SecureStorageService secureStorage;
   final AuthRepositoryImpl authRepository;
   final WarehouseRepositoryImpl warehouseRepository;
@@ -153,6 +189,7 @@ class MyApp extends StatelessWidget {
   final ExchangeRateRepositoryImpl exchangeRateRepository;
   final OrderRepositoryImpl orderRepository;
   final ReturnRepositoryImpl returnRepository;
+  final ComplaintRepositoryImpl complaintRepository;
   final ReviewRepositoryImpl reviewRepository;
   final DebtRepositoryImpl debtRepository;
   final BannersRepositoryImpl bannersRepository;
@@ -166,6 +203,9 @@ class MyApp extends StatelessWidget {
         RepositoryProvider<CatalogRepository>.value(value: catalogRepository),
         RepositoryProvider<OrderRepository>.value(value: orderRepository),
         RepositoryProvider<ReturnRepository>.value(value: returnRepository),
+        RepositoryProvider<ComplaintRepository>.value(
+          value: complaintRepository,
+        ),
         RepositoryProvider<ReviewRepository>.value(value: reviewRepository),
         RepositoryProvider<WarehouseRepository>.value(
           value: warehouseRepository,
@@ -221,35 +261,47 @@ class MyApp extends StatelessWidget {
         // scope so it can reach AuthCubit; throttling + "only when it matters"
         // logic lives in AuthCubit.revalidateOnResume.
         child: _SessionLifecycleObserver(
-          child: Builder(
-            builder: (context) => BlocBuilder<SettingsCubit, SettingsState>(
-              builder: (context, state) {
-                // TEMP DIAGNOSTIC (router-lifecycle) - remove after verifying.
-                debugPrint(
-                  'ROUTER_DEBUG: MyApp build/rebuild - '
-                  'locale=${state.locale?.languageCode ?? 'null'} '
-                  'themeMode=${state.themeMode.name} '
-                  'router=#${identityHashCode(appRouter.router)}',
-                );
-                return MaterialApp.router(
-                  themeMode: state.themeMode,
-                  darkTheme: DarkTheme.data,
-                  // Stable instance created once in main() - NOT `AppRouter().router`,
-                  // which builds a brand-new GoRouter (resetting navigation to the
-                  // splash route) on every SettingsCubit rebuild.
-                  routerConfig: appRouter.router,
-                  debugShowCheckedModeBanner: false,
-                  theme: LightTheme.data,
-                  locale: state.locale,
-                  localizationsDelegates: const [
-                    AppLocalizations.delegate,
-                    GlobalMaterialLocalizations.delegate,
-                    GlobalWidgetsLocalizations.delegate,
-                    GlobalCupertinoLocalizations.delegate,
-                  ],
-                  supportedLocales: AppLocalizations.supportedLocales,
-                );
-              },
+          child: AppUpdateGate(
+            service: appUpdateService,
+            isAppShellReady: () {
+              try {
+                return appRouter
+                        .router.routerDelegate.currentConfiguration.uri.path !=
+                    RoutePaths.splash;
+              } catch (_) {
+                return true;
+              }
+            },
+            child: Builder(
+              builder: (context) => BlocBuilder<SettingsCubit, SettingsState>(
+                builder: (context, state) {
+                  // TEMP DIAGNOSTIC (router-lifecycle) - remove after verifying.
+                  debugPrint(
+                    'ROUTER_DEBUG: MyApp build/rebuild - '
+                    'locale=${state.locale?.languageCode ?? 'null'} '
+                    'themeMode=${state.themeMode.name} '
+                    'router=#${identityHashCode(appRouter.router)}',
+                  );
+                  return MaterialApp.router(
+                    themeMode: state.themeMode,
+                    darkTheme: DarkTheme.data,
+                    // Stable instance created once in main() - NOT `AppRouter().router`,
+                    // which builds a brand-new GoRouter (resetting navigation to the
+                    // splash route) on every SettingsCubit rebuild.
+                    routerConfig: appRouter.router,
+                    debugShowCheckedModeBanner: false,
+                    theme: LightTheme.data,
+                    locale: state.locale,
+                    localizationsDelegates: const [
+                      AppLocalizations.delegate,
+                      GlobalMaterialLocalizations.delegate,
+                      GlobalWidgetsLocalizations.delegate,
+                      GlobalCupertinoLocalizations.delegate,
+                    ],
+                    supportedLocales: AppLocalizations.supportedLocales,
+                  );
+                },
+              ),
             ),
           ),
         ),

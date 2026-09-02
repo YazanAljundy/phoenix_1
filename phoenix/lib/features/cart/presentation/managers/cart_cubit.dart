@@ -102,6 +102,29 @@ class CartCubit extends Cubit<CartState> {
     _loadWarehouseLimits(warehouseId);
   }
 
+  // "Reorder an existing order": replaces the whole cart with a past order's
+  // contents, bound to that order's own warehouse (Section 4 - the warehouse
+  // comes from the trusted server payload, never client input). Same
+  // one-warehouse-per-cart invariant as replaceWithProduct; the caller
+  // (ReorderButton) resolves any "you already have a cart" confirmation first.
+  // `items` are already priced with the current catalog price by the server -
+  // no historical prices are carried over, and checkout re-validates every
+  // line as usual.
+  void loadReorder({
+    required String warehouseId,
+    required String warehouseName,
+    required List<CartItem> items,
+  }) {
+    emit(
+      CartState(
+        warehouseId: warehouseId,
+        warehouseName: warehouseName,
+        items: List.of(items),
+      ),
+    );
+    _loadWarehouseLimits(warehouseId);
+  }
+
   void updateQuantity(String productId, int quantity) {
     final updated = state.items.map((item) {
       if (item.productId != productId) return item;

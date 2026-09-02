@@ -24,7 +24,20 @@ async function authenticateToken(token) {
     throw ApiError.unauthorized('Invalid or expired token.');
   }
 
-  const user = await User.findById(payload.sub);
+  // This runs on every authenticated request and every socket handshake, so
+  // it is the hottest query in the application. Two deliberate narrowings:
+  //
+  //  - .lean(): the returned user is only ever read (req.user is used for
+  //    ._id, .role and .status, and realtime/index.js reads the same three).
+  //    Nothing saves it - the one place a User is mutated, admin.service.js's
+  //    approve/reject, loads its own document via findPendingUserOrThrow.
+  //  - the projection: `deviceTokens` is an unbounded array that nothing on
+  //    this path reads, and deserializing it per request was pure waste.
+  //    notification.service.js loads it separately where it is actually
+  //    needed.
+  //
+  // Anything added here that needs a further field must extend this select.
+  const user = await User.findById(payload.sub).select('_id role status').lean();
   if (!user) {
     throw ApiError.unauthorized('User no longer exists.');
   }

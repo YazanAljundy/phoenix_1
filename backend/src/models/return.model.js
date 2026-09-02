@@ -40,7 +40,15 @@ const returnSchema = new Schema(
   { timestamps: true }
 );
 
-returnSchema.index({ warehouseId: 1, status: 1 });
+// Level 2 (see docs/PERFORMANCE_OPTIMIZATION.md). The warehouse returns queue
+// paginates on _id descending (listPaginatedReturnsForWarehouse):
+//   with a status filter -> {warehouseId,status,_id:-1}
+//   without one          -> {warehouseId,_id:-1}
+// The `_id:-1` suffix on the first also supersedes the old {warehouseId,status}
+// (its {warehouseId,status} prefix still serves the unpaginated list + the
+// "does this order have a return" lookup) - dropped by the migration script.
+returnSchema.index({ warehouseId: 1, status: 1, _id: -1 });
+returnSchema.index({ warehouseId: 1, _id: -1 });
 returnSchema.index({ pharmacyId: 1 });
 
 module.exports = model('Return', returnSchema);

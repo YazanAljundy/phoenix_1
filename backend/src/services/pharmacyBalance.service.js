@@ -36,7 +36,7 @@ function paymentAmountToUsd(amount, currency, usdToSyp) {
 // delete (payment.service.js).
 async function recomputeBalance(pharmacyId, warehouseId) {
   const [rate, orders, payments] = await Promise.all([
-    ExchangeRate.findById(EXCHANGE_RATE_SINGLETON_ID),
+    ExchangeRate.findById(EXCHANGE_RATE_SINGLETON_ID).select('usdToSyp'),
     Order.find({ pharmacyId, warehouseId, status: 'delivered' }, 'finalPrice'),
     Payment.find({ pharmacyId, warehouseId }, 'amount currency'),
   ]);
@@ -97,7 +97,9 @@ async function listPaginatedDebtorsForWarehouse(
       : null;
 
   const pharmacyIds = page.map((b) => b.pharmacyId);
-  const pharmacies = await Pharmacy.find({ _id: { $in: pharmacyIds } });
+  // pharmacyBalance.viewmodel.js's serializeDebtorRow shows the pharmacy's two
+  // names and phone.
+  const pharmacies = await Pharmacy.find({ _id: { $in: pharmacyIds } }).select('nameAr nameEn phone');
   const pharmacyById = new Map(pharmacies.map((p) => [p._id.toString(), p]));
 
   const rows = page
@@ -114,7 +116,9 @@ async function listDebtsForPharmacy(pharmacyId) {
     balanceUsd: -1,
   });
   const warehouseIds = balances.map((b) => b.warehouseId);
-  const warehouses = await Warehouse.find({ _id: { $in: warehouseIds } });
+  // pharmacyBalance.viewmodel.js's serializeDebtRow shows the warehouse's two
+  // names and phone.
+  const warehouses = await Warehouse.find({ _id: { $in: warehouseIds } }).select('nameAr nameEn phone');
   const warehouseById = new Map(warehouses.map((w) => [w._id.toString(), w]));
 
   return balances
@@ -146,8 +150,10 @@ async function getBalanceDetail(pharmacyId, warehouseId) {
       orderNumber: -1,
     }),
     Payment.find({ pharmacyId, warehouseId }).sort({ createdAt: -1 }),
-    Pharmacy.findById(pharmacyId),
-    Warehouse.findById(warehouseId),
+    // toBalanceDetailResponse shows only the "other party" - its id, two names
+    // and phone.
+    Pharmacy.findById(pharmacyId).select('nameAr nameEn phone'),
+    Warehouse.findById(warehouseId).select('nameAr nameEn phone'),
   ]);
 
   if (!pharmacy || !warehouse) {

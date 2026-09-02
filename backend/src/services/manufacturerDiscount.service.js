@@ -4,7 +4,11 @@ const ManufacturerDiscount = require('../models/manufacturerDiscount.model');
 const { listManufacturersForWarehouse } = require('./warehouseManufacturer.service');
 
 async function listDiscountsForWarehouse(warehouseId) {
-  return ManufacturerDiscount.find({ warehouseId }).sort({ manufacturerAr: 1 });
+  // manufacturerDiscount.viewmodel.js's serializeDiscount reads id/
+  // manufacturerAr/discountPercentage/createdAt and nothing else.
+  return ManufacturerDiscount.find({ warehouseId })
+    .select('manufacturerAr discountPercentage createdAt')
+    .sort({ manufacturerAr: 1 });
 }
 
 function validatePercentage(value) {
@@ -88,7 +92,9 @@ async function deleteDiscount(id, warehouseId) {
 // fetched once and reused across every product in a catalog listing or
 // order, rather than one query per product.
 async function getDiscountMapForWarehouse(warehouseId) {
-  const discounts = await ManufacturerDiscount.find({ warehouseId });
+  // Only the (manufacturerAr -> discountPercentage) pair is used to build the
+  // lookup map. Runs on every catalog listing and every order.
+  const discounts = await ManufacturerDiscount.find({ warehouseId }).select('manufacturerAr discountPercentage');
   return new Map(discounts.map((d) => [d.manufacturerAr, d.discountPercentage]));
 }
 

@@ -68,11 +68,20 @@ async function createOffer(warehouseId, data) {
 }
 
 async function listOffersForWarehouse(warehouseId) {
-  const offers = await Offer.find({ warehouseId }).sort({ createdAt: -1 });
+  // warehouseOffer.viewmodel.js's serializeOffer reads id/productId/titleAr/
+  // titleEn/discountPercentage/startDate/endDate/status/createdAt.
+  const offers = await Offer.find({ warehouseId })
+    .select('productId titleAr titleEn discountPercentage startDate endDate status createdAt')
+    .sort({ createdAt: -1 });
   if (offers.length === 0) return [];
 
   const productIds = [...new Set(offers.map((o) => o.productId.toString()))];
-  const products = await Product.find({ _id: { $in: productIds } }).populate('masterProductId');
+  // Only the product's resolved name is shown next to an offer -
+  // applyResolvedIdentity reads the four identity fields from the product or
+  // its linked catalog entry, nothing else.
+  const products = await Product.find({ _id: { $in: productIds } })
+    .select('nameAr nameEn manufacturerAr manufacturerEn masterProductId')
+    .populate({ path: 'masterProductId', select: 'nameAr nameEn manufacturerAr manufacturerEn' });
   products.forEach(applyResolvedIdentity);
   const productById = new Map(products.map((p) => [p._id.toString(), p]));
 

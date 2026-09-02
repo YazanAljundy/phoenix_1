@@ -29,6 +29,15 @@ const EVENTS = {
   OFFER_STATUS_UPDATED: 'offer.status.updated',
   BANNER_PENDING: 'banner.pending',
   BANNER_STATUS_UPDATED: 'banner.status.updated',
+
+  // Complaint events. Unlike everything above, a complaint has TWO dashboards
+  // that care: the admin queue that triages and answers it (admin room), and
+  // the warehouse's own "complaints against me" list (that one warehouse's
+  // room). So each of these is emitted to both - see complaint.service.js /
+  // adminComplaint.service.js. Still id-only signals; each dashboard re-reads
+  // the authoritative record over HTTP.
+  COMPLAINT_CREATED: 'complaint.created',
+  COMPLAINT_UPDATED: 'complaint.updated',
 };
 
 // One room per warehouse. The business rule is that an order/delivery belongs

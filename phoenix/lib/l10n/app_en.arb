@@ -212,6 +212,21 @@
   },
   "cartConflictConfirmButton": "Start new cart",
   "cartIconTooltip": "Cart",
+  "reorderButton": "Reorder",
+  "addProductButton": "Add product",
+  "reorderReplaceCartTitle": "Replace your cart?",
+  "reorderReplaceCartMessage": "Your current cart will be replaced with the items from this order. You can still edit everything before checkout.",
+  "reorderReplaceCartConfirm": "Replace cart",
+  "reorderUnavailableTitle": "Some items are unavailable",
+  "reorderNoItemsMessage": "None of this order's products are available from this warehouse anymore.",
+  "reorderSomeItemsUnavailable": "These items are no longer sold by this warehouse and were not added: {names}",
+  "@reorderSomeItemsUnavailable": {
+    "placeholders": {
+      "names": {
+        "type": "String"
+      }
+    }
+  },
   "notificationsTitle": "Notifications",
   "noNotificationsYet": "No notifications yet",
   "noNotificationsYetHint": "Order updates and offers will show up here.",
@@ -249,12 +264,22 @@
     }
   },
   "stageSent": "Sent",
-  "stageUnderReview": "Under review",
+  "stageUnderReview": "Waiting for Approval",
+  "@stageUnderReview": {
+    "description": "Order status label for order.status == 'confirmed'. The order has reached the warehouse and is waiting for it to accept/prepare it."
+  },
   "stagePreparing": "Preparing",
-  "stageOutForDelivery": "Out for delivery",
+  "stageOutForDelivery": "On the Way",
+  "@stageOutForDelivery": {
+    "description": "Order status label for order.status == 'out_for_delivery'. The order has left the warehouse and is being delivered."
+  },
   "stageDelivered": "Delivered",
   "stageCancelled": "Cancelled",
   "stageModified": "Order modified",
+  "stageUnderReviewDesc": "Your order has reached the warehouse",
+  "stagePreparingDesc": "The warehouse is preparing your order",
+  "stageOutForDeliveryDesc": "Your order has left the warehouse",
+  "stageDeliveredDesc": "You received the order",
   "statusHistoryTitle": "Status history",
   "lastUpdatedLabel": "Last updated: {time}",
   "@lastUpdatedLabel": {
@@ -341,6 +366,7 @@
   "returnPendingReviewBanner": "Return submitted, awaiting the warehouse's review",
   "returnRejectedBanner": "Return rejected",
   "errorOrderNotDelivered": "This order hasn't been delivered yet.",
+  "errorOrderNotReorderable": "Only delivered orders can be reordered.",
   "errorOrderItemNotFound": "This item could not be found in the order.",
   "errorReturnQuantityExceeded": "The return quantity exceeds what's available to return for this item.",
   "errorCustomReasonRequired": "Please describe the reason for this return.",
@@ -488,5 +514,115 @@
         "type": "String"
       }
     }
-  }
+  },
+  "complaintsTitle": "Complaints",
+  "complaintsProfileSubtitle": "File a complaint about a warehouse and follow its status",
+  "complaintsCountSubtitle": "{count, plural, zero{No complaints yet} one{1 complaint} other{{count} complaints}}",
+  "@complaintsCountSubtitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noComplaintsYet": "You haven't filed any complaints yet.",
+  "noComplaintsYetHint": "If you run into a problem with a warehouse, you can file a complaint for the administration to review.",
+  "submitComplaintCta": "Submit a complaint",
+  "submitComplaintTitle": "Submit a complaint",
+  "submitComplaintButton": "Submit complaint",
+  "complaintSubmittedMessage": "Your complaint has been submitted. The administration will review it.",
+  "complaintWarehouseLabel": "Warehouse",
+  "complaintWarehouseHint": "Choose the warehouse this complaint is about",
+  "complaintSubjectLabel": "Complaint subject",
+  "complaintSubjectHint": "Summarize the issue in a short sentence",
+  "complaintDescriptionLabel": "Complaint details",
+  "complaintDescriptionHint": "Describe the problem in detail",
+  "complaintOrderNumberLabel": "Related order number (optional)",
+  "complaintOrderNumberHint": "Enter the order number if this complaint is about an order",
+  "complaintExtraDetailsLabel": "Additional details (optional)",
+  "complaintExtraDetailsHint": "Any other information that could help resolve the complaint",
+  "complaintFormFooterHint": "Your warehouse's information is attached to the complaint automatically.",
+  "complaintDetailTitle": "Complaint details",
+  "complaintYourComplaintTitle": "Your complaint",
+  "complaintResponseTitle": "Response",
+  "complaintNumberLabel": "Complaint #{number}",
+  "@complaintNumberLabel": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "complaintFiledOnLabel": "Filed on {date}",
+  "@complaintFiledOnLabel": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "complaintRelatedOrderLabel": "Related order: #{number}",
+  "@complaintRelatedOrderLabel": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "complaintAboutWarehouseLabel": "About this warehouse",
+  "complaintHasResponseHint": "Reply received",
+  "complaintNoResponseYet": "The administration hasn't responded yet. You'll be notified when a reply arrives.",
+  "complaintAdminResponseLabel": "Administration's response",
+  "complaintRespondedOnLabel": "Responded on {date}",
+  "@complaintRespondedOnLabel": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "complaintRespondedByLabel": "Responded by {name}",
+  "@complaintRespondedByLabel": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "complaintStatusPending": "Pending",
+  "complaintStatusInReview": "In review",
+  "complaintStatusResolved": "Resolved",
+  "complaintStatusClosed": "Closed",
+  "errorComplaintWarehouseRequired": "Please choose the warehouse this complaint is about.",
+  "errorComplaintSubjectRequired": "Please enter a subject for the complaint.",
+  "errorComplaintDescriptionRequired": "Please describe the complaint.",
+  "errorComplaintOrderNotFound": "No order with that number was found for this warehouse.",
+  "errorComplaintTooLong": "One of the fields is longer than allowed. Please shorten it.",
+  "errorComplaintNotFound": "This complaint could not be found.",
+  "errorComplaintContextMismatch": "This complaint can't be linked to that warehouse.",
+  "submitComplaintOnWarehouseTitle": "Complaint about warehouse",
+  "submitComplaintAboutOrderTitle": "Complaint about order",
+  "complaintContextGeneral": "General complaint",
+  "complaintGeneralContextNote": "This isn't about a specific warehouse or order.",
+  "complaintOnWarehouseLabel": "Complaint about",
+  "complaintAboutOrderLabel": "Complaint about order",
+  "complaintOrderWarehouseLine": "Warehouse: {name}",
+  "@complaintOrderWarehouseLine": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "submitComplaintOnWarehouseCta": "File a complaint about this warehouse",
+  "submitComplaintAboutOrderCta": "File a complaint about this order",
+  "orderComplaintsSectionTitle": "Complaints about this order",
+  "orderComplaintsEmptyPrompt": "Have a problem with this order? You can file a complaint and the administration will review it.",
+  "updateAvailable": "New Update Available",
+  "updateAvailableMessage": "A new version of Phoenix is available. Update now to get the latest features and improvements.",
+  "updateRequired": "Mandatory Update",
+  "updateRequiredMessage": "Your current version of Phoenix is no longer supported. Please update the application to continue.",
+  "updateNow": "Update Now",
+  "later": "Later",
+  "updateOpenStoreFailed": "Unable to open Google Play. Please try again."
 }

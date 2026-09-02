@@ -5,6 +5,7 @@ import 'package:phoenix/core/network/api_client.dart';
 import 'package:phoenix/core/network/endpoints.dart';
 import 'package:phoenix/features/cart/data/models/cart_item.dart';
 import 'package:phoenix/features/cart/data/models/order_model.dart';
+import 'package:phoenix/features/cart/data/models/reorder_preparation.dart';
 
 import 'order_repository.dart';
 
@@ -71,6 +72,17 @@ class OrderRepositoryImpl implements OrderRepository {
       );
       final data = response.data as Map<String, dynamic>;
       return PaginatedResult.fromJson(data, 'orders', OrderModel.fromJson);
+    } on DioException catch (e) {
+      throw ServerFailure.fromDioError(e);
+    }
+  }
+
+  @override
+  Future<ReorderPreparation> prepareReorder(String orderId) async {
+    try {
+      final response = await _apiClient.dio.post(Endpoints.reorder(orderId));
+      final data = response.data as Map<String, dynamic>;
+      return ReorderPreparation.fromJson(data['reorder'] as Map<String, dynamic>);
     } on DioException catch (e) {
       throw ServerFailure.fromDioError(e);
     }

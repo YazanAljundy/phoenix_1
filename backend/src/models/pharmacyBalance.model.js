@@ -21,4 +21,11 @@ const pharmacyBalanceSchema = new Schema({
 
 pharmacyBalanceSchema.index({ pharmacyId: 1, warehouseId: 1 }, { unique: true });
 
+// Level 2 (see docs/PERFORMANCE_OPTIMIZATION.md). listPaginatedDebtorsForWarehouse
+// - find({ warehouseId, balanceUsd:{$gt:0} }).sort({ balanceUsd:-1, _id:1 }) with a
+// (balanceUsd,_id) cursor - had no usable index (only the {pharmacyId,warehouseId}
+// unique) and was a full scan + in-memory sort. This serves the filter, the sort,
+// and the compound cursor directly.
+pharmacyBalanceSchema.index({ warehouseId: 1, balanceUsd: -1, _id: 1 });
+
 module.exports = model('PharmacyBalance', pharmacyBalanceSchema);

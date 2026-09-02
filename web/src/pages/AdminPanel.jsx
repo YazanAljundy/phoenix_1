@@ -4,13 +4,15 @@ import { useTranslation } from 'react-i18next';
 import { useAuth } from '../auth/AuthContext';
 import { LanguageToggle } from '../components/LanguageToggle';
 import { AdminDashboardPage } from './AdminDashboardPage';
-import { PendingAccountsPage } from './PendingAccountsPage';
+import { AccountsPage } from './AccountsPage';
 import { AdminOffersPage } from './AdminOffersPage';
 import { AdminProductsPage } from './AdminProductsPage';
 import { AdminCatalogPage } from './AdminCatalogPage';
 import { AdminBannersPage } from './AdminBannersPage';
 import { AdminExchangeRatePage } from './AdminExchangeRatePage';
 import { AdminNotificationsPage } from './AdminNotificationsPage';
+import { AdminComplaintsPage } from './AdminComplaintsPage';
+import { AdminComplaintDetailPage } from './AdminComplaintDetailPage';
 
 function navLinkClassName({ isActive }) {
   return `adm-nav-link${isActive ? ' active' : ''}`;
@@ -27,13 +29,14 @@ export function AdminPanel() {
 
   const TABS = [
     { path: '/admin/dashboard', label: t('nav.dashboard') },
-    { path: '/admin/pending-accounts', label: t('nav.pendingAccounts') },
+    { path: '/admin/accounts', label: t('nav.accounts') },
     { path: '/admin/offers', label: t('nav.offers') },
     { path: '/admin/banners', label: t('nav.banners') },
     { path: '/admin/products', label: t('nav.products') },
     { path: '/admin/catalog', label: t('nav.centralCatalog') },
     { path: '/admin/exchange-rate', label: t('nav.exchangeRate') },
     { path: '/admin/notifications', label: t('nav.notifications') },
+    { path: '/admin/complaints', label: t('nav.complaints') },
   ];
 
   // Closing on every route change covers both a tab click and any in-page
@@ -87,14 +90,18 @@ export function AdminPanel() {
         <div className="adm-content">
           <Routes>
             <Route path="/admin/dashboard" element={<AdminDashboardPage />} />
-            <Route path="/admin/pending-accounts" element={<PendingAccountsPage />} />
+            <Route path="/admin/accounts" element={<AccountsPage />} />
+            {/* Old bookmark - the section was renamed Pending Accounts -> Accounts. */}
+            <Route path="/admin/pending-accounts" element={<Navigate to="/admin/accounts" replace />} />
             <Route path="/admin/offers" element={<AdminOffersPage />} />
             <Route path="/admin/banners" element={<AdminBannersPage />} />
             <Route path="/admin/products" element={<AdminProductsPage />} />
             <Route path="/admin/catalog" element={<AdminCatalogPage />} />
             <Route path="/admin/exchange-rate" element={<AdminExchangeRatePage />} />
             <Route path="/admin/notifications" element={<AdminNotificationsPage />} />
-            <Route path="*" element={<Navigate to="/admin/pending-accounts" replace />} />
+            <Route path="/admin/complaints" element={<AdminComplaintsPage />} />
+            <Route path="/admin/complaints/:complaintId" element={<AdminComplaintDetailPage />} />
+            <Route path="*" element={<Navigate to="/admin/accounts" replace />} />
           </Routes>
         </div>
       </div>

@@ -60,6 +60,12 @@ function buildPendingUser() {
   };
 }
 
+// Block/unblock act on an already-decided account, so they need a non-pending
+// starting status.
+function buildManageableUser(status, role = 'pharmacy') {
+  return { _id: USER_ID, role, status, save: () => userSaveBehavior() };
+}
+
 function buildBanner() {
   return {
     _id: BANNER_ID,
@@ -134,6 +140,57 @@ test('an unknown account emits nothing', async () => {
   userModelStub.findById = async () => null;
 
   await assert.rejects(() => adminService.approveAccount(USER_ID.toString()));
+  assert.deepStrictEqual(emitted, []);
+});
+
+// --- Block / Unblock -----------------------------------------------------------
+
+test('blockAccount emits exactly one account.status.updated {blocked}, to admins', async () => {
+  userModelStub.findById = async () => buildManageableUser('active');
+
+  await adminService.blockAccount(USER_ID.toString());
+
+  assert.strictEqual(emitted.length, 1);
+  assert.strictEqual(emitted[0].room, 'admin');
+  assert.strictEqual(emitted[0].event, 'account.status.updated');
+  assert.strictEqual(emitted[0].payload.userId, USER_ID.toString());
+  assert.strictEqual(emitted[0].payload.status, 'blocked');
+});
+
+test('unblockAccount emits exactly one account.status.updated {active}, to admins', async () => {
+  userModelStub.findById = async () => buildManageableUser('blocked', 'warehouse');
+
+  await adminService.unblockAccount(USER_ID.toString());
+
+  assert.strictEqual(emitted.length, 1);
+  assert.strictEqual(emitted[0].payload.status, 'active');
+  assert.strictEqual(emitted[0].payload.role, 'warehouse');
+});
+
+test('blocking a non-active / unblocking a non-blocked account emits nothing', async () => {
+  userModelStub.findById = async () => buildManageableUser('pending');
+  await assert.rejects(() => adminService.blockAccount(USER_ID.toString()));
+
+  userModelStub.findById = async () => buildManageableUser('active');
+  await assert.rejects(() => adminService.unblockAccount(USER_ID.toString()));
+
+  assert.deepStrictEqual(emitted, [], 'a rejected state transition is not an event');
+});
+
+test('a failed block write emits nothing', async () => {
+  userModelStub.findById = async () => buildManageableUser('active');
+  userSaveBehavior = async () => {
+    throw new Error('mongo write failed');
+  };
+
+  await assert.rejects(() => adminService.blockAccount(USER_ID.toString()), /mongo write failed/);
+  assert.deepStrictEqual(emitted, []);
+});
+
+test('block/unblock on an unknown account emits nothing', async () => {
+  userModelStub.findById = async () => null;
+  await assert.rejects(() => adminService.blockAccount(USER_ID.toString()));
+  await assert.rejects(() => adminService.unblockAccount(USER_ID.toString()));
   assert.deepStrictEqual(emitted, []);
 });
 

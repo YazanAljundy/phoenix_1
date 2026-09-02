@@ -1,0 +1,412 @@
+{
+  "totalSamples": 38820,
+  "topFunctions": [
+    {
+      "fn": "deserializeObject",
+      "url": "node_modules/bson/lib/bson.cjs",
+      "line": 3072,
+      "selfPercent": 8.33,
+      "samples": 3233
+    },
+    {
+      "fn": "(garbage collector)",
+      "url": "",
+      "line": 0,
+      "selfPercent": 5.11,
+      "samples": 1983
+    },
+    {
+      "fn": "init",
+      "url": "node_modules/mongoose/lib/document.js",
+      "line": 739,
+      "selfPercent": 4.51,
+      "samples": 1749
+    },
+    {
+      "fn": "Document",
+      "url": "node_modules/mongoose/lib/document.js",
+      "line": 89,
+      "selfPercent": 4.19,
+      "samples": 1628
+    },
+    {
+      "fn": "_changeState",
+      "url": "node_modules/mongoose/lib/stateMachine.js",
+      "line": 68,
+      "selfPercent": 4.18,
+      "samples": 1623
+    },
+    {
+      "fn": "applyDefaults",
+      "url": "node_modules/mongoose/lib/helpers/document/applyDefaults.js",
+      "line": 5,
+      "selfPercent": 3.85,
+      "samples": 1496
+    },
+    {
+      "fn": "init",
+      "url": "node_modules/mongoose/lib/document.js",
+      "line": 739,
+      "selfPercent": 3.74,
+      "samples": 1450
+    },
+    {
+      "fn": "_changeState",
+      "url": "node_modules/mongoose/lib/stateMachine.js",
+      "line": 68,
+      "selfPercent": 3.5,
+      "samples": 1359
+    },
+    {
+      "fn": "Document.$__init",
+      "url": "node_modules/mongoose/lib/document.js",
+      "line": 685,
+      "selfPercent": 2.51,
+      "samples": 975
+    },
+    {
+      "fn": "Document.$__init",
+      "url": "node_modules/mongoose/lib/document.js",
+      "line": 685,
+      "selfPercent": 2.14,
+      "samples": 830
+    },
+    {
+      "fn": "Document.$__buildDoc",
+      "url": "node_modules/mongoose/lib/document.js",
+      "line": 561,
+      "selfPercent": 2.04,
+      "samples": 792
+    },
+    {
+      "fn": "_changeState",
+      "url": "node_modules/mongoose/lib/stateMachine.js",
+      "line": 68,
+      "selfPercent": 1.85,
+      "samples": 720
+    },
+    {
+      "fn": "(idle)",
+      "url": "",
+      "line": 0,
+      "selfPercent": 1.5,
+      "samples": 581
+    },
+    {
+      "fn": "internalDeserialize",
+      "url": "node_modules/bson/lib/bson.cjs",
+      "line": 3050,
+      "selfPercent": 1.27,
+      "samples": 492
+    },
+    {
+      "fn": "applyDefaults",
+      "url": "node_modules/mongoose/lib/helpers/document/applyDefaults.js",
+      "line": 5,
+      "selfPercent": 1.17,
+      "samples": 456
+    },
+    {
+      "fn": "requiredPaths",
+      "url": "node_modules/mongoose/lib/schema.js",
+      "line": 1803,
+      "selfPercent": 1.11,
+      "samples": 430
+    },
+    {
+      "fn": "getModelsMapForPopulate",
+      "url": "node_modules/mongoose/lib/helpers/populate/getModelsMapForPopulate.js",
+      "line": 21,
+      "selfPercent": 1.11,
+      "samples": 430
+    },
+    {
+      "fn": "Model",
+      "url": "node_modules/mongoose/lib/model.js",
+      "line": 116,
+      "selfPercent": 1.1,
+      "samples": 428
+    },
+    {
+      "fn": "$set",
+      "url": "node_modules/mongoose/lib/document.js",
+      "line": 1055,
+      "selfPercent": 1.07,
+      "samples": 416
+    },
+    {
+      "fn": "writeBuffer",
+      "url": "",
+      "line": 0,
+      "selfPercent": 1.05,
+      "samples": 407
+    },
+    {
+      "fn": "applyDefaults",
+      "url": "node_modules/mongoose/lib/helpers/document/applyDefaults.js",
+      "line": 5,
+      "selfPercent": 0.94,
+      "samples": 366
+    },
+    {
+      "fn": "(program)",
+      "url": "",
+      "line": 0,
+      "selfPercent": 0.86,
+      "samples": 332
+    },
+    {
+      "fn": "runMicrotasks",
+      "url": "",
+      "line": 0,
+      "selfPercent": 0.82,
+      "samples": 319
+    },
+    {
+      "fn": "exec",
+      "url": "node_modules/mongoose/lib/query.js",
+      "line": 4572,
+      "selfPercent": 0.78,
+      "samples": 301
+    },
+    {
+      "fn": "MongooseDocumentArray",
+      "url": "node_modules/mongoose/lib/types/documentArray/index.js",
+      "line": 30,
+      "selfPercent": 0.76,
+      "samples": 296
+    },
+    {
+      "fn": "parseToElements",
+      "url": "node_modules/bson/lib/bson.cjs",
+      "line": 4434,
+      "selfPercent": 0.67,
+      "samples": 262
+    },
+    {
+      "fn": "(anonymous)",
+      "url": "node_modules/mongoose/lib/document.js",
+      "line": 567,
+      "selfPercent": 0.67,
+      "samples": 259
+    },
+    {
+      "fn": "set",
+      "url": "node_modules/mongoose/lib/helpers/document/compile.js",
+      "line": 204,
+      "selfPercent": 0.61,
+      "samples": 238
+    },
+    {
+      "fn": "toUTF8",
+      "url": "node_modules/bson/lib/bson.cjs",
+      "line": 276,
+      "selfPercent": 0.61,
+      "samples": 237
+    },
+    {
+      "fn": "MongooseDocumentArray",
+      "url": "node_modules/mongoose/lib/types/documentArray/index.js",
+      "line": 30,
+      "selfPercent": 0.56,
+      "samples": 216
+    },
+    {
+      "fn": "_changeState",
+      "url": "node_modules/mongoose/lib/stateMachine.js",
+      "line": 68,
+      "selfPercent": 0.54,
+      "samples": 209
+    },
+    {
+      "fn": "defaultPrepareStackTrace",
+      "url": "node:internal/errors",
+      "line": 95,
+      "selfPercent": 0.5,
+      "samples": 194
+    },
+    {
+      "fn": "tryReadBasicLatin",
+      "url": "node_modules/bson/lib/bson.cjs",
+      "line": 167,
+      "selfPercent": 0.47,
+      "samples": 183
+    },
+    {
+      "fn": "Schema.path",
+      "url": "node_modules/mongoose/lib/schema.js",
+      "line": 1214,
+      "selfPercent": 0.45,
+      "samples": 174
+    },
+    {
+      "fn": "$set",
+      "url": "node_modules/mongoose/lib/document.js",
+      "line": 1055,
+      "selfPercent": 0.44,
+      "samples": 171
+    },
+    {
+      "fn": "getValueLookup",
+      "url": "node_modules/mongoose/lib/utils.js",
+      "line": 663,
+      "selfPercent": 0.41,
+      "samples": 158
+    },
+    {
+      "fn": "Schema.path",
+      "url": "node_modules/mongoose/lib/schema.js",
+      "line": 1214,
+      "selfPercent": 0.4,
+      "samples": 155
+    },
+    {
+      "fn": "Document.get",
+      "url": "node_modules/mongoose/lib/document.js",
+      "line": 1913,
+      "selfPercent": 0.36,
+      "samples": 140
+    },
+    {
+      "fn": "hexSlice",
+      "url": "",
+      "line": 0,
+      "selfPercent": 0.34,
+      "samples": 131
+    },
+    {
+      "fn": "(anonymous)",
+      "url": "node_modules/mongoose/lib/query.js",
+      "line": 2673,
+      "selfPercent": 0.33,
+      "samples": 129
+    }
+  ],
+  "topFiles": [
+    {
+      "url": "node_modules/mongoose/lib/document.js",
+      "selfPercent": 24.89,
+      "samples": 9664
+    },
+    {
+      "url": "node_modules/bson/lib/bson.cjs",
+      "selfPercent": 12.89,
+      "samples": 5003
+    },
+    {
+      "url": "(native)",
+      "selfPercent": 11.99,
+      "samples": 4653
+    },
+    {
+      "url": "node_modules/mongoose/lib/stateMachine.js",
+      "selfPercent": 10.3,
+      "samples": 3997
+    },
+    {
+      "url": "node_modules/mongoose/lib/helpers/document/applyDefaults.js",
+      "selfPercent": 6.16,
+      "samples": 2391
+    },
+    {
+      "url": "node_modules/mongoose/lib/query.js",
+      "selfPercent": 3.02,
+      "samples": 1173
+    },
+    {
+      "url": "node_modules/mongoose/lib/schema.js",
+      "selfPercent": 2.98,
+      "samples": 1157
+    },
+    {
+      "url": "node_modules/mongoose/lib/helpers/populate/getModelsMapForPopulate.js",
+      "selfPercent": 1.74,
+      "samples": 677
+    },
+    {
+      "url": "node_modules/mongoose/lib/model.js",
+      "selfPercent": 1.73,
+      "samples": 673
+    },
+    {
+      "url": "node_modules/mongoose/lib/helpers/document/compile.js",
+      "selfPercent": 1.7,
+      "samples": 658
+    },
+    {
+      "url": "node_modules/mongoose/lib/utils.js",
+      "selfPercent": 1.56,
+      "samples": 606
+    },
+    {
+      "url": "node_modules/mongoose/lib/types/documentArray/index.js",
+      "selfPercent": 1.42,
+      "samples": 553
+    },
+    {
+      "url": "node_modules/mongoose/lib/helpers/get.js",
+      "selfPercent": 0.84,
+      "samples": 328
+    },
+    {
+      "url": "node_modules/mongodb/lib/cmap/wire_protocol/on_demand/document.js",
+      "selfPercent": 0.8,
+      "samples": 310
+    },
+    {
+      "url": "node_modules/mongodb/lib/cursor/abstract_cursor.js",
+      "selfPercent": 0.78,
+      "samples": 304
+    },
+    {
+      "url": "node_modules/kareem/index.js",
+      "selfPercent": 0.69,
+      "samples": 268
+    },
+    {
+      "url": "node_modules/mongodb/lib/cmap/connection.js",
+      "selfPercent": 0.66,
+      "samples": 255
+    },
+    {
+      "url": "node:internal/process/task_queues",
+      "selfPercent": 0.65,
+      "samples": 253
+    },
+    {
+      "url": "node_modules/mongoose/lib/helpers/populate/lookupLocalFields.js",
+      "selfPercent": 0.6,
+      "samples": 233
+    },
+    {
+      "url": "backend/src/services/product.service.js",
+      "selfPercent": 0.6,
+      "samples": 232
+    },
+    {
+      "url": "node_modules/mongoose/lib/schemaType.js",
+      "selfPercent": 0.57,
+      "samples": 221
+    },
+    {
+      "url": "node_modules/mpath/lib/index.js",
+      "selfPercent": 0.56,
+      "samples": 219
+    },
+    {
+      "url": "node:internal/errors",
+      "selfPercent": 0.55,
+      "samples": 213
+    },
+    {
+      "url": "node_modules/mongodb/lib/utils.js",
+      "selfPercent": 0.49,
+      "samples": 191
+    },
+    {
+      "url": "node_modules/mongoose/lib/queryHelpers.js",
+      "selfPercent": 0.46,
+      "samples": 180
+    }
+  ]
+}

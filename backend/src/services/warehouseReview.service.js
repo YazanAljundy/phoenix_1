@@ -37,18 +37,28 @@ async function getReviewStatsForWarehouse(warehouseId) {
 // (rather than dropping the clause) so a future moderation need can hide a
 // review without a schema change.
 async function listReviewsForWarehouse(warehouseId) {
+  // .lean() throughout: the only consumer is getWarehouseProfile
+  // (warehouse.service.js), which passes these rows straight to
+  // warehouse.viewmodel.js. Nothing is saved.
+  // .select(): warehouse.viewmodel.js's serializeReview reads rating/comment/
+  // createdAt and resolveReviewerName reads reviewerType; orderId/pharmacyId
+  // are the join keys used just below. isVisible/warehouseId are the filter.
   const reviews = await Review.find({
     warehouseId,
     reviewerType: 'pharmacy',
     isVisible: true,
-  }).sort({ createdAt: -1 });
+  })
+    .select('rating comment createdAt reviewerType orderId pharmacyId')
+    .sort({ createdAt: -1 })
+    .lean();
   if (reviews.length === 0) return { reviews: [], averageRating: 0 };
 
   const orderIds = [...new Set(reviews.map((r) => r.orderId.toString()))];
   const pharmacyIds = [...new Set(reviews.map((r) => r.pharmacyId.toString()))];
   const [orders, pharmacies] = await Promise.all([
-    Order.find({ _id: { $in: orderIds } }, 'orderNumber'),
-    Pharmacy.find({ _id: { $in: pharmacyIds } }),
+    Order.find({ _id: { $in: orderIds } }, 'orderNumber').lean(),
+    // Only the reviewer's owner name is shown next to a pharmacy review.
+    Pharmacy.find({ _id: { $in: pharmacyIds } }).select('ownerName').lean(),
   ]);
   const orderById = new Map(orders.map((o) => [o._id.toString(), o]));
   const pharmacyById = new Map(pharmacies.map((p) => [p._id.toString(), p]));
@@ -78,8 +88,14 @@ async function listPaginatedReviewsForWarehouse(
     filter._id = { $lt: after };
   }
 
+  // .select(): warehouseReview.viewmodel.js's serializeReceivedReview reads
+  // id/orderId/rating/comment/createdAt/reviewerType; pharmacyId is the join
+  // key used below. Never saved - straight into the viewmodel.
   const [reviews, stats] = await Promise.all([
-    Review.find(filter).sort({ _id: -1 }).limit(limit + 1),
+    Review.find(filter)
+      .select('orderId pharmacyId rating comment createdAt reviewerType')
+      .sort({ _id: -1 })
+      .limit(limit + 1),
     getReviewStatsForWarehouse(warehouseId),
   ]);
   const hasMore = reviews.length > limit;
@@ -92,7 +108,9 @@ async function listPaginatedReviewsForWarehouse(
   const pharmacyIds = [...new Set(page.map((r) => r.pharmacyId.toString()))];
   const [orders, pharmacies] = await Promise.all([
     Order.find({ _id: { $in: orderIds } }, 'orderNumber'),
-    Pharmacy.find({ _id: { $in: pharmacyIds } }),
+    // serializeReceivedReview shows the pharmacy's names; resolveReviewerName
+    // uses its ownerName.
+    Pharmacy.find({ _id: { $in: pharmacyIds } }).select('nameAr nameEn ownerName'),
   ]);
   const orderById = new Map(orders.map((o) => [o._id.toString(), o]));
   const pharmacyById = new Map(pharmacies.map((p) => [p._id.toString(), p]));
@@ -120,7 +138,8 @@ async function createPharmacyReview(warehouseId, userId, { orderId, rating, comm
   if (typeof orderId !== 'string' || !mongoose.Types.ObjectId.isValid(orderId)) {
     throw ApiError.notFound('Order not found.', 'ORDER_NOT_FOUND');
   }
-  const order = await Order.findOne({ _id: orderId, warehouseId });
+  // Not saved here - Review.create + a separate Pharmacy.save do the writing.
+  const order = await Order.findOne({ _id: orderId, warehouseId }).select('status pharmacyId');
   if (!order) {
     throw ApiError.notFound('Order not found.', 'ORDER_NOT_FOUND');
   }
@@ -130,7 +149,7 @@ async function createPharmacyReview(warehouseId, userId, { orderId, rating, comm
 
   validateRating(rating);
 
-  const existing = await Review.findOne({ orderId: order._id, reviewerType: 'warehouse' });
+  const existing = await Review.findOne({ orderId: order._id, reviewerType: 'warehouse' }).select('_id');
   if (existing) {
     throw ApiError.conflict('This order has already been rated.', 'ALREADY_REVIEWED');
   }

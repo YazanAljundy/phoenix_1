@@ -1,2 +1,15 @@
+# Generated fixture credentials and JWTs - never committed.
 .runtime/
-results/*.json
+
+# Backend stdout captured during runs: large, and full of per-request morgan
+# lines that say nothing the metrics do not.
+logs/
+
+# Raw k6 summaries and the per-sample system-metric streams. Large, and the
+# aggregated level-*.json / index.json files next to them carry everything the
+# report cites. Keep them locally for re-analysis; do not commit them.
+results/**/k6-*.json
+results/**/monitor-*.jsonl
+results/**/*.cpuprofile
+results/smoke.json
+results/profile-run.json

@@ -2366,7 +2366,7 @@ input {
   font-size: 13px;
 }
 
-/* — pending accounts: role pills — */
+/* — filter pills (accounts, complaints, …) — */
 
 .adm-pills {
   display: flex;
@@ -2388,6 +2388,27 @@ input {
 .adm-pill.active {
   background: var(--adm-navy);
   color: #fff;
+}
+
+/* Accounts page: the secondary "Account type" row sits under the status pills,
+   with its own label and no second heavy divider. */
+.adm-account-type-filter {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+
+.adm-account-type-filter .adm-pills {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.adm-account-type-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #5a6b87;
 }
 
 /* — tables — */

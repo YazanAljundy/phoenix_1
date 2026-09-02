@@ -22,11 +22,11 @@ function assertDelivered(order) {
   }
 }
 
-// Section: a return has to be raised within 48 hours of delivery. The
+// Section: a return has to be raised within 24 hours of delivery. The
 // window is anchored to the LAST 'delivered' entry in statusHistory rather
 // than the order's updatedAt, which moves for unrelated reasons (a review,
 // a balance recompute) and would silently extend or shorten the window.
-const RETURN_WINDOW_HOURS = 48;
+const RETURN_WINDOW_HOURS = 24;
 const RETURN_WINDOW_MS = RETURN_WINDOW_HOURS * 60 * 60 * 1000;
 
 function findDeliveredAt(order) {
@@ -138,8 +138,11 @@ function assertHasPhoto(images) {
   }
 }
 
+// validateItems reads each item's _id/productId/quantity; the map is also
+// handed to return.viewmodel.js, whose serializeReturnItem reads the two
+// snapshotted product names.
 async function loadOrderItemsMap(orderId) {
-  const orderItems = await OrderItem.find({ orderId });
+  const orderItems = await OrderItem.find({ orderId }).select('productId quantity productNameAr productNameEn');
   return new Map(orderItems.map((item) => [item._id.toString(), item]));
 }
 
@@ -159,14 +162,18 @@ async function createReturn({ pharmacyId, orderId, items, notes, images }) {
   if (!mongoose.Types.ObjectId.isValid(orderId)) {
     throw ApiError.notFound('Order not found.', 'ORDER_NOT_FOUND');
   }
-  const order = await Order.findOne({ _id: orderId, pharmacyId });
+  // Not saved - Return.create does the writing. assertDelivered reads status,
+  // assertWithinReturnWindow walks statusHistory, the emit uses orderNumber,
+  // and the new Return inherits warehouseId.
+  const order = await Order.findOne({ _id: orderId, pharmacyId })
+    .select('status statusHistory warehouseId orderNumber');
   if (!order) {
     throw ApiError.notFound('Order not found.', 'ORDER_NOT_FOUND');
   }
   assertDelivered(order);
   assertWithinReturnWindow(order);
 
-  const existing = await Return.findOne({ orderId: order._id });
+  const existing = await Return.findOne({ orderId: order._id }).select('_id');
   if (existing) {
     throw ApiError.conflict(
       'A return request has already been submitted for this order.',
@@ -270,7 +277,11 @@ async function listReturnsForPharmacy(pharmacyId, { limit = DEFAULT_RETURNS_LIMI
     filter._id = { $lt: after };
   }
 
+  // .select(): return.viewmodel.js's serializeReturn + attachOrderContext read
+  // exactly these; pharmacyId is the filter, warehouseId/resolvedBy are not
+  // part of the pharmacist's list row. Never saved.
   const returns = await Return.find(filter)
+    .select('orderId items notes images status rejectionNote replacementOrderId resolvedAt createdAt')
     .sort({ _id: -1 })
     .limit(limit + 1);
   const hasMore = returns.length > limit;
@@ -291,7 +302,8 @@ async function attachOrderContext(returns) {
 
   const [orders, orderItems] = await Promise.all([
     Order.find({ _id: { $in: orderIds } }, 'orderNumber'),
-    OrderItem.find({ _id: { $in: allOrderItemIds } }),
+    // return.viewmodel.js's serializeReturnItem needs only the two snapshot names.
+    OrderItem.find({ _id: { $in: allOrderItemIds } }).select('productNameAr productNameEn'),
   ]);
   const orderById = new Map(orders.map((o) => [o._id.toString(), o]));
   const orderItemById = new Map(orderItems.map((i) => [i._id.toString(), i]));

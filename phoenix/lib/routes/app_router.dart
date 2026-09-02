@@ -17,6 +17,15 @@ import 'package:phoenix/features/catalog/presentation/managers/catalog_cubit.dar
 import 'package:phoenix/features/catalog/presentation/managers/manufacturers_cubit.dart';
 import 'package:phoenix/features/catalog/presentation/views/catalog_view.dart';
 import 'package:phoenix/features/catalog/presentation/views/manufacturers_view.dart';
+import 'package:phoenix/features/complaints/data/models/complaint_model.dart';
+import 'package:phoenix/features/complaints/data/models/submit_complaint_args.dart';
+import 'package:phoenix/features/complaints/data/repositories/complaint_repository.dart';
+import 'package:phoenix/features/complaints/presentation/managers/complaint_detail_cubit.dart';
+import 'package:phoenix/features/complaints/presentation/managers/my_complaints_cubit.dart';
+import 'package:phoenix/features/complaints/presentation/managers/submit_complaint_cubit.dart';
+import 'package:phoenix/features/complaints/presentation/views/complaint_detail_view.dart';
+import 'package:phoenix/features/complaints/presentation/views/my_complaints_view.dart';
+import 'package:phoenix/features/complaints/presentation/views/submit_complaint_view.dart';
 import 'package:phoenix/features/debts/data/repositories/debt_repository.dart';
 import 'package:phoenix/features/debts/presentation/managers/debt_detail_cubit.dart';
 import 'package:phoenix/features/debts/presentation/managers/debts_cubit.dart';
@@ -181,6 +190,62 @@ class AppRouter {
           state: state,
           child: const NotificationCenterView(),
         ),
+      ),
+      // Section 1/2: complaints. `submit` is registered before `:complaintId`
+      // so "/complaints/new" matches the form, not the detail-by-id route.
+      GoRoute(
+        name: RouteNames.complaints,
+        path: RoutePaths.complaints,
+        pageBuilder: (context, state) => buildPageTransition(
+          state: state,
+          child: BlocProvider(
+            create: (context) => MyComplaintsCubit(
+              complaintRepository: context.read<ComplaintRepository>(),
+            )..load(),
+            child: const MyComplaintsView(),
+          ),
+        ),
+      ),
+      GoRoute(
+        name: RouteNames.submitComplaint,
+        path: RoutePaths.submitComplaint,
+        pageBuilder: (context, state) {
+          // The originating screen passes a SubmitComplaintArgs (general /
+          // warehouse / order). A bare open (e.g. a deep link) is a general
+          // complaint.
+          final args = state.extra is SubmitComplaintArgs
+              ? state.extra as SubmitComplaintArgs
+              : const SubmitComplaintArgs.general();
+          return buildPageTransition(
+            state: state,
+            child: BlocProvider(
+              create: (context) => SubmitComplaintCubit(
+                complaintRepository: context.read<ComplaintRepository>(),
+                args: args,
+              ),
+              child: const SubmitComplaintView(),
+            ),
+          );
+        },
+      ),
+      GoRoute(
+        name: RouteNames.complaintDetail,
+        path: RoutePaths.complaintDetail,
+        pageBuilder: (context, state) {
+          final complaintId = state.pathParameters['complaintId']!;
+          final seed = state.extra is ComplaintModel ? state.extra as ComplaintModel : null;
+          return buildPageTransition(
+            state: state,
+            child: BlocProvider(
+              create: (context) => ComplaintDetailCubit(
+                complaintRepository: context.read<ComplaintRepository>(),
+                complaintId: complaintId,
+                seed: seed,
+              )..load(),
+              child: const ComplaintDetailView(),
+            ),
+          );
+        },
       ),
       GoRoute(
         name: RouteNames.debtDetail,

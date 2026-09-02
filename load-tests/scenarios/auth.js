@@ -1,23 +1,49 @@
 import http from 'k6/http';
-import { check } from 'k6';
-import { authParams, baseUrl, responseJson, vuUser } from '../config.js';
-import { recordStatus } from './metrics.js';
+import { baseUrl, params, record, json, identity, fixturePassword } from '../lib/runtime.js';
 
-export function login() {
-  const user = vuUser();
-  const response = http.post(`${baseUrl}/auth/login-password`, JSON.stringify(user), {
-    headers: { 'Content-Type': 'application/json' },
-    tags: { endpoint: 'auth_login_password' },
-  });
-  const body = responseJson(response);
-  recordStatus(response, 'auth_login_password');
-  check(response, { 'password login returns 200': (item) => item.status === 200 });
+// Scenario A - authentication.
+//
+// Split in two on purpose:
+//  - `me()` is the session-validation call the Flutter app makes on every
+//    launch and is safe to run on every iteration.
+//  - `fullLogin()` exercises POST /auth/login-password, which is bcrypt-bound
+//    (cost 10) and sits behind authLimiter. It is deliberately a small slice
+//    of the mix; running it on every iteration would turn the whole suite into
+//    a bcrypt benchmark.
+
+export function me(token) {
+  const response = http.get(baseUrl + '/auth/me', params(token, 'auth_me'));
+  record(response, 'auth_me');
+  return response;
+}
+
+export function fullLogin(phone) {
+  const response = http.post(
+    baseUrl + '/auth/login-password',
+    JSON.stringify({ phone, password: fixturePassword }),
+    params(null, 'auth_login_password')
+  );
+  record(response, 'auth_login_password');
+  const body = json(response);
   return body && body.token ? body.token : null;
 }
 
-export function me(token) {
-  const response = http.get(`${baseUrl}/auth/me`, { ...authParams(token), tags: { endpoint: 'auth_me' } });
-  recordStatus(response, 'auth_me');
-  check(response, { 'auth me returns 200': (item) => item.status === 200 });
-  return response;
+// Scenario A end-to-end: log in, validate the session, list warehouses, then
+// open the selected warehouse - the exact sequence the app performs between
+// the login screen and the catalog.
+export function authenticationFlow() {
+  const user = identity();
+  const token = fullLogin(user.phone) || user.token;
+  me(token);
+  const warehouses = http.get(baseUrl + '/warehouses', params(token, 'warehouses_list'));
+  record(warehouses, 'warehouses_list');
+  const body = json(warehouses);
+  const list = body && Array.isArray(body.warehouses) ? body.warehouses : [];
+  if (list.length === 0) return;
+  const selected = list[0].id || list[0]._id;
+  const manufacturers = http.get(
+    baseUrl + '/warehouses/' + selected + '/manufacturers',
+    params(token, 'warehouse_manufacturers')
+  );
+  record(manufacturers, 'warehouse_manufacturers');
 }

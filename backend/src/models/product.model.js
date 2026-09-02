@@ -68,8 +68,22 @@ const productSchema = new Schema(
   { timestamps: true }
 );
 
-productSchema.index({ warehouseId: 1, categoryId: 1 });
-productSchema.index({ nameAr: 'text', nameEn: 'text', manufacturerAr: 'text', manufacturerEn: 'text' });
+// Level 2 (see docs/PERFORMANCE_OPTIMIZATION.md). The pharmacist-facing catalog
+// browse (product.service fetchMatchingPage) cursors on `_id` ascending:
+//   with a category filter -> {warehouseId,categoryId,_id}
+//   without one            -> {warehouseId,_id}
+// The `_id` suffix on the first supersedes the old {warehouseId,categoryId}
+// (its prefix still serves warehouseProduct.listProductsForWarehouse and the
+// manufacturer `distinct` filter) - dropped by the migration script.
+productSchema.index({ warehouseId: 1, categoryId: 1, _id: 1 });
+productSchema.index({ warehouseId: 1, _id: 1 });
+
+// The former `text` index on nameAr/nameEn/manufacturerAr/manufacturerEn was
+// removed: Level 1 rewrote catalog search to match a case-insensitive RegExp on
+// the ProductCatalog master list (product.service / adminProduct.service), and
+// nothing in the codebase issues a `$text` query any more. Dropped by
+// scripts/level2-index-migration.js. Re-add here if a `$text` search is built.
+
 // A warehouse can't link the same catalog entry to two of its own products
 // (Section 14 Part 2) - partial so it only applies once masterProductId is
 // actually set, leaving legacy (null-masterProductId) rows unconstrained.

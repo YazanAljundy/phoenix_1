@@ -18,6 +18,9 @@ import 'package:phoenix/core/widgets/primary_button.dart';
 import 'package:phoenix/core/widgets/whatsapp_button.dart';
 import 'package:phoenix/features/cart/data/models/order_model.dart';
 import 'package:phoenix/features/cart/presentation/utils/order_status_label.dart';
+import 'package:phoenix/features/cart/presentation/widgets/reorder_button.dart';
+import 'package:phoenix/features/complaints/data/models/submit_complaint_args.dart';
+import 'package:phoenix/features/complaints/presentation/utils/complaint_labels.dart';
 import 'package:phoenix/features/order_tracking/presentation/managers/order_tracking_cubit.dart';
 import 'package:phoenix/features/order_tracking/presentation/managers/order_tracking_state.dart';
 import 'package:phoenix/features/order_tracking/presentation/widgets/order_invoice_section.dart';
@@ -26,6 +29,7 @@ import 'package:phoenix/features/order_tracking/presentation/widgets/status_hist
 import 'package:phoenix/features/returns/data/models/return_model.dart';
 import 'package:phoenix/features/returns/data/repositories/return_repository.dart';
 import 'package:phoenix/features/returns/presentation/widgets/request_return_sheet.dart';
+import 'package:phoenix/core/widgets/status_badge.dart';
 import 'package:phoenix/routes/route_names.dart';
 
 class OrderTrackingView extends StatefulWidget {
@@ -111,6 +115,26 @@ class _OrderTrackingViewState extends State<OrderTrackingView> {
         }
       },
     );
+  }
+
+  // Complaint Section 9: "file a complaint about THIS order" - the context
+  // (order id) is passed through; the pharmacist never re-picks a warehouse or
+  // types an order number, and the backend resolves the warehouse from the
+  // order. On return the tracking screen reloads so a just-filed complaint
+  // shows in the section immediately.
+  Future<void> _fileOrderComplaint(OrderModel order) async {
+    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+    final created = await context.pushNamed<bool>(
+      RouteNames.submitComplaint,
+      extra: SubmitComplaintArgs.order(
+        orderId: order.id,
+        orderNumber: order.orderNumber,
+        orderWarehouseName: isArabic ? order.warehouseNameAr : order.warehouseNameEn,
+      ),
+    );
+    if (created == true && mounted) {
+      context.read<OrderTrackingCubit>().load();
+    }
   }
 
   Future<void> _confirmCancel() async {
@@ -236,6 +260,12 @@ class _OrderTrackingViewState extends State<OrderTrackingView> {
               finalPrice: order.finalPrice,
             ),
           ],
+          if (order.isReorderable) ...[
+            const SizedBox(height: AppSizes.spacingMedium),
+            // Section: "Reorder" - copies this order into a fresh, editable
+            // cart. Creates nothing until the pharmacist checks out.
+            ReorderButton(orderId: order.id),
+          ],
           if (order.status == 'delivered') ...[
             const SizedBox(height: AppSizes.spacingMedium),
             _ReturnStatusSection(
@@ -254,6 +284,15 @@ class _OrderTrackingViewState extends State<OrderTrackingView> {
               isSubmitting: state.isSubmittingReview,
             ),
           ],
+          const SizedBox(height: AppSizes.spacingXLarge),
+          _OrderComplaintsSection(
+            order: order,
+            onFileComplaint: () => _fileOrderComplaint(order),
+            onOpenComplaint: (id) => context.pushNamed(
+              RouteNames.complaintDetail,
+              pathParameters: {'complaintId': id},
+            ),
+          ),
           if (order.isCancellable) ...[
             const SizedBox(height: AppSizes.spacingXLarge),
             _CancelOrderButton(
@@ -290,6 +329,7 @@ class _CurrentStatusHighlight extends StatelessWidget {
     final stageIndex = order.stageIndex;
     if (stageIndex < 0) return const SizedBox.shrink();
 
+    final description = orderStatusDescription(l10n, order.status);
     final lastUpdate = order.statusHistory.isEmpty ? null : order.statusHistory.last.changedAt;
 
     return Container(
@@ -311,6 +351,15 @@ class _CurrentStatusHighlight extends StatelessWidget {
                   orderStatusLabel(l10n, order.status),
                   style: context.textTheme.titleSmall,
                 ),
+                if (description != null) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    description,
+                    style: context.textTheme.bodyMedium?.copyWith(
+                      color: AppColors.textOf(context),
+                    ),
+                  ),
+                ],
                 if (lastUpdate != null) ...[
                   const SizedBox(height: 2),
                   Text(
@@ -641,6 +690,118 @@ class _ModifiedOrderBanner extends StatelessWidget {
                   ),
                 ],
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// Complaint Section 9: the complaints filed about this order. Always shown -
+// when there are none it is a friendly prompt + CTA rather than an empty
+// shell; when there are some, each row opens the full complaint detail. The
+// "file a complaint about this order" CTA is here in both states.
+class _OrderComplaintsSection extends StatelessWidget {
+  const _OrderComplaintsSection({
+    required this.order,
+    required this.onFileComplaint,
+    required this.onOpenComplaint,
+  });
+
+  final OrderModel order;
+  final VoidCallback onFileComplaint;
+  final void Function(String complaintId) onOpenComplaint;
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final complaints = order.complaints;
+
+    return CustomCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.support_agent_outlined, size: 20, color: AppColors.navyOf(context)),
+              const SizedBox(width: AppSizes.spacingSmall),
+              Expanded(
+                child: Text(l10n.orderComplaintsSectionTitle, style: context.textTheme.titleMedium),
+              ),
+            ],
+          ),
+          if (complaints.isEmpty) ...[
+            const SizedBox(height: AppSizes.spacingSmall),
+            Text(
+              l10n.orderComplaintsEmptyPrompt,
+              style: context.textTheme.bodyMedium?.copyWith(
+                color: AppColors.textSecondaryOf(context),
+              ),
+            ),
+          ] else
+            for (final complaint in complaints) ...[
+              const SizedBox(height: AppSizes.spacingSmall),
+              InkWell(
+                onTap: () => onOpenComplaint(complaint.id),
+                borderRadius: AppRadius.small,
+                child: Container(
+                  padding: const EdgeInsets.all(AppSizes.spacingSmall),
+                  decoration: BoxDecoration(
+                    color: AppColors.surfaceOf(context),
+                    borderRadius: AppRadius.small,
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              l10n.complaintNumberLabel(complaint.complaintNumber.toString()),
+                              style: context.textTheme.bodySmall?.copyWith(
+                                color: AppColors.textSecondaryOf(context),
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              complaint.subject,
+                              style: context.textTheme.bodyMedium,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: AppSizes.spacingSmall),
+                      StatusBadge(
+                        label: complaintStatusLabel(l10n, complaint.status),
+                        tone: complaintStatusTone(complaint.status),
+                      ),
+                      const SizedBox(width: AppSizes.spacingXSmall),
+                      Icon(
+                        Icons.chevron_right,
+                        size: AppSizes.iconSizeSmall,
+                        color: AppColors.textSecondaryOf(context),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          const SizedBox(height: AppSizes.spacingMedium),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton.icon(
+              onPressed: onFileComplaint,
+              icon: const Icon(Icons.add_comment_outlined, size: 18),
+              label: Text(l10n.submitComplaintAboutOrderCta),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: AppColors.navyOf(context),
+                side: BorderSide(color: AppColors.navyOf(context)),
+                shape: const RoundedRectangleBorder(borderRadius: AppRadius.small),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
             ),
           ),
         ],

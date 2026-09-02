@@ -848,6 +848,54 @@ abstract class AppLocalizations {
   /// **'Cart'**
   String get cartIconTooltip;
 
+  /// No description provided for @reorderButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Reorder'**
+  String get reorderButton;
+
+  /// No description provided for @addProductButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Add product'**
+  String get addProductButton;
+
+  /// No description provided for @reorderReplaceCartTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace your cart?'**
+  String get reorderReplaceCartTitle;
+
+  /// No description provided for @reorderReplaceCartMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Your current cart will be replaced with the items from this order. You can still edit everything before checkout.'**
+  String get reorderReplaceCartMessage;
+
+  /// No description provided for @reorderReplaceCartConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace cart'**
+  String get reorderReplaceCartConfirm;
+
+  /// No description provided for @reorderUnavailableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Some items are unavailable'**
+  String get reorderUnavailableTitle;
+
+  /// No description provided for @reorderNoItemsMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'None of this order\'s products are available from this warehouse anymore.'**
+  String get reorderNoItemsMessage;
+
+  /// No description provided for @reorderSomeItemsUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'These items are no longer sold by this warehouse and were not added: {names}'**
+  String reorderSomeItemsUnavailable(String names);
+
   /// No description provided for @notificationsTitle.
   ///
   /// In en, this message translates to:
@@ -944,10 +992,10 @@ abstract class AppLocalizations {
   /// **'Sent'**
   String get stageSent;
 
-  /// No description provided for @stageUnderReview.
+  /// Order status label for order.status == 'confirmed'. The order has reached the warehouse and is waiting for it to accept/prepare it.
   ///
   /// In en, this message translates to:
-  /// **'Under review'**
+  /// **'Waiting for Approval'**
   String get stageUnderReview;
 
   /// No description provided for @stagePreparing.
@@ -956,10 +1004,10 @@ abstract class AppLocalizations {
   /// **'Preparing'**
   String get stagePreparing;
 
-  /// No description provided for @stageOutForDelivery.
+  /// Order status label for order.status == 'out_for_delivery'. The order has left the warehouse and is being delivered.
   ///
   /// In en, this message translates to:
-  /// **'Out for delivery'**
+  /// **'On the Way'**
   String get stageOutForDelivery;
 
   /// No description provided for @stageDelivered.
@@ -979,6 +1027,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Order modified'**
   String get stageModified;
+
+  /// No description provided for @stageUnderReviewDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Your order has reached the warehouse'**
+  String get stageUnderReviewDesc;
+
+  /// No description provided for @stagePreparingDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'The warehouse is preparing your order'**
+  String get stagePreparingDesc;
+
+  /// No description provided for @stageOutForDeliveryDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'Your order has left the warehouse'**
+  String get stageOutForDeliveryDesc;
+
+  /// No description provided for @stageDeliveredDesc.
+  ///
+  /// In en, this message translates to:
+  /// **'You received the order'**
+  String get stageDeliveredDesc;
 
   /// No description provided for @statusHistoryTitle.
   ///
@@ -1285,6 +1357,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This order hasn\'t been delivered yet.'**
   String get errorOrderNotDelivered;
+
+  /// No description provided for @errorOrderNotReorderable.
+  ///
+  /// In en, this message translates to:
+  /// **'Only delivered orders can be reordered.'**
+  String get errorOrderNotReorderable;
 
   /// No description provided for @errorOrderItemNotFound.
   ///
@@ -1651,6 +1729,372 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Last updated: {date}'**
   String privacyPolicyLastUpdated(String date);
+
+  /// No description provided for @complaintsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Complaints'**
+  String get complaintsTitle;
+
+  /// No description provided for @complaintsProfileSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'File a complaint about a warehouse and follow its status'**
+  String get complaintsProfileSubtitle;
+
+  /// No description provided for @complaintsCountSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, zero{No complaints yet} one{1 complaint} other{{count} complaints}}'**
+  String complaintsCountSubtitle(int count);
+
+  /// No description provided for @noComplaintsYet.
+  ///
+  /// In en, this message translates to:
+  /// **'You haven\'t filed any complaints yet.'**
+  String get noComplaintsYet;
+
+  /// No description provided for @noComplaintsYetHint.
+  ///
+  /// In en, this message translates to:
+  /// **'If you run into a problem with a warehouse, you can file a complaint for the administration to review.'**
+  String get noComplaintsYetHint;
+
+  /// No description provided for @submitComplaintCta.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit a complaint'**
+  String get submitComplaintCta;
+
+  /// No description provided for @submitComplaintTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit a complaint'**
+  String get submitComplaintTitle;
+
+  /// No description provided for @submitComplaintButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit complaint'**
+  String get submitComplaintButton;
+
+  /// No description provided for @complaintSubmittedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Your complaint has been submitted. The administration will review it.'**
+  String get complaintSubmittedMessage;
+
+  /// No description provided for @complaintWarehouseLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Warehouse'**
+  String get complaintWarehouseLabel;
+
+  /// No description provided for @complaintWarehouseHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose the warehouse this complaint is about'**
+  String get complaintWarehouseHint;
+
+  /// No description provided for @complaintSubjectLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Complaint subject'**
+  String get complaintSubjectLabel;
+
+  /// No description provided for @complaintSubjectHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Summarize the issue in a short sentence'**
+  String get complaintSubjectHint;
+
+  /// No description provided for @complaintDescriptionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Complaint details'**
+  String get complaintDescriptionLabel;
+
+  /// No description provided for @complaintDescriptionHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Describe the problem in detail'**
+  String get complaintDescriptionHint;
+
+  /// No description provided for @complaintOrderNumberLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Related order number (optional)'**
+  String get complaintOrderNumberLabel;
+
+  /// No description provided for @complaintOrderNumberHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter the order number if this complaint is about an order'**
+  String get complaintOrderNumberHint;
+
+  /// No description provided for @complaintExtraDetailsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Additional details (optional)'**
+  String get complaintExtraDetailsLabel;
+
+  /// No description provided for @complaintExtraDetailsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Any other information that could help resolve the complaint'**
+  String get complaintExtraDetailsHint;
+
+  /// No description provided for @complaintFormFooterHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Your warehouse\'s information is attached to the complaint automatically.'**
+  String get complaintFormFooterHint;
+
+  /// No description provided for @complaintDetailTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Complaint details'**
+  String get complaintDetailTitle;
+
+  /// No description provided for @complaintYourComplaintTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your complaint'**
+  String get complaintYourComplaintTitle;
+
+  /// No description provided for @complaintResponseTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Response'**
+  String get complaintResponseTitle;
+
+  /// No description provided for @complaintNumberLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Complaint #{number}'**
+  String complaintNumberLabel(String number);
+
+  /// No description provided for @complaintFiledOnLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Filed on {date}'**
+  String complaintFiledOnLabel(String date);
+
+  /// No description provided for @complaintRelatedOrderLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Related order: #{number}'**
+  String complaintRelatedOrderLabel(String number);
+
+  /// No description provided for @complaintAboutWarehouseLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'About this warehouse'**
+  String get complaintAboutWarehouseLabel;
+
+  /// No description provided for @complaintHasResponseHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Reply received'**
+  String get complaintHasResponseHint;
+
+  /// No description provided for @complaintNoResponseYet.
+  ///
+  /// In en, this message translates to:
+  /// **'The administration hasn\'t responded yet. You\'ll be notified when a reply arrives.'**
+  String get complaintNoResponseYet;
+
+  /// No description provided for @complaintAdminResponseLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Administration\'s response'**
+  String get complaintAdminResponseLabel;
+
+  /// No description provided for @complaintRespondedOnLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Responded on {date}'**
+  String complaintRespondedOnLabel(String date);
+
+  /// No description provided for @complaintRespondedByLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Responded by {name}'**
+  String complaintRespondedByLabel(String name);
+
+  /// No description provided for @complaintStatusPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get complaintStatusPending;
+
+  /// No description provided for @complaintStatusInReview.
+  ///
+  /// In en, this message translates to:
+  /// **'In review'**
+  String get complaintStatusInReview;
+
+  /// No description provided for @complaintStatusResolved.
+  ///
+  /// In en, this message translates to:
+  /// **'Resolved'**
+  String get complaintStatusResolved;
+
+  /// No description provided for @complaintStatusClosed.
+  ///
+  /// In en, this message translates to:
+  /// **'Closed'**
+  String get complaintStatusClosed;
+
+  /// No description provided for @errorComplaintWarehouseRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please choose the warehouse this complaint is about.'**
+  String get errorComplaintWarehouseRequired;
+
+  /// No description provided for @errorComplaintSubjectRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please enter a subject for the complaint.'**
+  String get errorComplaintSubjectRequired;
+
+  /// No description provided for @errorComplaintDescriptionRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Please describe the complaint.'**
+  String get errorComplaintDescriptionRequired;
+
+  /// No description provided for @errorComplaintOrderNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No order with that number was found for this warehouse.'**
+  String get errorComplaintOrderNotFound;
+
+  /// No description provided for @errorComplaintTooLong.
+  ///
+  /// In en, this message translates to:
+  /// **'One of the fields is longer than allowed. Please shorten it.'**
+  String get errorComplaintTooLong;
+
+  /// No description provided for @errorComplaintNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'This complaint could not be found.'**
+  String get errorComplaintNotFound;
+
+  /// No description provided for @errorComplaintContextMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'This complaint can\'t be linked to that warehouse.'**
+  String get errorComplaintContextMismatch;
+
+  /// No description provided for @submitComplaintOnWarehouseTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Complaint about warehouse'**
+  String get submitComplaintOnWarehouseTitle;
+
+  /// No description provided for @submitComplaintAboutOrderTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Complaint about order'**
+  String get submitComplaintAboutOrderTitle;
+
+  /// No description provided for @complaintContextGeneral.
+  ///
+  /// In en, this message translates to:
+  /// **'General complaint'**
+  String get complaintContextGeneral;
+
+  /// No description provided for @complaintGeneralContextNote.
+  ///
+  /// In en, this message translates to:
+  /// **'This isn\'t about a specific warehouse or order.'**
+  String get complaintGeneralContextNote;
+
+  /// No description provided for @complaintOnWarehouseLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Complaint about'**
+  String get complaintOnWarehouseLabel;
+
+  /// No description provided for @complaintAboutOrderLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Complaint about order'**
+  String get complaintAboutOrderLabel;
+
+  /// No description provided for @complaintOrderWarehouseLine.
+  ///
+  /// In en, this message translates to:
+  /// **'Warehouse: {name}'**
+  String complaintOrderWarehouseLine(String name);
+
+  /// No description provided for @submitComplaintOnWarehouseCta.
+  ///
+  /// In en, this message translates to:
+  /// **'File a complaint about this warehouse'**
+  String get submitComplaintOnWarehouseCta;
+
+  /// No description provided for @submitComplaintAboutOrderCta.
+  ///
+  /// In en, this message translates to:
+  /// **'File a complaint about this order'**
+  String get submitComplaintAboutOrderCta;
+
+  /// No description provided for @orderComplaintsSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Complaints about this order'**
+  String get orderComplaintsSectionTitle;
+
+  /// No description provided for @orderComplaintsEmptyPrompt.
+  ///
+  /// In en, this message translates to:
+  /// **'Have a problem with this order? You can file a complaint and the administration will review it.'**
+  String get orderComplaintsEmptyPrompt;
+
+  /// No description provided for @updateAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'New Update Available'**
+  String get updateAvailable;
+
+  /// No description provided for @updateAvailableMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'A new version of Phoenix is available. Update now to get the latest features and improvements.'**
+  String get updateAvailableMessage;
+
+  /// No description provided for @updateRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Mandatory Update'**
+  String get updateRequired;
+
+  /// No description provided for @updateRequiredMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Your current version of Phoenix is no longer supported. Please update the application to continue.'**
+  String get updateRequiredMessage;
+
+  /// No description provided for @updateNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Update Now'**
+  String get updateNow;
+
+  /// No description provided for @later.
+  ///
+  /// In en, this message translates to:
+  /// **'Later'**
+  String get later;
+
+  /// No description provided for @updateOpenStoreFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Unable to open Google Play. Please try again.'**
+  String get updateOpenStoreFailed;
 }
 
 class _AppLocalizationsDelegate

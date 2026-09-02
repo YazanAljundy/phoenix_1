@@ -1,10 +1,34 @@
 const mongoose = require('mongoose');
 const { ApiError } = require('../utils/ApiError');
 const Product = require('../models/product.model');
+const ProductCatalog = require('../models/productCatalog.model');
 const Offer = require('../models/offer.model');
 const { isWarehouseAvailable } = require('./warehouse.service');
 const { applyResolvedIdentity, escapeRegex } = require('./productCatalog.service');
 const { getDiscountMapForWarehouse } = require('./manufacturerDiscount.service');
+
+// The four fields a product's identity is made of (Section 14 Part 2). Both
+// the search below and the manufacturer list resolve them the same way:
+// from the linked ProductCatalog entry when there is one, from the product's
+// own legacy fields when there isn't.
+const IDENTITY_FIELDS = ['nameAr', 'nameEn', 'manufacturerAr', 'manufacturerEn'];
+
+function identityMatches(pattern) {
+  return IDENTITY_FIELDS.map((field) => ({ [field]: pattern }));
+}
+
+// Everything the pharmacist-facing catalog actually consumes off a product
+// row: product.viewmodel.js's serializeProductWithOffer needs categoryId /
+// image / unitAr / unitEn / price / isAvailable plus the resolved identity
+// (applyResolvedIdentity overwrites nameAr/nameEn/manufacturerAr/
+// manufacturerEn from the linked catalog entry or the product's own legacy
+// fields - both must be selectable). masterProductId is the populate key;
+// manufacturerAr is also the manufacturer filter and the discount-map key.
+// Dropped: description, barcode, manuallyDisabled, lastPriceUpdate, the
+// unbounded priceHistory array, warehouseId/isActive (the filter), timestamps.
+const CATALOG_PRODUCT_SELECT =
+  'categoryId nameAr nameEn manufacturerAr manufacturerEn image unitAr unitEn price isAvailable masterProductId';
+const CATALOG_IDENTITY_SELECT = 'nameAr nameEn manufacturerAr manufacturerEn';
 
 const DEFAULT_PRODUCTS_LIMIT = 20;
 
@@ -29,10 +53,18 @@ async function fetchMatchingPage(baseFilter, after, limit, manufacturer) {
     const filter = { ...baseFilter };
     if (cursor) filter._id = { $gt: cursor };
 
+    // .lean(): these documents are only read - resolved, filtered, then handed
+    // to product.viewmodel.js - and never saved. Skipping Mongoose hydration
+    // is the single largest CPU saving on this path (a load-test CPU profile
+    // attributed ~55% of backend CPU to document construction).
+    // applyResolvedIdentity assigns plain properties, which works the same on
+    // a lean object as on a document.
     const batch = await Product.find(filter)
+      .select(CATALOG_PRODUCT_SELECT)
       .sort({ _id: 1 })
       .limit(batchSize)
-      .populate('masterProductId');
+      .populate({ path: 'masterProductId', select: CATALOG_IDENTITY_SELECT })
+      .lean();
     if (batch.length === 0) break;
 
     batch.forEach(applyResolvedIdentity);
@@ -86,21 +118,54 @@ async function listWarehouseProducts(
   let nextCursor = null;
 
   if (search && search.trim()) {
-    products = await Product.find(baseFilter).populate('masterProductId');
+    const pattern = new RegExp(escapeRegex(search.trim()), 'i');
+
+    // The match is pushed into MongoDB rather than run over the whole
+    // warehouse catalog in Node. It used to load and hydrate every product a
+    // warehouse owns and filter the resolved identities in memory, so a search
+    // matching a single row still cost time proportional to the entire
+    // catalog (measured: ~537 ms for one match in a 5,000-product catalog).
+    //
+    // A product's searchable identity lives in one of two places, and the two
+    // sets are disjoint by construction:
+    //   - masterProductId set   -> the linked ProductCatalog entry's fields
+    //   - masterProductId null  -> the product's own legacy fields
+    // so the catalog is matched first (one query over the shared master list),
+    // and products are then selected by link or by their own fields.
+    //
+    // Deliberately no isActive filter on the catalog lookup: deactivating a
+    // catalog entry is a soft flag (productCatalog.service.js
+    // deactivateCatalogItem) and populate still resolves it today, so
+    // excluding it here would silently change which products a search finds.
+    // There is no hard-delete path for a catalog entry, which is what makes
+    // "linked" and "legacy" exhaustive - a dangling masterProductId cannot
+    // occur, so nothing falls between the two branches.
+    const matchingCatalogIds = await ProductCatalog.find(
+      { $or: identityMatches(pattern) },
+      '_id'
+    ).lean();
+
+    const searchFilter = {
+      ...baseFilter,
+      $or: [
+        { masterProductId: { $in: matchingCatalogIds.map((entry) => entry._id) } },
+        { masterProductId: null, $or: identityMatches(pattern) },
+      ],
+    };
+
+    products = await Product.find(searchFilter)
+      .select(CATALOG_PRODUCT_SELECT)
+      .populate({ path: 'masterProductId', select: CATALOG_IDENTITY_SELECT })
+      .lean();
     products.forEach(applyResolvedIdentity);
 
     if (manufacturer) {
       products = products.filter((p) => p.manufacturerAr === manufacturer);
     }
 
-    const pattern = new RegExp(escapeRegex(search.trim()), 'i');
-    products = products.filter(
-      (p) =>
-        pattern.test(p.nameAr || '') ||
-        pattern.test(p.nameEn || '') ||
-        pattern.test(p.manufacturerAr || '') ||
-        pattern.test(p.manufacturerEn || '')
-    );
+    // Sorting stays in Node, on the matched rows only. localeCompare is
+    // locale-aware and MongoDB's default sort is not, so moving it would
+    // change the order results come back in.
     products.sort((a, b) => (a.nameEn || a.nameAr || '').localeCompare(b.nameEn || b.nameAr || ''));
   } else {
     const result = await fetchMatchingPage(baseFilter, after, limit, manufacturer);
@@ -117,7 +182,7 @@ async function listWarehouseProducts(
       startDate: { $lte: now },
       endDate: { $gte: now },
       productId: { $in: products.map((p) => p._id) },
-    }),
+    }).select('productId discountPercentage titleAr titleEn'),
     getDiscountMapForWarehouse(warehouseId),
   ]);
   const offerByProductId = new Map(offers.map((o) => [o.productId.toString(), o]));
@@ -150,10 +215,26 @@ async function listDistinctManufacturersForWarehouse(warehouseId) {
     throw ApiError.notFound('Warehouse not found.');
   }
 
-  const products = await Product.find({ warehouseId, isActive: true }).populate('masterProductId');
-  products.forEach(applyResolvedIdentity);
+  // Resolved the same way as everywhere else (linked -> catalog entry, legacy
+  // -> own field), but as two `distinct` queries instead of loading and
+  // hydrating the warehouse's entire product collection to reduce it to about
+  // ten strings. MongoDB returns only the distinct values, so the work here is
+  // proportional to the number of manufacturers rather than to catalog size.
+  //
+  // Same reasoning as the search above: no isActive filter on the catalog
+  // read, because populate resolves a deactivated entry today too.
+  const [legacyManufacturers, linkedCatalogIds] = await Promise.all([
+    Product.distinct('manufacturerAr', { warehouseId, isActive: true, masterProductId: null }),
+    Product.distinct('masterProductId', { warehouseId, isActive: true, masterProductId: { $ne: null } }),
+  ]);
 
-  const manufacturers = [...new Set(products.map((p) => p.manufacturerAr).filter(Boolean))];
+  const linkedManufacturers = linkedCatalogIds.length
+    ? await ProductCatalog.distinct('manufacturerAr', { _id: { $in: linkedCatalogIds } })
+    : [];
+
+  const manufacturers = [
+    ...new Set([...legacyManufacturers, ...linkedManufacturers].filter(Boolean)),
+  ];
   manufacturers.sort((a, b) => a.localeCompare(b));
   return manufacturers;
 }

@@ -10,18 +10,48 @@ const { emitToAdmins, EVENTS } = require('../realtime');
 
 const BCRYPT_SALT_ROUNDS = 10;
 
+// Exactly the fields auth.viewmodel.js's serializeUser reads, and nothing
+// else. Everything omitted is dead weight on every auth response:
+//   - deviceTokens: an unbounded array that no auth path reads (the push
+//     layer loads it separately in notification.service.js);
+//   - password: already select:false at the schema level - listed with a
+//     leading '+' only where loginWithPassword actually needs to compare it;
+//   - createdAt / updatedAt: never serialised, never branched on.
+// loadProfile only needs role/_id, issueToken only needs role/_id, and the
+// blocked-account guard only needs status - all still present here.
+const AUTH_USER_FIELDS = 'name phone role status lang';
+
 function issueToken(user) {
   return jwt.sign({ sub: user._id.toString(), role: user.role }, env.jwtSecret, {
     expiresIn: env.jwtExpiresIn,
   });
 }
 
+// .lean(): every caller (registerOrLogin, login, loginWithPassword, getMe)
+// passes the result straight to auth.viewmodel.js and never saves it.
+//
+// .select(): serializePharmacy / serializeWarehouse in auth.viewmodel.js are
+// the only consumers of these two documents. Every field they don't read -
+// userId, the reserved licence fields, addedBy, the rating counters,
+// isActive, the GeoJSON `location` subdocument, timestamps - is fetched and
+// deserialised for nothing on a response the Flutter client hits on every
+// launch and resume.
 async function loadProfile(user) {
   if (user.role === 'pharmacy') {
-    return { pharmacy: await Pharmacy.findOne({ userId: user._id }), warehouse: null };
+    return {
+      pharmacy: await Pharmacy.findOne({ userId: user._id })
+        .select('nameAr nameEn ownerName address city phone verificationPhoto')
+        .lean(),
+      warehouse: null,
+    };
   }
   if (user.role === 'warehouse') {
-    return { pharmacy: null, warehouse: await Warehouse.findOne({ userId: user._id }) };
+    return {
+      pharmacy: null,
+      warehouse: await Warehouse.findOne({ userId: user._id })
+        .select('nameAr nameEn city phone logo')
+        .lean(),
+    };
   }
   return { pharmacy: null, warehouse: null };
 }
@@ -49,7 +79,7 @@ async function registerOrLogin({
   password,
   location,
 }) {
-  const existingUser = await User.findOne({ phone });
+  const existingUser = await User.findOne({ phone }).select(AUTH_USER_FIELDS);
   if (existingUser) {
     if (existingUser.status === 'blocked') {
       throw ApiError.forbidden('This account has been blocked. Please contact support.');
@@ -101,7 +131,7 @@ async function registerOrLogin({
 async function login({ phone, otpCode }) {
   await otpService.verifyOtp(phone, otpCode);
 
-  const user = await User.findOne({ phone });
+  const user = await User.findOne({ phone }).select(AUTH_USER_FIELDS);
   if (!user) {
     throw ApiError.notFound('No account found for this phone number. Please register first.');
   }
@@ -119,7 +149,7 @@ async function login({ phone, otpCode }) {
 // generalized here since the warehouse React panel and admin now use this
 // same endpoint instead of their own OTP flow.
 async function loginWithPassword({ phone, password }) {
-  const user = await User.findOne({ phone }).select('+password');
+  const user = await User.findOne({ phone }).select(`+password ${AUTH_USER_FIELDS}`);
   if (!user) {
     throw ApiError.notFound('No account found for this phone number. Please register first.');
   }
@@ -154,8 +184,13 @@ async function registerDeviceToken(userId, { fcmToken, deviceType }) {
   );
 }
 
+// GET /auth/me is the most frequently called endpoint in the app (the Flutter
+// client calls it on every launch and resume). .lean(): read-only, straight
+// into auth.viewmodel.js. .select(AUTH_USER_FIELDS): `password` stays excluded
+// (schema select:false, and not requested here), and deviceTokens / timestamps
+// are dropped from the hottest read in the app.
 async function getMe(userId) {
-  const user = await User.findById(userId);
+  const user = await User.findById(userId).select(AUTH_USER_FIELDS).lean();
   if (!user) {
     throw ApiError.notFound('User not found.');
   }

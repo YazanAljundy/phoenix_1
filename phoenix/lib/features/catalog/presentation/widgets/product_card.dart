@@ -291,16 +291,17 @@ class _PriceDisplay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    // Section 15: discountPriceUsd already has any active product Offer AND
-    // the warehouse's manufacturer discount stacked in server-side (see
-    // product.viewmodel.js). The two-price (struck-through original +
-    // discounted) treatment is reserved for an active Offer specifically -
-    // a manufacturer-discount-only price (no Offer) shows as a single plain
-    // number with no indication it was discounted at all.
+    // Purely visual: whenever the server-computed discounted price comes in
+    // below the list price (discountPriceUsd already has any active Offer AND
+    // the warehouse's manufacturer discount stacked in - see
+    // product.viewmodel.js), show the list price struck through above the
+    // discounted one. Equal prices -> a single plain number. The card only
+    // shows the figures, never why a price is lower.
     final usdToSyp = context.watch<ExchangeRateCubit>().state.usdToSyp;
-    final sypText = formatSypApprox(product.discountPriceUsd, usdToSyp, l10n.currencySuffix);
+    final hasDiscount = product.discountPriceUsd < product.priceUsd;
+    final discountSyp = formatSypApprox(product.discountPriceUsd, usdToSyp, l10n.currencySuffix);
 
-    if (!product.hasActiveOffer) {
+    if (!hasDiscount) {
       return Wrap(
         crossAxisAlignment: WrapCrossAlignment.center,
         spacing: AppSizes.spacingXSmall,
@@ -312,32 +313,48 @@ class _PriceDisplay extends StatelessWidget {
               fontSize: 15,
             ),
           ),
-          if (sypText != null) SecondaryPriceHint(text: sypText),
+          if (discountSyp != null) SecondaryPriceHint(text: discountSyp),
         ],
       );
     }
 
-    return Wrap(
-      crossAxisAlignment: WrapCrossAlignment.center,
-      spacing: AppSizes.spacingXSmall,
+    final originalSyp = formatSypApprox(product.priceUsd, usdToSyp, l10n.currencySuffix);
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          '\$${product.priceUsd}',
-          style: TextStyle(
-            decoration: TextDecoration.lineThrough,
-            color: AppColors.textSecondaryOf(context),
-            fontSize: 11.5,
-          ),
+        Wrap(
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: AppSizes.spacingXSmall,
+          children: [
+            Text(
+              '\$${product.priceUsd}',
+              style: TextStyle(
+                decoration: TextDecoration.lineThrough,
+                color: AppColors.textSecondaryOf(context),
+                fontSize: 11.5,
+              ),
+            ),
+            if (originalSyp != null) SecondaryPriceHint(text: originalSyp),
+          ],
         ),
-        Text(
-          '\$${product.discountPriceUsd}',
-          style: TextStyle(
-            color: AppColors.secondaryOf(context),
-            fontWeight: FontWeight.bold,
-            fontSize: 15,
-          ),
+        const SizedBox(height: 2),
+        Wrap(
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: AppSizes.spacingXSmall,
+          children: [
+            Text(
+              '\$${product.discountPriceUsd}',
+              style: TextStyle(
+                color: AppColors.secondary,
+                fontWeight: FontWeight.bold,
+                fontSize: 15,
+              ),
+            ),
+            if (discountSyp != null) SecondaryPriceHint(text: discountSyp),
+          ],
         ),
-        if (sypText != null) SecondaryPriceHint(text: sypText),
       ],
     );
   }

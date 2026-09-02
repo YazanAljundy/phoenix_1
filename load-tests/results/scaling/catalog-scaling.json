@@ -1,0 +1,298 @@
+{
+  "generatedAt": "2026-08-28T13:24:27.552Z",
+  "repeats": 15,
+  "catalogs": [
+    {
+      "id": "6a918bb3c927703c4aa85835",
+      "label": "200 products",
+      "size": 200
+    },
+    {
+      "id": "6a918bb3c927703c4aa858ff",
+      "label": "1000 products",
+      "size": 1000
+    },
+    {
+      "id": "6a918bb3c927703c4aa85ce9",
+      "label": "5000 products",
+      "size": 5000
+    },
+    {
+      "id": "6a87edb4d23c3462d6b5531e",
+      "label": "pre-existing (catalog-linked)",
+      "size": "linked"
+    }
+  ],
+  "catalogSizes": [
+    200,
+    1000,
+    5000,
+    "linked"
+  ],
+  "results": [
+    {
+      "endpoint": "products_list_page1",
+      "bySize": {
+        "200": {
+          "label": "products_list_page1",
+          "status": 200,
+          "responseBytes": 6399,
+          "medMs": 13.2,
+          "minMs": 12.3,
+          "maxMs": 15.4,
+          "avgMs": 13.4
+        },
+        "1000": {
+          "label": "products_list_page1",
+          "status": 200,
+          "responseBytes": 6439,
+          "medMs": 16.4,
+          "minMs": 15.1,
+          "maxMs": 20.2,
+          "avgMs": 16.6
+        },
+        "5000": {
+          "label": "products_list_page1",
+          "status": 200,
+          "responseBytes": 6439,
+          "medMs": 18.5,
+          "minMs": 17.9,
+          "maxMs": 30.2,
+          "avgMs": 19.9
+        },
+        "linked": {
+          "label": "products_list_page1",
+          "status": 200,
+          "responseBytes": 5831,
+          "medMs": 14,
+          "minMs": 13,
+          "maxMs": 16.8,
+          "avgMs": 14.4
+        }
+      },
+      "growthFactor": 1.4,
+      "dataGrowthFactor": 25,
+      "scalesWithCatalog": false
+    },
+    {
+      "endpoint": "products_search",
+      "bySize": {
+        "200": {
+          "label": "products_search",
+          "status": 200,
+          "responseBytes": 63678,
+          "medMs": 29.6,
+          "minMs": 26.4,
+          "maxMs": 45.1,
+          "avgMs": 31.3
+        },
+        "1000": {
+          "label": "products_search",
+          "status": 200,
+          "responseBytes": 321318,
+          "medMs": 65.7,
+          "minMs": 61.3,
+          "maxMs": 75,
+          "avgMs": 66.1
+        },
+        "5000": {
+          "label": "products_search",
+          "status": 200,
+          "responseBytes": 1615518,
+          "medMs": 262.5,
+          "minMs": 251.9,
+          "maxMs": 317.7,
+          "avgMs": 267.6
+        },
+        "linked": {
+          "label": "products_search",
+          "status": 200,
+          "responseBytes": 79,
+          "medMs": 15.9,
+          "minMs": 14,
+          "maxMs": 19.5,
+          "avgMs": 16.3
+        }
+      },
+      "growthFactor": 8.87,
+      "dataGrowthFactor": 25,
+      "scalesWithCatalog": true
+    },
+    {
+      "endpoint": "products_search_narrow",
+      "bySize": {
+        "200": {
+          "label": "products_search_narrow",
+          "status": 200,
+          "responseBytes": 79,
+          "medMs": 15.2,
+          "minMs": 13.8,
+          "maxMs": 20.4,
+          "avgMs": 15.6
+        },
+        "1000": {
+          "label": "products_search_narrow",
+          "status": 200,
+          "responseBytes": 79,
+          "medMs": 24,
+          "minMs": 20.6,
+          "maxMs": 29.6,
+          "avgMs": 24.7
+        },
+        "5000": {
+          "label": "products_search_narrow",
+          "status": 200,
+          "responseBytes": 403,
+          "medMs": 57.7,
+          "minMs": 52.5,
+          "maxMs": 88.9,
+          "avgMs": 62
+        },
+        "linked": {
+          "label": "products_search_narrow",
+          "status": 200,
+          "responseBytes": 79,
+          "medMs": 16.7,
+          "minMs": 14,
+          "maxMs": 19.8,
+          "avgMs": 16.5
+        }
+      },
+      "growthFactor": 3.8,
+      "dataGrowthFactor": 25,
+      "scalesWithCatalog": true
+    },
+    {
+      "endpoint": "products_by_manufacturer",
+      "bySize": {
+        "200": {
+          "label": "products_by_manufacturer",
+          "status": 200,
+          "responseBytes": 6378,
+          "medMs": 28.8,
+          "minMs": 27.7,
+          "maxMs": 31.1,
+          "avgMs": 29.2
+        },
+        "1000": {
+          "label": "products_by_manufacturer",
+          "status": 200,
+          "responseBytes": 6439,
+          "medMs": 24.2,
+          "minMs": 22.5,
+          "maxMs": 25.4,
+          "avgMs": 24
+        },
+        "5000": {
+          "label": "products_by_manufacturer",
+          "status": 200,
+          "responseBytes": 6439,
+          "medMs": 32.3,
+          "minMs": 27.2,
+          "maxMs": 41,
+          "avgMs": 32.4
+        },
+        "linked": {
+          "label": "products_by_manufacturer",
+          "status": 200,
+          "responseBytes": 79,
+          "medMs": 50.5,
+          "minMs": 48.7,
+          "maxMs": 56.6,
+          "avgMs": 50.8
+        }
+      },
+      "growthFactor": 1.12,
+      "dataGrowthFactor": 25,
+      "scalesWithCatalog": false
+    },
+    {
+      "endpoint": "warehouse_manufacturers",
+      "bySize": {
+        "200": {
+          "label": "warehouse_manufacturers",
+          "status": 200,
+          "responseBytes": 241,
+          "medMs": 8.3,
+          "minMs": 7.9,
+          "maxMs": 9.6,
+          "avgMs": 8.4
+        },
+        "1000": {
+          "label": "warehouse_manufacturers",
+          "status": 200,
+          "responseBytes": 241,
+          "medMs": 12.7,
+          "minMs": 11.9,
+          "maxMs": 13.5,
+          "avgMs": 12.6
+        },
+        "5000": {
+          "label": "warehouse_manufacturers",
+          "status": 200,
+          "responseBytes": 241,
+          "medMs": 33.5,
+          "minMs": 31.9,
+          "maxMs": 35.6,
+          "avgMs": 33.7
+        },
+        "linked": {
+          "label": "warehouse_manufacturers",
+          "status": 200,
+          "responseBytes": 233,
+          "medMs": 14.1,
+          "minMs": 13.5,
+          "maxMs": 14.8,
+          "avgMs": 14.2
+        }
+      },
+      "growthFactor": 4.04,
+      "dataGrowthFactor": 25,
+      "scalesWithCatalog": true
+    },
+    {
+      "endpoint": "warehouse_profile",
+      "bySize": {
+        "200": {
+          "label": "warehouse_profile",
+          "status": 200,
+          "responseBytes": 379,
+          "medMs": 7.5,
+          "minMs": 6.9,
+          "maxMs": 8.3,
+          "avgMs": 7.5
+        },
+        "1000": {
+          "label": "warehouse_profile",
+          "status": 200,
+          "responseBytes": 381,
+          "medMs": 7.4,
+          "minMs": 6.8,
+          "maxMs": 8.2,
+          "avgMs": 7.4
+        },
+        "5000": {
+          "label": "warehouse_profile",
+          "status": 200,
+          "responseBytes": 381,
+          "medMs": 7.4,
+          "minMs": 6.9,
+          "maxMs": 8,
+          "avgMs": 7.4
+        },
+        "linked": {
+          "label": "warehouse_profile",
+          "status": 200,
+          "responseBytes": 504,
+          "medMs": 9.2,
+          "minMs": 8.4,
+          "maxMs": 11.8,
+          "avgMs": 9.4
+        }
+      },
+      "growthFactor": 0.99,
+      "dataGrowthFactor": 25,
+      "scalesWithCatalog": false
+    }
+  ]
+}

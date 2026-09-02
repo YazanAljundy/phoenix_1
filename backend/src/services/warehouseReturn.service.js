@@ -18,7 +18,10 @@ function validateStatusFilter(status) {
 async function attachContextAndPharmacy(returns) {
   const [withOrderContext, pharmacies] = await Promise.all([
     attachOrderContext(returns),
-    Pharmacy.find({ _id: { $in: [...new Set(returns.map((r) => r.pharmacyId.toString()))] } }),
+    // warehouseReturn.viewmodel.js's serializeWarehouseReturn shows the
+    // pharmacy's two names and phone.
+    Pharmacy.find({ _id: { $in: [...new Set(returns.map((r) => r.pharmacyId.toString()))] } })
+      .select('nameAr nameEn phone'),
   ]);
   const pharmacyById = new Map(pharmacies.map((p) => [p._id.toString(), p]));
 
@@ -36,7 +39,9 @@ async function listReturnsForWarehouse(warehouseId, status) {
   const filter = { warehouseId };
   if (status) filter.status = status;
 
-  const returns = await Return.find(filter).sort({ createdAt: 1 });
+  const returns = await Return.find(filter)
+    .select('orderId pharmacyId items notes images status rejectionNote replacementOrderId resolvedAt createdAt')
+    .sort({ createdAt: 1 });
   if (returns.length === 0) return [];
 
   return attachContextAndPharmacy(returns);
@@ -59,7 +64,10 @@ async function listPaginatedReturnsForWarehouse(
     filter._id = { $lt: after };
   }
 
-  const returns = await Return.find(filter).sort({ _id: -1 }).limit(limit + 1);
+  const returns = await Return.find(filter)
+    .select('orderId pharmacyId items notes images status rejectionNote replacementOrderId resolvedAt createdAt')
+    .sort({ _id: -1 })
+    .limit(limit + 1);
   const hasMore = returns.length > limit;
   const page = hasMore ? returns.slice(0, limit) : returns;
   const nextCursor = page.length > 0 ? String(page[page.length - 1]._id) : null;
@@ -88,7 +96,10 @@ async function findOwnReturnOrThrow(returnId, warehouseId) {
   if (!mongoose.Types.ObjectId.isValid(returnId)) {
     throw ApiError.notFound('Return not found.', 'RETURN_NOT_FOUND');
   }
-  const returnRequest = await Return.findOne({ _id: returnId, warehouseId });
+  // Only getReturnDetailForWarehouse (read-only) uses this - the decision
+  // paths load their own document via loadPendingReturnOrThrow.
+  const returnRequest = await Return.findOne({ _id: returnId, warehouseId })
+    .select('orderId pharmacyId items notes images status rejectionNote replacementOrderId resolvedAt createdAt');
   if (!returnRequest) {
     throw ApiError.notFound('Return not found.', 'RETURN_NOT_FOUND');
   }
@@ -103,7 +114,7 @@ async function getReturnDetailForWarehouse(returnId, warehouseId) {
 
   const [contextRows, pharmacy, replacementOrder] = await Promise.all([
     attachOrderContext([returnRequest]),
-    Pharmacy.findById(returnRequest.pharmacyId),
+    Pharmacy.findById(returnRequest.pharmacyId).select('nameAr nameEn phone'),
     returnRequest.replacementOrderId
       ? Order.findById(returnRequest.replacementOrderId, 'orderNumber')
       : Promise.resolve(null),
@@ -119,7 +130,8 @@ async function getReturnDetailForWarehouse(returnId, warehouseId) {
 // the pharmacist's own returned items/quantities.
 async function approveReturn(returnId, warehouseId, userId) {
   const returnRequest = await loadPendingReturnOrThrow(returnId, warehouseId);
-  const originalOrder = await Order.findById(returnRequest.orderId);
+  // Only its orderNumber is used, for the replacement order's notes string.
+  const originalOrder = await Order.findById(returnRequest.orderId).select('orderNumber');
 
   const replacementOrder = await createOrder({
     userId,

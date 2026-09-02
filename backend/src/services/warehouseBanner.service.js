@@ -101,7 +101,13 @@ async function listPaginatedBannersForWarehouse(
     filter._id = { $lt: after };
   }
 
-  const rows = await Banner.find(filter).sort({ _id: -1 }).limit(limit + 1);
+  // warehouseBanner.viewmodel.js's serializeWarehouseBanner reads id/
+  // bannerNumber/imageUrl/productId/manufacturerAr/title/status/rejectionNote/
+  // startDate/endDate/createdAt. warehouseId is the filter.
+  const rows = await Banner.find(filter)
+    .select('bannerNumber imageUrl productId manufacturerAr title status rejectionNote startDate endDate createdAt')
+    .sort({ _id: -1 })
+    .limit(limit + 1);
   const hasMore = rows.length > limit;
   const page = hasMore ? rows.slice(0, limit) : rows;
   const nextCursor = page.length > 0 ? String(page[page.length - 1]._id) : null;

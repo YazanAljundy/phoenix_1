@@ -84,7 +84,8 @@ async function listProductsForWarehouse(warehouseId, { availableOnly = false } =
   if (availableOnly) {
     filter.isAvailable = true;
   }
-  const products = await Product.find(filter).populate('masterProductId');
+  const products = await Product.find(filter)
+    .populate({ path: 'masterProductId', select: 'nameAr nameEn manufacturerAr manufacturerEn' });
   products.forEach(applyResolvedIdentity);
   products.sort((a, b) => (a.nameEn || a.nameAr || '').localeCompare(b.nameEn || b.nameAr || ''));
   return products;
@@ -107,7 +108,7 @@ async function listPaginatedProductsForWarehouse(
   const rows = await Product.find(filter)
     .sort({ _id: -1 })
     .limit(limit + 1)
-    .populate('masterProductId');
+    .populate({ path: 'masterProductId', select: 'nameAr nameEn manufacturerAr manufacturerEn' });
   const hasMore = rows.length > limit;
   const page = hasMore ? rows.slice(0, limit) : rows;
   page.forEach(applyResolvedIdentity);

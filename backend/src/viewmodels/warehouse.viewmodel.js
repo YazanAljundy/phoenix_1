@@ -11,8 +11,16 @@ function serializeWarehouse(warehouse) {
     // Order-size limits travel with the card so the cart can gate against
     // them without a second request (warehouse.model.js: 0 = no minimum,
     // null = no maximum).
-    minOrderAmountUsd: warehouse.minOrderAmountUsd,
-    maxOrderAmountUsd: warehouse.maxOrderAmountUsd,
+    //
+    // The `??` defaults are load-bearing, not decoration. These two fields
+    // were added to the schema after some warehouses already existed, so
+    // those documents genuinely do not carry them and have always relied on
+    // Mongoose applying the schema default on read. These reads are now
+    // .lean() (warehouse.service.js), and lean documents get no defaults - so
+    // without this the keys would vanish from the payload for exactly those
+    // warehouses, and the Flutter cart gates on them.
+    minOrderAmountUsd: warehouse.minOrderAmountUsd ?? 0,
+    maxOrderAmountUsd: warehouse.maxOrderAmountUsd ?? null,
   };
 }
 
@@ -58,8 +66,9 @@ function toWarehouseProfileResponse({ warehouse, averageRating, reviewsCount, re
     deliveryStartTime: warehouse.deliveryStartTime,
     deliveryEndTime: warehouse.deliveryEndTime,
     deliveryType: warehouse.deliveryType,
-    minOrderAmountUsd: warehouse.minOrderAmountUsd,
-    maxOrderAmountUsd: warehouse.maxOrderAmountUsd,
+    // Same schema-default reasoning as serializeWarehouse above.
+    minOrderAmountUsd: warehouse.minOrderAmountUsd ?? 0,
+    maxOrderAmountUsd: warehouse.maxOrderAmountUsd ?? null,
     averageRating,
     reviewsCount,
     recentReviews: recentReviews.map(serializeReview),

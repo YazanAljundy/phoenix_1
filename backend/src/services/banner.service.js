@@ -6,11 +6,19 @@ const Banner = require('../models/banner.model');
 // only thing that ever hides one, on every read.
 async function listActiveBanners() {
   const now = new Date();
+  // .lean(): read-only, straight into banner.viewmodel.js.
+  // .select(): banner.viewmodel.js's serializeActiveBanner emits exactly these
+  // five fields - status/startDate/endDate are the filter, not part of the
+  // slide, and title/bannerNumber/rejectionNote/approvedBy/createdBy/timestamps
+  // are never read on this path.
   return Banner.find({
     status: 'approved',
     startDate: { $lte: now },
     endDate: { $gte: now },
-  }).sort({ createdAt: -1 });
+  })
+    .select('imageUrl productId manufacturerAr warehouseId')
+    .sort({ createdAt: -1 })
+    .lean();
 }
 
 module.exports = { listActiveBanners };

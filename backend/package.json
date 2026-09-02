@@ -14,7 +14,8 @@
     "seed-catalog": "node scripts/seed-catalog.js",
     "migrate-prices-to-usd": "node scripts/migrate-prices-to-usd.js",
     "backfill-warehouse-manufacturers": "node scripts/backfill-warehouse-manufacturers.js",
-    "backfill-pharmacy-balances": "node scripts/backfill-pharmacy-balances.js"
+    "backfill-pharmacy-balances": "node scripts/backfill-pharmacy-balances.js",
+    "migrate-level2-indexes": "node scripts/level2-index-migration.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",

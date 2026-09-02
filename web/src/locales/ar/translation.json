@@ -40,6 +40,7 @@
     "brandName": "فينيق",
     "openMenu": "فتح القائمة",
     "dashboard": "لوحة التحكم",
+    "accounts": "الحسابات",
     "pendingAccounts": "الحسابات المعلّقة",
     "offers": "العروض",
     "banners": "الإعلانات",
@@ -53,6 +54,7 @@
     "debts": "الديون",
     "returns": "المرتجعات",
     "reviews": "التقييمات",
+    "complaints": "الشكاوى",
     "settings": "الإعدادات"
   },
   "auth": {
@@ -79,16 +81,16 @@
     "newOrdersArrived_few": "وصلت {{count}} طلبات جديدة — اعرضها",
     "newOrdersArrived_many": "وصل {{count}} طلباً جديداً — اعرضها",
     "newOrdersArrived_other": "وصل {{count}} طلب جديد — اعرضها",
-    "statusPending": "قيد المراجعة",
-    "statusConfirmed": "مؤكَّد",
+    "statusPending": "تم الإرسال",
+    "statusConfirmed": "بانتظار الموافقة",
     "statusPreparing": "قيد التحضير",
-    "statusOutForDelivery": "قيد التوصيل",
+    "statusOutForDelivery": "بالطريق",
     "statusDelivered": "تم التسليم",
     "statusCancelled": "ملغى",
     "statusModified": "تم تعديل الطلب",
     "advancePending": "تأكيد الطلب",
     "advanceConfirmed": "بدء التحضير",
-    "advancePreparing": "إرسال للتوصيل",
+    "advancePreparing": "بدء التوصيل",
     "advanceOutForDelivery": "تحديد كمُسلَّم",
     "updating": "جارٍ التحديث...",
     "noOrders": "لا توجد طلبات هنا حالياً.",
@@ -171,6 +173,61 @@
     "decisionExplainer": "الموافقة تنشئ طلب استبدال جديد بدون رسوم إضافية، ولا يمكن التراجع عنها.",
     "rejectionNoteHint": "سبب الرفض يُكتب بلغة بشرية بسيطة — الصيدلاني سيرى هذه الملاحظة في تطبيقه.",
     "photosHint": "(اضغط للتكبير)"
+  },
+  "complaints": {
+    "numberColumn": "الرقم",
+    "numberValue": "شكوى رقم {{number}}",
+    "numberValueOrder": "طلب رقم {{number}}",
+    "pharmacyColumn": "الصيدلية",
+    "warehouseColumn": "المستودع",
+    "contextColumn": "النوع",
+    "orderColumn": "الطلب",
+    "subjectColumn": "العنوان",
+    "createdColumn": "تاريخ الإنشاء",
+    "updatedColumn": "آخر تحديث",
+    "context": {
+      "general": "عام",
+      "warehouse": "مستودع",
+      "order": "طلب"
+    },
+    "status": {
+      "pending": "قيد الانتظار",
+      "in_review": "قيد المراجعة",
+      "resolved": "تم الحل",
+      "closed": "مغلقة"
+    },
+    "admin": {
+      "headHint": "صفِّ الشكاوى حسب الحالة، ثم افتح الشكوى للرد وتحديث حالتها.",
+      "filterAll": "الكل",
+      "noComplaints": "لا توجد شكاوى هنا.",
+      "clickRowHint": "اضغط على أي صف لفتح الشكوى والرد عليها.",
+      "backToList": "رجوع للشكاوى"
+    },
+    "warehouse": {
+      "noComplaints": "لا توجد شكاوى مقدَّمة ضد مستودعك.",
+      "clickRowHint": "اضغط على أي صف لعرض الشكوى.",
+      "backToList": "رجوع للشكاوى",
+      "readOnlyNotice": "الرد على الشكاوى من مسؤولية الإدارة. يمكنك الاطّلاع على التفاصيل هنا."
+    },
+    "detail": {
+      "filedOn": "قُدِّمت بتاريخ {{date}}",
+      "extraDetails": "تفاصيل إضافية",
+      "relatedOrder": "الطلب المرتبط:",
+      "responseTitle": "الرد",
+      "updateResponseTitle": "تعديل الرد",
+      "responseHint": "يصل إشعار للصيدلية عند إرسال الرد، ويمكنها فتح الشكوى من هذا الإشعار مباشرة.",
+      "responseLabel": "الرد الموجَّه للصيدلية",
+      "responsePlaceholder": "اكتب رد الإدارة...",
+      "responseParaphrase": "سيرى الصيدلاني هذا النص في تطبيقه.",
+      "setStatusLabel": "تحديد الحالة",
+      "sendButton": "إرسال الرد",
+      "currentResponse": "الرد الحالي",
+      "respondedMeta": "بواسطة {{name}} · {{date}}",
+      "noResponseYet": "لم تردّ الإدارة بعد.",
+      "quickStatusTitle": "تغيير الحالة فقط",
+      "responseTitleShort": "الرد",
+      "generalNoTargets": "هذه شكوى عامة — لا تتعلق بمستودع أو طلب محدّد."
+    }
   },
   "reviews": {
     "noReviews": "لا توجد تقييمات بعد.",
@@ -349,6 +406,43 @@
     "recentOffersTitle": "أحدث العروض المعلّقة"
   },
   "admin": {
+    "accounts": {
+      "typeLabel": "نوع الحساب:",
+      "type": {
+        "all": "الكل",
+        "pharmacy": "الصيدليات",
+        "warehouse": "المستودعات"
+      },
+      "typeBadge": {
+        "pharmacy": "صيدلية",
+        "warehouse": "مستودع"
+      },
+      "status": {
+        "all": "الكل",
+        "active": "مفعّل",
+        "pending": "معلّق",
+        "blocked": "محظور"
+      },
+      "searchPlaceholder": "ابحث في الحسابات بالاسم أو الهاتف أو المدينة…",
+      "column": {
+        "account": "الحساب",
+        "type": "النوع",
+        "status": "الحالة",
+        "created": "تاريخ الإنشاء",
+        "action": "إجراء"
+      },
+      "action": {
+        "view": "عرض",
+        "block": "حظر",
+        "unblock": "إلغاء الحظر"
+      },
+      "confirmApprove": "الموافقة على {{name}}؟",
+      "confirmReject": "رفض {{name}}؟ سيتم حظر الحساب.",
+      "confirmBlock": "حظر {{name}}؟ سيفقد الوصول حتى يقوم مشرف بإلغاء الحظر.",
+      "confirmUnblock": "إلغاء حظر {{name}}؟ ستتم استعادة وصوله.",
+      "noAccounts": "لا توجد حسابات مطابقة لهذه الفلاتر.",
+      "noAccountsHint": "جرّب نوعاً أو حالة أو كلمة بحث مختلفة."
+    },
     "pendingAccounts": {
       "noAccounts": "لا توجد حسابات معلّقة",
       "noAccountsHint": "كل طلبات التسجيل تمت مراجعتها. ستظهر الطلبات الجديدة هنا تلقائياً مع إشعار على الجرس.",

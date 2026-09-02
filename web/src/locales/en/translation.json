@@ -40,6 +40,7 @@
     "brandName": "Phoenix",
     "openMenu": "Open menu",
     "dashboard": "Dashboard",
+    "accounts": "Accounts",
     "pendingAccounts": "Pending accounts",
     "offers": "Offers",
     "banners": "Banners",
@@ -53,6 +54,7 @@
     "debts": "Debts",
     "returns": "Returns",
     "reviews": "Reviews",
+    "complaints": "Complaints",
     "settings": "Settings"
   },
   "auth": {
@@ -71,16 +73,16 @@
     "clickRowHint": "Click any row to view the order's details",
     "newOrdersArrived_one": "{{count}} new order arrived — show it",
     "newOrdersArrived_other": "{{count}} new orders arrived — show them",
-    "statusPending": "Pending review",
-    "statusConfirmed": "Confirmed",
+    "statusPending": "Sent",
+    "statusConfirmed": "Waiting for Approval",
     "statusPreparing": "Preparing",
-    "statusOutForDelivery": "Out for delivery",
+    "statusOutForDelivery": "On the Way",
     "statusDelivered": "Delivered",
     "statusCancelled": "Cancelled",
     "statusModified": "Order modified",
     "advancePending": "Confirm order",
     "advanceConfirmed": "Start preparing",
-    "advancePreparing": "Send out for delivery",
+    "advancePreparing": "Start delivery",
     "advanceOutForDelivery": "Mark as delivered",
     "updating": "Updating...",
     "noOrders": "No orders here right now.",
@@ -163,6 +165,61 @@
     "decisionExplainer": "Approving creates a new no-extra-charge replacement order and cannot be undone.",
     "rejectionNoteHint": "Write the rejection reason in plain language — the pharmacist will see this note in their app.",
     "photosHint": "(click to zoom)"
+  },
+  "complaints": {
+    "numberColumn": "No.",
+    "numberValue": "Complaint #{{number}}",
+    "numberValueOrder": "Order #{{number}}",
+    "pharmacyColumn": "Pharmacy",
+    "warehouseColumn": "Warehouse",
+    "contextColumn": "Type",
+    "orderColumn": "Order",
+    "subjectColumn": "Subject",
+    "createdColumn": "Created",
+    "updatedColumn": "Updated",
+    "context": {
+      "general": "General",
+      "warehouse": "Warehouse",
+      "order": "Order"
+    },
+    "status": {
+      "pending": "Pending",
+      "in_review": "In review",
+      "resolved": "Resolved",
+      "closed": "Closed"
+    },
+    "admin": {
+      "headHint": "Filter by status, then open a complaint to reply and update its status.",
+      "filterAll": "All",
+      "noComplaints": "No complaints here.",
+      "clickRowHint": "Click any row to open the complaint and respond.",
+      "backToList": "Back to complaints"
+    },
+    "warehouse": {
+      "noComplaints": "No complaints have been filed against your warehouse.",
+      "clickRowHint": "Click any row to view the complaint.",
+      "backToList": "Back to complaints",
+      "readOnlyNotice": "Complaint replies are handled by the administration. You can view the details here."
+    },
+    "detail": {
+      "filedOn": "Filed on {{date}}",
+      "extraDetails": "Additional details",
+      "relatedOrder": "Related order:",
+      "responseTitle": "Response",
+      "updateResponseTitle": "Update response",
+      "responseHint": "The pharmacy is notified when you send a response, and can open the complaint from that notification.",
+      "responseLabel": "Response to the pharmacy",
+      "responsePlaceholder": "Write the administration's response...",
+      "responseParaphrase": "The pharmacist will see this text in their app.",
+      "setStatusLabel": "Set status",
+      "sendButton": "Send response",
+      "currentResponse": "Current response",
+      "respondedMeta": "By {{name}} · {{date}}",
+      "noResponseYet": "The administration hasn't responded yet.",
+      "quickStatusTitle": "Change status only",
+      "responseTitleShort": "Response",
+      "generalNoTargets": "This is a general complaint - not about a specific warehouse or order."
+    }
   },
   "reviews": {
     "noReviews": "No reviews yet.",
@@ -337,6 +394,43 @@
     "recentOffersTitle": "Recent pending offers"
   },
   "admin": {
+    "accounts": {
+      "typeLabel": "Account type:",
+      "type": {
+        "all": "All",
+        "pharmacy": "Pharmacies",
+        "warehouse": "Warehouses"
+      },
+      "typeBadge": {
+        "pharmacy": "Pharmacy",
+        "warehouse": "Warehouse"
+      },
+      "status": {
+        "all": "All",
+        "active": "Active",
+        "pending": "Pending",
+        "blocked": "Blocked"
+      },
+      "searchPlaceholder": "Search accounts by name, phone or city…",
+      "column": {
+        "account": "Account",
+        "type": "Type",
+        "status": "Status",
+        "created": "Created",
+        "action": "Actions"
+      },
+      "action": {
+        "view": "View",
+        "block": "Block",
+        "unblock": "Unblock"
+      },
+      "confirmApprove": "Approve {{name}}?",
+      "confirmReject": "Reject {{name}}? The account will be blocked.",
+      "confirmBlock": "Block {{name}}? They lose access until an admin unblocks them.",
+      "confirmUnblock": "Unblock {{name}}? Their access is restored.",
+      "noAccounts": "No accounts match these filters.",
+      "noAccountsHint": "Try a different type, status or search term."
+    },
     "pendingAccounts": {
       "noAccounts": "No pending accounts right now.",
       "noAccountsHint": "Every registration request has been reviewed. New requests will appear here automatically, with a bell notification.",

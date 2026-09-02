@@ -247,6 +247,39 @@ class ProfileView extends StatelessWidget {
                   ),
 
                   const SizedBox(height: AppSizes.spacingXLarge),
+                  _SectionHeader(l10n.complaintsTitle),
+                  const SizedBox(height: AppSizes.spacingSmall),
+                  CustomCard(
+                    onTap: () => context.pushNamed(RouteNames.complaints),
+                    child: Row(
+                      children: [
+                        Icon(Icons.support_agent_outlined, size: 22, color: AppColors.navyOf(context)),
+                        const SizedBox(width: AppSizes.spacingMedium),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(l10n.complaintsTitle, style: context.textTheme.titleSmall),
+                              const SizedBox(height: 2),
+                              Text(
+                                l10n.complaintsProfileSubtitle,
+                                style: context.textTheme.bodySmall?.copyWith(
+                                  color: AppColors.textSecondaryOf(context),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(
+                          Icons.chevron_right,
+                          size: AppSizes.iconSizeSmall,
+                          color: AppColors.textSecondaryOf(context),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: AppSizes.spacingXLarge),
                   _SectionHeader(l10n.settings),
                   const SizedBox(height: AppSizes.spacingSmall),
                   BlocBuilder<SettingsCubit, SettingsState>(

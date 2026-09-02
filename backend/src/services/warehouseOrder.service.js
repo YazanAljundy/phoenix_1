@@ -52,7 +52,12 @@ async function listOrdersForWarehouse(
     filter.orderNumber = { $gt: after };
   }
 
+  // .select(): warehouseOrder.viewmodel.js's toWarehouseOrderItem (the list
+  // row) reads orderNumber/status/finalPrice/notes/createdAt; pharmacyId is
+  // the join key. Never saved - advanceOrderStatus / updateOrderItems each
+  // re-load the order themselves.
   const orders = await Order.find(filter)
+    .select('orderNumber status finalPrice notes createdAt pharmacyId')
     .sort({ orderNumber: 1 })
     .limit(limit + 1);
   const hasMore = orders.length > limit;
@@ -65,8 +70,12 @@ async function listOrdersForWarehouse(
   const pharmacyIds = [...new Set(page.map((o) => o.pharmacyId.toString()))];
 
   const [items, pharmacies, reviews] = await Promise.all([
-    OrderItem.find({ orderId: { $in: orderIds } }),
-    Pharmacy.find({ _id: { $in: pharmacyIds } }),
+    // serializeOrderItem (list variant) reads everything but savingsUsd.
+    OrderItem.find({ orderId: { $in: orderIds } })
+      .select('orderId productId productNameAr productNameEn manufacturerAr manufacturerEn quantity unitPrice discountPrice'),
+    // serializePharmacy (auth.viewmodel) field set.
+    Pharmacy.find({ _id: { $in: pharmacyIds } })
+      .select('nameAr nameEn ownerName address city phone verificationPhoto'),
     // Section 13c: whether *this warehouse* already rated the pharmacy for
     // this order - the unique {orderId, reviewerType} index means there can
     // only ever be one, so the UI knows to offer "Rate pharmacy" or not.
@@ -141,9 +150,10 @@ async function advanceOrderStatus(orderId, warehouseId, userId) {
   }
 
   // Push the pharmacist a status update for the two stages they'd actually
-  // want to be pinged for (out for delivery / delivered) - not every stage,
+  // want to be pinged for (on the way / delivered) - not every stage,
   // same as sendToUser/sendToAll below, this must never block or undo the
-  // status change above if it fails.
+  // status change above if it fails. Wording tracks the user-facing status
+  // terminology ('out_for_delivery' -> "On the Way" / "بالطريق").
   if (next === 'out_for_delivery' || next === 'delivered') {
     try {
       const pharmacy = await Pharmacy.findById(order.pharmacyId, 'userId');
@@ -153,11 +163,11 @@ async function advanceOrderStatus(orderId, warehouseId, userId) {
           titleEn: 'Order Update',
           bodyAr:
             next === 'out_for_delivery'
-              ? `طلبك رقم ${order.orderNumber} خرج للتوصيل`
+              ? `طلبك رقم ${order.orderNumber} بالطريق إليك`
               : `تم تسليم طلبك رقم ${order.orderNumber}`,
           bodyEn:
             next === 'out_for_delivery'
-              ? `Your order #${order.orderNumber} is out for delivery`
+              ? `Your order #${order.orderNumber} is on the way`
               : `Your order #${order.orderNumber} has been delivered`,
           type: 'order_update',
           relatedOrderId: order._id,
@@ -182,15 +192,21 @@ async function getOrderDetailForWarehouse(orderId, warehouseId) {
   if (!mongoose.Types.ObjectId.isValid(orderId)) {
     throw ApiError.notFound('Order not found.', 'ORDER_NOT_FOUND');
   }
-  const order = await Order.findOne({ _id: orderId, warehouseId });
+  // Read-only detail (no status change), so a projection is safe here -
+  // toWarehouseOrderDetailResponse reads exactly these order fields.
+  const order = await Order.findOne({ _id: orderId, warehouseId })
+    .select('orderNumber status totalPrice discountAmount commissionAmount finalPrice notes cancelReason createdAt statusHistory pharmacyId');
   if (!order) {
     throw ApiError.notFound('Order not found.', 'ORDER_NOT_FOUND');
   }
 
   const [items, pharmacy, returnRequest] = await Promise.all([
-    OrderItem.find({ orderId: order._id }),
-    Pharmacy.findById(order.pharmacyId),
-    Return.findOne({ orderId: order._id }),
+    // Detail item shape adds lineTotal (discountPrice*quantity) and savingsUsd.
+    OrderItem.find({ orderId: order._id })
+      .select('productId productNameAr productNameEn manufacturerAr manufacturerEn quantity unitPrice discountPrice savingsUsd'),
+    Pharmacy.findById(order.pharmacyId)
+      .select('nameAr nameEn ownerName address city phone verificationPhoto'),
+    Return.findOne({ orderId: order._id }).select('_id'),
   ]);
 
   return { order, items, pharmacy, hasReturn: Boolean(returnRequest) };
@@ -281,8 +297,10 @@ async function updateOrderItems(orderId, warehouseId, userId, payload) {
   );
   if (addItems.length === 0 && removeIdSet.size === 0 && !hasQuantityChange) {
     const [pharmacy, returnRequest] = await Promise.all([
-      Pharmacy.findById(order.pharmacyId),
-      Return.findOne({ orderId: order._id }),
+      // userId: this function also pushes the pharmacist a notification below.
+      Pharmacy.findById(order.pharmacyId)
+        .select('userId nameAr nameEn ownerName address city phone verificationPhoto'),
+      Return.findOne({ orderId: order._id }).select('_id'),
     ]);
     return { order, items: currentItems, pharmacy, hasReturn: Boolean(returnRequest) };
   }
@@ -400,8 +418,10 @@ async function updateOrderItems(orderId, warehouseId, userId, payload) {
   await order.save();
 
   const [pharmacy, returnRequest] = await Promise.all([
-    Pharmacy.findById(order.pharmacyId),
-    Return.findOne({ orderId: order._id }),
+    // userId: the pharmacist is notified of the edit just below.
+    Pharmacy.findById(order.pharmacyId)
+      .select('userId nameAr nameEn ownerName address city phone verificationPhoto'),
+    Return.findOne({ orderId: order._id }).select('_id'),
   ]);
 
   // Never lets a notification hiccup undo the edit above, which already

@@ -11,5 +11,8 @@ router.get('/', authenticate, authorize('pharmacy'), requireActiveStatus, contro
 router.get('/returnable', authenticate, authorize('pharmacy'), requireActiveStatus, controller.listReturnable);
 router.get('/:id', authenticate, authorize('pharmacy'), requireActiveStatus, controller.getOne);
 router.post('/:id/cancel', authenticate, authorize('pharmacy'), requireActiveStatus, controller.cancel);
+// Section: reorder - copies a past delivered order into a cart payload.
+// Creates no order (that stays POST '/'); the cart submits normally afterwards.
+router.post('/:id/reorder', authenticate, authorize('pharmacy'), requireActiveStatus, controller.reorder);
 
 module.exports = router;

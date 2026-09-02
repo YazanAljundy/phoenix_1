@@ -52,7 +52,28 @@ void main() {
       expect(typeOf('order_update'), NotificationType.orderUpdate);
       expect(typeOf('offer'), NotificationType.offer);
       expect(typeOf('system'), NotificationType.system);
+      expect(typeOf('complaint'), NotificationType.complaint);
       expect(typeOf('something_new'), NotificationType.unknown);
+    });
+
+    test('a complaint reply notification carries a complaint deep-link', () {
+      final model = NotificationModel.fromRemoteMessage(
+        _message(
+          messageId: 'm-complaint',
+          title: 'تم الرد على شكواك',
+          body: 'تم الرد على شكواك رقم 7',
+          data: const {'type': 'complaint', 'relatedComplaintId': 'complaint-7'},
+        ),
+      )!;
+      expect(model.type, NotificationType.complaint);
+      expect(model.relatedComplaintId, 'complaint-7');
+      expect(model.hasComplaintDeepLink, isTrue);
+      expect(model.hasOrderDeepLink, isFalse);
+
+      // Survives the local-storage round-trip.
+      final restored = NotificationModel.fromJson(model.toJson());
+      expect(restored.relatedComplaintId, 'complaint-7');
+      expect(restored.hasComplaintDeepLink, isTrue);
     });
 
     test('offer / system notifications carry no order deep-link', () {

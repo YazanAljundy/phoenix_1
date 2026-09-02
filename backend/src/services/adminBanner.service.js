@@ -40,6 +40,16 @@ function deleteBannerImage(url) {
   deleteImageByUrl(url);
 }
 
+// adminBanner.viewmodel.js's serializeAdminBanner reads, off the banner:
+// id/bannerNumber/imageUrl/productId/manufacturerAr/title/status/
+// rejectionNote/startDate/endDate/warehouseId/createdAt; off the joined
+// warehouse and product: their two names only.
+const ADMIN_BANNER_FIELDS =
+  'bannerNumber imageUrl productId manufacturerAr title status rejectionNote startDate endDate warehouseId createdAt';
+const BANNER_REF_NAME_SELECT = 'nameAr nameEn';
+const BANNER_PRODUCT_SELECT = 'nameAr nameEn manufacturerAr manufacturerEn masterProductId';
+const CATALOG_IDENTITY_SELECT = 'nameAr nameEn manufacturerAr manufacturerEn';
+
 // The moderation queue by default (`status` omitted), oldest first - same
 // FIFO reasoning as the admin's other review queues (offers, pending
 // accounts). Pass `status: 'all'` for the unfiltered management view, or a
@@ -48,14 +58,16 @@ async function listBanners(status) {
   const filter = !status || status === 'pending' ? { status: 'pending' } : status === 'all' ? {} : { status };
   const newestFirst = Boolean(status) && status !== 'pending';
 
-  const banners = await Banner.find(filter).sort({ createdAt: newestFirst ? -1 : 1 });
+  const banners = await Banner.find(filter).select(ADMIN_BANNER_FIELDS).sort({ createdAt: newestFirst ? -1 : 1 });
   if (banners.length === 0) return [];
 
   const warehouseIds = [...new Set(banners.filter((b) => b.warehouseId).map((b) => b.warehouseId.toString()))];
   const productIds = [...new Set(banners.filter((b) => b.productId).map((b) => b.productId.toString()))];
   const [warehouses, products] = await Promise.all([
-    Warehouse.find({ _id: { $in: warehouseIds } }),
-    Product.find({ _id: { $in: productIds } }).populate('masterProductId'),
+    Warehouse.find({ _id: { $in: warehouseIds } }).select(BANNER_REF_NAME_SELECT),
+    Product.find({ _id: { $in: productIds } })
+      .select(BANNER_PRODUCT_SELECT)
+      .populate({ path: 'masterProductId', select: CATALOG_IDENTITY_SELECT }),
   ]);
   products.forEach(applyResolvedIdentity);
   const warehouseById = new Map(warehouses.map((w) => [w._id.toString(), w]));
@@ -85,6 +97,7 @@ async function listPaginatedBanners(status, { limit = ADMIN_BANNERS_DEFAULT_LIMI
   }
 
   const banners = await Banner.find(filter)
+    .select(ADMIN_BANNER_FIELDS)
     .sort({ _id: newestFirst ? -1 : 1 })
     .limit(limit + 1);
   const hasMore = banners.length > limit;
@@ -96,8 +109,10 @@ async function listPaginatedBanners(status, { limit = ADMIN_BANNERS_DEFAULT_LIMI
   const warehouseIds = [...new Set(page.filter((b) => b.warehouseId).map((b) => b.warehouseId.toString()))];
   const productIds = [...new Set(page.filter((b) => b.productId).map((b) => b.productId.toString()))];
   const [warehouses, products] = await Promise.all([
-    Warehouse.find({ _id: { $in: warehouseIds } }),
-    Product.find({ _id: { $in: productIds } }).populate('masterProductId'),
+    Warehouse.find({ _id: { $in: warehouseIds } }).select(BANNER_REF_NAME_SELECT),
+    Product.find({ _id: { $in: productIds } })
+      .select(BANNER_PRODUCT_SELECT)
+      .populate({ path: 'masterProductId', select: CATALOG_IDENTITY_SELECT }),
   ]);
   products.forEach(applyResolvedIdentity);
   const warehouseById = new Map(warehouses.map((w) => [w._id.toString(), w]));
@@ -132,7 +147,9 @@ async function createAdminBanner(userId, { productId, startDate, endDate, title,
     if (!mongoose.Types.ObjectId.isValid(productId)) {
       throw ApiError.notFound('Product not found.', 'PRODUCT_NOT_FOUND');
     }
-    const product = await Product.findOne({ _id: productId, isActive: true }).populate('masterProductId');
+    const product = await Product.findOne({ _id: productId, isActive: true })
+      .select(BANNER_PRODUCT_SELECT)
+      .populate({ path: 'masterProductId', select: CATALOG_IDENTITY_SELECT });
     if (!product) {
       throw ApiError.notFound('Product not found.', 'PRODUCT_NOT_FOUND');
     }

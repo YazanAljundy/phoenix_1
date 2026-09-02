@@ -12,8 +12,11 @@ function validateUsdToSyp(usdToSyp) {
   }
 }
 
+// .lean(): every caller reads `usdToSyp` (order pricing) or serialises the
+// row through a viewmodel. Nothing saves it - the three write paths in this
+// file all use findByIdAndUpdate rather than mutating a loaded document.
 async function getRate() {
-  return ExchangeRate.findById(SINGLETON_ID);
+  return ExchangeRate.findById(SINGLETON_ID).lean();
 }
 
 // Open Exchange Rates' rates.SYP is the pre-redenomination lira - this app

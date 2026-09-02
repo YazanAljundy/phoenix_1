@@ -34,6 +34,32 @@ const listPendingAccounts = asyncHandler(async (req, res) => {
   });
 });
 
+// The Accounts management page: both roles, every status, with type + status +
+// server-side search filters and the same cursor "Load more" pagination the
+// other admin lists use. The `role`/`status` query params only ever narrow the
+// result set - authorization is the router-level authorize('admin') and never
+// anything a client sends (a `?role=admin` is rejected as an invalid filter,
+// not honoured). Counts travel with the page so the filter pills stay accurate
+// regardless of pagination.
+const listAccounts = asyncHandler(async (req, res) => {
+  const { role, status } = req.query;
+  const search = typeof req.query.search === 'string' ? req.query.search : '';
+  const { limit, after } = parseCursorQuery(req.query, 20);
+  const cursor = parseObjectIdCursor(after);
+
+  const [{ rows, hasMore, nextCursor }, counts] = await Promise.all([
+    adminService.listAccounts({ role, status, search, limit, after: cursor }),
+    adminService.countAccounts({ role, search }),
+  ]);
+
+  res.json({
+    success: true,
+    ...adminViewModel.toAccountsResponse(rows),
+    pagination: paginationMeta(hasMore, nextCursor),
+    counts,
+  });
+});
+
 const approveAccount = asyncHandler(async (req, res) => {
   await adminService.approveAccount(req.params.userId);
   res.json({ success: true, message: 'Account approved.' });
@@ -42,6 +68,21 @@ const approveAccount = asyncHandler(async (req, res) => {
 const rejectAccount = asyncHandler(async (req, res) => {
   await adminService.rejectAccount(req.params.userId);
   res.json({ success: true, message: 'Account rejected.' });
+});
+
+// active -> blocked. Admin-only (router guard); a pharmacy or warehouse can
+// never reach this. The service validates the state transition and emits the
+// realtime signal only after the write succeeds.
+const blockAccount = asyncHandler(async (req, res) => {
+  await adminService.blockAccount(req.params.userId);
+  res.json({ success: true, message: 'Account blocked.' });
+});
+
+// blocked -> active. Admin-only administrative action - it does not let an
+// account activate itself or bypass approval.
+const unblockAccount = asyncHandler(async (req, res) => {
+  await adminService.unblockAccount(req.params.userId);
+  res.json({ success: true, message: 'Account unblocked.' });
 });
 
 // The response deliberately carries no password - not even the one just
@@ -74,8 +115,11 @@ const broadcastNotification = asyncHandler(async (req, res) => {
 
 module.exports = {
   listPendingAccounts,
+  listAccounts,
   approveAccount,
   rejectAccount,
+  blockAccount,
+  unblockAccount,
   createWarehouse,
   broadcastNotification,
 };

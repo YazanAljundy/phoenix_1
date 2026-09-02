@@ -37,6 +37,30 @@ const List<String> kOrderTrackedStages = [
 // Section 7: only cancellable before the order goes out for delivery.
 const List<String> kOrderCancellableStatuses = ['pending', 'confirmed', 'preparing'];
 
+// Complaint Section 9: a compact summary of one complaint filed about this
+// order - shown in the "complaints about this order" section on the tracking
+// screen. The full detail is fetched from the complaints feature when tapped.
+class OrderComplaintRef {
+  const OrderComplaintRef({
+    required this.id,
+    required this.complaintNumber,
+    required this.subject,
+    required this.status,
+  });
+
+  final String id;
+  final int complaintNumber;
+  final String subject;
+  final String status;
+
+  factory OrderComplaintRef.fromJson(Map<String, dynamic> json) => OrderComplaintRef(
+    id: json['id'] as String,
+    complaintNumber: json['complaintNumber'] as int,
+    subject: json['subject'] as String? ?? '',
+    status: json['status'] as String,
+  );
+}
+
 // Section 8/13c: this pharmacy's own rating of the warehouse for this order,
 // if it's already submitted one - present so the tracking screen can show
 // "already rated" and skip the form on re-entry, instead of a separate call.
@@ -75,6 +99,7 @@ class OrderModel {
     this.items = const [],
     this.linkedReturn,
     this.myReview,
+    this.complaints = const [],
   });
 
   final String id;
@@ -105,8 +130,17 @@ class OrderModel {
   // Only present on the detail fetch - see MyReviewModel above.
   final MyReviewModel? myReview;
 
+  // Only present on the detail fetch - the complaints filed about this order
+  // (Complaint Section 9). Empty on list summaries / the creation response.
+  final List<OrderComplaintRef> complaints;
+
   bool get isCancelled => status == 'cancelled';
   bool get isCancellable => kOrderCancellableStatuses.contains(status);
+
+  // Section: "Reorder an existing order" - only a completed (delivered) order
+  // can be copied into a fresh cart. Mirrors the backend's REORDERABLE_STATUSES
+  // (order.service.js).
+  bool get isReorderable => status == 'delivered';
 
   // Section: the warehouse edited this order's items while it was still
   // pending - order.status itself never becomes 'modified' (see
@@ -142,6 +176,7 @@ class OrderModel {
     items: items,
     linkedReturn: linkedReturn,
     myReview: myReview ?? this.myReview,
+    complaints: complaints,
   );
 
   factory OrderModel.fromJson(Map<String, dynamic> json) => OrderModel(
@@ -174,5 +209,10 @@ class OrderModel {
     myReview: json['myReview'] != null
         ? MyReviewModel.fromJson(json['myReview'] as Map<String, dynamic>)
         : null,
+    complaints: json['complaints'] != null
+        ? (json['complaints'] as List)
+              .map((e) => OrderComplaintRef.fromJson(e as Map<String, dynamic>))
+              .toList()
+        : const [],
   );
 }

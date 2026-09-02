@@ -1,3 +1,5 @@
+const { serializeProductWithOffer } = require('./product.viewmodel');
+
 function serializeOrder(order) {
   return {
     id: order._id,
@@ -49,7 +51,27 @@ function serializeMyReview(review) {
   };
 }
 
-function toOrderDetailResponse(order, warehouse, items = [], returnRequest = null, myReview = null) {
+// Complaint Section 9: the complaints filed about this order, shown as a
+// section on the tracking screen. Compact list rows - number/subject/status -
+// with the full detail fetched on tap.
+function serializeOrderComplaint(complaint) {
+  return {
+    id: complaint._id,
+    complaintNumber: complaint.complaintNumber,
+    subject: complaint.subject,
+    status: complaint.status,
+    createdAt: complaint.createdAt,
+  };
+}
+
+function toOrderDetailResponse(
+  order,
+  warehouse,
+  items = [],
+  returnRequest = null,
+  myReview = null,
+  complaints = []
+) {
   return {
     order: {
       ...serializeOrder(order),
@@ -62,6 +84,7 @@ function toOrderDetailResponse(order, warehouse, items = [], returnRequest = nul
         note: entry.note ?? null,
       })),
       createdAt: order.createdAt,
+      complaints: (complaints || []).map(serializeOrderComplaint),
       items: items.map((item) => ({
         id: item._id,
         productId: item.productId,
@@ -105,7 +128,34 @@ function toOrderListResponse(items) {
   return { orders: items.map(({ order, warehouse }) => toOrderListItemSummary(order, warehouse)) };
 }
 
-module.exports = { toOrderResponse, toOrderDetailResponse, toOrderListResponse };
+// Section: "Reorder" - the cart-ready shape returned by
+// order.service.prepareReorder. `items` are the ORIGINAL order's quantities
+// against the CURRENT products (serialized exactly like the catalog browse,
+// plus a `quantity`), so the cart can build CartItems straight from them with
+// live prices. `unavailableItems` are lines the warehouse no longer sells -
+// shown to the pharmacist, never added to the cart. No order id / number /
+// status here: reorder creates nothing.
+function toReorderResponse({ warehouse, items = [], unavailableItems = [] }) {
+  return {
+    reorder: {
+      warehouseId: warehouse ? warehouse._id : null,
+      warehouseNameAr: warehouse ? warehouse.nameAr : null,
+      warehouseNameEn: warehouse ? warehouse.nameEn : null,
+      items: items.map(({ quantity, ...productItem }) => ({
+        ...serializeProductWithOffer(productItem),
+        quantity,
+      })),
+      unavailableItems: unavailableItems.map((item) => ({
+        productId: item.productId,
+        productNameAr: item.productNameAr,
+        productNameEn: item.productNameEn,
+        quantity: item.quantity,
+      })),
+    },
+  };
+}
+
+module.exports = { toOrderResponse, toOrderDetailResponse, toOrderListResponse, toReorderResponse };
 
 // Section: an order the pharmacy could still return (order.service.js's
 // listReturnableOrders). hoursRemaining is computed on the server - the

@@ -91,8 +91,8 @@ export const api = {
     request('/auth/login-password', { method: 'POST', body: { phone, password } }),
   me: () => request('/auth/me'),
   // No args: every pending account of both roles - used by the Dashboard's
-  // stat card/recent list. Pass { role, limit, after } for the Pending
-  // Accounts management page's own paginated, role-scoped view.
+  // stat card/recent list. (The Accounts management page uses adminAccounts
+  // below instead.)
   pendingAccounts: ({ role, limit, after } = {}) => {
     const params = new URLSearchParams();
     if (role) params.set('role', role);
@@ -101,9 +101,26 @@ export const api = {
     const qs = params.toString();
     return request(`/admin/pending-accounts${qs ? `?${qs}` : ''}`);
   },
+  // The Accounts management page: both roles, every status, with type/status/
+  // search filters and cursor "Load more" pagination. `role` is 'pharmacy' |
+  // 'warehouse' (omit for all); `status` is 'active' | 'pending' | 'blocked'
+  // (omit for all). Response carries { accounts, pagination:{hasMore,nextCursor},
+  // counts:{all,active,pending,blocked} }.
+  adminAccounts: ({ role, status, search, limit, after } = {}) => {
+    const params = new URLSearchParams();
+    if (role) params.set('role', role);
+    if (status) params.set('status', status);
+    if (search) params.set('search', search);
+    if (limit) params.set('limit', limit);
+    if (after) params.set('after', after);
+    const qs = params.toString();
+    return request(`/admin/accounts${qs ? `?${qs}` : ''}`);
+  },
   createAdminWarehouse: (data) => request('/admin/warehouses', { method: 'POST', body: data }),
   approveAccount: (userId) => request(`/admin/accounts/${userId}/approve`, { method: 'POST' }),
   rejectAccount: (userId) => request(`/admin/accounts/${userId}/reject`, { method: 'POST' }),
+  blockAccount: (userId) => request(`/admin/accounts/${userId}/block`, { method: 'POST' }),
+  unblockAccount: (userId) => request(`/admin/accounts/${userId}/unblock`, { method: 'POST' }),
   sendAdminNotification: ({ titleAr, titleEn, bodyAr, bodyEn }) =>
     request('/admin/notifications', { method: 'POST', body: { titleAr, titleEn, bodyAr, bodyEn } }),
   warehouseOrders: ({ status, limit, after } = {}) => {
@@ -256,6 +273,36 @@ export const api = {
     const qs = params.toString();
     return request(`/admin/banners${qs ? `?${qs}` : ''}`);
   },
+  // --- Complaints -------------------------------------------------------
+  // Admin: every complaint, newest first; pass { status } to filter. The
+  // response also carries per-status `counts` for the filter pills.
+  adminComplaints: ({ status, limit, after } = {}) => {
+    const params = new URLSearchParams();
+    if (status) params.set('status', status);
+    if (limit) params.set('limit', limit);
+    if (after) params.set('after', after);
+    const qs = params.toString();
+    return request(`/admin/complaints${qs ? `?${qs}` : ''}`);
+  },
+  adminComplaintDetail: (complaintId) => request(`/admin/complaints/${complaintId}`),
+  respondToComplaint: (complaintId, { response, status }) =>
+    request(`/admin/complaints/${complaintId}/respond`, {
+      method: 'POST',
+      body: { response, status },
+    }),
+  updateComplaintStatus: (complaintId, status) =>
+    request(`/admin/complaints/${complaintId}/status`, { method: 'PATCH', body: { status } }),
+  // Warehouse: only the complaints filed against the caller's own warehouse,
+  // read-only.
+  warehouseComplaints: ({ limit, after } = {}) => {
+    const params = new URLSearchParams();
+    if (limit) params.set('limit', limit);
+    if (after) params.set('after', after);
+    const qs = params.toString();
+    return request(`/warehouse/complaints${qs ? `?${qs}` : ''}`);
+  },
+  warehouseComplaintDetail: (complaintId) => request(`/warehouse/complaints/${complaintId}`),
+
   createAdminBanner: (formData) => requestFormData('/admin/banners', formData),
   approveBanner: (bannerId) => request(`/admin/banners/${bannerId}/approve`, { method: 'PATCH' }),
   rejectBanner: (bannerId, rejectionNote) =>

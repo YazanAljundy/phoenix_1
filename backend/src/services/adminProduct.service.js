@@ -16,14 +16,21 @@ const { applyResolvedIdentity, escapeRegex } = require('./productCatalog.service
 // `.save()` in updateProduct. Resolving there would silently copy the
 // catalog's name back onto the product's own (legacy) fields on every edit,
 // exactly the duplication Section 14 says not to do.
+// adminProduct.viewmodel.js reads only the two warehouse names off the joined
+// warehouse; the populated catalog entry is only used for identity resolution
+// (its four name/manufacturer fields).
+const ADMIN_PRODUCT_WAREHOUSE_SELECT = 'nameAr nameEn';
+const CATALOG_IDENTITY_SELECT = 'nameAr nameEn manufacturerAr manufacturerEn';
+
 async function listAllProducts() {
-  const products = await Product.find({}).populate('masterProductId');
+  const products = await Product.find({})
+    .populate({ path: 'masterProductId', select: CATALOG_IDENTITY_SELECT });
   products.forEach(applyResolvedIdentity);
   products.sort((a, b) => (a.nameEn || a.nameAr || '').localeCompare(b.nameEn || b.nameAr || ''));
   if (products.length === 0) return [];
 
   const warehouseIds = [...new Set(products.map((p) => p.warehouseId.toString()))];
-  const warehouses = await Warehouse.find({ _id: { $in: warehouseIds } });
+  const warehouses = await Warehouse.find({ _id: { $in: warehouseIds } }).select(ADMIN_PRODUCT_WAREHOUSE_SELECT);
   const warehouseById = new Map(warehouses.map((w) => [w._id.toString(), w]));
 
   return products.map((product) => ({
@@ -72,7 +79,7 @@ async function listPaginatedAllProducts({ search, warehouseId, limit = ADMIN_PRO
   const products = await Product.find(filter)
     .sort({ _id: 1 })
     .limit(limit + 1)
-    .populate('masterProductId');
+    .populate({ path: 'masterProductId', select: CATALOG_IDENTITY_SELECT });
   const hasMore = products.length > limit;
   const page = hasMore ? products.slice(0, limit) : products;
   page.forEach(applyResolvedIdentity);
@@ -81,7 +88,7 @@ async function listPaginatedAllProducts({ search, warehouseId, limit = ADMIN_PRO
   if (page.length === 0) return { rows: [], hasMore: false, nextCursor: null };
 
   const warehouseIds = [...new Set(page.map((p) => p.warehouseId.toString()))];
-  const warehouses = await Warehouse.find({ _id: { $in: warehouseIds } });
+  const warehouses = await Warehouse.find({ _id: { $in: warehouseIds } }).select(ADMIN_PRODUCT_WAREHOUSE_SELECT);
   const warehouseById = new Map(warehouses.map((w) => [w._id.toString(), w]));
 
   const rows = page.map((product) => ({
@@ -98,7 +105,7 @@ async function listPaginatedAllProducts({ search, warehouseId, limit = ADMIN_PRO
 // every warehouse), and independently of listAllProducts's full fetch too.
 async function listWarehousesWithProducts() {
   const warehouseIds = await Product.distinct('warehouseId');
-  const warehouses = await Warehouse.find({ _id: { $in: warehouseIds } }).sort({ nameEn: 1 });
+  const warehouses = await Warehouse.find({ _id: { $in: warehouseIds } }).select('nameEn').sort({ nameEn: 1 });
   return warehouses.map((w) => ({ id: w._id, nameEn: w.nameEn }));
 }
 

@@ -16,6 +16,7 @@ import 'package:phoenix/core/widgets/primary_button.dart';
 import 'package:phoenix/core/widgets/whatsapp_button.dart';
 import 'package:phoenix/features/cart/presentation/widgets/cart_button.dart';
 import 'package:phoenix/features/catalog/data/models/manufacturers_route_args.dart';
+import 'package:phoenix/features/complaints/data/models/submit_complaint_args.dart';
 import 'package:phoenix/features/warehouse_selection/data/models/warehouse_profile_model.dart';
 import 'package:phoenix/features/warehouse_selection/presentation/managers/warehouse_profile_cubit.dart';
 import 'package:phoenix/features/warehouse_selection/presentation/managers/warehouse_profile_state.dart';
@@ -40,6 +41,18 @@ class WarehouseProfileView extends StatelessWidget {
       RouteNames.manufacturers,
       pathParameters: {'warehouseId': warehouseId},
       extra: ManufacturersRouteArgs(warehouseName: name),
+    );
+  }
+
+  // Complaint Section 2: "file a complaint about THIS warehouse" - the
+  // warehouse context is passed through, so the "submit a complaint" screen
+  // shows it pre-filled and non-editable, with no warehouse dropdown.
+  Future<void> _fileWarehouseComplaint(BuildContext context, WarehouseProfileModel profile) async {
+    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+    final name = isArabic ? profile.nameAr : profile.nameEn;
+    await context.pushNamed(
+      RouteNames.submitComplaint,
+      extra: SubmitComplaintArgs.warehouse(warehouseId: warehouseId, warehouseName: name),
     );
   }
 
@@ -94,6 +107,21 @@ class WarehouseProfileView extends StatelessWidget {
                           PrimaryButton(
                             label: l10n.browseWarehouseProductsButton,
                             onPressed: () => _browseProducts(context, profile),
+                          ),
+                          const SizedBox(height: AppSizes.spacingMedium),
+                          SizedBox(
+                            width: double.infinity,
+                            child: OutlinedButton.icon(
+                              onPressed: () => _fileWarehouseComplaint(context, profile),
+                              icon: const Icon(Icons.support_agent_outlined, size: 18),
+                              label: Text(l10n.submitComplaintOnWarehouseCta),
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppColors.navyOf(context),
+                                side: BorderSide(color: AppColors.navyOf(context)),
+                                shape: const RoundedRectangleBorder(borderRadius: AppRadius.medium),
+                                padding: const EdgeInsets.symmetric(vertical: 14),
+                              ),
+                            ),
                           ),
                         ],
                       ),

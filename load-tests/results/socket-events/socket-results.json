@@ -1,0 +1,243 @@
+{
+  "generatedAt": "2026-08-28T11:38:43.355Z",
+  "socketUrl": "http://localhost:5000",
+  "eventFanout": [
+    {
+      "listeners": 10,
+      "listenersConnected": 10,
+      "ordersCreated": 30,
+      "unmatchedDeliveries": 0,
+      "expectedDeliveries": 300,
+      "actualDeliveries": 300,
+      "deliveryRate": 1,
+      "eventsPerSecond": 24.4,
+      "fanoutLatency": {
+        "count": 300,
+        "minMs": 19,
+        "medMs": 31,
+        "p90Ms": 47,
+        "p95Ms": 57,
+        "p99Ms": 71,
+        "maxMs": 71,
+        "avgMs": 33.2
+      },
+      "orderHttpLatency": {
+        "count": 30,
+        "minMs": 21,
+        "medMs": 32,
+        "p90Ms": 51,
+        "p95Ms": 58,
+        "p99Ms": 72,
+        "maxMs": 72,
+        "avgMs": 34.4
+      },
+      "system": {
+        "samples": 6,
+        "machineCpuAvgPercent": 14.66,
+        "machineCpuMaxPercent": 22.58,
+        "freeMemMinMb": 6122,
+        "backend": {
+          "cpuAvgPercentOfOneCore": 4.85,
+          "cpuMaxPercentOfOneCore": 11.67,
+          "cpuAvgPercentOfMachine": 0.61,
+          "eventLoopMeanMsAvg": 15.93,
+          "eventLoopP99MsMax": 23.560191,
+          "eventLoopMaxMs": 1002.962943,
+          "rssMaxMb": 282.33,
+          "heapUsedMaxMb": 55.05,
+          "activeHandlesMax": 115,
+          "poolMaxSize": 100,
+          "poolConnectionsCreated": 0,
+          "poolCheckOutFailed": 0,
+          "poolMaxPendingCheckouts": 535
+        },
+        "mongo": {
+          "connectionsMax": 117,
+          "connectionsAvailableMin": 208241,
+          "queueTotalMax": 0,
+          "activeReadersMax": 0,
+          "activeWritersMax": 0,
+          "readTicketsAvailableMin": 6,
+          "readTicketsTotal": 6,
+          "readTicketsOutMax": 0,
+          "writeTicketsAvailableMin": 6,
+          "writeTicketsTotal": 6,
+          "writeTicketsOutMax": 0,
+          "residentMaxMb": 105,
+          "wtCacheUsedMaxMb": 33.2,
+          "queriesInWindow": 189,
+          "commandsInWindow": 32,
+          "insertsInWindow": 44,
+          "windowSeconds": 10
+        },
+        "processes": {
+          "nodeCpuMaxPercentOfMachine": null,
+          "nodeRssMaxMb": null,
+          "mongodCpuMaxPercentOfMachine": null,
+          "mongodRssMaxMb": null,
+          "k6CpuMaxPercentOfMachine": null,
+          "k6CpuAvgPercentOfMachine": null,
+          "k6RssMaxMb": null
+        }
+      }
+    },
+    {
+      "listeners": 100,
+      "listenersConnected": 100,
+      "ordersCreated": 30,
+      "unmatchedDeliveries": 0,
+      "expectedDeliveries": 3000,
+      "actualDeliveries": 3000,
+      "deliveryRate": 1,
+      "eventsPerSecond": 242.9,
+      "fanoutLatency": {
+        "count": 3000,
+        "minMs": 20,
+        "medMs": 32,
+        "p90Ms": 42,
+        "p95Ms": 44,
+        "p99Ms": 46,
+        "maxMs": 47,
+        "avgMs": 32.3
+      },
+      "orderHttpLatency": {
+        "count": 30,
+        "minMs": 26,
+        "medMs": 36,
+        "p90Ms": 46,
+        "p95Ms": 48,
+        "p99Ms": 48,
+        "maxMs": 48,
+        "avgMs": 36.1
+      },
+      "system": {
+        "samples": 6,
+        "machineCpuAvgPercent": 18.19,
+        "machineCpuMaxPercent": 37.13,
+        "freeMemMinMb": 6035,
+        "backend": {
+          "cpuAvgPercentOfOneCore": 7.56,
+          "cpuMaxPercentOfOneCore": 14.11,
+          "cpuAvgPercentOfMachine": 0.94,
+          "eventLoopMeanMsAvg": 15.9,
+          "eventLoopP99MsMax": 23.855103,
+          "eventLoopMaxMs": 1002.962943,
+          "rssMaxMb": 283.11,
+          "heapUsedMaxMb": 61.7,
+          "activeHandlesMax": 205,
+          "poolMaxSize": 100,
+          "poolConnectionsCreated": 0,
+          "poolCheckOutFailed": 0,
+          "poolMaxPendingCheckouts": 535
+        },
+        "mongo": {
+          "connectionsMax": 117,
+          "connectionsAvailableMin": 208241,
+          "queueTotalMax": 0,
+          "activeReadersMax": 0,
+          "activeWritersMax": 0,
+          "readTicketsAvailableMin": 6,
+          "readTicketsTotal": 6,
+          "readTicketsOutMax": 0,
+          "writeTicketsAvailableMin": 6,
+          "writeTicketsTotal": 6,
+          "writeTicketsOutMax": 0,
+          "residentMaxMb": 105,
+          "wtCacheUsedMaxMb": 33.2,
+          "queriesInWindow": 216,
+          "commandsInWindow": 35,
+          "insertsInWindow": 48,
+          "windowSeconds": 10
+        },
+        "processes": {
+          "nodeCpuMaxPercentOfMachine": null,
+          "nodeRssMaxMb": null,
+          "mongodCpuMaxPercentOfMachine": null,
+          "mongodRssMaxMb": null,
+          "k6CpuMaxPercentOfMachine": null,
+          "k6CpuAvgPercentOfMachine": null,
+          "k6RssMaxMb": null
+        }
+      }
+    },
+    {
+      "listeners": 500,
+      "listenersConnected": 500,
+      "ordersCreated": 30,
+      "unmatchedDeliveries": 0,
+      "expectedDeliveries": 15000,
+      "actualDeliveries": 15000,
+      "deliveryRate": 1,
+      "eventsPerSecond": 1157.9,
+      "fanoutLatency": {
+        "count": 15000,
+        "minMs": 19,
+        "medMs": 41,
+        "p90Ms": 55,
+        "p95Ms": 58,
+        "p99Ms": 63,
+        "maxMs": 68,
+        "avgMs": 41.5
+      },
+      "orderHttpLatency": {
+        "count": 30,
+        "minMs": 44,
+        "medMs": 56,
+        "p90Ms": 65,
+        "p95Ms": 65,
+        "p99Ms": 69,
+        "maxMs": 69,
+        "avgMs": 56.5
+      },
+      "system": {
+        "samples": 7,
+        "machineCpuAvgPercent": 17.78,
+        "machineCpuMaxPercent": 37.39,
+        "freeMemMinMb": 6065,
+        "backend": {
+          "cpuAvgPercentOfOneCore": 15.5,
+          "cpuMaxPercentOfOneCore": 45.35,
+          "cpuAvgPercentOfMachine": 1.94,
+          "eventLoopMeanMsAvg": 15.93,
+          "eventLoopP99MsMax": 27.459583,
+          "eventLoopMaxMs": 1002.962943,
+          "rssMaxMb": 283.13,
+          "heapUsedMaxMb": 79.43,
+          "activeHandlesMax": 605,
+          "poolMaxSize": 100,
+          "poolConnectionsCreated": 0,
+          "poolCheckOutFailed": 0,
+          "poolMaxPendingCheckouts": 535
+        },
+        "mongo": {
+          "connectionsMax": 117,
+          "connectionsAvailableMin": 208241,
+          "queueTotalMax": 0,
+          "activeReadersMax": 1,
+          "activeWritersMax": 0,
+          "readTicketsAvailableMin": 6,
+          "readTicketsTotal": 6,
+          "readTicketsOutMax": 0,
+          "writeTicketsAvailableMin": 6,
+          "writeTicketsTotal": 6,
+          "writeTicketsOutMax": 0,
+          "residentMaxMb": 105,
+          "wtCacheUsedMaxMb": 33.3,
+          "queriesInWindow": 243,
+          "commandsInWindow": 39,
+          "insertsInWindow": 54,
+          "windowSeconds": 12
+        },
+        "processes": {
+          "nodeCpuMaxPercentOfMachine": 11.99,
+          "nodeRssMaxMb": 392.9,
+          "mongodCpuMaxPercentOfMachine": 0,
+          "mongodRssMaxMb": 105.4,
+          "k6CpuMaxPercentOfMachine": null,
+          "k6CpuAvgPercentOfMachine": null,
+          "k6RssMaxMb": null
+        }
+      }
+    }
+  ]
+}

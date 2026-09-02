@@ -35,12 +35,17 @@ class _NotificationCenterViewState extends State<NotificationCenterView> {
 
   void _onTap(NotificationModel notification) {
     context.read<NotificationCubit>().markAsRead(notification.id);
-    // Same deep-link FcmService uses on a push tap. Nothing else in the
+    // Same deep-links FcmService uses on a push tap. Nothing else in the
     // payload carries enough to navigate anywhere, so nothing else does.
     if (notification.hasOrderDeepLink) {
       context.pushNamed(
         RouteNames.orderTracking,
         pathParameters: {'orderId': notification.relatedOrderId!},
+      );
+    } else if (notification.hasComplaintDeepLink) {
+      context.pushNamed(
+        RouteNames.complaintDetail,
+        pathParameters: {'complaintId': notification.relatedComplaintId!},
       );
     }
   }
@@ -114,6 +119,8 @@ class _NotificationTile extends StatelessWidget {
         return Icons.local_offer_outlined;
       case NotificationType.system:
         return Icons.campaign_outlined;
+      case NotificationType.complaint:
+        return Icons.support_agent_outlined;
       case NotificationType.unknown:
         return Icons.notifications_outlined;
     }

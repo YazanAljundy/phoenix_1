@@ -5,7 +5,10 @@ const balanceService = require('../services/pharmacyBalance.service');
 const balanceViewModel = require('../viewmodels/pharmacyBalance.viewmodel');
 
 async function loadPharmacyOrThrow(userId) {
-  const pharmacy = await Pharmacy.findOne({ userId });
+  // Runs on every order/return/review/debt request and only ever yields
+  // `pharmacy._id` to its callers, so neither the rest of the document nor
+  // Mongoose hydration is needed.
+  const pharmacy = await Pharmacy.findOne({ userId }).select('_id').lean();
   if (!pharmacy) {
     throw ApiError.notFound('Pharmacy profile not found.', 'PHARMACY_NOT_FOUND');
   }

@@ -1,0 +1,219 @@
+{
+  "generatedAt": "2026-08-28T11:35:07.233Z",
+  "imageBytes": 122437,
+  "orderWriteBaseline": {
+    "count": 10,
+    "minMs": 22,
+    "medMs": 24,
+    "p95Ms": 132,
+    "maxMs": 132,
+    "avgMs": 35.7
+  },
+  "levels": [
+    {
+      "concurrency": 1,
+      "requested": 8,
+      "succeeded": 8,
+      "failed": 0,
+      "imageBytes": 122437,
+      "uploadsPerSecond": 0.79,
+      "elapsedSec": 10.12,
+      "latency": {
+        "count": 8,
+        "minMs": 767,
+        "medMs": 1106,
+        "p95Ms": 2368,
+        "maxMs": 2368,
+        "avgMs": 1249.9
+      },
+      "failures": [],
+      "system": {
+        "samples": 5,
+        "machineCpuAvgPercent": 27.98,
+        "machineCpuMaxPercent": 45.41,
+        "freeMemMinMb": 6237,
+        "backend": {
+          "cpuAvgPercentOfOneCore": 3.93,
+          "cpuMaxPercentOfOneCore": 8.59,
+          "cpuAvgPercentOfMachine": 0.49,
+          "eventLoopMeanMsAvg": 16.35,
+          "eventLoopP99MsMax": 39.419903,
+          "eventLoopMaxMs": 703.594495,
+          "rssMaxMb": 236.87,
+          "heapUsedMaxMb": 90.21,
+          "activeHandlesMax": 96,
+          "poolMaxSize": 100,
+          "poolConnectionsCreated": 0,
+          "poolCheckOutFailed": 0,
+          "poolMaxPendingCheckouts": 417
+        },
+        "mongo": {
+          "connectionsMax": 105,
+          "connectionsAvailableMin": 208253,
+          "queueTotalMax": 0,
+          "activeReadersMax": 0,
+          "activeWritersMax": 0,
+          "readTicketsAvailableMin": 5,
+          "readTicketsTotal": 5,
+          "readTicketsOutMax": 0,
+          "writeTicketsAvailableMin": 5,
+          "writeTicketsTotal": 5,
+          "writeTicketsOutMax": 0,
+          "residentMaxMb": 99,
+          "wtCacheUsedMaxMb": 31,
+          "queriesInWindow": 84,
+          "commandsInWindow": 7,
+          "insertsInWindow": 7,
+          "windowSeconds": 8
+        },
+        "processes": {
+          "nodeCpuMaxPercentOfMachine": null,
+          "nodeRssMaxMb": null,
+          "mongodCpuMaxPercentOfMachine": null,
+          "mongodRssMaxMb": null,
+          "k6CpuMaxPercentOfMachine": null,
+          "k6CpuAvgPercentOfMachine": null,
+          "k6RssMaxMb": null
+        }
+      }
+    },
+    {
+      "concurrency": 4,
+      "requested": 32,
+      "succeeded": 32,
+      "failed": 0,
+      "imageBytes": 122437,
+      "uploadsPerSecond": 2.12,
+      "elapsedSec": 15.13,
+      "latency": {
+        "count": 32,
+        "minMs": 940,
+        "medMs": 1579,
+        "p95Ms": 2203,
+        "maxMs": 2390,
+        "avgMs": 1587.5
+      },
+      "failures": [],
+      "system": {
+        "samples": 7,
+        "machineCpuAvgPercent": 22.22,
+        "machineCpuMaxPercent": 29.6,
+        "freeMemMinMb": 6269,
+        "backend": {
+          "cpuAvgPercentOfOneCore": 8.62,
+          "cpuMaxPercentOfOneCore": 19.53,
+          "cpuAvgPercentOfMachine": 1.08,
+          "eventLoopMeanMsAvg": 16.27,
+          "eventLoopP99MsMax": 38.993919,
+          "eventLoopMaxMs": 703.594495,
+          "rssMaxMb": 239.9,
+          "heapUsedMaxMb": 74.72,
+          "activeHandlesMax": 102,
+          "poolMaxSize": 100,
+          "poolConnectionsCreated": 0,
+          "poolCheckOutFailed": 0,
+          "poolMaxPendingCheckouts": 417
+        },
+        "mongo": {
+          "connectionsMax": 106,
+          "connectionsAvailableMin": 208252,
+          "queueTotalMax": 0,
+          "activeReadersMax": 1,
+          "activeWritersMax": 0,
+          "readTicketsAvailableMin": 5,
+          "readTicketsTotal": 5,
+          "readTicketsOutMax": 0,
+          "writeTicketsAvailableMin": 5,
+          "writeTicketsTotal": 5,
+          "writeTicketsOutMax": 0,
+          "residentMaxMb": 99,
+          "wtCacheUsedMaxMb": 31,
+          "queriesInWindow": 314,
+          "commandsInWindow": 12,
+          "insertsInWindow": 28,
+          "windowSeconds": 12
+        },
+        "processes": {
+          "nodeCpuMaxPercentOfMachine": null,
+          "nodeRssMaxMb": null,
+          "mongodCpuMaxPercentOfMachine": null,
+          "mongodRssMaxMb": null,
+          "k6CpuMaxPercentOfMachine": null,
+          "k6CpuAvgPercentOfMachine": null,
+          "k6RssMaxMb": null
+        }
+      }
+    },
+    {
+      "concurrency": 8,
+      "requested": 64,
+      "succeeded": 64,
+      "failed": 0,
+      "imageBytes": 122437,
+      "uploadsPerSecond": 4,
+      "elapsedSec": 16.01,
+      "latency": {
+        "count": 64,
+        "minMs": 797,
+        "medMs": 1608,
+        "p95Ms": 2115,
+        "maxMs": 2486,
+        "avgMs": 1538.2
+      },
+      "failures": [],
+      "system": {
+        "samples": 7,
+        "machineCpuAvgPercent": 19.71,
+        "machineCpuMaxPercent": 38.57,
+        "freeMemMinMb": 6216,
+        "backend": {
+          "cpuAvgPercentOfOneCore": 15.02,
+          "cpuMaxPercentOfOneCore": 22.51,
+          "cpuAvgPercentOfMachine": 1.88,
+          "eventLoopMeanMsAvg": 16.16,
+          "eventLoopP99MsMax": 38.109183,
+          "eventLoopMaxMs": 703.594495,
+          "rssMaxMb": 242.83,
+          "heapUsedMaxMb": 76.18,
+          "activeHandlesMax": 111,
+          "poolMaxSize": 100,
+          "poolConnectionsCreated": 0,
+          "poolCheckOutFailed": 0,
+          "poolMaxPendingCheckouts": 417
+        },
+        "mongo": {
+          "connectionsMax": 106,
+          "connectionsAvailableMin": 208252,
+          "queueTotalMax": 0,
+          "activeReadersMax": 0,
+          "activeWritersMax": 0,
+          "readTicketsAvailableMin": 5,
+          "readTicketsTotal": 5,
+          "readTicketsOutMax": 0,
+          "writeTicketsAvailableMin": 5,
+          "writeTicketsTotal": 5,
+          "writeTicketsOutMax": 0,
+          "residentMaxMb": 99,
+          "wtCacheUsedMaxMb": 31.2,
+          "queriesInWindow": 651,
+          "commandsInWindow": 16,
+          "insertsInWindow": 58,
+          "windowSeconds": 12
+        },
+        "processes": {
+          "nodeCpuMaxPercentOfMachine": null,
+          "nodeRssMaxMb": null,
+          "mongodCpuMaxPercentOfMachine": null,
+          "mongodRssMaxMb": null,
+          "k6CpuMaxPercentOfMachine": null,
+          "k6CpuAvgPercentOfMachine": null,
+          "k6RssMaxMb": null
+        }
+      }
+    }
+  ],
+  "cleanup": {
+    "deleted": 104,
+    "failed": 0
+  }
+}

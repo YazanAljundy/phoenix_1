@@ -212,6 +212,21 @@
   },
   "cartConflictConfirmButton": "بدء سلة جديدة",
   "cartIconTooltip": "السلة",
+  "reorderButton": "إعادة الطلب",
+  "addProductButton": "إضافة منتج",
+  "reorderReplaceCartTitle": "استبدال السلة؟",
+  "reorderReplaceCartMessage": "سيتم استبدال سلتك الحالية بمنتجات هذا الطلب. لا يزال بإمكانك تعديل كل شيء قبل تأكيد الطلب.",
+  "reorderReplaceCartConfirm": "استبدال السلة",
+  "reorderUnavailableTitle": "بعض المنتجات غير متوفرة",
+  "reorderNoItemsMessage": "لم يعد أي من منتجات هذا الطلب متوفراً لدى هذا المستودع.",
+  "reorderSomeItemsUnavailable": "هذه المنتجات لم يعد المستودع يبيعها ولم تُضَف: {names}",
+  "@reorderSomeItemsUnavailable": {
+    "placeholders": {
+      "names": {
+        "type": "String"
+      }
+    }
+  },
   "notificationsTitle": "الإشعارات",
   "noNotificationsYet": "لا توجد إشعارات بعد",
   "noNotificationsYetHint": "ستظهر هنا تحديثات الطلبات والعروض.",
@@ -249,12 +264,16 @@
     }
   },
   "stageSent": "تم الإرسال",
-  "stageUnderReview": "قيد المراجعة",
+  "stageUnderReview": "بانتظار الموافقة",
   "stagePreparing": "قيد التحضير",
-  "stageOutForDelivery": "قيد التوصيل",
-  "stageDelivered": "تم التوصيل",
+  "stageOutForDelivery": "بالطريق",
+  "stageDelivered": "تم التسليم",
   "stageCancelled": "ملغى",
   "stageModified": "تم تعديل الطلب",
+  "stageUnderReviewDesc": "وصل طلبك إلى المستودع",
+  "stagePreparingDesc": "المستودع عم يجهز طلبك",
+  "stageOutForDeliveryDesc": "طلبك طلع من المستودع",
+  "stageDeliveredDesc": "استلمت الطلب",
   "statusHistoryTitle": "سجل الحالة",
   "lastUpdatedLabel": "آخر تحديث: {time}",
   "@lastUpdatedLabel": {
@@ -340,7 +359,8 @@
   "returnApprovedBanner": "تمت الموافقة على المرتجع — تم إنشاء طلب استبدال",
   "returnPendingReviewBanner": "تم إرسال طلب الإرجاع، بانتظار مراجعة المستودع",
   "returnRejectedBanner": "تم رفض المرتجع",
-  "errorOrderNotDelivered": "لم يتم توصيل هذا الطلب بعد.",
+  "errorOrderNotDelivered": "لم يتم تسليم هذا الطلب بعد.",
+  "errorOrderNotReorderable": "يمكن إعادة طلب الطلبات المُسلَّمة فقط.",
   "errorOrderItemNotFound": "تعذر العثور على هذا الصنف ضمن الطلب.",
   "errorReturnQuantityExceeded": "كمية الإرجاع تتجاوز الكمية المتاحة لإرجاعها لهذا الصنف.",
   "errorCustomReasonRequired": "يرجى وصف سبب الإرجاع.",
@@ -418,5 +438,115 @@
   "returnableMoreItems": "+{count} أصناف أخرى",
   "returnWindowExpired": "يجب تقديم طلب الإرجاع خلال 48 ساعة من التسليم.",
   "privacyPolicy": "سياسة الخصوصية",
-  "privacyPolicyLastUpdated": "آخر تحديث: {date}"
+  "privacyPolicyLastUpdated": "آخر تحديث: {date}",
+  "complaintsTitle": "الشكاوى",
+  "complaintsProfileSubtitle": "قدّم شكوى بخصوص أحد المستودعات وتابع حالتها",
+  "complaintsCountSubtitle": "{count, plural, zero{لا توجد شكاوى بعد} one{شكوى واحدة} two{شكويان} few{{count} شكاوى} many{{count} شكوى} other{{count} شكوى}}",
+  "@complaintsCountSubtitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noComplaintsYet": "لم تقدّم أي شكوى بعد.",
+  "noComplaintsYetHint": "إذا واجهت مشكلة مع أحد المستودعات، يمكنك تقديم شكوى لتقوم الإدارة بمراجعتها.",
+  "submitComplaintCta": "تقديم شكوى",
+  "submitComplaintTitle": "تقديم شكوى",
+  "submitComplaintButton": "إرسال الشكوى",
+  "complaintSubmittedMessage": "تم تقديم شكواك بنجاح. ستقوم الإدارة بمراجعتها.",
+  "complaintWarehouseLabel": "المستودع",
+  "complaintWarehouseHint": "اختر المستودع المعني بالشكوى",
+  "complaintSubjectLabel": "عنوان الشكوى",
+  "complaintSubjectHint": "لخّص المشكلة بجملة قصيرة",
+  "complaintDescriptionLabel": "تفاصيل الشكوى",
+  "complaintDescriptionHint": "اشرح المشكلة بالتفصيل",
+  "complaintOrderNumberLabel": "رقم الطلب المرتبط (اختياري)",
+  "complaintOrderNumberHint": "أدخل رقم الطلب إذا كانت الشكوى تتعلق بطلب معيّن",
+  "complaintExtraDetailsLabel": "تفاصيل إضافية (اختياري)",
+  "complaintExtraDetailsHint": "أي معلومات أخرى قد تساعد في حل الشكوى",
+  "complaintFormFooterHint": "تُرفق معلومات المستودع بشكواك تلقائياً.",
+  "complaintDetailTitle": "تفاصيل الشكوى",
+  "complaintYourComplaintTitle": "نص شكواك",
+  "complaintResponseTitle": "الرد",
+  "complaintNumberLabel": "شكوى رقم {number}",
+  "@complaintNumberLabel": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "complaintFiledOnLabel": "قُدِّمت بتاريخ {date}",
+  "@complaintFiledOnLabel": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "complaintRelatedOrderLabel": "الطلب المرتبط: رقم {number}",
+  "@complaintRelatedOrderLabel": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "complaintAboutWarehouseLabel": "بخصوص هذا المستودع",
+  "complaintHasResponseHint": "تم الرد",
+  "complaintNoResponseYet": "لم تردّ الإدارة بعد. سيصلك إشعار فور توفّر الرد.",
+  "complaintAdminResponseLabel": "رد الإدارة",
+  "complaintRespondedOnLabel": "تم الرد بتاريخ {date}",
+  "@complaintRespondedOnLabel": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "complaintRespondedByLabel": "بواسطة {name}",
+  "@complaintRespondedByLabel": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "complaintStatusPending": "قيد الانتظار",
+  "complaintStatusInReview": "قيد المراجعة",
+  "complaintStatusResolved": "تم الحل",
+  "complaintStatusClosed": "مغلقة",
+  "errorComplaintWarehouseRequired": "يرجى اختيار المستودع المعني بالشكوى.",
+  "errorComplaintSubjectRequired": "يرجى إدخال عنوان للشكوى.",
+  "errorComplaintDescriptionRequired": "يرجى كتابة تفاصيل الشكوى.",
+  "errorComplaintOrderNotFound": "لا يوجد طلب بهذا الرقم لدى هذا المستودع.",
+  "errorComplaintTooLong": "أحد الحقول أطول من المسموح. يرجى اختصاره.",
+  "errorComplaintNotFound": "تعذّر العثور على هذه الشكوى.",
+  "errorComplaintContextMismatch": "لا يمكن ربط هذه الشكوى بذلك المستودع.",
+  "submitComplaintOnWarehouseTitle": "شكوى على المستودع",
+  "submitComplaintAboutOrderTitle": "شكوى حول الطلب",
+  "complaintContextGeneral": "شكوى عامة",
+  "complaintGeneralContextNote": "هذه الشكوى لا ترتبط بمستودع أو طلب محدّد.",
+  "complaintOnWarehouseLabel": "الشكوى على",
+  "complaintAboutOrderLabel": "الشكوى حول الطلب",
+  "complaintOrderWarehouseLine": "المستودع: {name}",
+  "@complaintOrderWarehouseLine": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "submitComplaintOnWarehouseCta": "تقديم شكوى على هذا المستودع",
+  "submitComplaintAboutOrderCta": "تقديم شكوى حول هذا الطلب",
+  "orderComplaintsSectionTitle": "الشكاوى المتعلقة بهذا الطلب",
+  "orderComplaintsEmptyPrompt": "لديك مشكلة بهذا الطلب؟ يمكنك تقديم شكوى وستراجعها الإدارة.",
+  "updateAvailable": "يتوفر تحديث جديد",
+  "updateAvailableMessage": "يتوفر إصدار جديد من Phoenix. قم بالتحديث للحصول على أحدث الميزات والتحسينات.",
+  "updateRequired": "تحديث إجباري",
+  "updateRequiredMessage": "إصدار التطبيق الحالي لم يعد مدعوماً. يرجى تحديث التطبيق للمتابعة.",
+  "updateNow": "تحديث الآن",
+  "later": "لاحقاً",
+  "updateOpenStoreFailed": "تعذر فتح متجر Google Play. حاول مرة أخرى."
 }

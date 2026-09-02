@@ -2,9 +2,17 @@
   "name": "phoenix-load-tests",
   "private": true,
   "scripts": {
-    "load-test": "node run-local.js",
-    "load-test:local": "node run-local.js",
-    "load-test:2000": "node run-2000.js",
-    "prepare-test-data": "node setup/prepare-test-data.js"
+    "load-test": "node run-progressive.js --tag smoke --levels 10 --hold 30s",
+    "load-test:full": "node run-progressive.js --tag main",
+    "load-test:realistic": "node run-progressive.js --tag realistic --catalog-sizes 200",
+    "load-test:sockets": "node socket-load.js",
+    "load-test:uploads": "node upload-load.js",
+    "load-test:scaling": "node catalog-scaling.js",
+    "seed": "node setup/seed-load-data.js",
+    "seed:clean": "node setup/seed-load-data.js --clean",
+    "seed:report": "node setup/seed-load-data.js --report",
+    "mint-tokens": "node setup/mint-tokens.js",
+    "verify": "node setup/verify-endpoints.js",
+    "report-tables": "node build-report-data.js"
   }
 }

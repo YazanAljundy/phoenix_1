@@ -70,12 +70,12 @@ class FcmService {
   bool _handlersReady = false;
 
   // Audit P7: a cold-start notification (getInitialMessage) must not navigate
-  // while the splash screen is still deciding the session / route. The order
-  // id is parked here and only acted on once BOTH are true: the app shell is
-  // on screen (markAppReady, called from WarehouseSelectionView) and the
+  // while the splash screen is still deciding the session / route. The whole
+  // message is parked here and only acted on once BOTH are true: the app shell
+  // is on screen (markAppReady, called from WarehouseSelectionView) and the
   // initial message has been read. `_initialDeepLinkHandled` makes it fire
   // exactly once.
-  String? _pendingInitialOrderId;
+  RemoteMessage? _pendingInitialMessage;
   bool _appReady = false;
   bool _initialDeepLinkHandled = false;
 
@@ -88,14 +88,12 @@ class FcmService {
 
   void _maybeHandleInitialDeepLink() {
     if (!_appReady || _initialDeepLinkHandled) return;
-    final orderId = _pendingInitialOrderId;
-    if (orderId == null || orderId.isEmpty) return;
+    final message = _pendingInitialMessage;
+    if (message == null) return;
     _initialDeepLinkHandled = true;
-    _pendingInitialOrderId = null;
-    _logger.info(
-      'FCM_DEBUG: processing pending initial deep link (order $orderId)',
-    );
-    _openOrderTracking(orderId);
+    _pendingInitialMessage = null;
+    _logger.info('FCM_DEBUG: processing pending initial deep link');
+    _navigateForMessage(message);
   }
 
   Future<void> initialize() async {
@@ -169,14 +167,7 @@ class FcmService {
         _logger.info(
           'FCM_DEBUG: notification tap received (onDidReceiveNotificationResponse)',
         );
-        final orderId = response.payload;
-        _logger.info('FCM_DEBUG: relatedOrderId (from payload) = $orderId');
-        if (orderId != null && orderId.isNotEmpty) {
-          _logger.info(
-            'FCM_DEBUG: calling _openOrderTracking() from onDidReceiveNotificationResponse',
-          );
-          _openOrderTracking(orderId);
-        }
+        _openDeepLinkPayload(response.payload);
       },
     );
     // TEMP DIAGNOSTIC LOG (see FCM_DEBUG task).
@@ -222,7 +213,7 @@ class FcmService {
               ),
               iOS: const DarwinNotificationDetails(),
             ),
-            payload: message.data['relatedOrderId'] as String?,
+            payload: _deepLinkPayload(message),
           )
           // TEMP DIAGNOSTIC LOGS (see FCM_DEBUG task) - observes the same
           // Future .show() already returned (previously left unawaited/
@@ -244,14 +235,7 @@ class FcmService {
       // Additive: ensure it is in the inbox (deduped against the copy the
       // background isolate already saved).
       _saveToInbox(message);
-      final orderId = message.data['relatedOrderId'] as String?;
-      _logger.info('FCM_DEBUG: relatedOrderId = $orderId');
-      if (orderId != null && orderId.isNotEmpty) {
-        _logger.info(
-          'FCM_DEBUG: calling _openOrderTracking() from onMessageOpenedApp',
-        );
-        _openOrderTracking(orderId);
-      }
+      _navigateForMessage(message);
     });
 
     // Terminated -> tapping a notification is what launches the app fresh,
@@ -271,11 +255,55 @@ class FcmService {
       // deep-link handling below.
       _saveToInbox(initialMessage);
     }
-    final initialOrderId = initialMessage?.data['relatedOrderId'] as String?;
-    _logger.info('FCM_DEBUG: initial relatedOrderId = $initialOrderId');
-    if (initialOrderId != null && initialOrderId.isNotEmpty) {
-      _pendingInitialOrderId = initialOrderId;
+    if (initialMessage != null && _deepLinkPayload(initialMessage) != null) {
+      _pendingInitialMessage = initialMessage;
       _maybeHandleInitialDeepLink();
+    }
+  }
+
+  // Section 12: a push can deep-link to an order OR (new) to a complaint. If a
+  // message somehow carries both, the order wins - it is the older, more
+  // time-sensitive flow.
+  bool _navigateForMessage(RemoteMessage message) {
+    final orderId = message.data['relatedOrderId'] as String?;
+    if (orderId != null && orderId.isNotEmpty) {
+      _openOrderTracking(orderId);
+      return true;
+    }
+    final complaintId = message.data['relatedComplaintId'] as String?;
+    if (complaintId != null && complaintId.isNotEmpty) {
+      _openComplaintDetail(complaintId);
+      return true;
+    }
+    return false;
+  }
+
+  // The string handed to the local (foreground) notification as its tap
+  // payload, and parsed back by _openDeepLinkPayload. Kind-prefixed so one
+  // channel can route to two different screens.
+  String? _deepLinkPayload(RemoteMessage message) {
+    final orderId = message.data['relatedOrderId'];
+    if (orderId != null && '$orderId'.isNotEmpty) return 'order:$orderId';
+    final complaintId = message.data['relatedComplaintId'];
+    if (complaintId != null && '$complaintId'.isNotEmpty) return 'complaint:$complaintId';
+    return null;
+  }
+
+  void _openDeepLinkPayload(String? payload) {
+    if (payload == null || payload.isEmpty) return;
+    final sep = payload.indexOf(':');
+    // No prefix -> an older bare order id, kept working.
+    if (sep <= 0) {
+      _openOrderTracking(payload);
+      return;
+    }
+    final kind = payload.substring(0, sep);
+    final id = payload.substring(sep + 1);
+    if (id.isEmpty) return;
+    if (kind == 'complaint') {
+      _openComplaintDetail(id);
+    } else {
+      _openOrderTracking(id);
     }
   }
 
@@ -300,6 +328,17 @@ class FcmService {
     context.pushNamed(
       RouteNames.orderTracking,
       pathParameters: {'orderId': orderId},
+    );
+  }
+
+  // Section 12: tapping "your complaint got a reply" opens that complaint.
+  void _openComplaintDetail(String complaintId) {
+    _logger.info('FCM_DEBUG: _openComplaintDetail() called with id = $complaintId');
+    final context = NavigationService.instance.navigatorKey.currentContext;
+    if (context == null) return;
+    context.pushNamed(
+      RouteNames.complaintDetail,
+      pathParameters: {'complaintId': complaintId},
     );
   }
 }

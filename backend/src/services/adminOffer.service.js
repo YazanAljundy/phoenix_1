@@ -10,16 +10,26 @@ const { emitToAdmins, EVENTS } = require('../realtime');
 
 // Section 13c: the admin's review queue - oldest first, same FIFO reasoning
 // as the warehouse's own order queue (Section 13b).
+// adminOffer.viewmodel.js's serializePendingOffer reads, off the offer:
+// id/titleAr/titleEn/discountPercentage/startDate/endDate/createdAt; off the
+// product: its resolved nameAr/nameEn and price; off the warehouse: nameAr/
+// nameEn. productId/warehouseId are the join keys.
+const PENDING_OFFER_FIELDS = 'titleAr titleEn discountPercentage startDate endDate createdAt productId warehouseId';
+const OFFER_PRODUCT_SELECT = 'nameAr nameEn manufacturerAr manufacturerEn price masterProductId';
+const CATALOG_IDENTITY_SELECT = 'nameAr nameEn manufacturerAr manufacturerEn';
+
 async function listPendingOffers() {
-  const offers = await Offer.find({ status: 'pending' }).sort({ createdAt: 1 });
+  const offers = await Offer.find({ status: 'pending' }).select(PENDING_OFFER_FIELDS).sort({ createdAt: 1 });
   if (offers.length === 0) return [];
 
   const productIds = [...new Set(offers.map((o) => o.productId.toString()))];
   const warehouseIds = [...new Set(offers.map((o) => o.warehouseId.toString()))];
 
   const [products, warehouses] = await Promise.all([
-    Product.find({ _id: { $in: productIds } }).populate('masterProductId'),
-    Warehouse.find({ _id: { $in: warehouseIds } }),
+    Product.find({ _id: { $in: productIds } })
+      .select(OFFER_PRODUCT_SELECT)
+      .populate({ path: 'masterProductId', select: CATALOG_IDENTITY_SELECT }),
+    Warehouse.find({ _id: { $in: warehouseIds } }).select('nameAr nameEn'),
   ]);
   products.forEach(applyResolvedIdentity);
   const productById = new Map(products.map((p) => [p._id.toString(), p]));
@@ -47,7 +57,7 @@ async function listPaginatedPendingOffers({ limit = ADMIN_OFFERS_DEFAULT_LIMIT, 
   }
 
   const [offers, totalCount] = await Promise.all([
-    Offer.find(filter).sort({ _id: 1 }).limit(limit + 1),
+    Offer.find(filter).select(PENDING_OFFER_FIELDS).sort({ _id: 1 }).limit(limit + 1),
     Offer.countDocuments({ status: 'pending' }),
   ]);
   const hasMore = offers.length > limit;
@@ -60,8 +70,10 @@ async function listPaginatedPendingOffers({ limit = ADMIN_OFFERS_DEFAULT_LIMIT, 
   const warehouseIds = [...new Set(page.map((o) => o.warehouseId.toString()))];
 
   const [products, warehouses] = await Promise.all([
-    Product.find({ _id: { $in: productIds } }).populate('masterProductId'),
-    Warehouse.find({ _id: { $in: warehouseIds } }),
+    Product.find({ _id: { $in: productIds } })
+      .select(OFFER_PRODUCT_SELECT)
+      .populate({ path: 'masterProductId', select: CATALOG_IDENTITY_SELECT }),
+    Warehouse.find({ _id: { $in: warehouseIds } }).select('nameAr nameEn'),
   ]);
   products.forEach(applyResolvedIdentity);
   const productById = new Map(products.map((p) => [p._id.toString(), p]));

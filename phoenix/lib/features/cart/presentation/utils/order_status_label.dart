@@ -2,6 +2,14 @@ import 'package:phoenix/generated/app_localizations.dart';
 
 // Shared between the status history list, the progress bar labels, and the
 // "my orders" list badge - one switch over orders.status, not three.
+//
+// The order status flow (user-facing terminology):
+//   pending          -> Sent / تم الإرسال
+//   confirmed        -> Waiting for Approval / بانتظار الموافقة
+//   preparing        -> Preparing / قيد التحضير
+//   out_for_delivery -> On the Way / بالطريق
+//   delivered        -> Delivered / تم التسليم
+// The internal `order.status` values are unchanged; only the labels are.
 String orderStatusLabel(AppLocalizations l10n, String status) {
   switch (status) {
     case 'pending':
@@ -24,5 +32,24 @@ String orderStatusLabel(AppLocalizations l10n, String status) {
       return l10n.stageModified;
     default:
       return status;
+  }
+}
+
+// The one-line user-facing description shown under the current stage on the
+// tracking screen. 'pending' ("Sent") deliberately has none - it needs no
+// explanation. Returns null for statuses that carry no description (Sent,
+// cancelled, modified, unknown).
+String? orderStatusDescription(AppLocalizations l10n, String status) {
+  switch (status) {
+    case 'confirmed':
+      return l10n.stageUnderReviewDesc;
+    case 'preparing':
+      return l10n.stagePreparingDesc;
+    case 'out_for_delivery':
+      return l10n.stageOutForDeliveryDesc;
+    case 'delivered':
+      return l10n.stageDeliveredDesc;
+    default:
+      return null;
   }
 }

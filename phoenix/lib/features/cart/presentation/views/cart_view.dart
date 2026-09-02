@@ -16,6 +16,7 @@ import 'package:phoenix/features/cart/presentation/managers/cart_cubit.dart';
 import 'package:phoenix/features/cart/presentation/managers/cart_state.dart';
 import 'package:phoenix/features/cart/presentation/utils/cart_error_translator.dart';
 import 'package:phoenix/features/cart/presentation/widgets/cart_item_tile.dart';
+import 'package:phoenix/features/catalog/data/models/manufacturers_route_args.dart';
 import 'package:phoenix/features/exchange_rate/presentation/managers/exchange_rate_cubit.dart';
 import 'package:phoenix/routes/route_names.dart';
 
@@ -173,6 +174,31 @@ class _CartViewState extends State<CartView> {
                         const SizedBox(height: AppSizes.spacingSmall),
                       ],
                       const SizedBox(height: AppSizes.spacingXSmall),
+                      // Section 5: add more products to this cart. Scoped to
+                      // the cart's own warehouse - the existing warehouse ->
+                      // manufacturers -> catalog flow, entered at the cart's
+                      // warehouseId, so a company from another warehouse can
+                      // never be reached for this cart.
+                      OutlinedButton.icon(
+                        onPressed: state.warehouseId == null
+                            ? null
+                            : () => context.pushNamed(
+                                  RouteNames.manufacturers,
+                                  pathParameters: {'warehouseId': state.warehouseId!},
+                                  extra: ManufacturersRouteArgs(
+                                    warehouseName: state.warehouseName ?? '',
+                                  ),
+                                ),
+                        icon: const Icon(Icons.add, size: 18),
+                        label: Text(l10n.addProductButton),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.navyOf(context),
+                          side: BorderSide(color: AppColors.navyOf(context)),
+                          shape: const RoundedRectangleBorder(borderRadius: AppRadius.small),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                      const SizedBox(height: AppSizes.spacingMedium),
                       AppTextField(
                         label: l10n.notesLabel,
                         controller: _notesController,

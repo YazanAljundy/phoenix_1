@@ -448,6 +448,34 @@ class AppLocalizationsEn extends AppLocalizations {
   String get cartIconTooltip => 'Cart';
 
   @override
+  String get reorderButton => 'Reorder';
+
+  @override
+  String get addProductButton => 'Add product';
+
+  @override
+  String get reorderReplaceCartTitle => 'Replace your cart?';
+
+  @override
+  String get reorderReplaceCartMessage =>
+      'Your current cart will be replaced with the items from this order. You can still edit everything before checkout.';
+
+  @override
+  String get reorderReplaceCartConfirm => 'Replace cart';
+
+  @override
+  String get reorderUnavailableTitle => 'Some items are unavailable';
+
+  @override
+  String get reorderNoItemsMessage =>
+      'None of this order\'s products are available from this warehouse anymore.';
+
+  @override
+  String reorderSomeItemsUnavailable(String names) {
+    return 'These items are no longer sold by this warehouse and were not added: $names';
+  }
+
+  @override
   String get notificationsTitle => 'Notifications';
 
   @override
@@ -507,13 +535,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get stageSent => 'Sent';
 
   @override
-  String get stageUnderReview => 'Under review';
+  String get stageUnderReview => 'Waiting for Approval';
 
   @override
   String get stagePreparing => 'Preparing';
 
   @override
-  String get stageOutForDelivery => 'Out for delivery';
+  String get stageOutForDelivery => 'On the Way';
 
   @override
   String get stageDelivered => 'Delivered';
@@ -523,6 +551,18 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get stageModified => 'Order modified';
+
+  @override
+  String get stageUnderReviewDesc => 'Your order has reached the warehouse';
+
+  @override
+  String get stagePreparingDesc => 'The warehouse is preparing your order';
+
+  @override
+  String get stageOutForDeliveryDesc => 'Your order has left the warehouse';
+
+  @override
+  String get stageDeliveredDesc => 'You received the order';
 
   @override
   String get statusHistoryTitle => 'Status history';
@@ -710,6 +750,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get errorOrderNotDelivered => 'This order hasn\'t been delivered yet.';
+
+  @override
+  String get errorOrderNotReorderable =>
+      'Only delivered orders can be reordered.';
 
   @override
   String get errorOrderItemNotFound =>
@@ -932,4 +976,229 @@ class AppLocalizationsEn extends AppLocalizations {
   String privacyPolicyLastUpdated(String date) {
     return 'Last updated: $date';
   }
+
+  @override
+  String get complaintsTitle => 'Complaints';
+
+  @override
+  String get complaintsProfileSubtitle =>
+      'File a complaint about a warehouse and follow its status';
+
+  @override
+  String complaintsCountSubtitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count complaints',
+      one: '1 complaint',
+      zero: 'No complaints yet',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get noComplaintsYet => 'You haven\'t filed any complaints yet.';
+
+  @override
+  String get noComplaintsYetHint =>
+      'If you run into a problem with a warehouse, you can file a complaint for the administration to review.';
+
+  @override
+  String get submitComplaintCta => 'Submit a complaint';
+
+  @override
+  String get submitComplaintTitle => 'Submit a complaint';
+
+  @override
+  String get submitComplaintButton => 'Submit complaint';
+
+  @override
+  String get complaintSubmittedMessage =>
+      'Your complaint has been submitted. The administration will review it.';
+
+  @override
+  String get complaintWarehouseLabel => 'Warehouse';
+
+  @override
+  String get complaintWarehouseHint =>
+      'Choose the warehouse this complaint is about';
+
+  @override
+  String get complaintSubjectLabel => 'Complaint subject';
+
+  @override
+  String get complaintSubjectHint => 'Summarize the issue in a short sentence';
+
+  @override
+  String get complaintDescriptionLabel => 'Complaint details';
+
+  @override
+  String get complaintDescriptionHint => 'Describe the problem in detail';
+
+  @override
+  String get complaintOrderNumberLabel => 'Related order number (optional)';
+
+  @override
+  String get complaintOrderNumberHint =>
+      'Enter the order number if this complaint is about an order';
+
+  @override
+  String get complaintExtraDetailsLabel => 'Additional details (optional)';
+
+  @override
+  String get complaintExtraDetailsHint =>
+      'Any other information that could help resolve the complaint';
+
+  @override
+  String get complaintFormFooterHint =>
+      'Your warehouse\'s information is attached to the complaint automatically.';
+
+  @override
+  String get complaintDetailTitle => 'Complaint details';
+
+  @override
+  String get complaintYourComplaintTitle => 'Your complaint';
+
+  @override
+  String get complaintResponseTitle => 'Response';
+
+  @override
+  String complaintNumberLabel(String number) {
+    return 'Complaint #$number';
+  }
+
+  @override
+  String complaintFiledOnLabel(String date) {
+    return 'Filed on $date';
+  }
+
+  @override
+  String complaintRelatedOrderLabel(String number) {
+    return 'Related order: #$number';
+  }
+
+  @override
+  String get complaintAboutWarehouseLabel => 'About this warehouse';
+
+  @override
+  String get complaintHasResponseHint => 'Reply received';
+
+  @override
+  String get complaintNoResponseYet =>
+      'The administration hasn\'t responded yet. You\'ll be notified when a reply arrives.';
+
+  @override
+  String get complaintAdminResponseLabel => 'Administration\'s response';
+
+  @override
+  String complaintRespondedOnLabel(String date) {
+    return 'Responded on $date';
+  }
+
+  @override
+  String complaintRespondedByLabel(String name) {
+    return 'Responded by $name';
+  }
+
+  @override
+  String get complaintStatusPending => 'Pending';
+
+  @override
+  String get complaintStatusInReview => 'In review';
+
+  @override
+  String get complaintStatusResolved => 'Resolved';
+
+  @override
+  String get complaintStatusClosed => 'Closed';
+
+  @override
+  String get errorComplaintWarehouseRequired =>
+      'Please choose the warehouse this complaint is about.';
+
+  @override
+  String get errorComplaintSubjectRequired =>
+      'Please enter a subject for the complaint.';
+
+  @override
+  String get errorComplaintDescriptionRequired =>
+      'Please describe the complaint.';
+
+  @override
+  String get errorComplaintOrderNotFound =>
+      'No order with that number was found for this warehouse.';
+
+  @override
+  String get errorComplaintTooLong =>
+      'One of the fields is longer than allowed. Please shorten it.';
+
+  @override
+  String get errorComplaintNotFound => 'This complaint could not be found.';
+
+  @override
+  String get errorComplaintContextMismatch =>
+      'This complaint can\'t be linked to that warehouse.';
+
+  @override
+  String get submitComplaintOnWarehouseTitle => 'Complaint about warehouse';
+
+  @override
+  String get submitComplaintAboutOrderTitle => 'Complaint about order';
+
+  @override
+  String get complaintContextGeneral => 'General complaint';
+
+  @override
+  String get complaintGeneralContextNote =>
+      'This isn\'t about a specific warehouse or order.';
+
+  @override
+  String get complaintOnWarehouseLabel => 'Complaint about';
+
+  @override
+  String get complaintAboutOrderLabel => 'Complaint about order';
+
+  @override
+  String complaintOrderWarehouseLine(String name) {
+    return 'Warehouse: $name';
+  }
+
+  @override
+  String get submitComplaintOnWarehouseCta =>
+      'File a complaint about this warehouse';
+
+  @override
+  String get submitComplaintAboutOrderCta =>
+      'File a complaint about this order';
+
+  @override
+  String get orderComplaintsSectionTitle => 'Complaints about this order';
+
+  @override
+  String get orderComplaintsEmptyPrompt =>
+      'Have a problem with this order? You can file a complaint and the administration will review it.';
+
+  @override
+  String get updateAvailable => 'New Update Available';
+
+  @override
+  String get updateAvailableMessage =>
+      'A new version of Phoenix is available. Update now to get the latest features and improvements.';
+
+  @override
+  String get updateRequired => 'Mandatory Update';
+
+  @override
+  String get updateRequiredMessage =>
+      'Your current version of Phoenix is no longer supported. Please update the application to continue.';
+
+  @override
+  String get updateNow => 'Update Now';
+
+  @override
+  String get later => 'Later';
+
+  @override
+  String get updateOpenStoreFailed =>
+      'Unable to open Google Play. Please try again.';
 }

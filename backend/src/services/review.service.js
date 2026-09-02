@@ -9,14 +9,21 @@ const Warehouse = require('../models/warehouse.model');
 // gated behind the one-month rule). Scoped to the caller's own pharmacy,
 // same IDOR pattern as every other pharmacist-facing list.
 async function listReviewsForPharmacy(pharmacyId) {
-  const reviews = await Review.find({ pharmacyId, reviewerType: 'warehouse' }).sort({ createdAt: -1 });
+  // .select(): review.viewmodel.js's serializeReceivedReview reads id/orderId/
+  // rating/comment/createdAt/reviewerType; warehouseId is the join key below.
+  // Never saved - straight into the viewmodel.
+  const reviews = await Review.find({ pharmacyId, reviewerType: 'warehouse' })
+    .select('orderId warehouseId rating comment createdAt reviewerType')
+    .sort({ createdAt: -1 });
   if (reviews.length === 0) return { reviews: [], averageRating: 0 };
 
   const orderIds = [...new Set(reviews.map((r) => r.orderId.toString()))];
   const warehouseIds = [...new Set(reviews.map((r) => r.warehouseId.toString()))];
   const [orders, warehouses] = await Promise.all([
     Order.find({ _id: { $in: orderIds } }, 'orderNumber'),
-    Warehouse.find({ _id: { $in: warehouseIds } }),
+    // serializeReceivedReview shows the warehouse's names; resolveReviewerName
+    // uses warehouse.nameAr for a warehouse-authored review.
+    Warehouse.find({ _id: { $in: warehouseIds } }).select('nameAr nameEn'),
   ]);
   const orderById = new Map(orders.map((o) => [o._id.toString(), o]));
   const warehouseById = new Map(warehouses.map((w) => [w._id.toString(), w]));
@@ -46,7 +53,8 @@ async function createWarehouseReview(pharmacyId, userId, { orderId, rating, comm
   if (typeof orderId !== 'string' || !mongoose.Types.ObjectId.isValid(orderId)) {
     throw ApiError.notFound('Order not found.', 'ORDER_NOT_FOUND');
   }
-  const order = await Order.findOne({ _id: orderId, pharmacyId });
+  // Not saved here - only Review.create writes.
+  const order = await Order.findOne({ _id: orderId, pharmacyId }).select('status warehouseId');
   if (!order) {
     throw ApiError.notFound('Order not found.', 'ORDER_NOT_FOUND');
   }
@@ -56,7 +64,7 @@ async function createWarehouseReview(pharmacyId, userId, { orderId, rating, comm
 
   validateRating(rating);
 
-  const existing = await Review.findOne({ orderId: order._id, reviewerType: 'pharmacy' });
+  const existing = await Review.findOne({ orderId: order._id, reviewerType: 'pharmacy' }).select('_id');
   if (existing) {
     throw ApiError.conflict('This order has already been rated.', 'ALREADY_REVIEWED');
   }

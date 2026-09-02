@@ -27,6 +27,9 @@ const bannerRoutes = require('./banner.routes');
 const warehouseBannerRoutes = require('./warehouseBanner.routes');
 const warehouseSettingsRoutes = require('./warehouseSettings.routes');
 const adminBannerRoutes = require('./adminBanner.routes');
+const complaintRoutes = require('./complaint.routes');
+const warehouseComplaintRoutes = require('./warehouseComplaint.routes');
+const adminComplaintRoutes = require('./adminComplaint.routes');
 
 const router = Router();
 
@@ -58,6 +61,9 @@ router.use('/banners', bannerRoutes);
 router.use('/warehouse/banners', warehouseBannerRoutes);
 router.use('/warehouse/settings', warehouseSettingsRoutes);
 router.use('/admin/banners', adminBannerRoutes);
+router.use('/complaints', complaintRoutes);
+router.use('/warehouse/complaints', warehouseComplaintRoutes);
+router.use('/admin/complaints', adminComplaintRoutes);
 
 // Feature routes are mounted here as each day's work adds them:
 // ...

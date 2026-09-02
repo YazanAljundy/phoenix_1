@@ -81,7 +81,7 @@ export function AdminDashboardPage() {
       key: 'pendingAccounts',
       label: t('nav.pendingAccounts'),
       value: accounts.length,
-      to: '/admin/pending-accounts',
+      to: '/admin/accounts',
       tone: 'pending',
     },
     { key: 'pendingOffers', label: t('nav.offers'), value: offers.length, to: '/admin/offers', tone: 'info' },
@@ -121,7 +121,7 @@ export function AdminDashboardPage() {
             <div className="adm-card">
               <div className="adm-card-head">
                 <span>{t('dashboard.recentAccountsTitle')}</span>
-                <Link to="/admin/pending-accounts">{t('dashboard.viewAll')}</Link>
+                <Link to="/admin/accounts">{t('dashboard.viewAll')}</Link>
               </div>
               {accounts.length === 0 ? (
                 <p className="hint" style={{ padding: 16 }}>

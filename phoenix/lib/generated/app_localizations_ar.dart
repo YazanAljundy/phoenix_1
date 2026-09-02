@@ -452,6 +452,34 @@ class AppLocalizationsAr extends AppLocalizations {
   String get cartIconTooltip => 'السلة';
 
   @override
+  String get reorderButton => 'إعادة الطلب';
+
+  @override
+  String get addProductButton => 'إضافة منتج';
+
+  @override
+  String get reorderReplaceCartTitle => 'استبدال السلة؟';
+
+  @override
+  String get reorderReplaceCartMessage =>
+      'سيتم استبدال سلتك الحالية بمنتجات هذا الطلب. لا يزال بإمكانك تعديل كل شيء قبل تأكيد الطلب.';
+
+  @override
+  String get reorderReplaceCartConfirm => 'استبدال السلة';
+
+  @override
+  String get reorderUnavailableTitle => 'بعض المنتجات غير متوفرة';
+
+  @override
+  String get reorderNoItemsMessage =>
+      'لم يعد أي من منتجات هذا الطلب متوفراً لدى هذا المستودع.';
+
+  @override
+  String reorderSomeItemsUnavailable(String names) {
+    return 'هذه المنتجات لم يعد المستودع يبيعها ولم تُضَف: $names';
+  }
+
+  @override
   String get notificationsTitle => 'الإشعارات';
 
   @override
@@ -510,22 +538,34 @@ class AppLocalizationsAr extends AppLocalizations {
   String get stageSent => 'تم الإرسال';
 
   @override
-  String get stageUnderReview => 'قيد المراجعة';
+  String get stageUnderReview => 'بانتظار الموافقة';
 
   @override
   String get stagePreparing => 'قيد التحضير';
 
   @override
-  String get stageOutForDelivery => 'قيد التوصيل';
+  String get stageOutForDelivery => 'بالطريق';
 
   @override
-  String get stageDelivered => 'تم التوصيل';
+  String get stageDelivered => 'تم التسليم';
 
   @override
   String get stageCancelled => 'ملغى';
 
   @override
   String get stageModified => 'تم تعديل الطلب';
+
+  @override
+  String get stageUnderReviewDesc => 'وصل طلبك إلى المستودع';
+
+  @override
+  String get stagePreparingDesc => 'المستودع عم يجهز طلبك';
+
+  @override
+  String get stageOutForDeliveryDesc => 'طلبك طلع من المستودع';
+
+  @override
+  String get stageDeliveredDesc => 'استلمت الطلب';
 
   @override
   String get statusHistoryTitle => 'سجل الحالة';
@@ -715,7 +755,11 @@ class AppLocalizationsAr extends AppLocalizations {
   String get returnRejectedBanner => 'تم رفض المرتجع';
 
   @override
-  String get errorOrderNotDelivered => 'لم يتم توصيل هذا الطلب بعد.';
+  String get errorOrderNotDelivered => 'لم يتم تسليم هذا الطلب بعد.';
+
+  @override
+  String get errorOrderNotReorderable =>
+      'يمكن إعادة طلب الطلبات المُسلَّمة فقط.';
 
   @override
   String get errorOrderItemNotFound => 'تعذر العثور على هذا الصنف ضمن الطلب.';
@@ -932,4 +976,227 @@ class AppLocalizationsAr extends AppLocalizations {
   String privacyPolicyLastUpdated(String date) {
     return 'آخر تحديث: $date';
   }
+
+  @override
+  String get complaintsTitle => 'الشكاوى';
+
+  @override
+  String get complaintsProfileSubtitle =>
+      'قدّم شكوى بخصوص أحد المستودعات وتابع حالتها';
+
+  @override
+  String complaintsCountSubtitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count شكوى',
+      many: '$count شكوى',
+      few: '$count شكاوى',
+      two: 'شكويان',
+      one: 'شكوى واحدة',
+      zero: 'لا توجد شكاوى بعد',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get noComplaintsYet => 'لم تقدّم أي شكوى بعد.';
+
+  @override
+  String get noComplaintsYetHint =>
+      'إذا واجهت مشكلة مع أحد المستودعات، يمكنك تقديم شكوى لتقوم الإدارة بمراجعتها.';
+
+  @override
+  String get submitComplaintCta => 'تقديم شكوى';
+
+  @override
+  String get submitComplaintTitle => 'تقديم شكوى';
+
+  @override
+  String get submitComplaintButton => 'إرسال الشكوى';
+
+  @override
+  String get complaintSubmittedMessage =>
+      'تم تقديم شكواك بنجاح. ستقوم الإدارة بمراجعتها.';
+
+  @override
+  String get complaintWarehouseLabel => 'المستودع';
+
+  @override
+  String get complaintWarehouseHint => 'اختر المستودع المعني بالشكوى';
+
+  @override
+  String get complaintSubjectLabel => 'عنوان الشكوى';
+
+  @override
+  String get complaintSubjectHint => 'لخّص المشكلة بجملة قصيرة';
+
+  @override
+  String get complaintDescriptionLabel => 'تفاصيل الشكوى';
+
+  @override
+  String get complaintDescriptionHint => 'اشرح المشكلة بالتفصيل';
+
+  @override
+  String get complaintOrderNumberLabel => 'رقم الطلب المرتبط (اختياري)';
+
+  @override
+  String get complaintOrderNumberHint =>
+      'أدخل رقم الطلب إذا كانت الشكوى تتعلق بطلب معيّن';
+
+  @override
+  String get complaintExtraDetailsLabel => 'تفاصيل إضافية (اختياري)';
+
+  @override
+  String get complaintExtraDetailsHint =>
+      'أي معلومات أخرى قد تساعد في حل الشكوى';
+
+  @override
+  String get complaintFormFooterHint =>
+      'تُرفق معلومات المستودع بشكواك تلقائياً.';
+
+  @override
+  String get complaintDetailTitle => 'تفاصيل الشكوى';
+
+  @override
+  String get complaintYourComplaintTitle => 'نص شكواك';
+
+  @override
+  String get complaintResponseTitle => 'الرد';
+
+  @override
+  String complaintNumberLabel(String number) {
+    return 'شكوى رقم $number';
+  }
+
+  @override
+  String complaintFiledOnLabel(String date) {
+    return 'قُدِّمت بتاريخ $date';
+  }
+
+  @override
+  String complaintRelatedOrderLabel(String number) {
+    return 'الطلب المرتبط: رقم $number';
+  }
+
+  @override
+  String get complaintAboutWarehouseLabel => 'بخصوص هذا المستودع';
+
+  @override
+  String get complaintHasResponseHint => 'تم الرد';
+
+  @override
+  String get complaintNoResponseYet =>
+      'لم تردّ الإدارة بعد. سيصلك إشعار فور توفّر الرد.';
+
+  @override
+  String get complaintAdminResponseLabel => 'رد الإدارة';
+
+  @override
+  String complaintRespondedOnLabel(String date) {
+    return 'تم الرد بتاريخ $date';
+  }
+
+  @override
+  String complaintRespondedByLabel(String name) {
+    return 'بواسطة $name';
+  }
+
+  @override
+  String get complaintStatusPending => 'قيد الانتظار';
+
+  @override
+  String get complaintStatusInReview => 'قيد المراجعة';
+
+  @override
+  String get complaintStatusResolved => 'تم الحل';
+
+  @override
+  String get complaintStatusClosed => 'مغلقة';
+
+  @override
+  String get errorComplaintWarehouseRequired =>
+      'يرجى اختيار المستودع المعني بالشكوى.';
+
+  @override
+  String get errorComplaintSubjectRequired => 'يرجى إدخال عنوان للشكوى.';
+
+  @override
+  String get errorComplaintDescriptionRequired => 'يرجى كتابة تفاصيل الشكوى.';
+
+  @override
+  String get errorComplaintOrderNotFound =>
+      'لا يوجد طلب بهذا الرقم لدى هذا المستودع.';
+
+  @override
+  String get errorComplaintTooLong =>
+      'أحد الحقول أطول من المسموح. يرجى اختصاره.';
+
+  @override
+  String get errorComplaintNotFound => 'تعذّر العثور على هذه الشكوى.';
+
+  @override
+  String get errorComplaintContextMismatch =>
+      'لا يمكن ربط هذه الشكوى بذلك المستودع.';
+
+  @override
+  String get submitComplaintOnWarehouseTitle => 'شكوى على المستودع';
+
+  @override
+  String get submitComplaintAboutOrderTitle => 'شكوى حول الطلب';
+
+  @override
+  String get complaintContextGeneral => 'شكوى عامة';
+
+  @override
+  String get complaintGeneralContextNote =>
+      'هذه الشكوى لا ترتبط بمستودع أو طلب محدّد.';
+
+  @override
+  String get complaintOnWarehouseLabel => 'الشكوى على';
+
+  @override
+  String get complaintAboutOrderLabel => 'الشكوى حول الطلب';
+
+  @override
+  String complaintOrderWarehouseLine(String name) {
+    return 'المستودع: $name';
+  }
+
+  @override
+  String get submitComplaintOnWarehouseCta => 'تقديم شكوى على هذا المستودع';
+
+  @override
+  String get submitComplaintAboutOrderCta => 'تقديم شكوى حول هذا الطلب';
+
+  @override
+  String get orderComplaintsSectionTitle => 'الشكاوى المتعلقة بهذا الطلب';
+
+  @override
+  String get orderComplaintsEmptyPrompt =>
+      'لديك مشكلة بهذا الطلب؟ يمكنك تقديم شكوى وستراجعها الإدارة.';
+
+  @override
+  String get updateAvailable => 'يتوفر تحديث جديد';
+
+  @override
+  String get updateAvailableMessage =>
+      'يتوفر إصدار جديد من Phoenix. قم بالتحديث للحصول على أحدث الميزات والتحسينات.';
+
+  @override
+  String get updateRequired => 'تحديث إجباري';
+
+  @override
+  String get updateRequiredMessage =>
+      'إصدار التطبيق الحالي لم يعد مدعوماً. يرجى تحديث التطبيق للمتابعة.';
+
+  @override
+  String get updateNow => 'تحديث الآن';
+
+  @override
+  String get later => 'لاحقاً';
+
+  @override
+  String get updateOpenStoreFailed =>
+      'تعذر فتح متجر Google Play. حاول مرة أخرى.';
 }

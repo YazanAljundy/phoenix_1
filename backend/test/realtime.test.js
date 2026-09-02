@@ -22,16 +22,22 @@ const { io: ioClient } = require('socket.io-client');
 const users = new Map();
 const warehousesByUserId = new Map();
 
+const { modelQuery } = require('./helpers/model-query-stub');
+
 function stubModule(relativePath, exportsValue) {
   const resolved = require.resolve(path.join(__dirname, '..', 'src', relativePath));
   require.cache[resolved] = { id: resolved, filename: resolved, loaded: true, exports: exportsValue };
 }
 
+// modelQuery, not `async () => ...`: a Mongoose model method returns a
+// chainable Query, and the handshake's authenticateToken selects fields off
+// it. Stubbing only the thenable half would make the double, not the code
+// under test, decide whether this passes. The resolved values are unchanged.
 stubModule('models/user.model.js', {
-  findById: async (id) => users.get(String(id)) ?? null,
+  findById: modelQuery((id) => users.get(String(id)) ?? null),
 });
 stubModule('models/warehouse.model.js', {
-  findOne: async (filter) => warehousesByUserId.get(String(filter.userId)) ?? null,
+  findOne: modelQuery((filter) => warehousesByUserId.get(String(filter.userId)) ?? null),
 });
 
 const {

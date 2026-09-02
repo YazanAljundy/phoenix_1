@@ -18,4 +18,7 @@ class RouteNames {
   static const String debtDetail = 'debt-detail';
   static const String privacyPolicy = 'privacy-policy';
   static const String notifications = 'notifications';
+  static const String complaints = 'complaints';
+  static const String submitComplaint = 'submit-complaint';
+  static const String complaintDetail = 'complaint-detail';
 }

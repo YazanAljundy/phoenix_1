@@ -55,6 +55,8 @@ String translateErrorCode(AppLocalizations l10n, String? code, String fallbackMe
       return l10n.errorOrderNotCancellable;
     case 'ORDER_NOT_DELIVERED':
       return l10n.errorOrderNotDelivered;
+    case 'ORDER_NOT_REORDERABLE':
+      return l10n.errorOrderNotReorderable;
     case 'ORDER_ITEM_NOT_FOUND':
       return l10n.errorOrderItemNotFound;
     case 'RETURN_QUANTITY_EXCEEDS_ORDERED':
@@ -85,6 +87,27 @@ String translateErrorCode(AppLocalizations l10n, String? code, String fallbackMe
       return l10n.errorInvalidRequest;
     case 'ALREADY_REVIEWED':
       return l10n.errorAlreadyReviewed;
+
+    // --- Complaint system.
+    case 'COMPLAINT_WAREHOUSE_REQUIRED':
+    case 'COMPLAINT_INVALID_WAREHOUSE':
+      return l10n.errorComplaintWarehouseRequired;
+    case 'COMPLAINT_SUBJECT_REQUIRED':
+      return l10n.errorComplaintSubjectRequired;
+    case 'COMPLAINT_DESCRIPTION_REQUIRED':
+      return l10n.errorComplaintDescriptionRequired;
+    case 'COMPLAINT_INVALID_ORDER':
+    case 'COMPLAINT_ORDER_NOT_FOUND':
+      return l10n.errorComplaintOrderNotFound;
+    case 'COMPLAINT_CONTEXT_MISMATCH':
+      return l10n.errorComplaintContextMismatch;
+    case 'COMPLAINT_SUBJECT_REQUIRED_TOO_LONG':
+    case 'COMPLAINT_DESCRIPTION_REQUIRED_TOO_LONG':
+    case 'COMPLAINT_EXTRA_TOO_LONG':
+      return l10n.errorComplaintTooLong;
+    case 'COMPLAINT_NOT_FOUND':
+      return l10n.errorComplaintNotFound;
+
     case 'UNEXPECTED_ERROR':
       return l10n.errorState;
     default:

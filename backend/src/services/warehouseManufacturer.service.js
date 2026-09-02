@@ -16,7 +16,10 @@ async function registerManufacturers(warehouseId, manufacturerNames) {
 }
 
 async function listManufacturersForWarehouse(warehouseId) {
-  const rows = await WarehouseManufacturer.find({ warehouseId }).sort({ manufacturerAr: 1 });
+  // Only the manufacturer name is read out of each row.
+  const rows = await WarehouseManufacturer.find({ warehouseId })
+    .select('manufacturerAr')
+    .sort({ manufacturerAr: 1 });
   return rows.map((row) => row.manufacturerAr);
 }
 

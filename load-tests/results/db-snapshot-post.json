@@ -1,0 +1,66 @@
+{
+  "users": {
+    "total": 537,
+    "tagged": 529
+  },
+  "pharmacies": {
+    "total": 502,
+    "tagged": 500
+  },
+  "warehouses": {
+    "total": 33,
+    "tagged": 28
+  },
+  "products": {
+    "total": 6900,
+    "tagged": 6200
+  },
+  "orders": {
+    "total": 8077,
+    "tagged": 6000
+  },
+  "orderitems": {
+    "total": 11657,
+    "tagged": 6000
+  },
+  "returns": {
+    "total": 1,
+    "tagged": 0
+  },
+  "reviews": {
+    "total": 455,
+    "tagged": 0
+  },
+  "notifications": {
+    "total": 9,
+    "tagged": 0
+  },
+  "productcatalogs": {
+    "total": 417,
+    "tagged": 0
+  },
+  "categories": {
+    "total": 4,
+    "tagged": 0
+  },
+  "banners": {
+    "total": 3,
+    "tagged": 0
+  },
+  "offers": {
+    "total": 1,
+    "tagged": 0
+  },
+  "payments": {
+    "total": 1,
+    "tagged": 0
+  },
+  "pharmacybalances": {
+    "total": 1,
+    "tagged": 0
+  },
+  "counters": {
+    "total": 2,
+    "tagged": 0
+  }
+}

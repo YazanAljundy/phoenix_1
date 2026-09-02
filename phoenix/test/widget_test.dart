@@ -6,7 +6,9 @@ import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:phoenix/core/network/api_client.dart';
+import 'package:phoenix/core/services/app_update_service.dart';
 import 'package:phoenix/core/services/fcm_service.dart';
+import 'package:phoenix/core/services/remote_config_service.dart';
 import 'package:phoenix/core/services/secure_storage_service.dart';
 import 'package:phoenix/core/services/storage_service.dart';
 import 'package:phoenix/features/auth/data/repositories/auth_repository_impl.dart';
@@ -15,6 +17,7 @@ import 'package:phoenix/features/auth/presentation/views/splash_view.dart';
 import 'package:phoenix/features/banners/data/repositories/banners_repository_impl.dart';
 import 'package:phoenix/features/cart/data/repositories/order_repository_impl.dart';
 import 'package:phoenix/features/catalog/data/repositories/catalog_repository_impl.dart';
+import 'package:phoenix/features/complaints/data/repositories/complaint_repository_impl.dart';
 import 'package:phoenix/features/debts/data/repositories/debt_repository_impl.dart';
 import 'package:phoenix/features/exchange_rate/data/repositories/exchange_rate_repository_impl.dart';
 import 'package:phoenix/features/notifications/data/repositories/notification_repository.dart';
@@ -38,6 +41,7 @@ Future<AppRouter> _pumpApp(WidgetTester tester) async {
   );
   final orderRepository = OrderRepositoryImpl(apiClient: apiClient);
   final returnRepository = ReturnRepositoryImpl(apiClient: apiClient);
+  final complaintRepository = ComplaintRepositoryImpl(apiClient: apiClient);
   final reviewRepository = ReviewRepositoryImpl(apiClient: apiClient);
   final debtRepository = DebtRepositoryImpl(apiClient: apiClient);
   final bannersRepository = BannersRepositoryImpl(apiClient: apiClient);
@@ -46,12 +50,20 @@ Future<AppRouter> _pumpApp(WidgetTester tester) async {
     authRepository: authRepository,
     notificationRepository: notificationRepository,
   );
+  // Remote Config is never initialised in the widget test - checkForUpdate()
+  // catches the resulting error and returns `none`, so no dialog appears.
   final appRouter = AppRouter();
+  final appUpdateService = AppUpdateService(
+    remoteConfigService: RemoteConfigService(),
+    storageService: storageService,
+    currentVersion: '1.0.0',
+  );
 
   await tester.pumpWidget(
     MyApp(
       initialState: const SettingsState(),
       storageService: storageService,
+      appUpdateService: appUpdateService,
       secureStorage: secureStorage,
       authRepository: authRepository,
       warehouseRepository: warehouseRepository,
@@ -59,6 +71,7 @@ Future<AppRouter> _pumpApp(WidgetTester tester) async {
       exchangeRateRepository: exchangeRateRepository,
       orderRepository: orderRepository,
       returnRepository: returnRepository,
+      complaintRepository: complaintRepository,
       reviewRepository: reviewRepository,
       debtRepository: debtRepository,
       bannersRepository: bannersRepository,
