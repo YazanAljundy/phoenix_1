@@ -1,6 +1,5 @@
-// `canEdit` is computed here, not stored - canEditUntil is a fixed instant
-// set at creation (payment.service.js), so "is it still editable" is only
-// ever true relative to the moment of the request.
+// A recorded payment can always be edited or deleted by the warehouse that
+// owns it - there is no time window, so no `canEdit` flag to compute.
 function serializePayment(payment) {
   return {
     id: payment._id,
@@ -10,8 +9,6 @@ function serializePayment(payment) {
     currency: payment.currency,
     note: payment.note,
     recordedBy: payment.recordedBy,
-    canEditUntil: payment.canEditUntil,
-    canEdit: payment.canEditUntil > new Date(),
     createdAt: payment.createdAt,
   };
 }

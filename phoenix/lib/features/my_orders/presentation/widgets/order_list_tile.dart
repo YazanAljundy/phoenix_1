@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:phoenix/core/constants/app_colors.dart';
 import 'package:phoenix/core/constants/app_sizes.dart';
 import 'package:phoenix/core/extensions/build_context_extensions.dart';
+import 'package:phoenix/core/utils/currency_formatter.dart';
 import 'package:phoenix/core/utils/date_formatter.dart';
 import 'package:phoenix/core/widgets/custom_card.dart';
 import 'package:phoenix/core/widgets/status_badge.dart';
@@ -81,7 +82,7 @@ class OrderListTile extends StatelessWidget {
                   Row(
                     children: [
                       Text(
-                        '${order.finalPrice} ${l10n.currencySuffix}',
+                        formatSyp(order.finalPrice, l10n.currencySuffix),
                         style: context.textTheme.titleMedium?.copyWith(
                           color: AppColors.primaryOf(context),
                           fontWeight: FontWeight.bold,

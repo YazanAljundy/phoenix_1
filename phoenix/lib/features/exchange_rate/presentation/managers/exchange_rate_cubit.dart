@@ -15,15 +15,17 @@ class ExchangeRateCubit extends Cubit<ExchangeRateState> {
 
   final ExchangeRateRepository _exchangeRateRepository;
 
-  // Silent on failure by design (Section: USD display) - a secondary price
-  // hint isn't worth an error dialog. Callers just keep seeing SYP-only
-  // prices.
+  // Silent on failure by design - the rate is what converts the catalog's
+  // stored USD prices into the SYP figures shown everywhere. When it can't
+  // load, price displays fall back to the raw USD amount (see
+  // core/utils/currency_formatter.dart's formatMoneyFromUsd); that isn't
+  // worth an error dialog.
   Future<void> load() async {
     try {
       final rate = await _exchangeRateRepository.getExchangeRate();
       emit(state.copyWith(usdToSyp: rate.usdToSyp));
     } catch (_) {
-      // See class comment - fall back to SYP-only, no error surfaced.
+      // See class comment - prices fall back to USD, no error surfaced.
     }
   }
 }

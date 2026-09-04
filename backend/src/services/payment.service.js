@@ -4,9 +4,11 @@ const Payment = require('../models/payment.model');
 const Pharmacy = require('../models/pharmacy.model');
 const { recomputeBalance } = require('./pharmacyBalance.service');
 
-const EDIT_WINDOW_MS = 5 * 60 * 1000; // 5 minutes, exactly
-
 const CURRENCIES = ['USD', 'SYP'];
+// SYP is Phoenix's default currency - a request that omits `currency`
+// entirely records a Syrian-pound payment. An explicitly wrong value (e.g.
+// 'EUR') is still rejected.
+const DEFAULT_CURRENCY = 'SYP';
 
 function validateAmount(amount) {
   if (typeof amount !== 'number' || !Number.isFinite(amount) || amount <= 0) {
@@ -14,10 +16,12 @@ function validateAmount(amount) {
   }
 }
 
-function validateCurrency(currency) {
+function resolveCurrency(currency) {
+  if (currency === undefined || currency === null) return DEFAULT_CURRENCY;
   if (!CURRENCIES.includes(currency)) {
     throw ApiError.badRequest('Invalid currency.', undefined, 'INVALID_PAYMENT_CURRENCY');
   }
+  return currency;
 }
 
 function normalizeNote(note) {
@@ -48,44 +52,35 @@ async function findOwnedPaymentOrThrow(id, warehouseId) {
   return payment;
 }
 
-function assertWithinEditWindow(payment) {
-  if (payment.canEditUntil <= new Date()) {
-    throw ApiError.forbidden(
-      'This payment can no longer be edited - the 5-minute window has expired.',
-      'PAYMENT_EDIT_WINDOW_EXPIRED'
-    );
-  }
-}
-
 async function createPayment(warehouseId, recordedByUserId, data) {
   await validatePharmacyId(data.pharmacyId);
   validateAmount(data.amount);
-  validateCurrency(data.currency);
+  const currency = resolveCurrency(data.currency);
 
-  const now = new Date();
   const payment = await Payment.create({
     pharmacyId: data.pharmacyId,
     warehouseId,
     amount: data.amount,
-    currency: data.currency,
+    currency,
     note: normalizeNote(data.note),
     recordedBy: recordedByUserId,
-    canEditUntil: new Date(now.getTime() + EDIT_WINDOW_MS),
   });
 
   await recomputeBalance(payment.pharmacyId, warehouseId);
   return payment;
 }
 
+// A recorded payment can be corrected or removed at any time - it is a manual
+// bookkeeping entry, not a system transaction, and the balance is always
+// recomputed from scratch afterwards (recomputeBalance), so there is no drift
+// to protect against. (The former 5-minute edit window was removed.) The only
+// gate is ownership: findOwnedPaymentOrThrow scopes to the caller's warehouse.
 async function updatePayment(id, warehouseId, changes) {
   const payment = await findOwnedPaymentOrThrow(id, warehouseId);
-  assertWithinEditWindow(payment);
 
   validateAmount(changes.amount);
-  validateCurrency(changes.currency);
-
   payment.amount = changes.amount;
-  payment.currency = changes.currency;
+  payment.currency = resolveCurrency(changes.currency);
   payment.note = normalizeNote(changes.note);
   await payment.save();
 
@@ -95,7 +90,6 @@ async function updatePayment(id, warehouseId, changes) {
 
 async function deletePayment(id, warehouseId) {
   const payment = await findOwnedPaymentOrThrow(id, warehouseId);
-  assertWithinEditWindow(payment);
 
   await payment.deleteOne();
   await recomputeBalance(payment.pharmacyId, warehouseId);

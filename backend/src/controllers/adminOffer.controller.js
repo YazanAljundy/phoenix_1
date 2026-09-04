@@ -1,30 +1,20 @@
 const { asyncHandler } = require('../utils/asyncHandler');
 const adminOfferService = require('../services/adminOffer.service');
 const adminOfferViewModel = require('../viewmodels/adminOffer.viewmodel');
-const { parseCursorQuery, parseObjectIdCursor, paginationMeta } = require('../utils/pagination');
 
-// Two shapes on one endpoint: the Dashboard's stat card/recent-list calls
-// this with no `limit` and needs every pending offer at once - only the
-// Offers management page opts into pagination by sending `limit`/`after`.
+// The moderation queue - a brand-new offer, or an approved offer with a parked
+// edit. Used by the Dashboard's stat card / recent-list and by the Offers
+// page's "Review queue" filter.
 const listPending = asyncHandler(async (req, res) => {
-  if (req.query.limit === undefined) {
-    const rows = await adminOfferService.listPendingOffers();
-    res.json({ success: true, ...adminOfferViewModel.toPendingOffersResponse(rows) });
-    return;
-  }
+  const rows = await adminOfferService.listPendingOffers();
+  res.json({ success: true, ...adminOfferViewModel.toPendingOffersResponse(rows) });
+});
 
-  const { limit, after } = parseCursorQuery(req.query, 20);
-  const cursor = parseObjectIdCursor(after);
-  const { rows, hasMore, nextCursor, totalCount } = await adminOfferService.listPaginatedPendingOffers({
-    limit,
-    after: cursor,
-  });
-  res.json({
-    success: true,
-    ...adminOfferViewModel.toPendingOffersResponse(rows),
-    pagination: paginationMeta(hasMore, nextCursor),
-    totalCount,
-  });
+// Section 5: every offer, every warehouse, every status. Unpaginated - the
+// Offers page filters it client-side (status / product / discount).
+const listAll = asyncHandler(async (req, res) => {
+  const rows = await adminOfferService.listAllOffers();
+  res.json({ success: true, ...adminOfferViewModel.toOffersResponse(rows) });
 });
 
 const approve = asyncHandler(async (req, res) => {
@@ -37,4 +27,14 @@ const reject = asyncHandler(async (req, res) => {
   res.json({ success: true, message: 'Offer rejected.' });
 });
 
-module.exports = { listPending, approve, reject };
+const update = asyncHandler(async (req, res) => {
+  await adminOfferService.adminUpdateOffer(req.params.id, req.body);
+  res.json({ success: true, message: 'Offer updated.' });
+});
+
+const remove = asyncHandler(async (req, res) => {
+  await adminOfferService.adminDeleteOffer(req.params.id);
+  res.json({ success: true, message: 'Offer deleted.' });
+});
+
+module.exports = { listPending, listAll, approve, reject, update, remove };

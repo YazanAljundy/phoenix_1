@@ -4,11 +4,9 @@ import { api } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 import { LoadMoreControl } from '../components/LoadMoreControl';
 import { usePaginatedData } from '../hooks/usePaginatedData';
+import { AdvertisementsSubNav } from '../components/AdvertisementsSubNav';
 import { withArFallback } from '../utils/displayName';
-
-// Placeholder for testing - replace with the admin's real WhatsApp number
-// (digits only, country code, no leading + or spaces, e.g. "963911234567").
-const ADMIN_WHATSAPP_NUMBER = '963900000000';
+import { contactAdminOnWhatsApp } from '../utils/whatsapp';
 
 const PAGE_SIZE = 15;
 
@@ -182,8 +180,7 @@ function BannerRequestSuccessModal({ warehouseId, bannerNumber, onClose }) {
   const { t } = useTranslation();
 
   const handleContactAdmin = () => {
-    const text = t('banners.warehouse.paymentWhatsappMessage', { warehouseId, bannerNumber });
-    window.open(`https://wa.me/${ADMIN_WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`, '_blank', 'noreferrer');
+    contactAdminOnWhatsApp(t('banners.warehouse.paymentWhatsappMessage', { warehouseId, bannerNumber }));
   };
 
   return (
@@ -252,7 +249,7 @@ export function WarehouseBannersPage() {
   const handleRequestBannerViaWhatsApp = () => {
     const warehouseName = withArFallback(warehouse?.nameEn, warehouse?.nameAr);
     const text = `مرحباً، أريد نشر إعلان جديد.${warehouseName ? `\nاسم المستودع: ${warehouseName}` : ''}`;
-    window.open(`https://wa.me/${ADMIN_WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`, '_blank', 'noreferrer');
+    contactAdminOnWhatsApp(text);
   };
 
   const handleDeleteBanner = async (banner) => {
@@ -273,8 +270,10 @@ export function WarehouseBannersPage() {
 
   return (
     <div>
+      <AdvertisementsSubNav basePath="/warehouse/advertisements" variant="wh" />
+
       <div className="wh-page-head">
-        <h1>{t('nav.banners')}</h1>
+        <h1>{t('nav.advertisements')}</h1>
         <button
           className="btn-primary"
           style={{ width: 'auto', marginTop: 0 }}

@@ -48,10 +48,10 @@ class CartItemTile extends StatelessWidget {
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
     final name = isArabic ? item.nameAr : (item.nameEn ?? item.nameAr);
     final usdToSyp = context.watch<ExchangeRateCubit>().state.usdToSyp;
-    // The line total's own SYP hint (quantity x price), not the unit price's -
-    // it now sits next to `item.lineTotalUsd` further down, not the per-unit
-    // price.
-    final sypText = formatSypApprox(item.lineTotalUsd, usdToSyp, l10n.currencySuffix);
+    // The line total is shown in SYP (converted from the stored USD price at
+    // the live rate); the exact USD figure rides along as a secondary hint,
+    // next to the line total further down rather than the per-unit price.
+    final lineTotalUsdHint = usdHintFromUsd(item.lineTotalUsd, usdToSyp);
 
     return CustomCard(
       child: Column(
@@ -88,7 +88,7 @@ class CartItemTile extends StatelessWidget {
                         spacing: AppSizes.spacingXSmall,
                         children: [
                           Text(
-                            '\$${item.unitPriceUsd}',
+                            formatMoneyFromUsd(item.unitPriceUsd, usdToSyp, l10n.currencySuffix),
                             style: TextStyle(
                               decoration: TextDecoration.lineThrough,
                               color: AppColors.textSecondaryOf(context),
@@ -96,7 +96,7 @@ class CartItemTile extends StatelessWidget {
                             ),
                           ),
                           Text(
-                            '\$${item.discountPriceUsd}',
+                            formatMoneyFromUsd(item.discountPriceUsd, usdToSyp, l10n.currencySuffix),
                             style: TextStyle(
                               color: AppColors.secondaryOf(context),
                               fontWeight: FontWeight.bold,
@@ -107,7 +107,7 @@ class CartItemTile extends StatelessWidget {
                       )
                     else
                       Text(
-                        '\$${item.discountPriceUsd}',
+                        formatMoneyFromUsd(item.discountPriceUsd, usdToSyp, l10n.currencySuffix),
                         style: TextStyle(
                           color: AppColors.primaryOf(context),
                           fontWeight: FontWeight.bold,
@@ -146,12 +146,12 @@ class CartItemTile extends StatelessWidget {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
-                        '\$${item.lineTotalUsd}',
+                        formatMoneyFromUsd(item.lineTotalUsd, usdToSyp, l10n.currencySuffix),
                         style: context.textTheme.titleSmall,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      if (sypText != null) SecondaryPriceHint(text: sypText),
+                      if (lineTotalUsdHint != null) SecondaryPriceHint(text: lineTotalUsdHint),
                     ],
                   ),
                 ),

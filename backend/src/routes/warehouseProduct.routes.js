@@ -8,6 +8,7 @@ const router = Router();
 router.use(authenticate, authorize('warehouse'), requireActiveStatus);
 
 router.get('/template', controller.downloadTemplate);
+router.get('/search', controller.search);
 router.get('/', controller.list);
 router.post('/', controller.create);
 router.post('/import', catalogImportUpload, controller.importExcel);

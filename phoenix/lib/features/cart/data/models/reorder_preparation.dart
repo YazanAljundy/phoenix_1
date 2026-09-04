@@ -19,7 +19,10 @@ class UnavailableReorderItem {
 
   factory UnavailableReorderItem.fromJson(Map<String, dynamic> json) => UnavailableReorderItem(
     productId: json['productId'] as String,
-    productNameAr: json['productNameAr'] as String,
+    // Nullable in practice: a reorder always has the OrderItem's snapshotted
+    // name, but an advertisement whose product was deleted outright has none
+    // to send. Rendered as an empty name rather than crashing the parse.
+    productNameAr: (json['productNameAr'] as String?) ?? '',
     productNameEn: json['productNameEn'] as String?,
     quantity: (json['quantity'] as num).toInt(),
   );

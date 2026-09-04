@@ -6,6 +6,7 @@ import { LanguageToggle } from '../components/LanguageToggle';
 import { AdminDashboardPage } from './AdminDashboardPage';
 import { AccountsPage } from './AccountsPage';
 import { AdminOffersPage } from './AdminOffersPage';
+import { AdminAdvertisementsPage } from './AdminAdvertisementsPage';
 import { AdminProductsPage } from './AdminProductsPage';
 import { AdminCatalogPage } from './AdminCatalogPage';
 import { AdminBannersPage } from './AdminBannersPage';
@@ -31,7 +32,10 @@ export function AdminPanel() {
     { path: '/admin/dashboard', label: t('nav.dashboard') },
     { path: '/admin/accounts', label: t('nav.accounts') },
     { path: '/admin/offers', label: t('nav.offers') },
-    { path: '/admin/banners', label: t('nav.banners') },
+    // One tab, two sub-sections (general ads / package ads) - see
+    // AdvertisementsSubNav. They were separate tabs until it turned out both
+    // render as "الإعلانات" in Arabic.
+    { path: '/admin/advertisements', label: t('nav.advertisements') },
     { path: '/admin/products', label: t('nav.products') },
     { path: '/admin/catalog', label: t('nav.centralCatalog') },
     { path: '/admin/exchange-rate', label: t('nav.exchangeRate') },
@@ -94,7 +98,17 @@ export function AdminPanel() {
             {/* Old bookmark - the section was renamed Pending Accounts -> Accounts. */}
             <Route path="/admin/pending-accounts" element={<Navigate to="/admin/accounts" replace />} />
             <Route path="/admin/offers" element={<AdminOffersPage />} />
-            <Route path="/admin/banners" element={<AdminBannersPage />} />
+            <Route
+              path="/admin/advertisements"
+              element={<Navigate to="/admin/advertisements/general" replace />}
+            />
+            <Route path="/admin/advertisements/general" element={<AdminBannersPage />} />
+            <Route path="/admin/advertisements/packages" element={<AdminAdvertisementsPage />} />
+            {/* Old bookmark - banners became the "general" half of Advertisements. */}
+            <Route
+              path="/admin/banners"
+              element={<Navigate to="/admin/advertisements/general" replace />}
+            />
             <Route path="/admin/products" element={<AdminProductsPage />} />
             <Route path="/admin/catalog" element={<AdminCatalogPage />} />
             <Route path="/admin/exchange-rate" element={<AdminExchangeRatePage />} />

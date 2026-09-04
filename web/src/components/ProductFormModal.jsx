@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../api/client';
 import { withArFallback } from '../utils/displayName';
+import { sypFromUsd, formatUsd } from '../utils/currency';
 
 export const EMPTY_PRODUCT_FORM = {
   masterProductId: null,
@@ -12,13 +13,19 @@ export const EMPTY_PRODUCT_FORM = {
   categoryId: '',
   unitAr: '',
   unitEn: '',
+  // The price the warehouse types is in SYP now (converted to the catalog's
+  // stored USD on save, see handleSubmit). `priceUsd` carries the currently
+  // stored value so an untouched edit re-sends it exactly, never a
+  // rate-converted approximation.
   price: '',
+  priceUsd: null,
   description: '',
   image: '',
   manuallyDisabled: false,
 };
 
-export function productFormFromProduct(product) {
+export function productFormFromProduct(product, usdToSyp) {
+  const priceSyp = sypFromUsd(product.priceUsd, usdToSyp);
   return {
     masterProductId: product.masterProductId ?? null,
     nameAr: product.nameAr,
@@ -28,7 +35,11 @@ export function productFormFromProduct(product) {
     categoryId: product.categoryId,
     unitAr: product.unitAr ?? '',
     unitEn: product.unitEn ?? '',
-    price: String(product.priceUsd),
+    // The SYP field is left blank when the rate hasn't loaded - the warehouse
+    // then can't edit the price this session, but every other field still saves
+    // (the untouched-price path re-sends the stored USD value).
+    price: priceSyp != null ? String(priceSyp) : '',
+    priceUsd: product.priceUsd,
     description: product.description ?? '',
     image: product.image ?? '',
     manuallyDisabled: product.manuallyDisabled,
@@ -159,10 +170,33 @@ export function ProductFormModal({ mode, initialForm, categories, usdToSyp, onCl
       setError(t('common.requiredFields'));
       return;
     }
-    const price = Number(form.price);
-    if (!Number.isFinite(price) || price <= 0) {
-      setError(t('productForm.pricePositive'));
-      return;
+    // The catalog stores prices in USD (backend product.model.js). Convert the
+    // SYP the warehouse typed at the current rate - EXCEPT when this is an edit
+    // whose SYP field was never touched: then re-send the exact stored USD
+    // value, so a rate that has moved since the product was created can never
+    // silently re-price it (or write a spurious priceHistory entry), and so
+    // the other fields stay editable even while the rate is unavailable.
+    const priceUntouched =
+      mode === 'edit' && form.priceUsd != null && String(form.price) === String(initialForm.price);
+
+    let priceUsd;
+    if (priceUntouched) {
+      priceUsd = form.priceUsd;
+    } else {
+      const priceSyp = Number(form.price);
+      if (!Number.isFinite(priceSyp) || priceSyp <= 0) {
+        setError(t('productForm.pricePositive'));
+        return;
+      }
+      if (usdToSyp == null || !(Number(usdToSyp) > 0)) {
+        setError(t('productForm.rateRequired'));
+        return;
+      }
+      priceUsd = Math.round((priceSyp / Number(usdToSyp)) * 100) / 100;
+      if (priceUsd < 0.01) {
+        setError(t('productForm.pricePositive'));
+        return;
+      }
     }
 
     const payload = {
@@ -170,7 +204,7 @@ export function ProductFormModal({ mode, initialForm, categories, usdToSyp, onCl
       categoryId: form.categoryId,
       unitAr: form.unitAr.trim(),
       unitEn: form.unitEn.trim(),
-      priceUsd: price,
+      priceUsd,
       description: form.description.trim() || undefined,
       image: form.image.trim() || undefined,
       manuallyDisabled: form.manuallyDisabled,
@@ -244,11 +278,11 @@ export function ProductFormModal({ mode, initialForm, categories, usdToSyp, onCl
             </label>
           </div>
           <label>
-            {t('productForm.priceUsd')}
+            {t('productForm.priceSyp')}
             <input
               type="number"
-              min="0.01"
-              step="0.01"
+              min="1"
+              step="1"
               value={form.price}
               onChange={(e) => setField('price', e.target.value)}
               required
@@ -256,8 +290,11 @@ export function ProductFormModal({ mode, initialForm, categories, usdToSyp, onCl
           </label>
           {usdToSyp != null && Number(form.price) > 0 && (
             <p className="hint">
-              {t('productForm.approxSyp', { amount: Math.round(Number(form.price) * usdToSyp).toLocaleString() })}
+              {t('productForm.approxUsd', { amount: formatUsd(Number(form.price) / usdToSyp) })}
             </p>
+          )}
+          {usdToSyp == null && (
+            <p className="hint">{t('productForm.rateRequired')}</p>
           )}
           <label>
             {t('productForm.descriptionOptional')}

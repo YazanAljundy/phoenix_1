@@ -59,6 +59,12 @@ String translateErrorCode(AppLocalizations l10n, String? code, String fallbackMe
       return l10n.errorOrderNotReorderable;
     case 'ORDER_ITEM_NOT_FOUND':
       return l10n.errorOrderItemNotFound;
+    case 'DELIVERY_SEAL_PHOTO_REQUIRED':
+      return l10n.errorDeliverySealPhotoRequired;
+    case 'INVALID_DELIVERY_SEAL_PHOTO':
+      return l10n.errorInvalidDeliverySealPhoto;
+    case 'ORDER_NOT_AWAITING_DELIVERY':
+      return l10n.errorOrderNotAwaitingDelivery;
     case 'RETURN_QUANTITY_EXCEEDS_ORDERED':
       return l10n.errorReturnQuantityExceeded;
     case 'INVALID_REASON_TYPE':

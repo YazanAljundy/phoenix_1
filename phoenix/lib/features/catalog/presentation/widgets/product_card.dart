@@ -297,9 +297,13 @@ class _PriceDisplay extends StatelessWidget {
     // product.viewmodel.js), show the list price struck through above the
     // discounted one. Equal prices -> a single plain number. The card only
     // shows the figures, never why a price is lower.
+    //
+    // SYP is the figure the pharmacist reads (formatMoneyFromUsd converts the
+    // stored USD price at the live rate); the exact USD amount rides along as
+    // a small secondary hint.
     final usdToSyp = context.watch<ExchangeRateCubit>().state.usdToSyp;
     final hasDiscount = product.discountPriceUsd < product.priceUsd;
-    final discountSyp = formatSypApprox(product.discountPriceUsd, usdToSyp, l10n.currencySuffix);
+    final discountUsdHint = usdHintFromUsd(product.discountPriceUsd, usdToSyp);
 
     if (!hasDiscount) {
       return Wrap(
@@ -307,18 +311,18 @@ class _PriceDisplay extends StatelessWidget {
         spacing: AppSizes.spacingXSmall,
         children: [
           Text(
-            '\$${product.discountPriceUsd}',
+            formatMoneyFromUsd(product.discountPriceUsd, usdToSyp, l10n.currencySuffix),
             style: context.textTheme.titleSmall?.copyWith(
               color: AppColors.primaryOf(context),
               fontSize: 15,
             ),
           ),
-          if (discountSyp != null) SecondaryPriceHint(text: discountSyp),
+          if (discountUsdHint != null) SecondaryPriceHint(text: discountUsdHint),
         ],
       );
     }
 
-    final originalSyp = formatSypApprox(product.priceUsd, usdToSyp, l10n.currencySuffix);
+    final originalUsdHint = usdHintFromUsd(product.priceUsd, usdToSyp);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -329,14 +333,14 @@ class _PriceDisplay extends StatelessWidget {
           spacing: AppSizes.spacingXSmall,
           children: [
             Text(
-              '\$${product.priceUsd}',
+              formatMoneyFromUsd(product.priceUsd, usdToSyp, l10n.currencySuffix),
               style: TextStyle(
                 decoration: TextDecoration.lineThrough,
                 color: AppColors.textSecondaryOf(context),
                 fontSize: 11.5,
               ),
             ),
-            if (originalSyp != null) SecondaryPriceHint(text: originalSyp),
+            if (originalUsdHint != null) SecondaryPriceHint(text: originalUsdHint),
           ],
         ),
         const SizedBox(height: 2),
@@ -345,14 +349,14 @@ class _PriceDisplay extends StatelessWidget {
           spacing: AppSizes.spacingXSmall,
           children: [
             Text(
-              '\$${product.discountPriceUsd}',
+              formatMoneyFromUsd(product.discountPriceUsd, usdToSyp, l10n.currencySuffix),
               style: TextStyle(
                 color: AppColors.secondary,
                 fontWeight: FontWeight.bold,
                 fontSize: 15,
               ),
             ),
-            if (discountSyp != null) SecondaryPriceHint(text: discountSyp),
+            if (discountUsdHint != null) SecondaryPriceHint(text: discountUsdHint),
           ],
         ),
       ],

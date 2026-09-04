@@ -3,10 +3,11 @@ import 'package:go_router/go_router.dart';
 import 'package:phoenix/core/constants/app_colors.dart';
 import 'package:phoenix/core/extensions/build_context_extensions.dart';
 
-// Section 6: the four top-level tabs (warehouses/my orders/returns/profile) -
-// everything else (catalog, cart, order tracking) pushes on top of this
-// shell as a full-screen route instead of being a tab, since those are
-// detail flows entered FROM a tab, not destinations of their own.
+// Section 6: the four top-level tabs (warehouses / my orders / account
+// history / profile) - everything else (catalog, cart, order tracking, and
+// now the returns and debts pages) pushes on top of this shell as a
+// full-screen route instead of being a tab, since those are detail flows
+// entered FROM a tab, not destinations of their own.
 class ScaffoldWithBottomNav extends StatelessWidget {
   const ScaffoldWithBottomNav({super.key, required this.navigationShell});
 
@@ -51,9 +52,9 @@ class ScaffoldWithBottomNav extends StatelessWidget {
               label: l10n.myOrdersTitle,
             ),
             NavigationDestination(
-              icon: const Icon(Icons.assignment_return_outlined),
-              selectedIcon: Icon(Icons.assignment_return, color: AppColors.primaryOf(context)),
-              label: l10n.returnsTitle,
+              icon: const Icon(Icons.account_balance_wallet_outlined),
+              selectedIcon: Icon(Icons.account_balance_wallet, color: AppColors.primaryOf(context)),
+              label: l10n.accountHistoryTitle,
             ),
             NavigationDestination(
               icon: const Icon(Icons.person_outline),

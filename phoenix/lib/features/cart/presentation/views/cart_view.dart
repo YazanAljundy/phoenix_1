@@ -58,14 +58,20 @@ class _CartViewState extends State<CartView> {
 
     // The server sends the limit back in details (order.service.js) so the
     // rejection reads with the real figure even though the English message
-    // it ships with is only a fallback.
+    // it ships with is only a fallback. The limit is USD-denominated on the
+    // server; shown in SYP here at the live rate, like every other amount.
+    final usdToSyp = context.read<ExchangeRateCubit>().state.usdToSyp;
     if (state.errorCode == 'ORDER_BELOW_MINIMUM') {
       final amount = state.errorDetails?['minOrderAmountUsd'];
-      if (amount != null) return l10n.orderBelowMinimum('\$$amount');
+      if (amount is num) {
+        return l10n.orderBelowMinimum(formatMoneyFromUsd(amount, usdToSyp, l10n.currencySuffix));
+      }
     }
     if (state.errorCode == 'ORDER_ABOVE_MAXIMUM') {
       final amount = state.errorDetails?['maxOrderAmountUsd'];
-      if (amount != null) return l10n.orderAboveMaximum('\$$amount');
+      if (amount is num) {
+        return l10n.orderAboveMaximum(formatMoneyFromUsd(amount, usdToSyp, l10n.currencySuffix));
+      }
     }
 
     return translateErrorCode(
@@ -73,6 +79,33 @@ class _CartViewState extends State<CartView> {
       state.errorCode,
       state.errorMessage ?? l10n.errorState,
     );
+  }
+
+  // A package is all-or-nothing: dropping a product, or a package line below
+  // its advertised quantity, ends the package price and everything reprices
+  // normally (the backend enforces the same rule at checkout). Said out loud
+  // first, rather than letting the total quietly change.
+  Future<void> _afterCartChange(bool wasPackage) async {
+    final cubit = context.read<CartCubit>();
+    if (wasPackage && !cubit.state.hasAdvertisement && mounted && !cubit.state.isEmpty) {
+      await AppDialog.show(
+        context: context,
+        title: context.l10n.advertisementUnavailableTitle,
+        content: context.l10n.advertisementPackageBrokenMessage,
+      );
+    }
+  }
+
+  Future<void> _removeItem(String productId, bool isAdvertised) async {
+    final wasPackage = isAdvertised && context.read<CartCubit>().state.hasAdvertisement;
+    context.read<CartCubit>().removeItem(productId);
+    await _afterCartChange(wasPackage);
+  }
+
+  Future<void> _changeQuantity(String productId, int quantity, bool isAdvertised) async {
+    final wasPackage = isAdvertised && context.read<CartCubit>().state.hasAdvertisement;
+    context.read<CartCubit>().updateQuantity(productId, quantity);
+    await _afterCartChange(wasPackage);
   }
 
   Future<void> _confirmSubmit() async {
@@ -154,6 +187,13 @@ class _CartViewState extends State<CartView> {
             return _EmptyCart(onBrowse: () => context.goNamed(RouteNames.warehouseSelection));
           }
 
+          // The warehouse's order-size limits are USD-denominated on the
+          // server (order.service.js); shown here in SYP at the live rate,
+          // consistent with the subtotal they're compared against.
+          final usdToSyp = context.watch<ExchangeRateCubit>().state.usdToSyp;
+          String limitText(num usdAmount) =>
+              formatMoneyFromUsd(usdAmount, usdToSyp, l10n.currencySuffix);
+
           return Column(
             children: [
               Expanded(
@@ -165,11 +205,13 @@ class _CartViewState extends State<CartView> {
                       for (final item in state.items) ...[
                         CartItemTile(
                           item: item,
-                          onQuantityChanged: (quantity) => context
-                              .read<CartCubit>()
-                              .updateQuantity(item.productId, quantity),
-                          onRemove: () =>
-                              context.read<CartCubit>().removeItem(item.productId),
+                          // Changing a package line's quantity below what the
+                          // package advertises ends the package price, and
+                          // removing one of its products does too - the
+                          // pharmacist is told before it happens.
+                          onQuantityChanged: (quantity) =>
+                              _changeQuantity(item.productId, quantity, item.isAdvertised),
+                          onRemove: () => _removeItem(item.productId, item.isAdvertised),
                         ),
                         const SizedBox(height: AppSizes.spacingSmall),
                       ],
@@ -239,10 +281,9 @@ class _CartViewState extends State<CartView> {
                                     .watch<ExchangeRateCubit>()
                                     .state
                                     .usdToSyp;
-                                final sypText = formatSypApprox(
+                                final usdHint = usdHintFromUsd(
                                   state.subtotalUsd,
                                   usdToSyp,
-                                  l10n.currencySuffix,
                                 );
                                 return Wrap(
                                   alignment: WrapAlignment.end,
@@ -250,13 +291,17 @@ class _CartViewState extends State<CartView> {
                                   spacing: AppSizes.spacingXSmall,
                                   children: [
                                     Text(
-                                      '\$${state.subtotalUsd}',
+                                      formatMoneyFromUsd(
+                                        state.subtotalUsd,
+                                        usdToSyp,
+                                        l10n.currencySuffix,
+                                      ),
                                       style: context.textTheme.titleLarge?.copyWith(
                                         color: AppColors.primaryOf(context),
                                       ),
                                     ),
-                                    if (sypText != null)
-                                      SecondaryPriceHint(text: sypText),
+                                    if (usdHint != null)
+                                      SecondaryPriceHint(text: usdHint),
                                   ],
                                 );
                               },
@@ -264,6 +309,56 @@ class _CartViewState extends State<CartView> {
                           ),
                         ],
                       ),
+                      // Section: advertisement packages. The subtotal above is
+                      // the sum of the (advertised) lines; the package total
+                      // is what is actually charged, so the difference is
+                      // shown as its own discount line and then the payable
+                      // total. Rendered only while the package still holds -
+                      // remove one of its products and these disappear along
+                      // with the discount. A normal cart shows nothing extra.
+                      if (state.hasAdvertisement && state.advertisementDiscountUsd > 0) ...[
+                        const SizedBox(height: AppSizes.spacingXSmall),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Flexible(
+                              child: Text(
+                                l10n.advertisementDiscountLabel,
+                                style: context.textTheme.bodyMedium,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            Text(
+                              '- ${limitText(state.advertisementDiscountUsd)}',
+                              style: context.textTheme.bodyMedium?.copyWith(
+                                color: AppColors.primaryOf(context),
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: AppSizes.spacingXSmall),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Flexible(
+                              child: Text(
+                                l10n.advertisementTotalToPay,
+                                style: context.textTheme.titleMedium,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            Text(
+                              limitText(state.payableUsd),
+                              style: context.textTheme.titleLarge?.copyWith(
+                                color: AppColors.primaryOf(context),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                       // Section: this warehouse's order-size limits. Shown
                       // against the subtotal above - the same figure the
                       // backend checks (order.service.js) - so the hint, the
@@ -273,7 +368,7 @@ class _CartViewState extends State<CartView> {
                         const SizedBox(height: AppSizes.spacingXSmall),
                         if (state.minOrderAmountUsd > 0)
                           Text(
-                            l10n.minOrderLabel('\$${state.minOrderAmountUsd}'),
+                            l10n.minOrderLabel(limitText(state.minOrderAmountUsd)),
                             style: context.textTheme.bodySmall?.copyWith(
                               color: state.isBelowMinimum
                                   ? AppColors.primaryOf(context)
@@ -283,7 +378,7 @@ class _CartViewState extends State<CartView> {
                           ),
                         if (state.maxOrderAmountUsd != null)
                           Text(
-                            l10n.maxOrderLabel('\$${state.maxOrderAmountUsd}'),
+                            l10n.maxOrderLabel(limitText(state.maxOrderAmountUsd!)),
                             style: context.textTheme.bodySmall?.copyWith(
                               color: state.isAboveMaximum
                                   ? AppColors.errorOf(context)
@@ -296,8 +391,8 @@ class _CartViewState extends State<CartView> {
                         const SizedBox(height: AppSizes.spacingXSmall),
                         Text(
                           state.isBelowMinimum
-                              ? l10n.addMoreToReachMinimum('\$${state.amountToReachMinimum}')
-                              : l10n.removeToMeetMaximum('\$${state.maxOrderAmountUsd}'),
+                              ? l10n.addMoreToReachMinimum(limitText(state.amountToReachMinimum))
+                              : l10n.removeToMeetMaximum(limitText(state.maxOrderAmountUsd!)),
                           style: context.textTheme.bodyMedium?.copyWith(
                             color: state.isBelowMinimum
                                 ? AppColors.primaryOf(context)

@@ -87,9 +87,10 @@ export function AdminDashboardPage() {
     { key: 'pendingOffers', label: t('nav.offers'), value: offers.length, to: '/admin/offers', tone: 'info' },
     {
       key: 'pendingBanners',
-      label: t('nav.banners'),
+      // Banners are now the "general" half of the merged Advertisements tab.
+      label: t('nav.advertisementsGeneral'),
       value: pendingBannersCount,
-      to: '/admin/banners',
+      to: '/admin/advertisements/general',
       tone: 'success',
     },
     { key: 'products', label: t('nav.products'), value: productsCount, to: '/admin/products', tone: 'navy' },

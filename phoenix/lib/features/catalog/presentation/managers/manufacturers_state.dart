@@ -1,3 +1,5 @@
+import 'package:phoenix/features/catalog/data/models/manufacturer_model.dart';
+
 enum ManufacturersStatus { initial, loading, loaded, error }
 
 class ManufacturersState {
@@ -9,14 +11,14 @@ class ManufacturersState {
   });
 
   final ManufacturersStatus status;
-  final List<String> manufacturers;
+  final List<ManufacturerModel> manufacturers;
   final String? errorMessage;
   // Machine-readable error id - see translateErrorCode.
   final String? errorCode;
 
   ManufacturersState copyWith({
     ManufacturersStatus? status,
-    List<String>? manufacturers,
+    List<ManufacturerModel>? manufacturers,
     String? errorMessage,
     String? errorCode,
   }) {

@@ -8,6 +8,7 @@ class OrderTrackingState {
     this.order,
     this.isCancelling = false,
     this.isSubmittingReview = false,
+    this.isConfirmingDelivery = false,
     this.errorMessage,
     this.errorCode,
     this.warehousePhone,
@@ -17,6 +18,8 @@ class OrderTrackingState {
   final OrderModel? order;
   final bool isCancelling;
   final bool isSubmittingReview;
+  // Section: uploading the delivery seal photo (order_tracking_cubit.confirmDelivery).
+  final bool isConfirmingDelivery;
   final String? errorMessage;
   final String? errorCode;
 
@@ -31,6 +34,7 @@ class OrderTrackingState {
     OrderModel? order,
     bool? isCancelling,
     bool? isSubmittingReview,
+    bool? isConfirmingDelivery,
     String? errorMessage,
     String? errorCode,
     bool clearError = false,
@@ -41,6 +45,7 @@ class OrderTrackingState {
       order: order ?? this.order,
       isCancelling: isCancelling ?? this.isCancelling,
       isSubmittingReview: isSubmittingReview ?? this.isSubmittingReview,
+      isConfirmingDelivery: isConfirmingDelivery ?? this.isConfirmingDelivery,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       errorCode: clearError ? null : (errorCode ?? this.errorCode),
       warehousePhone: warehousePhone ?? this.warehousePhone,

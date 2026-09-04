@@ -126,18 +126,10 @@ function validateItems(items, orderItemById) {
   });
 }
 
-// Section 6.9: a return must be backed by at least one photo so the
-// warehouse has something to verify the claim against.
-function assertHasPhoto(images) {
-  if (!Array.isArray(images) || images.length === 0) {
-    throw ApiError.badRequest(
-      'Please attach at least one photo of the item.',
-      undefined,
-      'RETURN_PHOTO_REQUIRED'
-    );
-  }
-}
-
+// Section 6.9: a photo helps the warehouse verify the claim, but it is
+// optional - a return can be submitted (and edited) with no photos at all,
+// in which case `images` is simply an empty array on the stored document.
+//
 // validateItems reads each item's _id/productId/quantity; the map is also
 // handed to return.viewmodel.js, whose serializeReturnItem reads the two
 // snapshotted product names.
@@ -183,7 +175,6 @@ async function createReturn({ pharmacyId, orderId, items, notes, images }) {
 
   const orderItemById = await loadOrderItemsMap(order._id);
   const normalizedItems = validateItems(items, orderItemById);
-  assertHasPhoto(images);
 
   const trimmedNotes = typeof notes === 'string' && notes.trim() ? notes.trim() : null;
 
@@ -243,7 +234,6 @@ async function updateReturn({ pharmacyId, returnId, items, notes, keepImageUrls,
     ...returnRequest.images.filter((url) => keepSet.has(url)),
     ...(Array.isArray(newImages) ? newImages : []),
   ];
-  assertHasPhoto(updatedImages);
 
   const droppedImages = returnRequest.images.filter((url) => !keepSet.has(url));
   deleteImages(droppedImages);

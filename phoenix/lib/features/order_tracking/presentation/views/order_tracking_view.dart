@@ -23,6 +23,7 @@ import 'package:phoenix/features/complaints/data/models/submit_complaint_args.da
 import 'package:phoenix/features/complaints/presentation/utils/complaint_labels.dart';
 import 'package:phoenix/features/order_tracking/presentation/managers/order_tracking_cubit.dart';
 import 'package:phoenix/features/order_tracking/presentation/managers/order_tracking_state.dart';
+import 'package:phoenix/features/order_tracking/presentation/widgets/delivery_seal_section.dart';
 import 'package:phoenix/features/order_tracking/presentation/widgets/order_invoice_section.dart';
 import 'package:phoenix/features/order_tracking/presentation/widgets/order_progress_bar.dart';
 import 'package:phoenix/features/order_tracking/presentation/widgets/status_history_list.dart';
@@ -245,6 +246,14 @@ class _OrderTrackingViewState extends State<OrderTrackingView> {
             const SizedBox(height: AppSizes.spacingMedium),
             _CurrentStatusHighlight(order: order),
           ],
+          // Section: optional delivery seal photo - only when this order's
+          // warehouse asks for one (and it's not been provided yet) or once it
+          // has. Confirming attaches the photo; it never advances the order.
+          if (!order.isCancelled &&
+              (order.needsDeliverySealConfirmation || order.deliverySealPhotoUrl != null)) ...[
+            const SizedBox(height: AppSizes.spacingMedium),
+            DeliverySealSection(order: order, isConfirming: state.isConfirmingDelivery),
+          ],
           const SizedBox(height: AppSizes.spacingXLarge),
           StatusHistoryList(entries: order.statusHistory),
           if (order.items.isNotEmpty) ...[
@@ -257,6 +266,7 @@ class _OrderTrackingViewState extends State<OrderTrackingView> {
               items: order.items,
               totalPrice: order.totalPrice,
               discountAmount: order.discountAmount,
+              advertisementDiscountAmount: order.advertisementDiscountAmount,
               finalPrice: order.finalPrice,
             ),
           ],

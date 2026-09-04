@@ -255,6 +255,13 @@ class _RequestReturnSheetBodyState extends State<_RequestReturnSheetBody> {
                 ),
                 const SizedBox(height: AppSizes.spacingMedium),
                 Text(l10n.returnPhotosLabel, style: context.textTheme.titleSmall),
+                const SizedBox(height: AppSizes.spacingXSmall),
+                Text(
+                  l10n.returnPhotosHint,
+                  style: context.textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondaryOf(context),
+                  ),
+                ),
                 const SizedBox(height: AppSizes.spacingSmall),
                 Wrap(
                   spacing: AppSizes.spacingSmall,

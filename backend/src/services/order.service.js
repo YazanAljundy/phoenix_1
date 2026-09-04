@@ -16,8 +16,12 @@ const {
   hoursRemainingFor,
 } = require('./return.service');
 const { getRate } = require('./exchangeRate.service');
+const { deleteImageByUrl } = require('./upload.service');
 const { applyResolvedIdentity } = require('./productCatalog.service');
 const { getDiscountMapForWarehouse, computeDiscountedPriceUsd } = require('./manufacturerDiscount.service');
+// advertisement.service depends on warehouse/productCatalog only - it never
+// requires this file back, so there is no cycle here.
+const { loadActiveAdvertisementOrThrow } = require('./advertisement.service');
 const { emitToWarehouse, EVENTS } = require('../realtime');
 
 // Section 15: applies an Offer percentage then a manufacturer-discount
@@ -81,7 +85,46 @@ async function nextOrderNumber() {
 // zero-priced (a replacement for goods already paid for, not a new charge).
 // Stock/availability is still checked normally: the warehouse genuinely needs
 // the replacement units in hand to fulfill it.
-async function createOrder({ userId, pharmacyId, warehouseId, items, notes, isReplacement = false }) {
+// An advertisement package lists a quantity per product. Each product is
+// billed at its CURRENT catalog price; the package total is the discount, so
+// it is the gap between the quantity-weighted sum of those catalog prices and
+// the total - counted ONCE, regardless of how many extra units the pharmacist
+// ordered. Extra units are simply charged the catalog price with no further
+// discount, which can never over-discount.
+//
+// `advertisedSypSubtotal` is passed by the caller as
+// Σ(catalog price x ADVERTISED quantity), in SYP, from the same line prices it
+// summed into the order total - so createOrder (fresh catalog prices) and the
+// warehouse edit path (the order's own stored line prices) each stay
+// internally consistent and `finalPrice` lands exactly on the package total.
+function advertisementDiscountSyp(advertisedSypSubtotal, totalPriceUsd, usdToSyp) {
+  const packageTotalSyp = Math.round(totalPriceUsd * usdToSyp);
+  // Clamped at 0: a package total at or above the catalog sum is allowed
+  // (warehouseAdvertisement.service.js deliberately doesn't forbid it - it just
+  // means "no saving"), but it must never become a surcharge.
+  return Math.max(0, advertisedSypSubtotal - packageTotalSyp);
+}
+
+// The package only holds if the pharmacist is actually buying it: every
+// advertised product ordered at AT LEAST its advertised quantity. Returns the
+// reason it doesn't hold, or null when it does.
+function advertisementPackageBreak(advertisement, quantityByProductId) {
+  for (const item of advertisement.items) {
+    const ordered = quantityByProductId.get(item.productId.toString());
+    if (!ordered || ordered < item.quantity) return 'ADVERTISEMENT_ITEM_MISSING';
+  }
+  return null;
+}
+
+async function createOrder({
+  userId,
+  pharmacyId,
+  warehouseId,
+  items,
+  notes,
+  advertisementId = null,
+  isReplacement = false,
+}) {
   // Defense in depth: order.controller.js's validateItems already rejects an
   // empty/invalid cart before this is ever called from the API, and a
   // return's own items are validated non-empty at creation time (the other
@@ -140,6 +183,58 @@ async function createOrder({ userId, pharmacyId, warehouseId, items, notes, isRe
     throw ApiError.badRequest(fallbackText.join(' '), { problems }, 'STOCK_CHECK_FAILED');
   }
 
+  // Section: advertisement packages. The client sends only an id - every
+  // price, the package total, the discount and the warehouse are re-read here
+  // and re-validated, so a tampered request can't buy at its own numbers.
+  let advertisement = null;
+  // productId -> advertised quantity, for the package's products. Those lines
+  // are billed at the plain catalog price (skipping offer/manufacturer
+  // stacking), and Σ(catalog price x advertised quantity) feeds the single
+  // order-level package discount.
+  const advertisedQtyByProductId = new Map();
+  if (advertisementId && !isReplacement) {
+    // Throws ADVERTISEMENT_UNAVAILABLE unless it is approved AND inside its
+    // date window right now - the same single gate the cart-prefill endpoint
+    // used, so what the pharmacist saw and what checkout accepts agree.
+    advertisement = await loadActiveAdvertisementOrThrow(advertisementId);
+
+    if (String(advertisement.warehouseId) !== String(warehouseId)) {
+      throw ApiError.badRequest(
+        'This advertisement belongs to a different warehouse.',
+        undefined,
+        'ADVERTISEMENT_WAREHOUSE_MISMATCH'
+      );
+    }
+
+    const quantityByProductId = new Map(merged.map((item) => [item.productId, item.quantity]));
+    const packageBreak = advertisementPackageBreak(advertisement, quantityByProductId);
+    if (packageBreak) {
+      throw ApiError.badRequest(
+        'The advertisement package is incomplete.',
+        undefined,
+        packageBreak
+      );
+    }
+
+    // Every advertised product must still be one of this warehouse's own live
+    // products. `productById` was built from
+    // { _id: {$in}, warehouseId, isActive: true } and the availability loop
+    // above already rejected anything not isAvailable, so membership here is
+    // the whole check - no extra query.
+    for (const item of advertisement.items) {
+      const productId = item.productId.toString();
+      const product = productById.get(productId);
+      if (!product) {
+        throw ApiError.badRequest(
+          'A product in this advertisement is no longer available.',
+          undefined,
+          'ADVERTISEMENT_PRODUCT_UNAVAILABLE'
+        );
+      }
+      advertisedQtyByProductId.set(productId, item.quantity);
+    }
+  }
+
   // Section: USD-first catalog pricing - product.price is USD, but orders/
   // invoices stay SYP (locked in at purchase time, same as any real
   // invoice). The live rate is fetched once here and applied to every line
@@ -163,7 +258,9 @@ async function createOrder({ userId, pharmacyId, warehouseId, items, notes, isRe
       warehouseId,
       status: 'approved',
       startDate: { $lte: now },
-      endDate: { $gte: now },
+      // A permanent offer has no endDate (isPermanent true, endDate null) and
+      // stays live from its start date on.
+      $or: [{ isPermanent: true }, { endDate: { $gte: now } }],
       productId: { $in: productIds },
     }),
     getDiscountMapForWarehouse(warehouseId),
@@ -176,6 +273,11 @@ async function createOrder({ userId, pharmacyId, warehouseId, items, notes, isRe
   // warehouse's order-size limits are checked against, and it matches the
   // cart's own subtotal exactly, so the app's gate and this one agree.
   let subtotalUsd = 0;
+  // Σ(catalog line price x ADVERTISED quantity) for the package's products, in
+  // SYP - the same per-line prices summed into totalPrice above, weighted by
+  // the advertised quantity (not the ordered one), so the package discount
+  // below leaves finalPrice on the package total.
+  let advertisedSypSubtotal = 0;
   const orderItemsData = merged.map((item) => {
     const product = productById.get(item.productId);
     const offer = offerByProductId.get(item.productId);
@@ -187,6 +289,14 @@ async function createOrder({ userId, pharmacyId, warehouseId, items, notes, isRe
     // product.price is USD - converted to SYP here, at order time, using
     // today's rate (see comment above).
     const unitPrice = Math.round(product.price * usdToSyp);
+
+    // A package line is priced at the plain catalog price and deliberately
+    // SKIPS the offer/manufacturer stacking below: the package total is the
+    // discount for these lines, applied once at the order level, so stacking a
+    // percentage on top would discount them twice. Lines added to the cart
+    // outside the package price normally.
+    const isAdvertised = advertisedQtyByProductId.has(item.productId);
+
     // Section 4/15: the product-level offer and the warehouse's
     // manufacturer discount (if any) both apply here, stacked - the
     // platform discount/commission below applies afterward, to the order
@@ -195,20 +305,29 @@ async function createOrder({ userId, pharmacyId, warehouseId, items, notes, isRe
     // context ("this replaces a unitPrice item"), not billed.
     const discountPrice = isReplacement
       ? 0
-      : stackedDiscountSyp(unitPrice, offer?.discountPercentage, manufacturerDiscountPercentage);
+      : isAdvertised
+        ? unitPrice
+        : stackedDiscountSyp(unitPrice, offer?.discountPercentage, manufacturerDiscountPercentage);
     totalPrice += discountPrice * item.quantity;
+    // Weighted by the ADVERTISED quantity, not the ordered one - extra units
+    // are billed at the catalog price with no extra discount.
+    if (isAdvertised) advertisedSypSubtotal += discountPrice * advertisedQtyByProductId.get(item.productId);
 
     // Section 15: computed independently in USD, straight from the
     // catalog's native currency, rather than back-converted from the SYP
     // figures above - avoids compounding two separate roundings. Only the
     // amount is stored, deliberately not the percentage or which
     // manufacturer it came from (project owner's decision).
-    const discountedPriceUsd = isReplacement
+    // A package line's per-line saving is 0: it is billed at the catalog price
+    // and the whole package saving is the one order-level
+    // advertisementDiscountAmount below, so counting it here too would
+    // double-count it in the invoice's savings footer.
+    const discountedPriceUsd = isReplacement || isAdvertised
       ? product.price
       : computeDiscountedPriceUsd(product.price, offer?.discountPercentage, manufacturerDiscountPercentage);
     const savingsUsd = isReplacement
       ? 0
-      : Math.round((product.price - discountedPriceUsd) * item.quantity * 100) / 100;
+      : Math.max(0, Math.round((product.price - discountedPriceUsd) * item.quantity * 100) / 100);
     subtotalUsd += discountedPriceUsd * item.quantity;
 
     return {
@@ -247,8 +366,17 @@ async function createOrder({ userId, pharmacyId, warehouseId, items, notes, isRe
   }
 
   const discountAmount = Math.round((totalPrice * warehouse.discountRate) / 100);
+  // Deliberately still on totalPrice: the platform's commission is not reduced
+  // by a warehouse's own package promotion, exactly as it isn't by the
+  // platform discount below.
   const commissionAmount = Math.round((totalPrice * warehouse.commissionRate) / 100);
-  const finalPrice = totalPrice - discountAmount;
+  // Kept as its own subtrahend rather than folded into discountAmount, which
+  // is always re-derived from warehouse.discountRate (here and in
+  // warehouseOrder.service.js's edit path) and would silently erase this.
+  const advertisementDiscountAmount = advertisement
+    ? advertisementDiscountSyp(advertisedSypSubtotal, advertisement.totalPriceUsd, usdToSyp)
+    : 0;
+  const finalPrice = totalPrice - discountAmount - advertisementDiscountAmount;
 
   const orderNumber = await nextOrderNumber();
 
@@ -260,8 +388,15 @@ async function createOrder({ userId, pharmacyId, warehouseId, items, notes, isRe
     totalPrice,
     discountAmount,
     commissionAmount,
+    advertisementId: advertisement ? advertisement._id : null,
+    advertisementDiscountAmount,
     finalPrice,
     notes: notes || null,
+    // Section: proof-of-delivery. Seeded from the warehouse's current default;
+    // from here on the order owns this flag (the warehouse can still flip it
+    // per order, but changing the warehouse default won't). The client never
+    // sends this - it's read straight from the warehouse.
+    requiresDeliverySealPhoto: warehouse.requireDeliverySealPhoto ?? false,
     statusHistory: [{ status: 'pending', changedBy: userId, changedAt: now }],
   });
 
@@ -433,7 +568,9 @@ async function listOrdersForPharmacy(pharmacyId, { limit = DEFAULT_ORDERS_LIMIT,
   // list row carries no items and no statusHistory (that's the detail
   // response), so the statusHistory array never leaves the database here.
   const orders = await Order.find(filter)
-    .select('orderNumber status totalPrice discountAmount commissionAmount finalPrice createdAt warehouseId')
+    .select(
+      'orderNumber status totalPrice discountAmount commissionAmount advertisementId advertisementDiscountAmount finalPrice createdAt warehouseId'
+    )
     .sort({ orderNumber: -1 })
     .limit(limit + 1)
     .lean();
@@ -453,6 +590,32 @@ async function listOrdersForPharmacy(pharmacyId, { limit = DEFAULT_ORDERS_LIMIT,
     warehouse: warehouseById.get(order.warehouseId.toString()) ?? null,
   }));
   return { rows, hasMore, nextCursor };
+}
+
+// Account History "Money Saved" card: the running total of everything this
+// pharmacy's orders have saved via discounts, read straight from the
+// OrderItem.savingsUsd figures already locked in at order time (Section 15 -
+// offer + manufacturer discount, in USD). This adds no pricing or discount
+// logic of its own; it only sums a field the order flow already computed and
+// stored. Cancelled orders are excluded - a cancelled order saved nothing.
+async function getSavingsSummaryForPharmacy(pharmacyId) {
+  const orderIds = await Order.find({ pharmacyId, status: { $ne: 'cancelled' } })
+    .select('_id')
+    .lean()
+    .then((orders) => orders.map((o) => o._id));
+
+  if (orderIds.length === 0) {
+    return { totalSavingsUsd: 0 };
+  }
+
+  const [row] = await OrderItem.aggregate([
+    { $match: { orderId: { $in: orderIds } } },
+    { $group: { _id: null, totalSavingsUsd: { $sum: '$savingsUsd' } } },
+  ]);
+
+  // Same 2-decimal USD rounding convention as the per-line savingsUsd itself.
+  const totalSavingsUsd = row ? Math.round(row.totalSavingsUsd * 100) / 100 : 0;
+  return { totalSavingsUsd };
 }
 
 // Section 7: only the pharmacist may cancel, and only before the order goes
@@ -485,6 +648,51 @@ async function cancelOrder(orderId, pharmacyId, userId) {
   });
 
   return { order, warehouse, items };
+}
+
+// Section: optional delivery seal photo (per order - order.requiresDeliverySealPhoto).
+// The pharmacy attaches a photo of the shipment seal/stamp once the order is
+// out for delivery. This DELIBERATELY does not change the order status,
+// notifications, realtime or balance - the warehouse still advances the order
+// to 'delivered' exactly as before, but warehouseOrder.service.js's
+// advanceOrderStatus now refuses that final step until this photo exists (only
+// when the order requires it). `imageUrl` is already uploaded to Cloudinary
+// by the controller; this just records it on the order.
+//
+// IDOR: getOrderForPharmacy is scoped to pharmacyId (a pharmacy can only touch
+// its own order) and returns a non-lean `order` this can save - the exact same
+// pattern cancelOrder above uses.
+async function attachDeliverySealPhoto(orderId, pharmacyId, imageUrl) {
+  const context = await getOrderForPharmacy(orderId, pharmacyId);
+  const { order } = context;
+
+  // Only meaningful while the shipment is actually in transit to the pharmacy.
+  // Before that there is nothing to photograph; after 'delivered' the record
+  // is closed. (When the setting is on the order also can't reach 'delivered'
+  // without this photo, so 'out_for_delivery' is the only state that matters.)
+  if (order.status !== 'out_for_delivery') {
+    throw ApiError.badRequest(
+      'This order is not awaiting a delivery confirmation.',
+      undefined,
+      'ORDER_NOT_AWAITING_DELIVERY'
+    );
+  }
+
+  // Retake: drop the previous Cloudinary asset so a re-upload doesn't orphan
+  // it. Best-effort (deleteImageByUrl never throws) - a leftover asset is not
+  // worth failing the pharmacist's confirmation over.
+  if (order.deliverySealPhoto && order.deliverySealPhoto !== imageUrl) {
+    await deleteImageByUrl(order.deliverySealPhoto);
+  }
+
+  order.deliverySealPhoto = imageUrl;
+  order.deliverySealConfirmedAt = new Date();
+  await order.save();
+
+  // The full context (warehouse, items, linkedReturn, myReview, complaints) so
+  // the controller can render the same complete order-detail response the
+  // tracking screen already had - nothing on the screen blinks out on confirm.
+  return context;
 }
 
 // Section: "Reorder an existing order" - prepares a cart from a past order
@@ -561,7 +769,9 @@ async function prepareReorder(orderId, pharmacyId) {
           warehouseId: order.warehouseId,
           status: 'approved',
           startDate: { $lte: now },
-          endDate: { $gte: now },
+          // A permanent offer has no endDate (isPermanent true, endDate null)
+          // and stays live from its start date on.
+          $or: [{ isPermanent: true }, { endDate: { $gte: now } }],
           productId: { $in: products.map((p) => p._id) },
         }).select('productId discountPercentage titleAr titleEn')
       : [],
@@ -598,8 +808,14 @@ module.exports = {
   createOrder,
   getOrderForPharmacy,
   cancelOrder,
+  attachDeliverySealPhoto,
   listOrdersForPharmacy,
+  getSavingsSummaryForPharmacy,
   listReturnableOrders,
   prepareReorder,
   stackedDiscountSyp,
+  // Shared with warehouseOrder.service.js's order-item editor, so the package
+  // rule is stated once and the two paths can never drift.
+  advertisementDiscountSyp,
+  advertisementPackageBreak,
 };

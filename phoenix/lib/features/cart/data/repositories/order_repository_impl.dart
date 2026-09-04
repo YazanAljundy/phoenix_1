@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:phoenix/core/error/failure.dart';
 import 'package:phoenix/core/models/paginated_result.dart';
 import 'package:phoenix/core/network/api_client.dart';
@@ -19,16 +20,21 @@ class OrderRepositoryImpl implements OrderRepository {
     required String warehouseId,
     required List<CartItem> items,
     String? notes,
+    String? advertisementId,
   }) async {
     try {
       final response = await _apiClient.dio.post(
         Endpoints.orders,
         data: {
           'warehouseId': warehouseId,
+          // Deliberately only productId + quantity - no price crosses the
+          // wire, for a package line or a normal one. The server prices
+          // everything from its own catalog.
           'items': items
               .map((item) => {'productId': item.productId, 'quantity': item.quantity})
               .toList(),
           if (notes != null && notes.isNotEmpty) 'notes': notes,
+          if (advertisementId != null) 'advertisementId': advertisementId,
         },
       );
       final data = response.data as Map<String, dynamic>;
@@ -53,6 +59,31 @@ class OrderRepositoryImpl implements OrderRepository {
   Future<OrderModel> cancelOrder(String orderId) async {
     try {
       final response = await _apiClient.dio.post(Endpoints.cancelOrder(orderId));
+      final data = response.data as Map<String, dynamic>;
+      return OrderModel.fromJson(data['order'] as Map<String, dynamic>);
+    } on DioException catch (e) {
+      throw ServerFailure.fromDioError(e);
+    }
+  }
+
+  @override
+  Future<OrderModel> confirmDeliveryWithSealPhoto({
+    required String orderId,
+    required XFile sealPhoto,
+  }) async {
+    try {
+      // Same processed-bytes path as ReturnRepositoryImpl: the XFile has
+      // already been through image_picker's resize + JPEG re-encode pass
+      // (see confirm_delivery_sheet.dart / core/constants/image_upload.dart),
+      // so these bytes are what the backend streams to Cloudinary untouched.
+      final bytes = await sealPhoto.readAsBytes();
+      final formData = FormData.fromMap({
+        'image': MultipartFile.fromBytes(bytes, filename: sealPhoto.name),
+      });
+      final response = await _apiClient.dio.post(
+        Endpoints.confirmDelivery(orderId),
+        data: formData,
+      );
       final data = response.data as Map<String, dynamic>;
       return OrderModel.fromJson(data['order'] as Map<String, dynamic>);
     } on DioException catch (e) {

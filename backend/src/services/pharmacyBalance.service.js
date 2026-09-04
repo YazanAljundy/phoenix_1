@@ -61,49 +61,119 @@ async function recomputeBalance(pharmacyId, warehouseId) {
   );
 }
 
-// Every pharmacy currently in debt to this warehouse (balanceUsd > 0),
-// highest debt first. A balance of exactly 0 or a negative one (a credit)
-// never appears here - see the module-level notes on the two list functions
-// in this file for why negative balances are a detail-view-only concept.
+// The "Invoices" list: every pharmacy that has ever had a DELIVERED order from
+// this warehouse - i.e. every completed purchase relationship - regardless of
+// its current balance (in debt, settled at 0, or a credit).
+//
+// The source of truth is `orders`, not `pharmacybalances`: a PharmacyBalance
+// row is normally created by recomputeBalance on the first delivery, but that
+// call is best-effort (warehouseOrder.service.js swallows its failures), so a
+// pharmacy CAN have a delivered order and no balance row yet. Such a pharmacy
+// must still appear, with balance 0 - and we never create the row here just to
+// list it (getBalanceDetail does the same read-only 0-fallback).
 const WAREHOUSE_DEBTORS_DEFAULT_LIMIT = 20;
+
+function toObjectId(value) {
+  return value instanceof mongoose.Types.ObjectId
+    ? value
+    : new mongoose.Types.ObjectId(String(value));
+}
 
 // balanceUsd is a live, mutable value (it moves as payments/deliveries come
 // in), not a monotonic id - unlike every other paginated list here, a plain
 // "greater/less than the last cursor" isn't enough on its own, since ties on
 // balanceUsd are possible and a single-field cursor could skip or repeat a
-// row across pages. The cursor is therefore the pair (balanceUsd, _id): "the
-// next row is either a strictly lower balance, or the same balance with a
-// higher _id" - _id only breaks ties, it carries no meaning of its own here.
+// row across pages. The cursor is the pair (balanceUsd, pharmacyId): "the next
+// row is either a strictly lower balance, or the same balance with a higher
+// pharmacyId" - the id only breaks ties, it carries no meaning of its own.
 async function listPaginatedDebtorsForWarehouse(
   warehouseId,
   { limit = WAREHOUSE_DEBTORS_DEFAULT_LIMIT, after = null } = {}
 ) {
-  const filter = { warehouseId, balanceUsd: { $gt: 0 } };
+  const whId = toObjectId(warehouseId);
+
+  const pipeline = [
+    // 1. Unique pharmacies with a completed (delivered) purchase here.
+    //    Uses the {warehouseId, status, ...} index for the match.
+    { $match: { warehouseId: whId, status: 'delivered' } },
+    { $group: { _id: '$pharmacyId' } },
+    // 2. Attach the cached balance for this (pharmacy, warehouse) pair, if any.
+    {
+      $lookup: {
+        from: PharmacyBalance.collection.name,
+        let: { pid: '$_id' },
+        pipeline: [
+          {
+            $match: {
+              $expr: { $and: [{ $eq: ['$pharmacyId', '$$pid'] }, { $eq: ['$warehouseId', whId] }] },
+            },
+          },
+          { $project: { _id: 0, balanceUsd: 1, totalOrdersUsd: 1, totalPaidUsd: 1 } },
+        ],
+        as: 'bal',
+      },
+    },
+    // 3. No row yet -> 0, for this response only (never persisted here).
+    {
+      $addFields: {
+        balanceUsd: { $ifNull: [{ $arrayElemAt: ['$bal.balanceUsd', 0] }, 0] },
+        totalOrdersUsd: { $ifNull: [{ $arrayElemAt: ['$bal.totalOrdersUsd', 0] }, 0] },
+        totalPaidUsd: { $ifNull: [{ $arrayElemAt: ['$bal.totalPaidUsd', 0] }, 0] },
+      },
+    },
+  ];
+
+  // 4. Cursor: everything that sorts after `after` in (balanceUsd desc, id asc).
   if (after !== null) {
-    filter.$or = [
-      { balanceUsd: { $lt: after.balanceUsd } },
-      { balanceUsd: after.balanceUsd, _id: { $gt: after.id } },
-    ];
+    pipeline.push({
+      $match: {
+        $or: [
+          { balanceUsd: { $lt: after.balanceUsd } },
+          { balanceUsd: after.balanceUsd, _id: { $gt: toObjectId(after.id) } },
+        ],
+      },
+    });
   }
 
-  const balances = await PharmacyBalance.find(filter)
-    .sort({ balanceUsd: -1, _id: 1 })
-    .limit(limit + 1);
-  const hasMore = balances.length > limit;
-  const page = hasMore ? balances.slice(0, limit) : balances;
+  pipeline.push({ $sort: { balanceUsd: -1, _id: 1 } });
+  pipeline.push({ $limit: limit + 1 });
+  // 5. Pharmacy display fields (pure-pipeline $lookup for wide compatibility).
+  pipeline.push({
+    $lookup: {
+      from: Pharmacy.collection.name,
+      let: { pid: '$_id' },
+      pipeline: [
+        { $match: { $expr: { $eq: ['$_id', '$$pid'] } } },
+        { $project: { nameAr: 1, nameEn: 1, phone: 1 } },
+      ],
+      as: 'pharmacy',
+    },
+  });
+
+  const docs = await Order.aggregate(pipeline);
+
+  const hasMore = docs.length > limit;
+  const page = hasMore ? docs.slice(0, limit) : docs;
   const nextCursor =
     page.length > 0
-      ? JSON.stringify({ balanceUsd: page[page.length - 1].balanceUsd, id: String(page[page.length - 1]._id) })
+      ? JSON.stringify({
+          balanceUsd: page[page.length - 1].balanceUsd,
+          id: String(page[page.length - 1]._id),
+        })
       : null;
 
-  const pharmacyIds = page.map((b) => b.pharmacyId);
-  // pharmacyBalance.viewmodel.js's serializeDebtorRow shows the pharmacy's two
-  // names and phone.
-  const pharmacies = await Pharmacy.find({ _id: { $in: pharmacyIds } }).select('nameAr nameEn phone');
-  const pharmacyById = new Map(pharmacies.map((p) => [p._id.toString(), p]));
-
   const rows = page
-    .map((balance) => ({ balance, pharmacy: pharmacyById.get(balance.pharmacyId.toString()) ?? null }))
+    .map((doc) => ({
+      // Same shape serializeDebtorRow expects: a `balance` with the three
+      // figures + a `pharmacy` with id/names/phone.
+      balance: {
+        pharmacyId: doc._id,
+        totalOrdersUsd: doc.totalOrdersUsd,
+        totalPaidUsd: doc.totalPaidUsd,
+        balanceUsd: doc.balanceUsd,
+      },
+      pharmacy: doc.pharmacy[0] ?? null,
+    }))
     .filter((row) => row.pharmacy !== null);
 
   return { rows, hasMore, nextCursor };

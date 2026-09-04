@@ -5,7 +5,7 @@ import { api } from '../api/client';
 import { withArFallback } from '../utils/displayName';
 import { useExchangeRate } from '../context/ExchangeRateContext';
 import { REALTIME_EVENTS, useRealtimeSync } from '../realtime/useRealtimeSync';
-import { formatPriceWithSyp } from '../utils/currency';
+import { formatUsdAsSyp, formatSyp, formatMoneyFromUsd, remainingPaymentAmount } from '../utils/currency';
 
 function statusKeySuffix(status) {
   return status
@@ -30,15 +30,38 @@ const REASON_KEYS = {
   other: 'returns.reasonOther',
 };
 
-const CURRENCIES = ['USD', 'SYP'];
+// SYP first: it is the default currency for every amount in the panel.
+const CURRENCIES = ['SYP', 'USD'];
 
 function RecordPaymentModal({ pharmacyId, onClose, onRecorded }) {
   const { t } = useTranslation();
+  const usdToSyp = useExchangeRate();
   const [amount, setAmount] = useState('');
-  const [currency, setCurrency] = useState('USD');
+  const [currency, setCurrency] = useState('SYP');
   const [note, setNote] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
+  // The pharmacy's outstanding balance with this warehouse (USD), for the
+  // "Full amount" prefill. Payments settle the running balance, not a single
+  // order - same figure the Debts tab shows.
+  const [remainingUsd, setRemainingUsd] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    api
+      .warehouseBalanceDetail(pharmacyId)
+      .then((data) => {
+        if (active) setRemainingUsd(data.balanceUsd);
+      })
+      .catch(() => {
+        // Non-fatal: the form still works, "Full amount" just stays disabled.
+      });
+    return () => {
+      active = false;
+    };
+  }, [pharmacyId]);
+
+  const fullAmount = remainingPaymentAmount(remainingUsd, currency, usdToSyp);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -91,6 +114,15 @@ function RecordPaymentModal({ pharmacyId, onClose, onRecorded }) {
             {t('debts.noteOptional')}
             <input value={note} onChange={(e) => setNote(e.target.value)} />
           </label>
+
+          <button
+            type="button"
+            className="btn-secondary"
+            disabled={fullAmount == null}
+            onClick={() => setAmount(String(fullAmount))}
+          >
+            {t('debts.fullAmount')}
+          </button>
 
           {error && <p className="error-text">{error}</p>}
 
@@ -313,7 +345,7 @@ function EditItemsSection({ order, onSaved }) {
             <option value="">{t('orderDetail.selectProductPlaceholder')}</option>
             {availableProducts.map((product) => (
               <option key={product.id} value={product.id}>
-                {withArFallback(product.nameEn, product.nameAr)} ({formatPriceWithSyp(product.priceUsd, usdToSyp)})
+                {withArFallback(product.nameEn, product.nameAr)} ({formatUsdAsSyp(product.priceUsd, usdToSyp)})
               </option>
             ))}
           </select>
@@ -373,10 +405,14 @@ export function WarehouseOrderDetailPage() {
   const { t } = useTranslation();
   const { orderId } = useParams();
   const navigate = useNavigate();
+  // Order/invoice figures are SYP-native; only per-line savings are USD and
+  // need the live rate to show in SYP.
+  const usdToSyp = useExchangeRate();
   const [order, setOrder] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isAdvancing, setIsAdvancing] = useState(false);
+  const [sealBusy, setSealBusy] = useState(false);
 
   // The order-detail endpoint only exposes `hasReturn` (a badge, not enough
   // to act on) - the pending return itself, if any, comes from the existing
@@ -459,6 +495,19 @@ export function WarehouseOrderDetailPage() {
       setError(err.message);
     } finally {
       setIsAdvancing(false);
+    }
+  };
+
+  const handleSealRequirementChange = async (next) => {
+    setSealBusy(true);
+    setError(null);
+    try {
+      await api.setOrderDeliverySealRequirement(order.id, next);
+      await load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setSealBusy(false);
     }
   };
 
@@ -568,14 +617,14 @@ export function WarehouseOrderDetailPage() {
                           </div>
                           {item.savingsUsd > 0 && (
                             <div className="hint">
-                              💰 {t('orderDetail.saved', { amount: item.savingsUsd.toFixed(2) })}
+                              💰 {t('orderDetail.saved', { amount: formatMoneyFromUsd(item.savingsUsd, usdToSyp) })}
                             </div>
                           )}
                         </td>
                         <td className="wh-num">{item.quantity}</td>
-                        <td className="wh-num">{item.unitPrice} SYP</td>
-                        <td className="wh-num">{item.discountPrice} SYP</td>
-                        <td className="wh-num wh-table-total">{item.lineTotal} SYP</td>
+                        <td className="wh-num">{formatSyp(item.unitPrice)}</td>
+                        <td className="wh-num">{formatSyp(item.discountPrice)}</td>
+                        <td className="wh-num wh-table-total">{formatSyp(item.lineTotal)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -588,7 +637,45 @@ export function WarehouseOrderDetailPage() {
               )}
             </div>
 
+            {order.status !== 'delivered' && order.status !== 'cancelled' && (
+              <div className="wh-detail-card">
+                <h2 className="wh-detail-card-title">{t('orderDetail.sealRequirementTitle')}</h2>
+                <label className="checkbox-row" style={{ marginTop: 8 }}>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(order.requiresDeliverySealPhoto)}
+                    disabled={sealBusy}
+                    onChange={(e) => handleSealRequirementChange(e.target.checked)}
+                  />
+                  {t('orderDetail.sealRequirementToggle')}
+                </label>
+                <p className="hint" style={{ margin: '6px 0 0' }}>
+                  {t('orderDetail.sealRequirementHint')}
+                </p>
+              </div>
+            )}
+
             {order.status === 'pending' && <EditItemsSection order={order} onSaved={load} />}
+
+            {order.deliverySealPhoto && (
+              <div className="wh-detail-card">
+                <h2 className="wh-detail-card-title">{t('orderDetail.deliverySealPhoto')}</h2>
+                <a href={order.deliverySealPhoto} target="_blank" rel="noreferrer">
+                  <img
+                    src={order.deliverySealPhoto}
+                    alt={t('orderDetail.deliverySealPhoto')}
+                    style={{ maxWidth: '100%', borderRadius: 8, display: 'block' }}
+                  />
+                </a>
+                {order.deliverySealConfirmedAt && (
+                  <p className="hint" style={{ marginTop: 8, marginBottom: 0 }}>
+                    {t('orderDetail.deliverySealConfirmedAt', {
+                      date: new Date(order.deliverySealConfirmedAt).toLocaleString(),
+                    })}
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -596,16 +683,27 @@ export function WarehouseOrderDetailPage() {
               <h2 className="wh-detail-card-title">{t('orderDetail.summary')}</h2>
               <div className="wh-summary-row">
                 <span>{t('orderDetail.total')}</span>
-                <span className="wh-num">{order.totalPrice} SYP</span>
+                <span className="wh-num">{formatSyp(order.totalPrice)}</span>
               </div>
               <div className="wh-summary-row wh-summary-discount">
                 <span>{t('orderDetail.platformDiscountLabel')}</span>
-                <span className="wh-num">− {order.discountAmount} SYP</span>
+                <span className="wh-num">− {formatSyp(order.discountAmount)}</span>
               </div>
+              {/* Only on an order that came from an advertisement package -
+                  its own line, never folded into the platform discount above,
+                  so the two stay auditable. */}
+              {order.advertisementDiscountAmount > 0 && (
+                <div className="wh-summary-row wh-summary-discount">
+                  <span>{t('orderDetail.advertisementDiscountLabel')}</span>
+                  <span className="wh-num">
+                    − {formatSyp(order.advertisementDiscountAmount)}
+                  </span>
+                </div>
+              )}
               <div className="wh-summary-divider" />
               <div className="wh-summary-total">
                 <span>{t('orderDetail.finalPriceColumn')}</span>
-                <span className="wh-num">{order.finalPrice} SYP</span>
+                <span className="wh-num">{formatSyp(order.finalPrice)}</span>
               </div>
             </div>
 
@@ -656,6 +754,11 @@ export function WarehouseOrderDetailPage() {
                   {isAdvancing ? t('orders.updating') : t(ADVANCE_KEYS[order.status])}
                 </button>
               )}
+              {order.requiresDeliverySealPhoto &&
+                order.status === 'out_for_delivery' &&
+                !order.deliverySealPhoto && (
+                  <p className="hint">{t('orderDetail.awaitingDeliverySealPhoto')}</p>
+                )}
               {order.status === 'delivered' && (
                 <button className="btn-secondary" onClick={() => setShowPaymentModal(true)}>
                   {t('orderDetail.recordPayment')}

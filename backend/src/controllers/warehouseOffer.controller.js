@@ -28,4 +28,19 @@ const create = asyncHandler(async (req, res) => {
   });
 });
 
-module.exports = { list, create };
+// A still-pending offer is edited in place; an approved offer's edit is parked
+// for admin review (warehouseOffer.service.updateOffer) - either way the page
+// reloads the list afterwards, so only a status message is returned here.
+const update = asyncHandler(async (req, res) => {
+  const warehouse = await loadWarehouseOrThrow(req.user._id);
+  await warehouseOfferService.updateOffer(req.params.id, warehouse._id, req.body);
+  res.json({ success: true, message: 'Offer update submitted.' });
+});
+
+const remove = asyncHandler(async (req, res) => {
+  const warehouse = await loadWarehouseOrThrow(req.user._id);
+  await warehouseOfferService.deleteOffer(req.params.id, warehouse._id);
+  res.json({ success: true, message: 'Offer deleted.' });
+});
+
+module.exports = { list, create, update, remove };

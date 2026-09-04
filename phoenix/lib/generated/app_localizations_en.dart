@@ -300,6 +300,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String companyDiscountValue(String percent) {
+    return 'Company Discount: $percent%';
+  }
+
+  @override
   String get warehouseProfileTooltip => 'Warehouse info';
 
   @override
@@ -474,6 +479,77 @@ class AppLocalizationsEn extends AppLocalizations {
   String reorderSomeItemsUnavailable(String names) {
     return 'These items are no longer sold by this warehouse and were not added: $names';
   }
+
+  @override
+  String get advertisementsSectionTitle => 'Special packages';
+
+  @override
+  String get advertisementPackageTotal => 'Package price';
+
+  @override
+  String advertisementSavingPercent(int percent) {
+    return 'Save $percent%';
+  }
+
+  @override
+  String advertisementProductCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count products',
+      one: '1 product',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String advertisementItemQuantity(int count) {
+    return '× $count';
+  }
+
+  @override
+  String get advertisementDiscountLabel => 'Package discount';
+
+  @override
+  String get advertisementTotalToPay => 'Total to pay';
+
+  @override
+  String get advertisementAddToCartButton => 'Add package to cart';
+
+  @override
+  String get advertisementReplaceCartTitle => 'Replace your cart?';
+
+  @override
+  String get advertisementReplaceCartMessage =>
+      'Your current cart will be replaced with this package. You can still edit everything before checkout.';
+
+  @override
+  String get advertisementReplaceCartConfirm => 'Replace cart';
+
+  @override
+  String get advertisementUnavailableTitle => 'Package unavailable';
+
+  @override
+  String get advertisementUnavailableMessage =>
+      'This package is no longer available. It may have expired or been withdrawn.';
+
+  @override
+  String advertisementIncompleteMessage(String names) {
+    return 'Some products in this package are no longer sold by this warehouse, so it can\'t be added: $names';
+  }
+
+  @override
+  String get advertisementPackageBrokenMessage =>
+      'Removing a product ends the package price. The remaining items are now priced normally.';
+
+  @override
+  String get advertisementsLoading => 'Loading packages...';
+
+  @override
+  String get advertisementsEmpty => 'No packages are running right now.';
+
+  @override
+  String get advertisementsError => 'Packages couldn\'t be loaded.';
 
   @override
   String get notificationsTitle => 'Notifications';
@@ -662,6 +738,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get noReturnsYet => 'You haven\'t requested any returns yet.';
 
   @override
+  String get noReturnsYetHint =>
+      'Once you request a return on a delivered order, it will show up here so you can follow its status.';
+
+  @override
+  String get noReturnableOrdersTitle => 'No orders eligible for return';
+
+  @override
+  String get myReturnsListSectionTitle => 'Your return requests';
+
+  @override
   String get newReturnRequestButton => 'New return request';
 
   @override
@@ -677,6 +763,39 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get requestReturnButton => 'Submit return request';
+
+  @override
+  String get requestReturnAction => 'Request Return';
+
+  @override
+  String get accountHistoryTitle => 'Account History';
+
+  @override
+  String get moneySavedTitle => 'Money Saved';
+
+  @override
+  String get fromDiscountsLabel => 'From Discounts';
+
+  @override
+  String get debtsTitle => 'Debts';
+
+  @override
+  String get outstandingBalanceLabel => 'Outstanding Balance';
+
+  @override
+  String get viewReturnsLabel => 'View Returns';
+
+  @override
+  String returnsRequestsShort(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count requests',
+      one: '1 request',
+      zero: 'No requests',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get returnQuantityLabel => 'Quantity';
@@ -799,11 +918,11 @@ class AppLocalizationsEn extends AppLocalizations {
       'Please explain why this return is being rejected.';
 
   @override
-  String get returnPhotosLabel => 'Photos (required)';
+  String get returnPhotosLabel => 'Photos (optional)';
 
   @override
   String get returnPhotosHint =>
-      'Add photos of the item to help the warehouse verify the reason';
+      'Optionally add photos of the item to help the warehouse verify the reason';
 
   @override
   String get addPhotoButton => 'Add photo';
@@ -844,6 +963,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get yourRatingTitle => 'Your rating';
+
+  @override
+  String get ratingsTitle => 'Ratings';
+
+  @override
+  String get viewRatingsLabel => 'View Ratings';
 
   @override
   String get noRatingsYet => 'No warehouse has rated you yet.';
@@ -909,40 +1034,45 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String minOrderLabel(String amount) {
-    return 'Minimum order: \$$amount';
+    return 'Minimum order: $amount';
   }
 
   @override
   String maxOrderLabel(String amount) {
-    return 'Maximum order: \$$amount';
+    return 'Maximum order: $amount';
   }
 
   @override
   String addMoreToReachMinimum(String amount) {
-    return 'Add \$$amount more to reach the minimum';
+    return 'Add $amount more to reach the minimum';
   }
 
   @override
   String removeToMeetMaximum(String amount) {
-    return 'Over the \$$amount maximum — remove some items';
+    return 'Over the $amount maximum — remove some items';
   }
 
   @override
   String orderBelowMinimum(String amount) {
-    return 'The minimum order from this warehouse is \$$amount.';
+    return 'The minimum order from this warehouse is $amount.';
   }
 
   @override
   String orderAboveMaximum(String amount) {
-    return 'The maximum order from this warehouse is \$$amount.';
+    return 'The maximum order from this warehouse is $amount.';
   }
 
   @override
-  String get returnableSectionTitle => '🔄 Orders eligible for return';
+  String get returnableSectionTitle => 'Orders eligible for return';
 
   @override
   String get returnableSectionSubtitle =>
       'You can request a return within 48 hours of delivery';
+
+  @override
+  String returnableDeliveredOnLabel(String date) {
+    return 'Delivered $date';
+  }
 
   @override
   String returnableOrderNumber(String number) {
@@ -1201,4 +1331,40 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get updateOpenStoreFailed =>
       'Unable to open Google Play. Please try again.';
+
+  @override
+  String get deliverySealRequiredTitle => 'Confirm delivery';
+
+  @override
+  String get deliverySealRequiredMessage =>
+      'This warehouse asks for a photo of the shipment seal before the order is completed. Take a clear photo of the seal/stamp on the package.';
+
+  @override
+  String get takeSealPhoto => 'Add seal photo';
+
+  @override
+  String get retakeSealPhoto => 'Retake photo';
+
+  @override
+  String get confirmDeliveryButton => 'Confirm delivery';
+
+  @override
+  String get sealPhotoLabel => 'Delivery seal photo';
+
+  @override
+  String deliverySealConfirmedOn(String date) {
+    return 'Delivery confirmed on $date';
+  }
+
+  @override
+  String get errorDeliverySealPhotoRequired =>
+      'A seal photo is required to confirm delivery.';
+
+  @override
+  String get errorInvalidDeliverySealPhoto =>
+      'That file isn\'t a valid image. Please choose another photo.';
+
+  @override
+  String get errorOrderNotAwaitingDelivery =>
+      'This order isn\'t awaiting a delivery confirmation right now.';
 }

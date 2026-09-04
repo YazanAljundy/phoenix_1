@@ -88,6 +88,7 @@ class OrderModel {
     required this.totalPrice,
     required this.discountAmount,
     required this.commissionAmount,
+    this.advertisementDiscountAmount = 0,
     required this.finalPrice,
     this.notes,
     this.cancelReason,
@@ -100,6 +101,9 @@ class OrderModel {
     this.linkedReturn,
     this.myReview,
     this.complaints = const [],
+    this.requiresDeliverySealPhoto = false,
+    this.deliverySealPhotoUrl,
+    this.deliverySealConfirmedAt,
   });
 
   final String id;
@@ -108,6 +112,10 @@ class OrderModel {
   final num totalPrice;
   final num discountAmount;
   final num commissionAmount;
+  // The advertisement package discount, kept apart from discountAmount above
+  // (which is the platform's rate-derived cut). 0 on a normal order and on
+  // every order placed before packages existed.
+  final num advertisementDiscountAmount;
   final num finalPrice;
   final String? notes;
   final String? cancelReason;
@@ -134,6 +142,15 @@ class OrderModel {
   // (Complaint Section 9). Empty on list summaries / the creation response.
   final List<OrderComplaintRef> complaints;
 
+  // Section: optional delivery seal photo, decided per order.
+  // `requiresDeliverySealPhoto` is this order's own flag (seeded from the
+  // warehouse default at creation, then per-order); the other two are the
+  // stored result. All three are only on the detail fetch and default to
+  // false/null on older servers and every order placed before the feature.
+  final bool requiresDeliverySealPhoto;
+  final String? deliverySealPhotoUrl;
+  final DateTime? deliverySealConfirmedAt;
+
   bool get isCancelled => status == 'cancelled';
   bool get isCancellable => kOrderCancellableStatuses.contains(status);
 
@@ -158,6 +175,13 @@ class OrderModel {
   // -1 when cancelled (outside the bar entirely), else 0-4.
   int get stageIndex => kOrderTrackedStages.indexOf(status);
 
+  // Section: the pharmacist should be prompted to photograph the shipment seal.
+  // Only while the order is genuinely in transit, only if the warehouse opted
+  // in, and only until a photo has actually been attached. Mirrors the
+  // backend gate in warehouseOrder.service.js.
+  bool get needsDeliverySealConfirmation =>
+      status == 'out_for_delivery' && requiresDeliverySealPhoto && deliverySealPhotoUrl == null;
+
   OrderModel copyWith({MyReviewModel? myReview}) => OrderModel(
     id: id,
     orderNumber: orderNumber,
@@ -165,6 +189,7 @@ class OrderModel {
     totalPrice: totalPrice,
     discountAmount: discountAmount,
     commissionAmount: commissionAmount,
+    advertisementDiscountAmount: advertisementDiscountAmount,
     finalPrice: finalPrice,
     notes: notes,
     cancelReason: cancelReason,
@@ -177,6 +202,9 @@ class OrderModel {
     linkedReturn: linkedReturn,
     myReview: myReview ?? this.myReview,
     complaints: complaints,
+    requiresDeliverySealPhoto: requiresDeliverySealPhoto,
+    deliverySealPhotoUrl: deliverySealPhotoUrl,
+    deliverySealConfirmedAt: deliverySealConfirmedAt,
   );
 
   factory OrderModel.fromJson(Map<String, dynamic> json) => OrderModel(
@@ -186,6 +214,9 @@ class OrderModel {
     totalPrice: json['totalPrice'] as num,
     discountAmount: json['discountAmount'] as num,
     commissionAmount: json['commissionAmount'] as num,
+    // Absent on responses from a server that predates packages - defaults to
+    // 0, which renders exactly as it did before.
+    advertisementDiscountAmount: (json['advertisementDiscountAmount'] as num?) ?? 0,
     finalPrice: json['finalPrice'] as num,
     notes: json['notes'] as String?,
     cancelReason: json['cancelReason'] as String?,
@@ -214,5 +245,12 @@ class OrderModel {
               .map((e) => OrderComplaintRef.fromJson(e as Map<String, dynamic>))
               .toList()
         : const [],
+    // Absent on responses from a server that predates the feature - default to
+    // false/null so the tracking screen behaves exactly as it did before.
+    requiresDeliverySealPhoto: (json['requiresDeliverySealPhoto'] as bool?) ?? false,
+    deliverySealPhotoUrl: json['deliverySealPhoto'] as String?,
+    deliverySealConfirmedAt: json['deliverySealConfirmedAt'] != null
+        ? DateTime.parse(json['deliverySealConfirmedAt'] as String)
+        : null,
   );
 }

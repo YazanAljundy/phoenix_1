@@ -23,12 +23,18 @@ class OrderInvoiceSection extends StatelessWidget {
     required this.items,
     required this.totalPrice,
     required this.discountAmount,
+    this.advertisementDiscountAmount = 0,
     required this.finalPrice,
   });
 
   final List<OrderLineItem> items;
   final num totalPrice;
   final num discountAmount;
+  // The package discount when this order came from a warehouse advertisement -
+  // its own line, never folded into discountAmount above (which is the
+  // platform's rate-derived cut). 0 on a normal order, which is how every
+  // order placed before packages existed reads.
+  final num advertisementDiscountAmount;
   final num finalPrice;
 
   @override
@@ -36,7 +42,10 @@ class OrderInvoiceSection extends StatelessWidget {
     final l10n = context.l10n;
     // Section 15: savings are no longer broken out per line - one combined
     // total at the foot of the invoice instead (see _InvoiceLineRow below).
+    // savingsUsd is USD-native (see OrderLineItem) - shown in SYP at the live
+    // rate, like the rest of the invoice.
     final totalSavingsUsd = items.fold<num>(0, (sum, item) => sum + (item.savingsUsd ?? 0));
+    final usdToSyp = context.watch<ExchangeRateCubit>().state.usdToSyp;
 
     return CustomCard(
       child: Column(
@@ -49,12 +58,17 @@ class OrderInvoiceSection extends StatelessWidget {
           _TotalsRow(label: l10n.subtotalLabel, amount: totalPrice),
           if (discountAmount > 0)
             _TotalsRow(label: l10n.discountLabel, amount: -discountAmount),
+          if (advertisementDiscountAmount > 0)
+            _TotalsRow(
+              label: l10n.advertisementDiscountLabel,
+              amount: -advertisementDiscountAmount,
+            ),
           const SizedBox(height: AppSizes.spacingXSmall),
           _TotalsRow(label: l10n.invoiceTotalLabel, amount: finalPrice, emphasized: true),
           if (totalSavingsUsd > 0) ...[
             const SizedBox(height: AppSizes.spacingXSmall),
             Text(
-              l10n.totalSavingsLabel('\$${totalSavingsUsd.toStringAsFixed(2)}'),
+              l10n.totalSavingsLabel(formatMoneyFromUsd(totalSavingsUsd, usdToSyp, l10n.currencySuffix)),
               style: context.textTheme.bodySmall?.copyWith(
                 color: AppColors.secondaryOf(context),
                 fontWeight: FontWeight.w600,
@@ -94,7 +108,7 @@ class _InvoiceLineRow extends StatelessWidget {
                 // communicated once, combined, at the foot of the invoice
                 // (see OrderInvoiceSection's totalSavingsUsd).
                 Text(
-                  '${item.quantity} × ${item.unitPrice} ${l10n.currencySuffix}',
+                  '${item.quantity} × ${formatSyp(item.unitPrice, l10n.currencySuffix)}',
                   style: context.textTheme.bodySmall?.copyWith(
                     color: AppColors.textSecondaryOf(context),
                   ),
@@ -103,7 +117,7 @@ class _InvoiceLineRow extends StatelessWidget {
             ),
           ),
           Text(
-            '${item.lineTotal} ${l10n.currencySuffix}',
+            formatSyp(item.lineTotal, l10n.currencySuffix),
             style: context.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
         ],
@@ -146,7 +160,7 @@ class _TotalsRow extends StatelessWidget {
               crossAxisAlignment: WrapCrossAlignment.center,
               spacing: AppSizes.spacingXSmall,
               children: [
-                Text('$amount ${l10n.currencySuffix}', style: style),
+                Text(formatSyp(amount, l10n.currencySuffix), style: style),
                 if (usdText != null) SecondaryPriceHint(text: usdText),
               ],
             ),

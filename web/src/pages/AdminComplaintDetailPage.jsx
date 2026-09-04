@@ -138,6 +138,28 @@ export function AdminComplaintDetailPage() {
                   )}
                 </p>
               )}
+
+              {complaint.relatedOrderSealPhoto && (
+                <div style={{ marginTop: 12 }}>
+                  <p className="adm-detail-card-title" style={{ fontSize: 13 }}>
+                    {t('complaints.detail.deliverySealPhoto')}
+                  </p>
+                  <a href={complaint.relatedOrderSealPhoto} target="_blank" rel="noreferrer">
+                    <img
+                      src={complaint.relatedOrderSealPhoto}
+                      alt={t('complaints.detail.deliverySealPhoto')}
+                      style={{ maxWidth: '100%', borderRadius: 8, display: 'block' }}
+                    />
+                  </a>
+                  {complaint.relatedOrderSealConfirmedAt && (
+                    <p className="adm-detail-card-hint" style={{ marginBottom: 0 }}>
+                      {t('complaints.detail.deliverySealConfirmedAt', {
+                        date: new Date(complaint.relatedOrderSealConfirmedAt).toLocaleString(),
+                      })}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
 
             <div className="adm-detail-card">

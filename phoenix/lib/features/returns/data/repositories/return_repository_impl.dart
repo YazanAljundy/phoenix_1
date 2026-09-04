@@ -71,7 +71,10 @@ class ReturnRepositoryImpl implements ReturnRepository {
         'orderId': orderId,
         'items': jsonEncode(items.map((i) => i.toJson()).toList()),
         if (notes != null && notes.isNotEmpty) 'notes': notes,
-        'images': await _toMultipartFiles(images),
+        // The photo is optional - only build/attach MultipartFiles when the
+        // pharmacist actually picked at least one, so an image-less request
+        // carries no `images` part at all.
+        if (images.isNotEmpty) 'images': await _toMultipartFiles(images),
       });
       final response = await _apiClient.dio.post(Endpoints.returns, data: formData);
       final data = response.data as Map<String, dynamic>;
@@ -94,7 +97,9 @@ class ReturnRepositoryImpl implements ReturnRepository {
         'items': jsonEncode(items.map((i) => i.toJson()).toList()),
         if (notes != null && notes.isNotEmpty) 'notes': notes,
         'keepImageUrls': jsonEncode(keepImageUrls),
-        'images': await _toMultipartFiles(newImages),
+        // Optional, same as on create - only send an `images` part when new
+        // photos were actually picked.
+        if (newImages.isNotEmpty) 'images': await _toMultipartFiles(newImages),
       });
       final response = await _apiClient.dio.put(
         Endpoints.returnDetail(returnId),

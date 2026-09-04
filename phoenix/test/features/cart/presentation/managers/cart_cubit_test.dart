@@ -194,4 +194,65 @@ void main() {
       cubit.removeItem('p1');
     });
   });
+
+  group('Reorder loads a past order into the existing cart', () {
+    List<CartItem> reorderLines() => [
+      CartItem.fromProduct(_product('p1'), quantity: 3),
+      CartItem.fromProduct(_product('p2'), quantity: 1),
+    ];
+
+    test('loadReorder maps every product + quantity and binds the cart to that warehouse', () {
+      cubit.loadReorder(warehouseId: 'A', warehouseName: 'Warehouse A', items: reorderLines());
+
+      expect(cubit.state.warehouseId, 'A');
+      expect(cubit.state.warehouseName, 'Warehouse A');
+      expect(cubit.state.items.map((i) => i.productId).toList(), ['p1', 'p2']);
+      expect(cubit.state.items.map((i) => i.quantity).toList(), [3, 1]);
+      expect(cubit.state.itemCount, 4);
+    });
+
+    test('loadReorder replaces whatever was in the cart (no silent merge)', () {
+      cubit.addProduct(_product('old'), warehouseId: 'B', warehouseName: 'Warehouse B', quantity: 9);
+
+      cubit.loadReorder(warehouseId: 'A', warehouseName: 'Warehouse A', items: reorderLines());
+
+      expect(cubit.state.warehouseId, 'A');
+      expect(cubit.state.items.map((i) => i.productId).toList(), ['p1', 'p2']);
+    });
+
+    test('a reordered cart is a normal cart: quantity edits, removals and same-warehouse adds all work', () {
+      cubit.loadReorder(warehouseId: 'A', warehouseName: 'Warehouse A', items: reorderLines());
+
+      cubit.updateQuantity('p1', 10);
+      expect(cubit.state.items.firstWhere((i) => i.productId == 'p1').quantity, 10);
+
+      cubit.removeItem('p2');
+      expect(cubit.state.items.map((i) => i.productId).toList(), ['p1']);
+
+      // "Add Product" from the same warehouse -> added on top, no conflict.
+      expect(cubit.hasConflictingWarehouse('A'), isFalse);
+      cubit.addProduct(_product('p9'), warehouseId: 'A', warehouseName: 'Warehouse A', quantity: 2);
+      expect(cubit.state.items.map((i) => i.productId).toList(), ['p1', 'p9']);
+    });
+
+    test('the reordered cart keeps the one-warehouse rule for a foreign "Add Product"', () {
+      cubit.loadReorder(warehouseId: 'A', warehouseName: 'Warehouse A', items: reorderLines());
+
+      // A product from another warehouse is still a conflict and is not added.
+      expect(cubit.hasConflictingWarehouse('B'), isTrue);
+      cubit.addProduct(_product('pB'), warehouseId: 'B', warehouseName: 'Warehouse B', quantity: 1);
+      expect(cubit.state.warehouseId, 'A');
+      expect(cubit.state.items.map((i) => i.productId).toList(), ['p1', 'p2']);
+    });
+
+    test('removing every reordered line falls back to the normal empty-cart state', () {
+      cubit.loadReorder(warehouseId: 'A', warehouseName: 'Warehouse A', items: reorderLines());
+
+      cubit.removeItem('p1');
+      cubit.removeItem('p2');
+
+      expect(cubit.state.isEmpty, isTrue);
+      expect(cubit.state.warehouseId, isNull);
+    });
+  });
 }

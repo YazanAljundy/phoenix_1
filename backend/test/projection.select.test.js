@@ -178,7 +178,7 @@ test.before(async () => {
 
   await Payment.create({
     pharmacyId: ids.pharmacy, warehouseId: ids.warehouse, amount: 100, currency: 'USD',
-    recordedBy: ids.whUser, canEditUntil: new Date(Date.now() + 60000),
+    recordedBy: ids.whUser,
   });
   await PharmacyBalance.create({
     pharmacyId: ids.pharmacy, warehouseId: ids.warehouse,
@@ -236,9 +236,15 @@ test('pharmacy order list row carries all pricing + warehouse names', async () =
   assert.deepStrictEqual(
     Object.keys(o).sort(),
     ['id', 'orderNumber', 'status', 'totalPrice', 'discountAmount', 'commissionAmount',
+      // The advertisement package discount rides along as its own pair on
+      // every order row - null/0 for an order that didn't come from one, as
+      // this fixture's order didn't.
+      'advertisementId', 'advertisementDiscountAmount',
       'finalPrice', 'warehouseNameAr', 'warehouseNameEn', 'createdAt'].sort()
   );
   assert.strictEqual(o.orderNumber, 5001);
+  assert.strictEqual(o.advertisementId, null);
+  assert.strictEqual(o.advertisementDiscountAmount, 0);
   assert.strictEqual(o.finalPrice, 960);
   assert.strictEqual(o.commissionAmount, 10);
   assert.strictEqual(o.warehouseNameEn, 'Warehouse One');
@@ -431,12 +437,15 @@ test('warehouse offers list keeps offer + product-name fields', async () => {
   assert.deepStrictEqual(
     Object.keys(o).sort(),
     ['id', 'productId', 'productNameAr', 'productNameEn', 'titleAr', 'titleEn',
-      'discountPercentage', 'startDate', 'endDate', 'status', 'createdAt'].sort()
+      'discountPercentage', 'startDate', 'endDate', 'isPermanent', 'status', 'pendingUpdate',
+      'createdAt'].sort()
   );
   assert.strictEqual(o.titleEn, 'Sale');
   assert.strictEqual(o.discountPercentage, 10);
   assert.strictEqual(o.productNameEn, 'Med', 'resolved from the linked catalog entry');
   assert.strictEqual(o.status, 'approved');
+  assert.strictEqual(o.isPermanent, false);
+  assert.strictEqual(o.pendingUpdate, null);
 });
 
 test('admin pending-offers list keeps offer + product + warehouse fields', async () => {

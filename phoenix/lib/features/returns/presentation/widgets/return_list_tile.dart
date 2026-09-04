@@ -49,14 +49,30 @@ class ReturnListTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    if (returnRequest.orderNumber != null)
-                      Text(
-                        l10n.orderNumberLabel(returnRequest.orderNumber.toString()),
-                        style: context.textTheme.bodyMedium?.copyWith(
-                          color: AppColors.textSecondaryOf(context),
-                        ),
+                    if (returnRequest.orderNumber != null) ...[
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.receipt_long_outlined,
+                            size: 14,
+                            color: AppColors.textSecondaryOf(context),
+                          ),
+                          const SizedBox(width: 4),
+                          Flexible(
+                            child: Text(
+                              l10n.orderNumberLabel(returnRequest.orderNumber.toString()),
+                              style: context.textTheme.bodySmall?.copyWith(
+                                color: AppColors.textSecondaryOf(context),
+                                fontWeight: FontWeight.w700,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ),
-                    const SizedBox(height: AppSizes.spacingXSmall),
+                      const SizedBox(height: AppSizes.spacingXSmall),
+                    ],
                     Text(
                       itemNames,
                       style: context.textTheme.titleMedium,
@@ -76,18 +92,27 @@ class ReturnListTile extends StatelessWidget {
           const SizedBox(height: AppSizes.spacingSmall),
           Row(
             children: [
-              Icon(Icons.event, size: 15, color: AppColors.textSecondaryOf(context)),
+              Icon(Icons.event_outlined, size: 14, color: AppColors.textSecondaryOf(context)),
               const SizedBox(width: 4),
-              Text(
-                DateFormatter.formatDateTime(returnRequest.createdAt),
-                style: context.textTheme.bodySmall?.copyWith(
-                  color: AppColors.textSecondaryOf(context),
+              Expanded(
+                child: Text(
+                  DateFormatter.formatDateTime(returnRequest.createdAt),
+                  style: context.textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondaryOf(context),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              const Spacer(),
-              Text(
-                reasonText,
-                style: context.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.bold),
+              const SizedBox(width: AppSizes.spacingSmall),
+              Flexible(
+                child: Text(
+                  reasonText,
+                  textAlign: TextAlign.end,
+                  style: context.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ],
           ),
@@ -100,36 +125,62 @@ class ReturnListTile extends StatelessWidget {
                 color: AppColors.errorOf(context).withValues(alpha: 0.08),
                 borderRadius: AppRadius.small,
               ),
-              child: Text(
-                '${l10n.returnRejectionNoteLabel}: ${returnRequest.rejectionNote}',
-                style: context.textTheme.bodySmall?.copyWith(color: AppColors.errorOf(context)),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(Icons.info_outline_rounded, size: 15, color: AppColors.errorOf(context)),
+                  const SizedBox(width: AppSizes.spacingXSmall),
+                  Expanded(
+                    child: Text(
+                      '${l10n.returnRejectionNoteLabel}: ${returnRequest.rejectionNote}',
+                      style: context.textTheme.bodySmall?.copyWith(color: AppColors.errorOf(context)),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
           if (returnRequest.isApproved && onViewReplacementOrder != null) ...[
-            const SizedBox(height: AppSizes.spacingSmall),
+            const SizedBox(height: AppSizes.spacingXSmall),
             Align(
               alignment: AlignmentDirectional.centerStart,
-              child: TextButton(
+              child: TextButton.icon(
                 onPressed: onViewReplacementOrder,
-                child: Text(l10n.viewReplacementOrderButton),
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  minimumSize: const Size(0, 36),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                icon: const Icon(Icons.open_in_new_rounded, size: 16),
+                label: Text(l10n.viewReplacementOrderButton),
               ),
             ),
           ],
           if (returnRequest.isPending && (onEdit != null || onDelete != null)) ...[
+            const SizedBox(height: AppSizes.spacingSmall),
+            Divider(color: AppColors.borderOf(context), height: 1),
             const SizedBox(height: AppSizes.spacingXSmall),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                if (onEdit != null)
-                  TextButton(onPressed: onEdit, child: Text(l10n.editButton)),
-                if (onDelete != null)
-                  TextButton(
-                    onPressed: onDelete,
-                    style: TextButton.styleFrom(foregroundColor: AppColors.errorOf(context)),
-                    child: Text(l10n.deleteReturnButton),
-                  ),
-              ],
+            SizedBox(
+              width: double.infinity,
+              child: Wrap(
+                alignment: WrapAlignment.end,
+                spacing: AppSizes.spacingXSmall,
+                children: [
+                  if (onEdit != null)
+                    TextButton.icon(
+                      onPressed: onEdit,
+                      icon: const Icon(Icons.edit_outlined, size: 16),
+                      label: Text(l10n.editButton),
+                    ),
+                  if (onDelete != null)
+                    TextButton.icon(
+                      onPressed: onDelete,
+                      style: TextButton.styleFrom(foregroundColor: AppColors.errorOf(context)),
+                      icon: const Icon(Icons.delete_outline_rounded, size: 16),
+                      label: Text(l10n.deleteReturnButton),
+                    ),
+                ],
+              ),
             ),
           ],
         ],

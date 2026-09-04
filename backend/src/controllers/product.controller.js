@@ -27,7 +27,7 @@ const list = asyncHandler(async (req, res) => {
 
 const manufacturers = asyncHandler(async (req, res) => {
   const { warehouseId } = req.params;
-  const items = await productService.listDistinctManufacturersForWarehouse(warehouseId);
+  const items = await productService.listManufacturersWithDiscountsForWarehouse(warehouseId);
   res.json({ success: true, manufacturers: items });
 });
 

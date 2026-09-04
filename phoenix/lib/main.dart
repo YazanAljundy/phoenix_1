@@ -17,6 +17,11 @@ import 'package:phoenix/core/theme/dark_theme.dart';
 import 'package:phoenix/core/theme/light_theme.dart';
 import 'package:phoenix/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:phoenix/features/auth/presentation/managers/auth_cubit.dart';
+import 'package:phoenix/features/advertisements/data/repositories/advertisements_repository.dart';
+import 'package:phoenix/features/advertisements/data/repositories/advertisements_repository_impl.dart';
+import 'package:phoenix/features/account_history/data/repositories/savings_repository.dart';
+import 'package:phoenix/features/account_history/data/repositories/savings_repository_impl.dart';
+import 'package:phoenix/features/advertisements/presentation/managers/advertisements_cubit.dart';
 import 'package:phoenix/features/banners/data/repositories/banners_repository.dart';
 import 'package:phoenix/features/banners/data/repositories/banners_repository_impl.dart';
 import 'package:phoenix/features/banners/presentation/managers/banners_cubit.dart';
@@ -87,11 +92,13 @@ Future<void> main() async {
     apiClient: apiClient,
   );
   final orderRepository = OrderRepositoryImpl(apiClient: apiClient);
+  final savingsRepository = SavingsRepositoryImpl(apiClient: apiClient);
   final returnRepository = ReturnRepositoryImpl(apiClient: apiClient);
   final complaintRepository = ComplaintRepositoryImpl(apiClient: apiClient);
   final reviewRepository = ReviewRepositoryImpl(apiClient: apiClient);
   final debtRepository = DebtRepositoryImpl(apiClient: apiClient);
   final bannersRepository = BannersRepositoryImpl(apiClient: apiClient);
+  final advertisementsRepository = AdvertisementsRepositoryImpl(apiClient: apiClient);
   final appRouter = AppRouter();
   runApp(
     MyApp(
@@ -104,11 +111,13 @@ Future<void> main() async {
       catalogRepository: catalogRepository,
       exchangeRateRepository: exchangeRateRepository,
       orderRepository: orderRepository,
+      savingsRepository: savingsRepository,
       returnRepository: returnRepository,
       complaintRepository: complaintRepository,
       reviewRepository: reviewRepository,
       debtRepository: debtRepository,
       bannersRepository: bannersRepository,
+      advertisementsRepository: advertisementsRepository,
       notificationRepository: notificationRepository,
       fcmService: fcmService,
       appRouter: appRouter,
@@ -168,11 +177,13 @@ class MyApp extends StatelessWidget {
     required this.catalogRepository,
     required this.exchangeRateRepository,
     required this.orderRepository,
+    required this.savingsRepository,
     required this.returnRepository,
     required this.complaintRepository,
     required this.reviewRepository,
     required this.debtRepository,
     required this.bannersRepository,
+    required this.advertisementsRepository,
     required this.notificationRepository,
     required this.fcmService,
     required this.appRouter,
@@ -188,11 +199,13 @@ class MyApp extends StatelessWidget {
   final CatalogRepositoryImpl catalogRepository;
   final ExchangeRateRepositoryImpl exchangeRateRepository;
   final OrderRepositoryImpl orderRepository;
+  final SavingsRepositoryImpl savingsRepository;
   final ReturnRepositoryImpl returnRepository;
   final ComplaintRepositoryImpl complaintRepository;
   final ReviewRepositoryImpl reviewRepository;
   final DebtRepositoryImpl debtRepository;
   final BannersRepositoryImpl bannersRepository;
+  final AdvertisementsRepositoryImpl advertisementsRepository;
   final NotificationRepository notificationRepository;
   final FcmService fcmService;
   final AppRouter appRouter;
@@ -202,6 +215,7 @@ class MyApp extends StatelessWidget {
       providers: [
         RepositoryProvider<CatalogRepository>.value(value: catalogRepository),
         RepositoryProvider<OrderRepository>.value(value: orderRepository),
+        RepositoryProvider<SavingsRepository>.value(value: savingsRepository),
         RepositoryProvider<ReturnRepository>.value(value: returnRepository),
         RepositoryProvider<ComplaintRepository>.value(
           value: complaintRepository,
@@ -215,6 +229,9 @@ class MyApp extends StatelessWidget {
         ),
         RepositoryProvider<DebtRepository>.value(value: debtRepository),
         RepositoryProvider<BannersRepository>.value(value: bannersRepository),
+        // Read by AdvertisementCard to re-fetch a tapped package before it
+        // reaches the cart.
+        RepositoryProvider<AdvertisementsRepository>.value(value: advertisementsRepository),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -250,6 +267,10 @@ class MyApp extends StatelessWidget {
           BlocProvider(
             create: (context) =>
                 BannersCubit(bannersRepository: bannersRepository),
+          ),
+          BlocProvider(
+            create: (context) =>
+                AdvertisementsCubit(advertisementsRepository: advertisementsRepository),
           ),
           BlocProvider(
             create: (context) =>

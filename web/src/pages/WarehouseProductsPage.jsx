@@ -11,7 +11,7 @@ import {
 import { LoadMoreControl } from '../components/LoadMoreControl';
 import { usePaginatedData } from '../hooks/usePaginatedData';
 import { useExchangeRate } from '../context/ExchangeRateContext';
-import { formatPriceWithSyp } from '../utils/currency';
+import { formatUsdAsSyp } from '../utils/currency';
 import { withArFallback } from '../utils/displayName';
 
 const PAGE_SIZE = 20;
@@ -188,7 +188,7 @@ export function WarehouseProductsPage() {
                       </div>
                     </td>
                     <td>{categoryName(product.categoryId)}</td>
-                    <td className="wh-num">{formatPriceWithSyp(product.priceUsd, usdToSyp)}</td>
+                    <td className="wh-num">{formatUsdAsSyp(product.priceUsd, usdToSyp)}</td>
                     <td>
                       <span className={`availability-badge ${productAvailabilityClass(product)}`}>
                         {productAvailabilityLabel(product, t)}
@@ -216,7 +216,7 @@ export function WarehouseProductsPage() {
       {modal && (
         <ProductFormModal
           mode={modal.mode}
-          initialForm={modal.mode === 'create' ? EMPTY_PRODUCT_FORM : productFormFromProduct(modal.product)}
+          initialForm={modal.mode === 'create' ? EMPTY_PRODUCT_FORM : productFormFromProduct(modal.product, usdToSyp)}
           categories={categories}
           usdToSyp={usdToSyp}
           onClose={() => setModal(null)}

@@ -8,9 +8,14 @@ const Offer = require('../models/offer.model');
 const Warehouse = require('../models/warehouse.model');
 const Review = require('../models/review.model');
 const Return = require('../models/return.model');
+const Advertisement = require('../models/advertisement.model');
 const { recomputeBalance } = require('./pharmacyBalance.service');
 const notificationService = require('./notification.service');
-const { stackedDiscountSyp } = require('./order.service');
+const {
+  stackedDiscountSyp,
+  advertisementDiscountSyp,
+  advertisementPackageBreak,
+} = require('./order.service');
 const { getRate } = require('./exchangeRate.service');
 const { applyResolvedIdentity } = require('./productCatalog.service');
 const { getDiscountMapForWarehouse, computeDiscountedPriceUsd } = require('./manufacturerDiscount.service');
@@ -121,6 +126,22 @@ async function advanceOrderStatus(orderId, warehouseId, userId) {
     );
   }
 
+  // Section: optional proof-of-delivery, decided PER ORDER
+  // (order.requiresDeliverySealPhoto - seeded from the warehouse default at
+  // creation, then owned by the order). The final step to 'delivered' is gated
+  // on the pharmacy having attached the shipment seal photo
+  // (order.service.js's attachDeliverySealPhoto). This is the authoritative
+  // check - the client cannot skip it by calling advance-status directly.
+  // Every other transition, and every order that doesn't require the photo, is
+  // completely unaffected.
+  if (next === 'delivered' && order.requiresDeliverySealPhoto && !order.deliverySealPhoto) {
+    throw ApiError.badRequest(
+      'A seal photo is required to confirm delivery.',
+      undefined,
+      'DELIVERY_SEAL_PHOTO_REQUIRED'
+    );
+  }
+
   const now = new Date();
   order.status = next;
   order.statusHistory.push({ status: next, changedBy: userId, changedAt: now });
@@ -195,7 +216,9 @@ async function getOrderDetailForWarehouse(orderId, warehouseId) {
   // Read-only detail (no status change), so a projection is safe here -
   // toWarehouseOrderDetailResponse reads exactly these order fields.
   const order = await Order.findOne({ _id: orderId, warehouseId })
-    .select('orderNumber status totalPrice discountAmount commissionAmount finalPrice notes cancelReason createdAt statusHistory pharmacyId');
+    .select(
+      'orderNumber status totalPrice discountAmount commissionAmount advertisementId advertisementDiscountAmount finalPrice notes cancelReason createdAt statusHistory pharmacyId requiresDeliverySealPhoto deliverySealPhoto deliverySealConfirmedAt'
+    );
   if (!order) {
     throw ApiError.notFound('Order not found.', 'ORDER_NOT_FOUND');
   }
@@ -362,7 +385,9 @@ async function updateOrderItems(orderId, warehouseId, userId, payload) {
         warehouseId,
         status: 'approved',
         startDate: { $lte: now },
-        endDate: { $gte: now },
+        // A permanent offer has no endDate (isPermanent true, endDate null) and
+        // stays live from its start date on.
+        $or: [{ isPermanent: true }, { endDate: { $gte: now } }],
         productId: { $in: productIds },
       }),
       getDiscountMapForWarehouse(warehouseId),
@@ -403,11 +428,64 @@ async function updateOrderItems(orderId, warehouseId, userId, payload) {
   const totalPrice = allItems.reduce((sum, item) => sum + item.discountPrice * item.quantity, 0);
   const discountAmount = Math.round((totalPrice * warehouse.discountRate) / 100);
   const commissionAmount = Math.round((totalPrice * warehouse.commissionRate) / 100);
-  const finalPrice = totalPrice - discountAmount;
+
+  // An edit can break the advertisement package it was ordered as - the
+  // warehouse may have removed one of the advertised products. Re-validate
+  // rather than carry the discount blindly: the pharmacy must not keep a
+  // package price for goods it is no longer receiving, and equally must not
+  // lose it just because an unrelated line changed.
+  let advertisementDiscountAmount = 0;
+  if (order.advertisementId) {
+    const quantityByProductId = new Map(
+      allItems.map((item) => [item.productId.toString(), item.quantity])
+    );
+    const advertisement = await Advertisement.findById(order.advertisementId);
+    const stillHolds =
+      advertisement && advertisementPackageBreak(advertisement, quantityByProductId) === null;
+
+    if (stillHolds) {
+      const rate = await getRate();
+      if (!rate) {
+        throw ApiError.badRequest(
+          'Exchange rate is not available yet - items cannot be priced.',
+          undefined,
+          'EXCHANGE_RATE_UNAVAILABLE'
+        );
+      }
+      // Sum(order line unit price x ADVERTISED quantity) for the package's
+      // products - taken from the order's OWN advertised line prices (not a
+      // fresh catalog fetch), so it stays consistent with the totalPrice
+      // summed above and finalPrice lands exactly on the package total. The
+      // package holds, so every advertised product has a surviving line at
+      // >= its advertised quantity.
+      const advertisedQtyById = new Map(
+        advertisement.items.map((i) => [i.productId.toString(), i.quantity])
+      );
+      const advertisedSypSubtotal = allItems
+        .filter((line) => advertisedQtyById.has(line.productId.toString()))
+        .reduce(
+          (sum, line) => sum + line.discountPrice * advertisedQtyById.get(line.productId.toString()),
+          0
+        );
+      advertisementDiscountAmount = advertisementDiscountSyp(
+        advertisedSypSubtotal,
+        advertisement.totalPriceUsd,
+        rate.usdToSyp
+      );
+    } else {
+      // The package no longer applies. The order stays valid and simply
+      // reprices as a normal one; the 'modified' history entry below records
+      // that something changed.
+      order.advertisementId = null;
+    }
+  }
+
+  const finalPrice = totalPrice - discountAmount - advertisementDiscountAmount;
 
   order.totalPrice = totalPrice;
   order.discountAmount = discountAmount;
   order.commissionAmount = commissionAmount;
+  order.advertisementDiscountAmount = advertisementDiscountAmount;
   order.finalPrice = finalPrice;
   order.statusHistory.push({
     status: 'modified',
@@ -446,9 +524,38 @@ async function updateOrderItems(orderId, warehouseId, userId, payload) {
   return { order, items: allItems, pharmacy, hasReturn: Boolean(returnRequest) };
 }
 
+// Section: the warehouse flips this one order's proof-of-delivery requirement
+// (order.requiresDeliverySealPhoto - seeded from the warehouse default at
+// creation, then per-order). Only this flag is writable here; nothing else on
+// the order changes, no status transition, no notification/realtime. IDOR
+// guard: scoped to warehouseId, same as every other function in this file.
+// Locked once the order is done - a delivered/cancelled order's requirement
+// can no longer matter.
+async function setDeliverySealRequirement(orderId, warehouseId, requiresDeliverySealPhoto) {
+  if (!mongoose.Types.ObjectId.isValid(orderId)) {
+    throw ApiError.notFound('Order not found.', 'ORDER_NOT_FOUND');
+  }
+  const order = await Order.findOne({ _id: orderId, warehouseId });
+  if (!order) {
+    throw ApiError.notFound('Order not found.', 'ORDER_NOT_FOUND');
+  }
+  if (order.status === 'delivered' || order.status === 'cancelled') {
+    throw ApiError.badRequest(
+      'This order is closed - its delivery seal requirement can no longer be changed.',
+      undefined,
+      'ORDER_SEAL_REQUIREMENT_LOCKED'
+    );
+  }
+
+  order.requiresDeliverySealPhoto = Boolean(requiresDeliverySealPhoto);
+  await order.save();
+  return order;
+}
+
 module.exports = {
   listOrdersForWarehouse,
   advanceOrderStatus,
   getOrderDetailForWarehouse,
   updateOrderItems,
+  setDeliverySealRequirement,
 };

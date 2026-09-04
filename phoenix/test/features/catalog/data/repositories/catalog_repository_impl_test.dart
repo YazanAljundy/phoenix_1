@@ -6,6 +6,7 @@ import 'package:phoenix/core/models/paginated_result.dart';
 import 'package:phoenix/core/network/api_client.dart';
 import 'package:phoenix/core/network/endpoints.dart';
 import 'package:phoenix/features/catalog/data/models/category_model.dart';
+import 'package:phoenix/features/catalog/data/models/manufacturer_model.dart';
 import 'package:phoenix/features/catalog/data/models/product_model.dart';
 import 'package:phoenix/features/catalog/data/repositories/catalog_repository_impl.dart';
 
@@ -280,9 +281,12 @@ void main() {
     });
 
     group('getManufacturers', () {
-      test('returns list of manufacturers', () async {
+      test('parses each manufacturer with its discount percentage', () async {
         final responseData = {
-          'manufacturers': ['Bayer', 'Novartis', 'Pfizer'],
+          'manufacturers': [
+            {'manufacturerAr': 'باير', 'discountPercentage': 10},
+            {'manufacturerAr': 'نوفارتس', 'discountPercentage': 0},
+          ],
         };
 
         when(() => mockDio.get(any())).thenAnswer(
@@ -297,10 +301,34 @@ void main() {
           warehouseId: 'warehouse1',
         );
 
-        expect(manufacturers, equals(['Bayer', 'Novartis', 'Pfizer']));
+        expect(manufacturers, isA<List<ManufacturerModel>>());
+        expect(manufacturers.map((m) => m.name), equals(['باير', 'نوفارتس']));
+        expect(manufacturers[0].discountPercentage, equals(10));
+        expect(manufacturers[1].discountPercentage, equals(0));
         verify(
           () => mockDio.get(Endpoints.warehouseManufacturers('warehouse1')),
         ).called(1);
+      });
+
+      test('falls back to 0 discount for a bare name string', () async {
+        final responseData = {
+          'manufacturers': ['Bayer', 'Pfizer'],
+        };
+
+        when(() => mockDio.get(any())).thenAnswer(
+          (_) async => Response(
+            data: responseData,
+            statusCode: 200,
+            requestOptions: RequestOptions(path: ''),
+          ),
+        );
+
+        final manufacturers = await catalogRepository.getManufacturers(
+          warehouseId: 'warehouse1',
+        );
+
+        expect(manufacturers.map((m) => m.name), equals(['Bayer', 'Pfizer']));
+        expect(manufacturers.every((m) => m.discountPercentage == 0), isTrue);
       });
 
       test('returns empty list when no manufacturers', () async {

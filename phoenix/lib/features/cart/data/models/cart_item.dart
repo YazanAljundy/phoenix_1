@@ -17,6 +17,8 @@ class CartItem {
     required this.unitPriceUsd,
     required this.discountPriceUsd,
     required this.quantity,
+    this.advertisementId,
+    this.advertisementQuantity,
   });
 
   final String productId;
@@ -30,11 +32,28 @@ class CartItem {
   final num unitPriceUsd;
   final num discountPriceUsd;
   final int quantity;
+  // Set when this line came from a warehouse advertisement package. The one
+  // field that distinguishes a package line from a normal one - no product
+  // data is duplicated, and no authoritative price is stored here that the
+  // server won't re-derive at checkout (order.service.js re-reads the whole
+  // package from MongoDB). null on every normal cart line, which is exactly
+  // how every existing line already behaves.
+  final String? advertisementId;
+  // The quantity the package advertises for this product. Dropping the line
+  // below this breaks the package (cart_cubit.dart); above it, the extras are
+  // billed at the catalog price. null on a normal line.
+  final int? advertisementQuantity;
 
   bool get hasOffer => discountPriceUsd != unitPriceUsd;
+  bool get isAdvertised => advertisementId != null;
   num get lineTotalUsd => discountPriceUsd * quantity;
 
-  factory CartItem.fromProduct(ProductModel product, {required int quantity}) {
+  factory CartItem.fromProduct(
+    ProductModel product, {
+    required int quantity,
+    String? advertisementId,
+    int? advertisementQuantity,
+  }) {
     return CartItem(
       productId: product.id,
       nameAr: product.nameAr,
@@ -47,6 +66,8 @@ class CartItem {
       unitPriceUsd: product.priceUsd,
       discountPriceUsd: product.discountPriceUsd,
       quantity: quantity,
+      advertisementId: advertisementId,
+      advertisementQuantity: advertisementQuantity,
     );
   }
 
@@ -63,6 +84,8 @@ class CartItem {
       unitPriceUsd: unitPriceUsd,
       discountPriceUsd: discountPriceUsd,
       quantity: quantity ?? this.quantity,
+      advertisementId: advertisementId,
+      advertisementQuantity: advertisementQuantity,
     );
   }
 }

@@ -3,33 +3,42 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../api/client';
 import { LoadMoreControl } from '../components/LoadMoreControl';
 import { usePaginatedData } from '../hooks/usePaginatedData';
+import { useExchangeRate } from '../context/ExchangeRateContext';
+import { formatSyp, formatUsd, formatMoneyFromUsd, remainingPaymentAmount } from '../utils/currency';
 
-const CURRENCIES = ['USD', 'SYP'];
+// SYP first: it is the default currency for every amount in the panel.
+const CURRENCIES = ['SYP', 'USD'];
 const PAGE_SIZE = 20;
-
-function formatUsd(amount) {
-  return `$${Number(amount).toFixed(2)}`;
-}
 
 // Section 16: a negative balanceUsd means the pharmacy has paid ahead of
 // what it owes - shown as a credit, styled differently, never as a debt.
-function BalanceAmount({ balanceUsd }) {
+// Balances are stored in USD (pharmacyBalance.model.js); shown in SYP at the
+// live rate, falling back to USD only while the rate is still loading.
+function BalanceAmount({ balanceUsd, usdToSyp }) {
   const { t } = useTranslation();
   const isCredit = balanceUsd < 0;
+  const text = formatMoneyFromUsd(Math.abs(balanceUsd), usdToSyp);
   return (
     <span className={`balance-amount ${isCredit ? 'is-credit' : 'is-debt'}`}>
-      {isCredit ? t('debts.creditAmount', { amount: formatUsd(Math.abs(balanceUsd)) }) : formatUsd(balanceUsd)}
+      {isCredit ? t('debts.creditAmount', { amount: text }) : text}
     </span>
   );
 }
 
-function AddPaymentForm({ pharmacyId, onSaved }) {
+function AddPaymentForm({ pharmacyId, remainingUsd, onSaved }) {
   const { t } = useTranslation();
+  const usdToSyp = useExchangeRate();
   const [amount, setAmount] = useState('');
-  const [currency, setCurrency] = useState('USD');
+  const [currency, setCurrency] = useState('SYP');
   const [note, setNote] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
+
+  // "Full amount": prefills the outstanding balance (converted to the picked
+  // currency) into the editable amount field - the warehouse can still adjust
+  // it. Disabled when nothing is owed, or when SYP is picked and no rate is
+  // loaded to convert with.
+  const fullAmount = remainingPaymentAmount(remainingUsd, currency, usdToSyp);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -83,23 +92,44 @@ function AddPaymentForm({ pharmacyId, onSaved }) {
           {t('debts.noteOptional')}
           <input value={note} onChange={(e) => setNote(e.target.value)} placeholder={t('debts.notePlaceholder')} />
         </label>
-        <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={isSaving}>
-          {isSaving ? t('common.saving') : t('debts.recordPaymentButton')}
-        </button>
+        <div className="form-row">
+          <button
+            type="button"
+            className="btn-secondary"
+            disabled={fullAmount == null}
+            onClick={() => setAmount(String(fullAmount))}
+          >
+            {t('debts.fullAmount')}
+          </button>
+          <button type="submit" className="btn-primary" style={{ flex: 1 }} disabled={isSaving}>
+            {isSaving ? t('common.saving') : t('debts.recordPaymentButton')}
+          </button>
+        </div>
       </form>
       {error && <p className="error-text">{error}</p>}
     </div>
   );
 }
 
-// `now` is passed down from the detail view (ticking every 15s) rather than
-// read once at fetch time - canEditUntil is a fixed instant, so whether it's
-// still in the future has to be re-evaluated live for the edit/delete
-// buttons to actually disappear on their own after 5 minutes, not just on
-// the next reload.
-function PaymentRow({ payment, now, onChanged }) {
+// A small centred placeholder for the orders / payments cards when a pharmacy
+// has none yet - reuses the panel's muted-text style, just laid out to read as
+// a deliberate empty state rather than a stray sentence.
+function InvoiceEmpty({ icon, children }) {
+  return (
+    <div className="wh-invoice-empty">
+      <span className="wh-invoice-empty-icon" aria-hidden="true">
+        {icon}
+      </span>
+      <span>{children}</span>
+    </div>
+  );
+}
+
+// A recorded payment can be edited or deleted at any time - it is a manual
+// bookkeeping entry and the balance is recomputed from scratch after every
+// change (payment.service.js). Ownership is enforced server-side.
+function PaymentRow({ payment, onChanged }) {
   const { t } = useTranslation();
-  const canEdit = new Date(payment.canEditUntil) > now;
   const [isEditing, setIsEditing] = useState(false);
   const [amount, setAmount] = useState(String(payment.amount));
   const [currency, setCurrency] = useState(payment.currency);
@@ -141,28 +171,39 @@ function PaymentRow({ payment, now, onChanged }) {
     }
   };
 
+  const createdAt = new Date(payment.createdAt);
+
   if (isEditing) {
     return (
-      <tr>
-        <td colSpan={5}>
-          <div className="form-row">
+      <tr className="wh-invoice-payment-editing">
+        <td colSpan={4}>
+          <div className="wh-invoice-payment-edit">
             <input
               type="number"
               min="0.01"
               step="0.01"
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
-              style={{ width: 100 }}
+              aria-label={t('debts.amount')}
             />
-            <select value={currency} onChange={(e) => setCurrency(e.target.value)}>
+            <select
+              value={currency}
+              onChange={(e) => setCurrency(e.target.value)}
+              aria-label={t('debts.currency')}
+            >
               {CURRENCIES.map((c) => (
                 <option key={c} value={c}>
                   {c}
                 </option>
               ))}
             </select>
-            <input value={note} onChange={(e) => setNote(e.target.value)} placeholder={t('debts.noteOptional')} />
-            <button className="btn-secondary" disabled={isBusy} onClick={handleSave}>
+            <input
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder={t('debts.noteOptional')}
+              aria-label={t('debts.noteColumn')}
+            />
+            <button className="btn-primary" disabled={isBusy} onClick={handleSave}>
               {t('common.save')}
             </button>
             <button className="btn-secondary" onClick={() => setIsEditing(false)}>
@@ -177,41 +218,35 @@ function PaymentRow({ payment, now, onChanged }) {
 
   return (
     <tr>
-      <td>{new Date(payment.createdAt).toLocaleString()}</td>
-      <td>{payment.amount}</td>
-      <td>{payment.currency}</td>
-      <td>{payment.note ?? '-'}</td>
       <td>
-        {canEdit ? (
-          <div className="table-row-actions">
-            <button className="btn-secondary" onClick={() => setIsEditing(true)}>
-              {t('common.edit')}
-            </button>
-            <button className="btn-reject" disabled={isBusy} onClick={handleDelete}>
-              {t('common.delete')}
-            </button>
-          </div>
-        ) : (
-          <span className="hint">{t('debts.locked')}</span>
-        )}
+        <div>{createdAt.toLocaleDateString()}</div>
+        <div className="wh-table-sub">
+          {createdAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+        </div>
+      </td>
+      <td className="wh-num wh-table-total">
+        {payment.currency === 'USD' ? formatUsd(payment.amount) : formatSyp(payment.amount)}
+      </td>
+      <td>{payment.note ? payment.note : <span className="wh-table-sub">—</span>}</td>
+      <td>
+        <div className="table-row-actions">
+          <button className="btn-secondary" onClick={() => setIsEditing(true)}>
+            {t('common.edit')}
+          </button>
+          <button className="btn-reject" disabled={isBusy} onClick={handleDelete}>
+            {t('common.delete')}
+          </button>
+        </div>
       </td>
     </tr>
   );
 }
 
 function WarehouseDebtDetail({ pharmacyId, onBack }) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const usdToSyp = useExchangeRate();
   const [detail, setDetail] = useState(null);
   const [error, setError] = useState(null);
-  const [now, setNow] = useState(new Date());
-
-  // Ticks the edit-window check independently of any data reload, so an
-  // edit/delete button actually vanishes ~on time instead of only after the
-  // next fetch.
-  useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 15000);
-    return () => clearInterval(id);
-  }, []);
 
   const load = useCallback(async () => {
     setError(null);
@@ -227,130 +262,164 @@ function WarehouseDebtDetail({ pharmacyId, onBack }) {
     load();
   }, [load]);
 
+  // "Back" points toward where the list is - left in LTR, right in RTL.
+  const backButton = (
+    <button className="wh-detail-back" onClick={onBack}>
+      <span aria-hidden="true">{i18n.language === 'ar' ? '→' : '←'}</span>{' '}
+      {t('debts.backToDebts')}
+    </button>
+  );
+
   if (error) {
     return (
       <div>
-        <button className="wh-detail-back" onClick={onBack}>
-          &larr; {t('debts.backToDebts')}
-        </button>
+        {backButton}
         <p className="error-text">{error}</p>
       </div>
     );
   }
 
   if (!detail) {
-    return <p className="hint">{t('common.loading')}</p>;
+    return (
+      <div>
+        {backButton}
+        <p className="hint">{t('common.loading')}</p>
+      </div>
+    );
   }
 
   const cardHeadStyle = { padding: '13px 16px', margin: 0, borderBottom: '2px solid var(--wh-border)' };
 
+  // Same convention the list uses (BalanceAmount): > 0 owes (red), < 0 credit
+  // (green, shown as "Credit: …"), = 0 settled (neutral). Nothing about the
+  // calculation changes - this is presentation only.
+  const balanceUsd = detail.balanceUsd;
+  const balanceState = balanceUsd < 0 ? 'is-credit' : balanceUsd > 0 ? 'is-debt' : 'is-settled';
+  const balanceMoney = formatMoneyFromUsd(Math.abs(balanceUsd), usdToSyp);
+  const balanceText = balanceUsd < 0 ? t('debts.creditAmount', { amount: balanceMoney }) : balanceMoney;
+
   return (
     <div>
-      <button className="wh-detail-back" onClick={onBack}>
-        &larr; {t('debts.backToDebts')}
-      </button>
+      {backButton}
 
-      <div className="wh-detail-card wh-pharmacy-card" style={{ marginBottom: 18 }}>
-        <div>
-          <div className="wh-pharmacy-name" style={{ fontSize: 20 }}>
-            {detail.pharmacy?.nameEn}
-          </div>
-          <div className="wh-pharmacy-meta">{detail.pharmacy?.phone}</div>
+      <div className="wh-detail-card wh-invoice-header">
+        <div className="wh-invoice-identity">
+          <div className="wh-invoice-name">{detail.pharmacy?.nameEn}</div>
+          {detail.pharmacy?.phone && (
+            <div className="wh-invoice-phone wh-num">{detail.pharmacy.phone}</div>
+          )}
         </div>
-        <div className="wh-debt-stats">
-          <div>
-            <div className="wh-pharmacy-label">{t('debts.totalOrders')}</div>
-            <div className="wh-debt-stat-value wh-num">{formatUsd(detail.totalOrdersUsd)}</div>
+        <div className={`wh-invoice-balance ${balanceState}`}>
+          <div className="wh-invoice-balance-label">{t('debts.currentBalance')}</div>
+          <div className="wh-invoice-balance-value wh-num">{balanceText}</div>
+        </div>
+      </div>
+
+      <div className="wh-invoice-summary">
+        <div className="wh-invoice-stat">
+          <div className="wh-invoice-stat-label">{t('debts.totalOrders')}</div>
+          <div className="wh-invoice-stat-value wh-num">
+            {formatMoneyFromUsd(detail.totalOrdersUsd, usdToSyp)}
           </div>
-          <div>
-            <div className="wh-pharmacy-label">{t('debts.totalPaid')}</div>
-            <div className="wh-debt-stat-value wh-debt-stat-paid wh-num">{formatUsd(detail.totalPaidUsd)}</div>
+        </div>
+        <div className="wh-invoice-stat">
+          <div className="wh-invoice-stat-label">{t('debts.totalPaid')}</div>
+          <div className="wh-invoice-stat-value wh-num is-paid">
+            {formatMoneyFromUsd(detail.totalPaidUsd, usdToSyp)}
           </div>
-          <div>
-            <div className="wh-pharmacy-label">{t('debts.balance')}</div>
-            <BalanceAmount balanceUsd={detail.balanceUsd} />
+        </div>
+        <div className="wh-invoice-stat">
+          <div className="wh-invoice-stat-label">{t('debts.balance')}</div>
+          <div className="wh-invoice-stat-value wh-num">
+            <BalanceAmount balanceUsd={detail.balanceUsd} usdToSyp={usdToSyp} />
           </div>
         </div>
       </div>
 
-      <div className="wh-debt-grid">
-        <div className="wh-detail-card" style={{ padding: 0, overflow: 'hidden' }}>
-          <h2 className="wh-detail-card-title" style={cardHeadStyle}>
-            {t('debts.deliveredOrders')}
-          </h2>
-          {detail.orders.length === 0 ? (
-            <p className="hint" style={{ padding: '0 16px 16px' }}>
-              {t('debts.noDeliveredOrders')}
-            </p>
-          ) : (
-            <div className="table-scroll">
-              <table className="wh-table wh-table-narrow">
-                <thead>
-                  <tr>
-                    <th>{t('debts.orderNumber')}</th>
-                    <th>{t('debts.date')}</th>
-                    <th>{t('debts.amountSyp')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {detail.orders.map((order) => (
-                    <tr key={order.id}>
-                      <td className="wh-table-order-num">{order.orderNumber}</td>
-                      <td className="wh-num">{new Date(order.createdAt).toLocaleDateString()}</td>
-                      <td className="wh-num wh-table-total">{order.finalPrice}</td>
+      <div className="wh-detail-grid">
+        <div className="wh-invoice-main">
+          <div className="wh-detail-card" style={{ padding: 0, overflow: 'hidden' }}>
+            <h2 className="wh-detail-card-title wh-invoice-section-head" style={cardHeadStyle}>
+              <span>{t('debts.deliveredOrders')}</span>
+              {detail.orders.length > 0 && (
+                <span className="wh-invoice-count">{detail.orders.length}</span>
+              )}
+            </h2>
+            {detail.orders.length === 0 ? (
+              <InvoiceEmpty icon="📦">{t('debts.noDeliveredOrders')}</InvoiceEmpty>
+            ) : (
+              <div className="table-scroll">
+                <table className="wh-table wh-table-compact">
+                  <thead>
+                    <tr>
+                      <th>{t('debts.orderNumber')}</th>
+                      <th>{t('debts.date')}</th>
+                      <th>{t('debts.amountSyp')}</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                  </thead>
+                  <tbody>
+                    {detail.orders.map((order) => (
+                      <tr key={order.id}>
+                        <td className="wh-table-order-num">#{order.orderNumber}</td>
+                        <td className="wh-num">{new Date(order.createdAt).toLocaleDateString()}</td>
+                        <td className="wh-num wh-table-total">{formatSyp(order.finalPrice)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          <div className="wh-detail-card" style={{ padding: 0, overflow: 'hidden' }}>
+            <h2 className="wh-detail-card-title wh-invoice-section-head" style={cardHeadStyle}>
+              <span>{t('debts.payments')}</span>
+              {detail.payments.length > 0 && (
+                <span className="wh-invoice-count">{detail.payments.length}</span>
+              )}
+            </h2>
+            {detail.payments.length === 0 ? (
+              <InvoiceEmpty icon="💵">{t('debts.noPayments')}</InvoiceEmpty>
+            ) : (
+              <div className="table-scroll">
+                <table className="wh-table wh-table-compact">
+                  <thead>
+                    <tr>
+                      <th>{t('debts.date')}</th>
+                      <th>{t('debts.amount')}</th>
+                      <th>{t('debts.noteColumn')}</th>
+                      <th aria-label={t('common.edit')}></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {detail.payments.map((payment) => (
+                      <PaymentRow key={payment.id} payment={payment} onChanged={load} />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </div>
 
-        <div className="wh-detail-card" style={{ padding: 0, overflow: 'hidden' }}>
-          <h2 className="wh-detail-card-title" style={cardHeadStyle}>
-            {t('debts.payments')}
-          </h2>
-          {detail.payments.length === 0 ? (
-            <p className="hint" style={{ padding: '0 16px 16px' }}>
-              {t('debts.noPayments')}
-            </p>
-          ) : (
-            <div className="table-scroll">
-              <table className="wh-table wh-table-compact">
-                <thead>
-                  <tr>
-                    <th>{t('debts.date')}</th>
-                    <th>{t('debts.amount')}</th>
-                    <th>{t('debts.currency')}</th>
-                    <th>{t('debts.noteColumn')}</th>
-                    <th></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {detail.payments.map((payment) => (
-                    <PaymentRow key={payment.id} payment={payment} now={now} onChanged={load} />
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-          <p className="wh-table-hint" style={{ margin: 0, padding: '0 16px 14px' }}>
-            {t('debts.editWindowNotice')}
-          </p>
+        <div className="wh-invoice-side">
+          <AddPaymentForm pharmacyId={pharmacyId} remainingUsd={detail.balanceUsd} onSaved={load} />
         </div>
-
-        <AddPaymentForm pharmacyId={pharmacyId} onSaved={load} />
       </div>
     </div>
   );
 }
 
-// Section 16: the warehouse's debts tab - a list of every pharmacy currently
-// in debt, and a per-pharmacy detail (orders + payments) reached by
-// clicking a row, matching this panel's existing flat-tab/no-nested-routes
-// convention (see WarehouseOrdersPage).
+// Section 16: the warehouse's "Invoices" tab - a list of every pharmacy that
+// has a delivered purchase from this warehouse (debt, settled at 0, or a
+// credit - the current balance never decides visibility), and a per-pharmacy
+// detail (orders + payments + balance) reached by clicking a row, matching
+// this panel's existing flat-tab/no-nested-routes convention (see
+// WarehouseOrdersPage). The list is driven by the order relationship on the
+// backend; the detail view and all its financial logic are unchanged.
 export function WarehouseDebtsPage() {
   const { t } = useTranslation();
+  const usdToSyp = useExchangeRate();
   const [selectedPharmacyId, setSelectedPharmacyId] = useState(null);
 
   const fetchPage = useCallback(
@@ -402,7 +471,7 @@ export function WarehouseDebtsPage() {
         <p className="hint">{t('common.loading')}</p>
       ) : pharmacies.length === 0 ? (
         <div className="wh-empty-state">
-          <div className="wh-empty-state-icon">$</div>
+          <div className="wh-empty-state-icon">{t('common.currencySuffix')}</div>
           <div className="wh-empty-state-title">{t('debts.noDebts')}</div>
         </div>
       ) : (
@@ -427,10 +496,10 @@ export function WarehouseDebtsPage() {
                   >
                     <td>{row.nameEn}</td>
                     <td className="wh-num">{row.phone}</td>
-                    <td className="wh-num">{formatUsd(row.totalOrdersUsd)}</td>
-                    <td className="wh-num">{formatUsd(row.totalPaidUsd)}</td>
+                    <td className="wh-num">{formatMoneyFromUsd(row.totalOrdersUsd, usdToSyp)}</td>
+                    <td className="wh-num">{formatMoneyFromUsd(row.totalPaidUsd, usdToSyp)}</td>
                     <td className="wh-num">
-                      <BalanceAmount balanceUsd={row.balanceUsd} />
+                      <BalanceAmount balanceUsd={row.balanceUsd} usdToSyp={usdToSyp} />
                     </td>
                   </tr>
                 ))}

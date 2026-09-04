@@ -1,64 +1,132 @@
-# Phoenix k6 Load Tests
+# Phoenix Load & Stress Test Suite
 
-Backend API load suite for the Phoenix project. It models up to 2,000 mobile-like virtual users; it does not start Flutter emulators or browsers.
+Full-system load testing for the Phoenix backend: HTTP APIs, Socket.IO realtime,
+return-photo uploads, and catalog-size scaling. Nothing here modifies
+application code — the backend is exercised only through its public API, plus
+one out-of-band instrumentation module loaded with `node -r`.
+
+The measured results live in [`../LOAD_TEST_REPORT.md`](../LOAD_TEST_REPORT.md).
+
+## Layout
+
+```
+lib/runtime.js          k6 helpers: fixtures, tokens, tagging, client-IP simulation
+lib/monitor.js          out-of-band sampler (backend probe + MongoDB + machine + processes)
+instrument/probe.js     preloaded into the backend: event-loop lag, pool events, CPU profile
+instrument/start-backend.sh   starts the backend with the probe attached
+scenarios/*.js          one module per user journey (auth, browsing, cart, orders, returns, reviews, warehouse)
+main.js                 k6 entry: one load level, ramp -> steady -> ramp down
+run-progressive.js      Phase 4/5 driver: level sweep, grading, system metrics
+socket-load.js          Socket.IO: connection capacity, event fan-out, reconnection storm
+upload-load.js          return-photo (Cloudinary) upload stress, deliberately small
+catalog-scaling.js      per-endpoint latency vs catalog size, at concurrency 1
+setup/seed-load-data.js fixture seeder / cleaner
+setup/mint-tokens.js    logs every fixture account in once; also measures login throughput
+setup/verify-endpoints.js  single-request correctness + baseline latency for every endpoint
+build-report-data.js    renders the report's tables straight from results/
+```
 
 ## Requirements
 
-- k6 installed and available on `PATH`
-- Node.js 18+ (for the setup orchestrator)
-- A local or staging Phoenix backend
-- At least five warehouses in the local/test database
-
-## Setup
-
-Set environment variables without committing them:
-
-```powershell
-$env:BASE_URL = 'http://localhost:4000/api'
-```
-
-Only `BASE_URL` is normally needed. The setup script discovers five warehouses, creates isolated local test users when no runtime users exist, authenticates them, and discovers products. It writes generated credentials only to ignored `load-tests/.runtime/test-data.json`; no credentials are committed. Existing dedicated test credentials may be supplied through `TEST_USER_PHONE(S)` and `TEST_USER_PASSWORD`, but personal or production credentials must not be used.
+- k6 on `PATH`
+- Node.js 18+
+- A local backend and a local MongoDB
+- The backend started through `instrument/start-backend.sh` if you want
+  event-loop, connection-pool and CPU-profile data
 
 ## Running
 
-Default smoke test (5 VUs for 30 seconds):
+```bash
+# 1. Start the backend with instrumentation (port 5000, probe on 9999)
+bash load-tests/instrument/start-backend.sh
 
-```powershell
-npm --prefix load-tests run load-test
+# 2. Seed isolated fixtures (500 pharmacies, 3 catalogs, 25 socket warehouses,
+#    6,000 delivered orders). Refuses any non-local MongoDB host.
+node load-tests/setup/seed-load-data.js
+
+# 3. Mint one JWT per fixture account
+node load-tests/setup/mint-tokens.js
+
+# 4. Confirm every endpoint answers correctly before applying load
+node load-tests/setup/verify-endpoints.js
+
+# 5. Progressive sweep
+node load-tests/run-progressive.js --tag main
+
+# 6. The separate measurements
+node load-tests/catalog-scaling.js
+node load-tests/socket-load.js
+node load-tests/upload-load.js
+
+# 7. Remove every fixture and everything the write scenarios created
+node load-tests/setup/seed-load-data.js --clean
 ```
 
-Override smoke VUs and duration:
+`npm --prefix load-tests run load-test` runs a short smoke level;
+`npm --prefix load-tests run load-test:full` runs the whole sweep.
 
-```powershell
-k6 run -e VUS=10 -e DURATION=2m load-tests/main.js
-```
+## Test data
 
-Explicitly select the 2,000-VU test with gradual ramp-up:
+Every fixture document carries `loadTestTag: 'phoenix-load-test'`, and every
+fixture account's phone starts with `0977`. Records the *write* scenarios
+create through the API (orders, reviews, returns) cannot carry that tag — the
+application does not know about it — so `--clean` also deletes by ownership:
+anything belonging to a tagged pharmacy or tagged warehouse. Nothing outside
+those two sets is ever touched.
 
-```powershell
-npm --prefix load-tests run load-test:2000
-```
+The seeder refuses to run against a non-local MongoDB host unless
+`ALLOW_PROTECTED_TARGET=true` is set explicitly.
 
-The load profile stages are 100, 250, 500, 1,000, 1,500, and 2,000 VUs, followed by a 5-minute hold and ramp-down. Users are assigned round-robin across the five supplied warehouse IDs, approximately 400 users per warehouse at peak. No test is started automatically by this repository.
+## Client-IP simulation
 
-## Scenario Mix
+`app.js` sets `trust proxy: 1`, so `express-rate-limit` keys its buckets on
+`X-Forwarded-For` rather than on the socket address. A load generator arrives
+from one address; two thousand real users do not. Every request the suite sends
+therefore carries a distinct simulated client IP, from a bounded pool
+(`IP_POOL`, default 60,000 — bounded because `express-rate-limit`'s MemoryStore
+holds one entry per key for a full window).
 
-- 60% browsing: warehouses, categories, products, and one pagination request when a cursor exists
-- 20% searching: product search against the real products endpoint
-- 10% cart: read-only order-list call; Phoenix has no cart API
-- 5% orders: read-only order list and detail
-- 5% warehouse: warehouse profile and manufacturers
+Without this, the only thing measurable is the limiter: at 300 requests per 15
+minutes per IP, a single-IP client is throttled after 300 requests no matter
+how fast the application is. `--no-ip-simulation` runs exactly that as a
+control, and both results are reported.
 
-The k6 setup phase authenticates each dedicated user once through `POST /auth/login-password`; each iteration then calls `GET /auth/me` and the selected read scenarios. This avoids measuring the auth rate limiter instead of application behavior.
+## Thresholds
+
+`thresholds.js` keeps the project's existing values — p95 < 1 s, p99 < 2 s,
+HTTP failures < 1 % — and adds the grading bands `run-progressive.js` uses to
+label each level PASS / DEGRADED / FAIL. Thresholds do not abort a level: a
+level has to be allowed to fail for the breaking point to be found.
+
+## Scenario mix
+
+Weighted per iteration, derived from `(vu id * 17 + iteration * 31) % 100` so
+every level exercises the same distribution:
+
+| Share | Scenario | Journey |
+| ---: | :--- | :--- |
+| 40 % | B browsing | banners, exchange rate, warehouses, profile, manufacturers, categories, products, page 2 |
+| 15 % | B search | product search |
+| 7 % | B manufacturer filter | products filtered by manufacturer |
+| 15 % | D order history | order list + one detail + returnable orders |
+| 5 % | D order detail | detail read directly, isolated from the list |
+| 8 % | C shopping | three catalog pages, then `POST /orders` |
+| 4 % | E returns | returnable orders + return list |
+| 3 % | F reviews | read reviews, submit a rating, re-read |
+| 2 % | A authentication | full `POST /auth/login-password` + `/auth/me` + warehouse selection |
+| 1 % | warehouse panel | pharmacist warehouse detail + `GET /warehouse/orders` |
+
+`GET /auth/me` runs on every iteration, matching the Flutter app's launch and
+resume behaviour. Think time is 1–3 s, so a VU models a person rather than a
+closed-loop hammer.
 
 ## Safety
 
-Do not run this suite against production without explicit approval. The setup refuses non-local targets unless `ALLOW_PROTECTED_TARGET=true` is explicit. The default scenario performs no order writes, sends no OTP, submits no reviews, and uploads no returns. User registration is performed only to create dedicated local fixtures when no existing runtime users are available. `RUN_WRITE_SCENARIOS=true` requires a local target plus explicit `ALLOW_PROTECTED_TARGET=true` and is never enabled by default.
-
-## Metrics and Thresholds
-
-k6 reports request count, requests/sec, average, median, p90, p95, p99, max, HTTP failure rate, checks, and status behavior. Initial non-SLA thresholds are p95 < 1s, p99 < 2s, HTTP failures < 1%, and checks > 99%. Adjust them only after establishing a baseline.
-
-## Results
-
-After a successful run, the orchestrator writes `LOAD_TEST_RESULT.md` and raw data to `load-tests/results/k6-summary.json`. Setup failures identify the exact missing prerequisite, including backend reachability, fewer than five warehouses, pending registration, OTP requirements, authentication failures, or missing products.
+- Local targets only unless `ALLOW_PROTECTED_TARGET=true` is set explicitly.
+- No test starts automatically; every one is an explicit command.
+- The upload scenario is deliberately capped at a few dozen small images: it
+  spends real quota on a third-party Cloudinary account, and it deletes every
+  return it creates afterwards (which is also what removes the uploaded assets).
+- OTP/SMS is never exercised: `POST /auth/otp/send` can call a paid provider.
+- Registration is never load-tested; fixtures are seeded directly instead, so
+  no phone-number space is consumed.

@@ -5,22 +5,11 @@ import 'package:phoenix/core/constants/app_colors.dart';
 import 'package:phoenix/core/constants/app_padding.dart';
 import 'package:phoenix/core/constants/app_radius.dart';
 import 'package:phoenix/core/constants/app_sizes.dart';
-import 'package:phoenix/core/error/error_translator.dart';
 import 'package:phoenix/core/extensions/build_context_extensions.dart';
-import 'package:phoenix/core/utils/currency_formatter.dart';
-import 'package:phoenix/core/utils/date_formatter.dart';
 import 'package:phoenix/core/widgets/app_dialog.dart';
 import 'package:phoenix/core/widgets/custom_card.dart';
-import 'package:phoenix/core/widgets/failure_widget.dart';
 import 'package:phoenix/features/auth/presentation/managers/auth_cubit.dart';
 import 'package:phoenix/features/auth/presentation/managers/auth_state.dart';
-import 'package:phoenix/features/debts/data/models/warehouse_debt_model.dart';
-import 'package:phoenix/features/debts/presentation/managers/debts_cubit.dart';
-import 'package:phoenix/features/debts/presentation/managers/debts_state.dart';
-import 'package:phoenix/features/exchange_rate/presentation/managers/exchange_rate_cubit.dart';
-import 'package:phoenix/features/reviews/data/models/review_model.dart';
-import 'package:phoenix/features/reviews/presentation/managers/pharmacy_reviews_cubit.dart';
-import 'package:phoenix/features/reviews/presentation/managers/pharmacy_reviews_state.dart';
 import 'package:phoenix/features/settings/presentation/managers/settings_cubit.dart';
 import 'package:phoenix/features/settings/presentation/managers/settings_state.dart';
 import 'package:phoenix/routes/route_names.dart';
@@ -30,11 +19,12 @@ import 'package:phoenix/routes/route_names.dart';
 // already working via SettingsCubit before this screen existed); it's just
 // not the focus, so it's a secondary control rather than a primary one.
 //
-// Visual-polish pass: the screen is now laid out as labelled sections
-// (identity header -> personal information -> rating -> debts -> settings ->
-// account actions) so it reads like a formal account screen rather than a
-// stack of loose widgets. Every cubit, handler, route and piece of state is
-// exactly as it was - this pass only touches layout, spacing and styling.
+// The screen is laid out as labelled sections (identity header -> personal
+// information -> ratings -> complaints -> settings -> account actions). The
+// ratings section is a link to the full list (PharmacyReviewsView), not the
+// list itself; the debts section was removed entirely - debts live on the
+// Account History tab now. ProfileView holds no cubit of its own beyond the
+// app-wide Auth/Settings ones.
 class ProfileView extends StatelessWidget {
   const ProfileView({super.key});
 
@@ -110,173 +100,26 @@ class ProfileView extends StatelessWidget {
                   ],
 
                   const SizedBox(height: AppSizes.spacingXLarge),
-                  _SectionHeader(l10n.yourRatingTitle),
+                  _SectionHeader(l10n.ratingsTitle),
                   const SizedBox(height: AppSizes.spacingSmall),
-                  BlocBuilder<PharmacyReviewsCubit, PharmacyReviewsState>(
-                    builder: (context, reviewsState) {
-                      if (reviewsState.status == PharmacyReviewsStatus.loading ||
-                          reviewsState.status == PharmacyReviewsStatus.initial) {
-                        return const SizedBox(
-                          height: 24,
-                          child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                        );
-                      }
-                      // A failed load must not masquerade as "no ratings yet".
-                      if (reviewsState.status == PharmacyReviewsStatus.error &&
-                          reviewsState.reviews.isEmpty) {
-                        return FailureWidget(
-                          dense: true,
-                          message: translateErrorCode(
-                            l10n,
-                            reviewsState.errorCode,
-                            reviewsState.errorMessage ?? l10n.errorState,
-                          ),
-                          onRetry: () => context.read<PharmacyReviewsCubit>().load(),
-                        );
-                      }
-                      if (reviewsState.reviews.isEmpty) {
-                        return _EmptyHint(l10n.noRatingsYet);
-                      }
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          CustomCard(
-                            child: Row(
-                              children: [
-                                _StarRow(rating: reviewsState.averageRating.round()),
-                                const SizedBox(width: AppSizes.spacingSmall),
-                                Flexible(
-                                  child: Text(
-                                    l10n.ratingSummary(
-                                      reviewsState.averageRating.toStringAsFixed(1),
-                                      reviewsState.reviews.length.toString(),
-                                    ),
-                                    style: context.textTheme.bodyMedium?.copyWith(
-                                      color: AppColors.textSecondaryOf(context),
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          for (final review in reviewsState.reviews.take(3)) ...[
-                            const SizedBox(height: AppSizes.spacingSmall),
-                            _ReviewCard(review: review, isArabic: isArabic),
-                          ],
-                        ],
-                      );
-                    },
-                  ),
-
-                  const SizedBox(height: AppSizes.spacingXLarge),
-                  _SectionHeader(l10n.myDebtsTitle),
-                  const SizedBox(height: AppSizes.spacingSmall),
-                  BlocBuilder<DebtsCubit, DebtsState>(
-                    builder: (context, debtsState) {
-                      if (debtsState.status == DebtsStatus.loading ||
-                          debtsState.status == DebtsStatus.initial) {
-                        return const SizedBox(
-                          height: 24,
-                          child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
-                        );
-                      }
-                      // A failed load must not masquerade as "no debts yet".
-                      if (debtsState.status == DebtsStatus.error && debtsState.debts.isEmpty) {
-                        return FailureWidget(
-                          dense: true,
-                          message: translateErrorCode(
-                            l10n,
-                            debtsState.errorCode,
-                            debtsState.errorMessage ?? l10n.errorState,
-                          ),
-                          onRetry: () => context.read<DebtsCubit>().load(),
-                        );
-                      }
-                      if (debtsState.debts.isEmpty) {
-                        return _EmptyHint(l10n.noDebtsYet);
-                      }
-                      final usdToSyp = context.watch<ExchangeRateCubit>().state.usdToSyp;
-                      final total = debtsState.debts.fold<num>(0, (sum, d) => sum + d.balanceUsd);
-                      final totalSypText = formatSypApprox(total, usdToSyp, l10n.currencySuffix);
-
-                      return CustomCard(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: AppSizes.spacingMedium,
-                          vertical: AppSizes.spacingSmall,
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            for (final debt in debtsState.debts)
-                              _DebtTile(debt: debt, isArabic: isArabic, usdToSyp: usdToSyp),
-                            Divider(height: AppSizes.spacingLarge, color: AppColors.borderOf(context)),
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: AppSizes.spacingSmall),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                crossAxisAlignment: CrossAxisAlignment.end,
-                                children: [
-                                  Text(l10n.totalDebtsLabel, style: context.textTheme.titleSmall),
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    children: [
-                                      Text(
-                                        '\$$total',
-                                        style: context.textTheme.titleMedium?.copyWith(
-                                          color: AppColors.errorOf(context),
-                                        ),
-                                      ),
-                                      if (totalSypText != null)
-                                        Text(
-                                          totalSypText,
-                                          style: context.textTheme.bodySmall?.copyWith(
-                                            color: AppColors.textSecondaryOf(context),
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
+                  // The full ratings/reviews list moved to its own page
+                  // (PharmacyReviewsView) - Profile now only links to it, the
+                  // same way the Complaints row below works.
+                  _ProfileNavCard(
+                    icon: Icons.star_outline_rounded,
+                    title: l10n.ratingsTitle,
+                    subtitle: l10n.viewRatingsLabel,
+                    onTap: () => context.pushNamed(RouteNames.pharmacyReviews),
                   ),
 
                   const SizedBox(height: AppSizes.spacingXLarge),
                   _SectionHeader(l10n.complaintsTitle),
                   const SizedBox(height: AppSizes.spacingSmall),
-                  CustomCard(
+                  _ProfileNavCard(
+                    icon: Icons.support_agent_outlined,
+                    title: l10n.complaintsTitle,
+                    subtitle: l10n.complaintsProfileSubtitle,
                     onTap: () => context.pushNamed(RouteNames.complaints),
-                    child: Row(
-                      children: [
-                        Icon(Icons.support_agent_outlined, size: 22, color: AppColors.navyOf(context)),
-                        const SizedBox(width: AppSizes.spacingMedium),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(l10n.complaintsTitle, style: context.textTheme.titleSmall),
-                              const SizedBox(height: 2),
-                              Text(
-                                l10n.complaintsProfileSubtitle,
-                                style: context.textTheme.bodySmall?.copyWith(
-                                  color: AppColors.textSecondaryOf(context),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Icon(
-                          Icons.chevron_right,
-                          size: AppSizes.iconSizeSmall,
-                          color: AppColors.textSecondaryOf(context),
-                        ),
-                      ],
-                    ),
                   ),
 
                   const SizedBox(height: AppSizes.spacingXLarge),
@@ -561,177 +404,51 @@ class _PersonalInfoCard extends StatelessWidget {
   }
 }
 
-// The "nothing here yet" line for the rating / debts sections - a soft
-// bordered strip rather than bare text, so an empty section still looks
-// intentional.
-class _EmptyHint extends StatelessWidget {
-  const _EmptyHint(this.text);
+// A tappable row card - icon, title, secondary subtitle, trailing chevron -
+// the shared shell for the Ratings and Complaints entries, both of which just
+// navigate to their own full page.
+class _ProfileNavCard extends StatelessWidget {
+  const _ProfileNavCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+  });
 
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(
-        horizontal: AppSizes.spacingMedium,
-        vertical: AppSizes.spacingMedium,
-      ),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceOf(context),
-        borderRadius: AppRadius.medium,
-        border: Border.all(color: AppColors.borderOf(context)),
-      ),
-      child: Text(
-        text,
-        style: context.textTheme.bodyMedium?.copyWith(
-          color: AppColors.textSecondaryOf(context),
-        ),
-      ),
-    );
-  }
-}
-
-class _StarRow extends StatelessWidget {
-  const _StarRow({required this.rating, this.size = 18});
-
-  final int rating;
-  final double size;
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: List.generate(5, (index) {
-        final filled = index < rating;
-        return Icon(
-          filled ? Icons.star : Icons.star_border,
-          size: size,
-          color: filled ? AppColors.primaryOf(context) : AppColors.borderOf(context),
-        );
-      }),
-    );
-  }
-}
-
-// Restyled to match the individually-bordered review-card pattern
-// established on the Warehouse Profile screen, instead of one card with
-// dividers between reviews.
-class _ReviewCard extends StatelessWidget {
-  const _ReviewCard({required this.review, required this.isArabic});
-
-  final ReviewModel review;
-  final bool isArabic;
-
-  @override
-  Widget build(BuildContext context) {
-    final warehouseName = isArabic ? review.warehouseNameAr : review.warehouseNameEn;
-
     return CustomCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      onTap: onTap,
+      child: Row(
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              _StarRow(rating: review.rating, size: 14),
-              Text(
-                DateFormatter.formatDate(review.createdAt),
-                style: context.textTheme.bodySmall?.copyWith(
-                  color: AppColors.textSecondaryOf(context),
-                ),
-              ),
-            ],
-          ),
-          if (warehouseName != null) ...[
-            const SizedBox(height: AppSizes.spacingXSmall),
-            Text(
-              warehouseName,
-              style: context.textTheme.bodySmall?.copyWith(fontWeight: FontWeight.w700),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ],
-          if (review.comment != null && review.comment!.isNotEmpty) ...[
-            const SizedBox(height: AppSizes.spacingXSmall),
-            Text(review.comment!, style: context.textTheme.bodyMedium),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-// Section 16: one row of "my debts" - tapping it opens the read-only detail
-// screen (orders + payments) for that one warehouse, see DebtDetailView. The
-// design's per-row "last payment date" isn't shown - WarehouseDebtModel
-// doesn't carry it.
-class _DebtTile extends StatelessWidget {
-  const _DebtTile({required this.debt, required this.isArabic, required this.usdToSyp});
-
-  final WarehouseDebtModel debt;
-  final bool isArabic;
-  final double? usdToSyp;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final name = isArabic ? debt.nameAr : (debt.nameEn ?? debt.nameAr);
-    final sypText = formatSypApprox(debt.balanceUsd, usdToSyp, l10n.currencySuffix);
-
-    return InkWell(
-      onTap: () => context.pushNamed(
-        RouteNames.debtDetail,
-        pathParameters: {'warehouseId': debt.warehouseId},
-        extra: name,
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: AppSizes.spacingSmall),
-        child: Row(
-          children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: AppColors.surfaceOf(context),
-                borderRadius: AppRadius.small,
-              ),
-              child: Icon(Icons.storefront_outlined, size: 17, color: AppColors.textSecondaryOf(context)),
-            ),
-            const SizedBox(width: AppSizes.spacingSmall),
-            Expanded(
-              child: Text(
-                name,
-                style: context.textTheme.bodyMedium,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            const SizedBox(width: AppSizes.spacingSmall),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
+          Icon(icon, size: 22, color: AppColors.navyOf(context)),
+          const SizedBox(width: AppSizes.spacingMedium),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Text(title, style: context.textTheme.titleSmall),
+                const SizedBox(height: 2),
                 Text(
-                  '\$${debt.balanceUsd}',
-                  style: context.textTheme.bodyMedium?.copyWith(
-                    color: AppColors.errorOf(context),
-                    fontWeight: FontWeight.bold,
+                  subtitle,
+                  style: context.textTheme.bodySmall?.copyWith(
+                    color: AppColors.textSecondaryOf(context),
                   ),
                 ),
-                if (sypText != null)
-                  Text(
-                    sypText,
-                    style: context.textTheme.bodySmall?.copyWith(
-                      fontSize: 10.5,
-                      color: AppColors.textSecondaryOf(context),
-                    ),
-                  ),
               ],
             ),
-            const SizedBox(width: AppSizes.spacingXSmall),
-            Icon(Icons.chevron_right, size: AppSizes.iconSizeSmall, color: AppColors.textSecondaryOf(context)),
-          ],
-        ),
+          ),
+          Icon(
+            Icons.chevron_right,
+            size: AppSizes.iconSizeSmall,
+            color: AppColors.textSecondaryOf(context),
+          ),
+        ],
       ),
     );
   }

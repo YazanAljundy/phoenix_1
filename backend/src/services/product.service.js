@@ -180,7 +180,9 @@ async function listWarehouseProducts(
       warehouseId,
       status: 'approved',
       startDate: { $lte: now },
-      endDate: { $gte: now },
+      // A permanent offer has no endDate (isPermanent true, endDate null) and
+      // stays live from its start date on.
+      $or: [{ isPermanent: true }, { endDate: { $gte: now } }],
       productId: { $in: products.map((p) => p._id) },
     }).select('productId discountPercentage titleAr titleEn'),
     getDiscountMapForWarehouse(warehouseId),
@@ -239,4 +241,26 @@ async function listDistinctManufacturersForWarehouse(warehouseId) {
   return manufacturers;
 }
 
-module.exports = { listWarehouseProducts, listDistinctManufacturersForWarehouse };
+// Section 15 (pharmacist-facing): the same distinct list as above, each entry
+// paired with the warehouse's standing manufacturer discount so the
+// pharmacy's company cards can show it. Purely a read/serialisation join of
+// two values that already exist - the discount map is the very one every
+// catalog listing and order already builds (manufacturerDiscount.service.js),
+// no price is computed here. A manufacturer with no discount rule reports 0,
+// which the card shows as "0%" rather than hiding.
+async function listManufacturersWithDiscountsForWarehouse(warehouseId) {
+  const [names, discountByName] = await Promise.all([
+    listDistinctManufacturersForWarehouse(warehouseId),
+    getDiscountMapForWarehouse(warehouseId),
+  ]);
+  return names.map((manufacturerAr) => ({
+    manufacturerAr,
+    discountPercentage: discountByName.get(manufacturerAr) ?? 0,
+  }));
+}
+
+module.exports = {
+  listWarehouseProducts,
+  listDistinctManufacturersForWarehouse,
+  listManufacturersWithDiscountsForWarehouse,
+};

@@ -4,6 +4,8 @@ const { ApiError } = require('../utils/ApiError');
 const Pharmacy = require('../models/pharmacy.model');
 const orderService = require('../services/order.service');
 const orderViewModel = require('../viewmodels/order.viewmodel');
+const { verifyImageMagicBytes } = require('../middlewares/upload.middleware');
+const { uploadImage, deleteImageByUrl } = require('../services/upload.service');
 const { parseCursorQuery, parseNumericCursor, paginationMeta } = require('../utils/pagination');
 
 const ORDERS_DEFAULT_LIMIT = 15;
@@ -37,12 +39,22 @@ function validateItems(items) {
 }
 
 const create = asyncHandler(async (req, res) => {
-  const { warehouseId, notes } = req.body;
+  const { warehouseId, notes, advertisementId } = req.body;
 
   if (typeof warehouseId !== 'string' || !mongoose.Types.ObjectId.isValid(warehouseId)) {
     throw ApiError.badRequest('Invalid warehouse.', undefined, 'INVALID_WAREHOUSE');
   }
   const items = validateItems(req.body.items);
+
+  // An advertisement is identified by id and nothing else. Any price, total or
+  // discount in the body is ignored outright - createOrder re-reads the
+  // package from MongoDB and computes every figure itself, so a client cannot
+  // name its own discount.
+  if (advertisementId !== undefined && advertisementId !== null) {
+    if (typeof advertisementId !== 'string' || !mongoose.Types.ObjectId.isValid(advertisementId)) {
+      throw ApiError.badRequest('Invalid advertisement.', undefined, 'INVALID_ADVERTISEMENT');
+    }
+  }
 
   // pharmacyId comes from the authenticated user's own profile, never from
   // the request body - a pharmacist can only ever order as themselves.
@@ -53,6 +65,7 @@ const create = asyncHandler(async (req, res) => {
     pharmacyId: pharmacy._id,
     warehouseId,
     items,
+    advertisementId: advertisementId || null,
     notes: typeof notes === 'string' && notes.trim() ? notes.trim() : null,
   });
 
@@ -77,6 +90,16 @@ const list = asyncHandler(async (req, res) => {
     ...orderViewModel.toOrderListResponse(rows),
     pagination: paginationMeta(hasMore, nextCursor),
   });
+});
+
+// Section: GET /orders/savings-summary - the pharmacy's running "money saved
+// through discounts" total, for the Account History screen. Read-only
+// aggregation of OrderItem.savingsUsd (locked in at order time); computes no
+// new discount. Scoped to the caller's own pharmacy, resolved from the JWT.
+const savingsSummary = asyncHandler(async (req, res) => {
+  const pharmacy = await loadPharmacyOrThrow(req.user._id);
+  const summary = await orderService.getSavingsSummaryForPharmacy(pharmacy._id);
+  res.json({ success: true, ...orderViewModel.toSavingsSummaryResponse(summary) });
 });
 
 const getOne = asyncHandler(async (req, res) => {
@@ -106,6 +129,47 @@ const cancel = asyncHandler(async (req, res) => {
   });
 });
 
+// Section: optional delivery seal photo. multipart/form-data with a single
+// `image` field (deliverySealPhotoUpload middleware). The photo is uploaded to
+// Cloudinary first, then recorded on the order in the same request - if
+// recording it fails (wrong status, IDOR, …) the just-uploaded image is
+// removed so a failed attempt leaves no orphan, exactly like
+// return.controller.js's create. The order status is NOT changed here.
+const confirmDelivery = asyncHandler(async (req, res) => {
+  if (!req.file) {
+    throw ApiError.badRequest(
+      'A seal photo is required to confirm delivery.',
+      undefined,
+      'DELIVERY_SEAL_PHOTO_REQUIRED'
+    );
+  }
+  if (!verifyImageMagicBytes(req.file.buffer)) {
+    throw ApiError.badRequest(
+      'The seal photo file content is not a valid image.',
+      undefined,
+      'INVALID_DELIVERY_SEAL_PHOTO'
+    );
+  }
+
+  const imageUrl = await uploadImage(req.file.buffer, 'delivery-seals');
+
+  let result;
+  try {
+    const pharmacy = await loadPharmacyOrThrow(req.user._id);
+    result = await orderService.attachDeliverySealPhoto(req.params.id, pharmacy._id, imageUrl);
+  } catch (err) {
+    await deleteImageByUrl(imageUrl);
+    throw err;
+  }
+
+  const { order, warehouse, items, returnRequest, myReview, complaints } = result;
+  res.json({
+    success: true,
+    message: 'Delivery confirmed.',
+    ...orderViewModel.toOrderDetailResponse(order, warehouse, items, returnRequest, myReview, complaints),
+  });
+});
+
 // Section: GET /orders/returnable - orders still inside the 48-hour
 // return window. Scoped to the caller's own pharmacy, resolved from the
 // JWT rather than any client-supplied id.
@@ -127,4 +191,4 @@ const reorder = asyncHandler(async (req, res) => {
 });
 
 module.exports = {
-  listReturnable, create, list, getOne, cancel, reorder };
+  listReturnable, savingsSummary, create, list, getOne, cancel, confirmDelivery, reorder };

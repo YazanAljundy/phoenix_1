@@ -4,6 +4,7 @@ import { api } from '../api/client';
 import { LoadMoreControl } from '../components/LoadMoreControl';
 import { usePaginatedData } from '../hooks/usePaginatedData';
 import { REALTIME_EVENTS, useRealtimeSync } from '../realtime/useRealtimeSync';
+import { AdvertisementsSubNav } from '../components/AdvertisementsSubNav';
 import { withArFallback } from '../utils/displayName';
 
 const PAGE_SIZE = 20;
@@ -291,8 +292,10 @@ export function AdminBannersPage() {
 
   return (
     <div>
+      <AdvertisementsSubNav basePath="/admin/advertisements" variant="adm" />
+
       <div className="adm-page-head">
-        <h1>{t('nav.banners')}</h1>
+        <h1>{t('nav.advertisements')}</h1>
       </div>
 
       {(error || actionError) && <p className="error-text">{error || actionError}</p>}

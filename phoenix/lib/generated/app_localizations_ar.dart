@@ -304,6 +304,11 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String companyDiscountValue(String percent) {
+    return 'خصم الشركة: $percent٪';
+  }
+
+  @override
   String get warehouseProfileTooltip => 'معلومات المستودع';
 
   @override
@@ -478,6 +483,79 @@ class AppLocalizationsAr extends AppLocalizations {
   String reorderSomeItemsUnavailable(String names) {
     return 'هذه المنتجات لم يعد المستودع يبيعها ولم تُضَف: $names';
   }
+
+  @override
+  String get advertisementsSectionTitle => 'باقات خاصة';
+
+  @override
+  String get advertisementPackageTotal => 'سعر الباقة';
+
+  @override
+  String advertisementSavingPercent(int percent) {
+    return 'توفير $percent٪';
+  }
+
+  @override
+  String advertisementProductCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count منتج',
+      few: '$count منتجات',
+      two: 'منتجان',
+      one: 'منتج واحد',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String advertisementItemQuantity(int count) {
+    return '× $count';
+  }
+
+  @override
+  String get advertisementDiscountLabel => 'حسم الباقة';
+
+  @override
+  String get advertisementTotalToPay => 'المبلغ المطلوب';
+
+  @override
+  String get advertisementAddToCartButton => 'أضف الباقة للسلة';
+
+  @override
+  String get advertisementReplaceCartTitle => 'استبدال السلة؟';
+
+  @override
+  String get advertisementReplaceCartMessage =>
+      'سيتم استبدال سلتك الحالية بهذه الباقة. يمكنك تعديل كل شيء قبل إتمام الطلب.';
+
+  @override
+  String get advertisementReplaceCartConfirm => 'استبدال السلة';
+
+  @override
+  String get advertisementUnavailableTitle => 'الباقة غير متاحة';
+
+  @override
+  String get advertisementUnavailableMessage =>
+      'لم تعد هذه الباقة متاحة. ربما انتهت مدتها أو تم سحبها.';
+
+  @override
+  String advertisementIncompleteMessage(String names) {
+    return 'بعض منتجات هذه الباقة لم يعد المستودع يبيعها، لذلك لا يمكن إضافتها: $names';
+  }
+
+  @override
+  String get advertisementPackageBrokenMessage =>
+      'حذف منتج يُنهي سعر الباقة. المنتجات المتبقية صار سعرها عادي.';
+
+  @override
+  String get advertisementsLoading => 'جارٍ تحميل الباقات...';
+
+  @override
+  String get advertisementsEmpty => 'لا توجد باقات متاحة حالياً.';
+
+  @override
+  String get advertisementsError => 'تعذّر تحميل الباقات.';
 
   @override
   String get notificationsTitle => 'الإشعارات';
@@ -669,6 +747,16 @@ class AppLocalizationsAr extends AppLocalizations {
   String get noReturnsYet => 'لم تقدّم أي طلب إرجاع بعد.';
 
   @override
+  String get noReturnsYetHint =>
+      'عند تقديم طلب إرجاع على طلب تم تسليمه، سيظهر هنا لتتابع حالته.';
+
+  @override
+  String get noReturnableOrdersTitle => 'لا يوجد طلبات مؤهلة للإرجاع';
+
+  @override
+  String get myReturnsListSectionTitle => 'طلبات الإرجاع الخاصة بك';
+
+  @override
   String get newReturnRequestButton => 'طلب مرتجع جديد';
 
   @override
@@ -684,6 +772,42 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get requestReturnButton => 'إرسال طلب الإرجاع';
+
+  @override
+  String get requestReturnAction => 'طلب مرتجع';
+
+  @override
+  String get accountHistoryTitle => 'سجل الحسابات';
+
+  @override
+  String get moneySavedTitle => 'المبلغ الذي وفرته عبر تطبيقنا';
+
+  @override
+  String get fromDiscountsLabel => 'من الخصومات';
+
+  @override
+  String get debtsTitle => 'الديون';
+
+  @override
+  String get outstandingBalanceLabel => 'الرصيد المستحق';
+
+  @override
+  String get viewReturnsLabel => 'عرض المرتجعات';
+
+  @override
+  String returnsRequestsShort(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count طلب',
+      many: '$count طلباً',
+      few: '$count طلبات',
+      two: 'طلبان',
+      one: 'طلب واحد',
+      zero: 'لا طلبات',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get returnQuantityLabel => 'الكمية';
@@ -800,10 +924,11 @@ class AppLocalizationsAr extends AppLocalizations {
   String get errorRejectionNoteRequired => 'يرجى توضيح سبب رفض هذا المرتجع.';
 
   @override
-  String get returnPhotosLabel => 'صور (مطلوب)';
+  String get returnPhotosLabel => 'صور (اختياري)';
 
   @override
-  String get returnPhotosHint => 'أضف صور للمنتج تساعد المستودع يتحقق من السبب';
+  String get returnPhotosHint =>
+      'يمكنك إرفاق صور للمنتج تساعد المستودع يتحقق من السبب';
 
   @override
   String get addPhotoButton => 'إضافة صورة';
@@ -844,6 +969,12 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get yourRatingTitle => 'تقييمك';
+
+  @override
+  String get ratingsTitle => 'التقييمات';
+
+  @override
+  String get viewRatingsLabel => 'عرض التقييمات';
 
   @override
   String get noRatingsYet => 'ما في مستودع قيّمك لهلق.';
@@ -909,40 +1040,45 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String minOrderLabel(String amount) {
-    return 'الحد الأدنى للطلب: \$$amount';
+    return 'الحد الأدنى للطلب: $amount';
   }
 
   @override
   String maxOrderLabel(String amount) {
-    return 'الحد الأقصى للطلب: \$$amount';
+    return 'الحد الأقصى للطلب: $amount';
   }
 
   @override
   String addMoreToReachMinimum(String amount) {
-    return 'أضف \$$amount للوصول للحد الأدنى';
+    return 'أضف $amount للوصول للحد الأدنى';
   }
 
   @override
   String removeToMeetMaximum(String amount) {
-    return 'تجاوزت الحد الأقصى \$$amount، احذف بعض الأصناف';
+    return 'تجاوزت الحد الأقصى $amount، احذف بعض الأصناف';
   }
 
   @override
   String orderBelowMinimum(String amount) {
-    return 'الحد الأدنى للطلب من هذا المستودع هو \$$amount.';
+    return 'الحد الأدنى للطلب من هذا المستودع هو $amount.';
   }
 
   @override
   String orderAboveMaximum(String amount) {
-    return 'الحد الأقصى للطلب من هذا المستودع هو \$$amount.';
+    return 'الحد الأقصى للطلب من هذا المستودع هو $amount.';
   }
 
   @override
-  String get returnableSectionTitle => '🔄 طلبات مؤهلة للإرجاع';
+  String get returnableSectionTitle => 'طلبات مؤهلة للإرجاع';
 
   @override
   String get returnableSectionSubtitle =>
       'يمكنك تقديم طلب إرجاع خلال 48 ساعة من التسليم';
+
+  @override
+  String returnableDeliveredOnLabel(String date) {
+    return 'سُلّم بتاريخ $date';
+  }
 
   @override
   String returnableOrderNumber(String number) {
@@ -1199,4 +1335,40 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get updateOpenStoreFailed =>
       'تعذر فتح متجر Google Play. حاول مرة أخرى.';
+
+  @override
+  String get deliverySealRequiredTitle => 'تأكيد التسليم';
+
+  @override
+  String get deliverySealRequiredMessage =>
+      'يطلب هذا المستودع صورة لختم الشحنة قبل إتمام الطلب. التقط صورة واضحة للختم على الطرد.';
+
+  @override
+  String get takeSealPhoto => 'إضافة صورة الختم';
+
+  @override
+  String get retakeSealPhoto => 'إعادة التقاط الصورة';
+
+  @override
+  String get confirmDeliveryButton => 'تأكيد التسليم';
+
+  @override
+  String get sealPhotoLabel => 'صورة ختم التسليم';
+
+  @override
+  String deliverySealConfirmedOn(String date) {
+    return 'تم تأكيد التسليم بتاريخ $date';
+  }
+
+  @override
+  String get errorDeliverySealPhotoRequired =>
+      'يلزم إرفاق صورة الختم لتأكيد التسليم.';
+
+  @override
+  String get errorInvalidDeliverySealPhoto =>
+      'هذا الملف ليس صورة صالحة. الرجاء اختيار صورة أخرى.';
+
+  @override
+  String get errorOrderNotAwaitingDelivery =>
+      'هذا الطلب ليس بانتظار تأكيد التسليم حالياً.';
 }

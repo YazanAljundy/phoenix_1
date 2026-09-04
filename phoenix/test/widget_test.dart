@@ -14,6 +14,8 @@ import 'package:phoenix/core/services/storage_service.dart';
 import 'package:phoenix/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:phoenix/features/auth/presentation/views/password_login_view.dart';
 import 'package:phoenix/features/auth/presentation/views/splash_view.dart';
+import 'package:phoenix/features/account_history/data/repositories/savings_repository_impl.dart';
+import 'package:phoenix/features/advertisements/data/repositories/advertisements_repository_impl.dart';
 import 'package:phoenix/features/banners/data/repositories/banners_repository_impl.dart';
 import 'package:phoenix/features/cart/data/repositories/order_repository_impl.dart';
 import 'package:phoenix/features/catalog/data/repositories/catalog_repository_impl.dart';
@@ -40,11 +42,13 @@ Future<AppRouter> _pumpApp(WidgetTester tester) async {
     apiClient: apiClient,
   );
   final orderRepository = OrderRepositoryImpl(apiClient: apiClient);
+  final savingsRepository = SavingsRepositoryImpl(apiClient: apiClient);
   final returnRepository = ReturnRepositoryImpl(apiClient: apiClient);
   final complaintRepository = ComplaintRepositoryImpl(apiClient: apiClient);
   final reviewRepository = ReviewRepositoryImpl(apiClient: apiClient);
   final debtRepository = DebtRepositoryImpl(apiClient: apiClient);
   final bannersRepository = BannersRepositoryImpl(apiClient: apiClient);
+  final advertisementsRepository = AdvertisementsRepositoryImpl(apiClient: apiClient);
   final notificationRepository = NotificationRepository(storageService);
   final fcmService = FcmService(
     authRepository: authRepository,
@@ -70,11 +74,13 @@ Future<AppRouter> _pumpApp(WidgetTester tester) async {
       catalogRepository: catalogRepository,
       exchangeRateRepository: exchangeRateRepository,
       orderRepository: orderRepository,
+      savingsRepository: savingsRepository,
       returnRepository: returnRepository,
       complaintRepository: complaintRepository,
       reviewRepository: reviewRepository,
       debtRepository: debtRepository,
       bannersRepository: bannersRepository,
+      advertisementsRepository: advertisementsRepository,
       notificationRepository: notificationRepository,
       fcmService: fcmService,
       appRouter: appRouter,

@@ -1,8 +1,9 @@
 const { serializePayment } = require('./payment.viewmodel');
 
-// Section 16: the warehouse's "who owes me" list - one row per debtor. The
-// web table also wants the two running totals, not just the net balance -
-// both already sit on the cached balance doc, so no extra query needed.
+// Section 16: the warehouse's "Invoices" list - one row per pharmacy that has
+// purchased from it, whatever the current balance (debt / 0 / credit). The web
+// table also wants the two running totals, not just the net balance; a
+// pharmacy with a delivered order but no balance row yet shows 0/0/0.
 function serializeDebtorRow({ balance, pharmacy }) {
   return {
     pharmacyId: pharmacy._id,
@@ -37,9 +38,9 @@ function toDebtListResponse(rows) {
 }
 
 // Shared by both the warehouse's own detail view (with edit/delete affordances,
-// gated client-side on each payment's own `canEdit`) and the pharmacist's
-// read-only one - same shape either way, the pharmacist's client just never
-// renders the edit/delete actions. `viewerRole` picks which side's own
+// available at any time) and the pharmacist's read-only one - same shape
+// either way, the pharmacist's client just never renders the edit/delete
+// actions. `viewerRole` picks which side's own
 // identity to omit (a warehouse viewing this already knows which pharmacy
 // it clicked into - it needs the pharmacy's info back; the pharmacist needs
 // the warehouse's).

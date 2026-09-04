@@ -10,13 +10,12 @@ const paymentSchema = new Schema(
     pharmacyId: { type: Schema.Types.ObjectId, ref: 'Pharmacy', required: true },
     warehouseId: { type: Schema.Types.ObjectId, ref: 'Warehouse', required: true },
     amount: { type: Number, required: true, min: 0 },
-    currency: { type: String, enum: ['USD', 'SYP'], required: true },
+    // SYP is the default currency across Phoenix - a payment recorded without
+    // an explicit currency is a Syrian-pound payment. USD stays fully
+    // supported (the warehouse can still pick it on the form).
+    currency: { type: String, enum: ['USD', 'SYP'], required: true, default: 'SYP' },
     note: { type: String, default: null, trim: true },
     recordedBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    // Exactly createdAt + 5 minutes, set once at creation - a short grace
-    // window to fix a typo right after entry, not a general edit right.
-    // Past this, the record is locked (see payment.service.js).
-    canEditUntil: { type: Date, required: true },
   },
   { timestamps: true }
 );

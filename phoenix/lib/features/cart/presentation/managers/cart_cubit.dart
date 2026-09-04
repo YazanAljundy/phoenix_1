@@ -125,21 +125,75 @@ class CartCubit extends Cubit<CartState> {
     _loadWarehouseLimits(warehouseId);
   }
 
+  // "Open an advertisement": replaces the whole cart with a package's
+  // contents, bound to that package's own warehouse (which comes from the
+  // trusted server payload, never client input) - the same shape and the same
+  // one-warehouse-per-cart invariant as loadReorder above. The caller
+  // (AdvertisementCard) resolves any "you already have a cart" confirmation
+  // first, exactly as ReorderButton does.
+  //
+  // `items` are already priced by the server at the advertised prices. The two
+  // totals are display-only: submitOrder sends nothing but the advertisement's
+  // id, and order.service.js re-reads the package and recomputes every figure.
+  void loadAdvertisement({
+    required String advertisementId,
+    required String warehouseId,
+    required String warehouseName,
+    required List<CartItem> items,
+    required num itemsSubtotalUsd,
+    required num totalUsd,
+  }) {
+    emit(
+      CartState(
+        warehouseId: warehouseId,
+        warehouseName: warehouseName,
+        items: List.of(items),
+        advertisementId: advertisementId,
+        advertisementItemsSubtotalUsd: itemsSubtotalUsd,
+        advertisementTotalUsd: totalUsd,
+      ),
+    );
+    _loadWarehouseLimits(warehouseId);
+  }
+
   void updateQuantity(String productId, int quantity) {
+    final clamped = quantity < 1 ? 1 : quantity;
     final updated = state.items.map((item) {
       if (item.productId != productId) return item;
-      return item.copyWith(quantity: quantity < 1 ? 1 : quantity);
+      return item.copyWith(quantity: clamped);
     }).toList();
-    emit(state.copyWith(items: updated));
+
+    // A package line dropped BELOW its advertised quantity breaks the package
+    // - the pharmacy would be short of what the package price covers, and the
+    // backend rejects it at checkout (ADVERTISEMENT_ITEM_MISSING). Above the
+    // advertised quantity nothing breaks: the discount is applied once and the
+    // extra units add at the catalog price.
+    final target = state.items.firstWhere(
+      (item) => item.productId == productId,
+      orElse: () => updated.first,
+    );
+    final breaksPackage = target.isAdvertised &&
+        state.hasAdvertisement &&
+        clamped < (target.advertisementQuantity ?? 1);
+
+    emit(state.copyWith(items: updated, clearAdvertisement: breaksPackage));
   }
 
   void removeItem(String productId) {
+    final removed = state.items.where((item) => item.productId == productId).toList();
     final updated = state.items.where((item) => item.productId != productId).toList();
     if (updated.isEmpty) {
       emit(const CartState());
-    } else {
-      emit(state.copyWith(items: updated));
+      return;
     }
+
+    // A package is all-or-nothing: dropping one of its products means the
+    // package price no longer applies, and everything reprices normally. The
+    // backend enforces the identical rule at checkout
+    // (ADVERTISEMENT_ITEM_MISSING), so the cart can never show a package
+    // price the server would refuse to honour.
+    final brokePackage = removed.any((item) => item.isAdvertised);
+    emit(state.copyWith(items: updated, clearAdvertisement: brokePackage));
   }
 
   void updateNotes(String notes) => emit(state.copyWith(notes: notes));
@@ -166,6 +220,10 @@ class CartCubit extends Cubit<CartState> {
         warehouseId: state.warehouseId!,
         items: state.items,
         notes: state.notes.trim().isEmpty ? null : state.notes.trim(),
+        // Only sent while the package still holds - hasAdvertisement goes
+        // false the moment one of its products is removed, which is also when
+        // the server would reject it.
+        advertisementId: state.hasAdvertisement ? state.advertisementId : null,
       );
       emit(const CartState());
       return order;

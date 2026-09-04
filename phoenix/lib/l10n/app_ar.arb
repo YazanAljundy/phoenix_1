@@ -119,6 +119,14 @@
       }
     }
   },
+  "companyDiscountValue": "خصم الشركة: {percent}٪",
+  "@companyDiscountValue": {
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
   "warehouseProfileTooltip": "معلومات المستودع",
   "deliveryInfoTitle": "معلومات التوصيل",
   "deliveryHoursValue": "من {start} إلى {end}",
@@ -227,6 +235,52 @@
       }
     }
   },
+  "advertisementsSectionTitle": "باقات خاصة",
+  "advertisementPackageTotal": "سعر الباقة",
+  "advertisementSavingPercent": "توفير {percent}٪",
+  "@advertisementSavingPercent": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "advertisementProductCount": "{count, plural, =1{منتج واحد} =2{منتجان} few{{count} منتجات} other{{count} منتج}}",
+  "@advertisementProductCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "advertisementItemQuantity": "× {count}",
+  "@advertisementItemQuantity": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "advertisementDiscountLabel": "حسم الباقة",
+  "advertisementTotalToPay": "المبلغ المطلوب",
+  "advertisementAddToCartButton": "أضف الباقة للسلة",
+  "advertisementReplaceCartTitle": "استبدال السلة؟",
+  "advertisementReplaceCartMessage": "سيتم استبدال سلتك الحالية بهذه الباقة. يمكنك تعديل كل شيء قبل إتمام الطلب.",
+  "advertisementReplaceCartConfirm": "استبدال السلة",
+  "advertisementUnavailableTitle": "الباقة غير متاحة",
+  "advertisementUnavailableMessage": "لم تعد هذه الباقة متاحة. ربما انتهت مدتها أو تم سحبها.",
+  "advertisementIncompleteMessage": "بعض منتجات هذه الباقة لم يعد المستودع يبيعها، لذلك لا يمكن إضافتها: {names}",
+  "@advertisementIncompleteMessage": {
+    "placeholders": {
+      "names": {
+        "type": "String"
+      }
+    }
+  },
+  "advertisementPackageBrokenMessage": "حذف منتج يُنهي سعر الباقة. المنتجات المتبقية صار سعرها عادي.",
+  "advertisementsLoading": "جارٍ تحميل الباقات...",
+  "advertisementsEmpty": "لا توجد باقات متاحة حالياً.",
+  "advertisementsError": "تعذّر تحميل الباقات.",
   "notificationsTitle": "الإشعارات",
   "noNotificationsYet": "لا توجد إشعارات بعد",
   "noNotificationsYetHint": "ستظهر هنا تحديثات الطلبات والعروض.",
@@ -332,11 +386,29 @@
     }
   },
   "noReturnsYet": "لم تقدّم أي طلب إرجاع بعد.",
+  "noReturnsYetHint": "عند تقديم طلب إرجاع على طلب تم تسليمه، سيظهر هنا لتتابع حالته.",
+  "noReturnableOrdersTitle": "لا يوجد طلبات مؤهلة للإرجاع",
+  "myReturnsListSectionTitle": "طلبات الإرجاع الخاصة بك",
   "newReturnRequestButton": "طلب مرتجع جديد",
   "selectOrderForReturnTitle": "اختر الطلب الذي تريد إرجاع أصناف منه",
   "noEligibleOrdersForReturn": "لا يوجد طلبات مسلّمة حالياً يمكن طلب إرجاع لها.",
   "requestReturnTitle": "طلب إرجاع",
   "requestReturnButton": "إرسال طلب الإرجاع",
+  "requestReturnAction": "طلب مرتجع",
+  "accountHistoryTitle": "سجل الحسابات",
+  "moneySavedTitle": "المبلغ الذي وفرته عبر تطبيقنا",
+  "fromDiscountsLabel": "من الخصومات",
+  "debtsTitle": "الديون",
+  "outstandingBalanceLabel": "الرصيد المستحق",
+  "viewReturnsLabel": "عرض المرتجعات",
+  "returnsRequestsShort": "{count, plural, zero{لا طلبات} one{طلب واحد} two{طلبان} few{{count} طلبات} many{{count} طلباً} other{{count} طلب}}",
+  "@returnsRequestsShort": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "returnQuantityLabel": "الكمية",
   "returnReasonLabel": "السبب",
   "reasonDamaged": "تالف",
@@ -372,8 +444,8 @@
   "errorReturnPhotoRequired": "يرجى إرفاق صورة واحدة على الأقل للمنتج.",
   "errorDuplicateReturnItem": "كل صنف ممكن يظهر مرة وحدة بس بطلب الإرجاع.",
   "errorRejectionNoteRequired": "يرجى توضيح سبب رفض هذا المرتجع.",
-  "returnPhotosLabel": "صور (مطلوب)",
-  "returnPhotosHint": "أضف صور للمنتج تساعد المستودع يتحقق من السبب",
+  "returnPhotosLabel": "صور (اختياري)",
+  "returnPhotosHint": "يمكنك إرفاق صور للمنتج تساعد المستودع يتحقق من السبب",
   "addPhotoButton": "إضافة صورة",
   "cameraOption": "التقاط صورة",
   "galleryOption": "اختيار من المعرض",
@@ -387,6 +459,8 @@
   "logoutConfirmTitle": "تسجيل الخروج؟",
   "logoutConfirmMessage": "هل أنت متأكد من تسجيل الخروج؟",
   "yourRatingTitle": "تقييمك",
+  "ratingsTitle": "التقييمات",
+  "viewRatingsLabel": "عرض التقييمات",
   "noRatingsYet": "ما في مستودع قيّمك لهلق.",
   "ratingSummary": "{average} بالمعدل ({count} تقييم)",
   "@ratingSummary": {
@@ -423,14 +497,22 @@
     }
   },
   "errorAlreadyReviewed": "تم تقييم هذا الطلب من قبل.",
-  "minOrderLabel": "الحد الأدنى للطلب: ${amount}",
-  "maxOrderLabel": "الحد الأقصى للطلب: ${amount}",
-  "addMoreToReachMinimum": "أضف ${amount} للوصول للحد الأدنى",
-  "removeToMeetMaximum": "تجاوزت الحد الأقصى ${amount}، احذف بعض الأصناف",
-  "orderBelowMinimum": "الحد الأدنى للطلب من هذا المستودع هو ${amount}.",
-  "orderAboveMaximum": "الحد الأقصى للطلب من هذا المستودع هو ${amount}.",
-  "returnableSectionTitle": "🔄 طلبات مؤهلة للإرجاع",
+  "minOrderLabel": "الحد الأدنى للطلب: {amount}",
+  "maxOrderLabel": "الحد الأقصى للطلب: {amount}",
+  "addMoreToReachMinimum": "أضف {amount} للوصول للحد الأدنى",
+  "removeToMeetMaximum": "تجاوزت الحد الأقصى {amount}، احذف بعض الأصناف",
+  "orderBelowMinimum": "الحد الأدنى للطلب من هذا المستودع هو {amount}.",
+  "orderAboveMaximum": "الحد الأقصى للطلب من هذا المستودع هو {amount}.",
+  "returnableSectionTitle": "طلبات مؤهلة للإرجاع",
   "returnableSectionSubtitle": "يمكنك تقديم طلب إرجاع خلال 48 ساعة من التسليم",
+  "returnableDeliveredOnLabel": "سُلّم بتاريخ {date}",
+  "@returnableDeliveredOnLabel": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "returnableOrderNumber": "طلب #{number}",
   "returnableHoursLeft": "باقي {hours} ساعة",
   "returnableEndingSoon": "ينتهي قريباً",
@@ -548,5 +630,22 @@
   "updateRequiredMessage": "إصدار التطبيق الحالي لم يعد مدعوماً. يرجى تحديث التطبيق للمتابعة.",
   "updateNow": "تحديث الآن",
   "later": "لاحقاً",
-  "updateOpenStoreFailed": "تعذر فتح متجر Google Play. حاول مرة أخرى."
+  "updateOpenStoreFailed": "تعذر فتح متجر Google Play. حاول مرة أخرى.",
+  "deliverySealRequiredTitle": "تأكيد التسليم",
+  "deliverySealRequiredMessage": "يطلب هذا المستودع صورة لختم الشحنة قبل إتمام الطلب. التقط صورة واضحة للختم على الطرد.",
+  "takeSealPhoto": "إضافة صورة الختم",
+  "retakeSealPhoto": "إعادة التقاط الصورة",
+  "confirmDeliveryButton": "تأكيد التسليم",
+  "sealPhotoLabel": "صورة ختم التسليم",
+  "deliverySealConfirmedOn": "تم تأكيد التسليم بتاريخ {date}",
+  "@deliverySealConfirmedOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "errorDeliverySealPhotoRequired": "يلزم إرفاق صورة الختم لتأكيد التسليم.",
+  "errorInvalidDeliverySealPhoto": "هذا الملف ليس صورة صالحة. الرجاء اختيار صورة أخرى.",
+  "errorOrderNotAwaitingDelivery": "هذا الطلب ليس بانتظار تأكيد التسليم حالياً."
 }

@@ -1,5 +1,6 @@
 import 'package:phoenix/core/models/paginated_result.dart';
 import 'package:phoenix/features/catalog/data/models/category_model.dart';
+import 'package:phoenix/features/catalog/data/models/manufacturer_model.dart';
 import 'package:phoenix/features/catalog/data/models/product_model.dart';
 
 abstract class CatalogRepository {
@@ -19,6 +20,7 @@ abstract class CatalogRepository {
 
   // The pharmacist's entry point into a warehouse's catalog: distinct
   // manufacturers (manufacturerAr) with at least one product in this
-  // warehouse - see product.service.js's listDistinctManufacturersForWarehouse.
-  Future<List<String>> getManufacturers({required String warehouseId});
+  // warehouse, each carrying the warehouse's standing discount for it - see
+  // product.service.js's listManufacturersWithDiscountsForWarehouse.
+  Future<List<ManufacturerModel>> getManufacturers({required String warehouseId});
 }

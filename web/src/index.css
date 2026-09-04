@@ -1311,6 +1311,16 @@ input {
   color: #fff;
 }
 
+/* The pill classes were written for <button>. The Advertisements sub-nav uses
+   the same look on a NavLink anchor (real routes, so each sub-section stays
+   bookmarkable) - these three lines are all an <a> needs to match. */
+a.wh-pill,
+a.adm-pill {
+  display: inline-block;
+  text-decoration: none;
+  cursor: pointer;
+}
+
 /* "N new orders arrived" - the one realtime cue in the warehouse panel.
    Deliberately an inline banner in the page flow rather than a floating
    toast: warehouse staff work this screen continuously, and something that
@@ -1334,6 +1344,59 @@ input {
 
 .wh-realtime-pill:hover {
   background: rgba(245, 124, 0, 0.14);
+}
+
+/* Filter bar shared by the Offers page (search box + discount-percent range),
+   sitting under the .wh-pills status row. Mirrors .adm-filters-row on the
+   admin side, in warehouse colours. */
+.wh-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.wh-filter-search,
+.wh-filter-num {
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--wh-border);
+  border-radius: 6px;
+  background: #fff;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--wh-text);
+}
+
+.wh-filter-search {
+  flex: 1;
+  min-width: 180px;
+  max-width: 320px;
+}
+
+.wh-filter-num {
+  width: 110px;
+}
+
+.wh-badge-permanent {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(26, 35, 126, 0.08);
+  color: var(--wh-navy);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.wh-badge-review {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(245, 124, 0, 0.12);
+  color: var(--wh-orange);
+  font-size: 11px;
+  font-weight: 700;
 }
 
 .wh-card {
@@ -1695,7 +1758,7 @@ input {
   color: var(--wh-text-secondary);
 }
 
-/* — debts page — */
+/* — invoices: list balance cell (shared with the detail summary) — */
 
 .warehouse-shell .balance-amount.is-debt {
   color: var(--wh-red);
@@ -1705,37 +1768,183 @@ input {
   color: var(--wh-green);
 }
 
-.wh-debt-stats {
+/* — invoices: the per-pharmacy financial detail page — */
+
+.wh-invoice-header {
   display: flex;
-  gap: 28px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
   flex-wrap: wrap;
+  margin-bottom: 16px;
 }
 
-.wh-debt-stat-value {
+.wh-invoice-identity {
+  min-width: 0;
+}
+
+.wh-invoice-name {
   font-weight: 700;
-  font-size: 17px;
+  font-size: 20px;
   color: var(--wh-text);
+  word-break: break-word;
 }
 
-.wh-debt-stat-value.wh-debt-stat-paid {
+.wh-invoice-phone {
+  margin-top: 4px;
+  font-size: 13px;
+  color: var(--wh-text-secondary);
+}
+
+.wh-invoice-balance {
+  flex: none;
+  text-align: end;
+  padding: 10px 20px;
+  border-radius: 10px;
+  background: var(--wh-bg);
+  border: 1px solid var(--wh-border);
+}
+
+.wh-invoice-balance-label {
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--wh-text-secondary);
+  margin-bottom: 4px;
+}
+
+.wh-invoice-balance-value {
+  font-weight: 800;
+  font-size: 26px;
+  line-height: 1.15;
+}
+
+.wh-invoice-balance.is-debt .wh-invoice-balance-value {
+  color: var(--wh-red);
+}
+
+.wh-invoice-balance.is-credit .wh-invoice-balance-value {
   color: var(--wh-green);
 }
 
-.wh-debt-grid {
+.wh-invoice-balance.is-settled .wh-invoice-balance-value {
+  color: var(--wh-text);
+}
+
+.wh-invoice-summary {
   display: grid;
-  grid-template-columns: 1fr 1fr 320px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-bottom: 20px;
+}
+
+.wh-invoice-stat {
+  background: #fff;
+  border: 1px solid var(--wh-border);
+  border-radius: 8px;
+  padding: 14px 16px;
+}
+
+.wh-invoice-stat-label {
+  font-weight: 600;
+  font-size: 12px;
+  color: #5a6b87;
+  margin-bottom: 6px;
+}
+
+.wh-invoice-stat-value {
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--wh-text);
+}
+
+.wh-invoice-stat-value.is-paid {
+  color: var(--wh-green);
+}
+
+.wh-invoice-main {
+  display: flex;
+  flex-direction: column;
   gap: 20px;
-  align-items: start;
+  min-width: 0;
 }
 
-@media (max-width: 1100px) {
-  .wh-debt-grid {
-    grid-template-columns: 1fr 1fr;
+.wh-invoice-side {
+  min-width: 0;
+}
+
+.wh-invoice-section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+/* Shared count pill: the invoice detail's section headers and the
+   advertisement builder's "Selected products" / products column. */
+.wh-invoice-count,
+.wh-ad-count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 22px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--wh-bg);
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--wh-text-secondary);
+}
+
+.wh-invoice-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 40px 20px;
+  text-align: center;
+  font-size: 14px;
+  color: var(--wh-text-secondary);
+}
+
+.wh-invoice-empty-icon {
+  font-size: 26px;
+  opacity: 0.7;
+}
+
+.wh-invoice-payment-edit {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.wh-invoice-payment-edit input[type='number'] {
+  width: 110px;
+}
+
+.wh-invoice-payment-edit input:not([type='number']) {
+  flex: 1;
+  min-width: 140px;
+}
+
+.wh-invoice-payment-edit button {
+  width: auto;
+  margin-top: 0;
+}
+
+@media (max-width: 620px) {
+  .wh-invoice-header {
+    flex-direction: column;
+    align-items: stretch;
   }
-}
 
-@media (max-width: 900px) {
-  .wh-debt-grid {
+  .wh-invoice-balance {
+    text-align: start;
+  }
+
+  .wh-invoice-summary {
     grid-template-columns: 1fr;
   }
 }
@@ -2743,6 +2952,197 @@ input {
   color: var(--adm-orange);
 }
 
+/* — advertisements: the admin moderation queue — */
+
+/* The package's individual lines, expanded inside the row so the prices can
+   actually be reviewed rather than just counted. */
+.adm-ad-items {
+  margin: 0;
+  padding-inline-start: 18px;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+/* — advertisements: the warehouse's package builder — */
+
+/* Wider than the default modal: this form holds a search field, a result
+   list and a priced selection list at once. */
+.wh-ad-modal {
+  max-width: 720px;
+}
+
+.wh-ad-picker {
+  border: 1px solid var(--wh-border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  background: var(--wh-bg);
+}
+
+.wh-ad-results {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  /* Capped so a long result list can never push the totals and the submit
+     button off the screen - the list scrolls, the form doesn't. */
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.wh-ad-result {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--wh-border);
+}
+
+.wh-ad-result:last-child {
+  border-bottom: none;
+}
+
+.wh-ad-result-name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-size: 14px;
+}
+
+.wh-ad-result button {
+  flex: none;
+  width: auto;
+  margin-top: 0;
+  padding: 5px 14px;
+  font-size: 13px;
+}
+
+.wh-ad-section-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 18px 0 8px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--wh-text);
+}
+
+.wh-ad-selected {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.wh-ad-selected-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--wh-border);
+}
+
+.wh-ad-selected-name {
+  flex: 1;
+  min-width: 140px;
+  font-size: 14px;
+  font-weight: 600;
+  /* Sits on the same baseline as the labelled input beside it. */
+  padding-bottom: 8px;
+}
+
+/* A package carries no per-product price - each row shows an editable quantity
+   and the read-only line catalog cost (price x quantity). */
+.wh-ad-qty-label {
+  flex: none;
+  width: 90px;
+  margin: 0;
+}
+
+.wh-ad-selected-price {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  text-align: end;
+}
+
+.wh-ad-price-caption {
+  font-size: 11px;
+  color: var(--wh-text-secondary);
+}
+
+/* The saving % the package total represents, and the warning when the total
+   isn't below the products' sum (so there is no saving to show). */
+.wh-ad-saving {
+  color: var(--wh-green);
+  font-weight: 600;
+  font-size: 13px;
+  margin: 4px 0 0;
+}
+
+.wh-ad-warn {
+  color: var(--wh-orange);
+  font-size: 13px;
+  margin: 4px 0 0;
+}
+
+.wh-ad-selected-row button {
+  flex: none;
+  width: auto;
+  margin-top: 0;
+  padding: 8px 14px;
+}
+
+/* The two pricing levels side by side: the sum of the lines (read-only
+   context) and the package total the warehouse actually sets. */
+.wh-ad-totals {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+  padding: 14px 16px;
+  border: 1px solid var(--wh-border);
+  border-radius: 8px;
+  background: var(--wh-bg);
+}
+
+.wh-ad-total-calculated {
+  min-width: 0;
+}
+
+.wh-ad-total-label {
+  font-weight: 600;
+  font-size: 12px;
+  color: #5a6b87;
+  margin-bottom: 6px;
+}
+
+.wh-ad-total-value {
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--wh-text);
+}
+
+.wh-ad-total-input {
+  flex: none;
+  width: 200px;
+  margin: 0;
+}
+
+@media (max-width: 620px) {
+  .wh-ad-totals {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .wh-ad-total-input,
+  .wh-ad-qty-label {
+    width: 100%;
+  }
+}
+
 /* — banners page — */
 
 .adm-detail-grid {
@@ -2833,6 +3233,41 @@ input {
 
 .adm-filter-search::placeholder {
   color: var(--adm-text-muted);
+}
+
+/* The Offers page's discount-percent range inputs - same box as
+   .adm-filter-select, just narrow and fixed-width. */
+.adm-filter-num {
+  min-height: 44px;
+  width: 96px;
+  padding: 0 12px;
+  border: 1px solid var(--adm-border);
+  background: #fff;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--adm-text);
+}
+
+.adm-badge-permanent {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(26, 35, 126, 0.08);
+  color: var(--adm-navy, #1a237e);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* Current-vs-Proposed comparison shown on an offer row that carries a parked
+   warehouse edit. */
+.adm-offer-proposed {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--adm-text-muted);
+}
+
+.adm-offer-proposed strong {
+  color: var(--adm-text);
 }
 
 /* — catalog page — */

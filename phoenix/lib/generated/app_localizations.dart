@@ -602,6 +602,12 @@ abstract class AppLocalizations {
   /// **'{count, plural, zero{No manufacturers} one{1 manufacturer} other{{count} manufacturers}}'**
   String manufacturersCountSubtitle(int count);
 
+  /// The warehouse's standing discount for a manufacturer, shown on its company card. Pre-formatted by the caller so the exact stored figure is preserved: 0 shows as 0%, a whole number as e.g. 15%, a fractional one as e.g. 25.5%.
+  ///
+  /// In en, this message translates to:
+  /// **'Company Discount: {percent}%'**
+  String companyDiscountValue(String percent);
+
   /// No description provided for @warehouseProfileTooltip.
   ///
   /// In en, this message translates to:
@@ -895,6 +901,114 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'These items are no longer sold by this warehouse and were not added: {names}'**
   String reorderSomeItemsUnavailable(String names);
+
+  /// No description provided for @advertisementsSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Special packages'**
+  String get advertisementsSectionTitle;
+
+  /// No description provided for @advertisementPackageTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Package price'**
+  String get advertisementPackageTotal;
+
+  /// No description provided for @advertisementSavingPercent.
+  ///
+  /// In en, this message translates to:
+  /// **'Save {percent}%'**
+  String advertisementSavingPercent(int percent);
+
+  /// No description provided for @advertisementProductCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 product} other{{count} products}}'**
+  String advertisementProductCount(int count);
+
+  /// No description provided for @advertisementItemQuantity.
+  ///
+  /// In en, this message translates to:
+  /// **'× {count}'**
+  String advertisementItemQuantity(int count);
+
+  /// No description provided for @advertisementDiscountLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Package discount'**
+  String get advertisementDiscountLabel;
+
+  /// No description provided for @advertisementTotalToPay.
+  ///
+  /// In en, this message translates to:
+  /// **'Total to pay'**
+  String get advertisementTotalToPay;
+
+  /// No description provided for @advertisementAddToCartButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Add package to cart'**
+  String get advertisementAddToCartButton;
+
+  /// No description provided for @advertisementReplaceCartTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace your cart?'**
+  String get advertisementReplaceCartTitle;
+
+  /// No description provided for @advertisementReplaceCartMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Your current cart will be replaced with this package. You can still edit everything before checkout.'**
+  String get advertisementReplaceCartMessage;
+
+  /// No description provided for @advertisementReplaceCartConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace cart'**
+  String get advertisementReplaceCartConfirm;
+
+  /// No description provided for @advertisementUnavailableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Package unavailable'**
+  String get advertisementUnavailableTitle;
+
+  /// No description provided for @advertisementUnavailableMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This package is no longer available. It may have expired or been withdrawn.'**
+  String get advertisementUnavailableMessage;
+
+  /// No description provided for @advertisementIncompleteMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Some products in this package are no longer sold by this warehouse, so it can\'t be added: {names}'**
+  String advertisementIncompleteMessage(String names);
+
+  /// No description provided for @advertisementPackageBrokenMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Removing a product ends the package price. The remaining items are now priced normally.'**
+  String get advertisementPackageBrokenMessage;
+
+  /// No description provided for @advertisementsLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading packages...'**
+  String get advertisementsLoading;
+
+  /// No description provided for @advertisementsEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No packages are running right now.'**
+  String get advertisementsEmpty;
+
+  /// No description provided for @advertisementsError.
+  ///
+  /// In en, this message translates to:
+  /// **'Packages couldn\'t be loaded.'**
+  String get advertisementsError;
 
   /// No description provided for @notificationsTitle.
   ///
@@ -1190,6 +1304,24 @@ abstract class AppLocalizations {
   /// **'You haven\'t requested any returns yet.'**
   String get noReturnsYet;
 
+  /// No description provided for @noReturnsYetHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Once you request a return on a delivered order, it will show up here so you can follow its status.'**
+  String get noReturnsYetHint;
+
+  /// No description provided for @noReturnableOrdersTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No orders eligible for return'**
+  String get noReturnableOrdersTitle;
+
+  /// No description provided for @myReturnsListSectionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Your return requests'**
+  String get myReturnsListSectionTitle;
+
   /// No description provided for @newReturnRequestButton.
   ///
   /// In en, this message translates to:
@@ -1219,6 +1351,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Submit return request'**
   String get requestReturnButton;
+
+  /// No description provided for @requestReturnAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Request Return'**
+  String get requestReturnAction;
+
+  /// No description provided for @accountHistoryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Account History'**
+  String get accountHistoryTitle;
+
+  /// No description provided for @moneySavedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Money Saved'**
+  String get moneySavedTitle;
+
+  /// No description provided for @fromDiscountsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'From Discounts'**
+  String get fromDiscountsLabel;
+
+  /// No description provided for @debtsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Debts'**
+  String get debtsTitle;
+
+  /// No description provided for @outstandingBalanceLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Outstanding Balance'**
+  String get outstandingBalanceLabel;
+
+  /// No description provided for @viewReturnsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'View Returns'**
+  String get viewReturnsLabel;
+
+  /// No description provided for @returnsRequestsShort.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, zero{No requests} one{1 request} other{{count} requests}}'**
+  String returnsRequestsShort(int count);
 
   /// No description provided for @returnQuantityLabel.
   ///
@@ -1433,13 +1613,13 @@ abstract class AppLocalizations {
   /// No description provided for @returnPhotosLabel.
   ///
   /// In en, this message translates to:
-  /// **'Photos (required)'**
+  /// **'Photos (optional)'**
   String get returnPhotosLabel;
 
   /// No description provided for @returnPhotosHint.
   ///
   /// In en, this message translates to:
-  /// **'Add photos of the item to help the warehouse verify the reason'**
+  /// **'Optionally add photos of the item to help the warehouse verify the reason'**
   String get returnPhotosHint;
 
   /// No description provided for @addPhotoButton.
@@ -1519,6 +1699,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Your rating'**
   String get yourRatingTitle;
+
+  /// No description provided for @ratingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Ratings'**
+  String get ratingsTitle;
+
+  /// No description provided for @viewRatingsLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'View Ratings'**
+  String get viewRatingsLabel;
 
   /// No description provided for @noRatingsYet.
   ///
@@ -1637,43 +1829,43 @@ abstract class AppLocalizations {
   /// No description provided for @minOrderLabel.
   ///
   /// In en, this message translates to:
-  /// **'Minimum order: \${amount}'**
+  /// **'Minimum order: {amount}'**
   String minOrderLabel(String amount);
 
   /// No description provided for @maxOrderLabel.
   ///
   /// In en, this message translates to:
-  /// **'Maximum order: \${amount}'**
+  /// **'Maximum order: {amount}'**
   String maxOrderLabel(String amount);
 
   /// No description provided for @addMoreToReachMinimum.
   ///
   /// In en, this message translates to:
-  /// **'Add \${amount} more to reach the minimum'**
+  /// **'Add {amount} more to reach the minimum'**
   String addMoreToReachMinimum(String amount);
 
   /// No description provided for @removeToMeetMaximum.
   ///
   /// In en, this message translates to:
-  /// **'Over the \${amount} maximum — remove some items'**
+  /// **'Over the {amount} maximum — remove some items'**
   String removeToMeetMaximum(String amount);
 
   /// No description provided for @orderBelowMinimum.
   ///
   /// In en, this message translates to:
-  /// **'The minimum order from this warehouse is \${amount}.'**
+  /// **'The minimum order from this warehouse is {amount}.'**
   String orderBelowMinimum(String amount);
 
   /// No description provided for @orderAboveMaximum.
   ///
   /// In en, this message translates to:
-  /// **'The maximum order from this warehouse is \${amount}.'**
+  /// **'The maximum order from this warehouse is {amount}.'**
   String orderAboveMaximum(String amount);
 
   /// No description provided for @returnableSectionTitle.
   ///
   /// In en, this message translates to:
-  /// **'🔄 Orders eligible for return'**
+  /// **'Orders eligible for return'**
   String get returnableSectionTitle;
 
   /// No description provided for @returnableSectionSubtitle.
@@ -1681,6 +1873,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'You can request a return within 48 hours of delivery'**
   String get returnableSectionSubtitle;
+
+  /// No description provided for @returnableDeliveredOnLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivered {date}'**
+  String returnableDeliveredOnLabel(String date);
 
   /// No description provided for @returnableOrderNumber.
   ///
@@ -2095,6 +2293,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Unable to open Google Play. Please try again.'**
   String get updateOpenStoreFailed;
+
+  /// No description provided for @deliverySealRequiredTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm delivery'**
+  String get deliverySealRequiredTitle;
+
+  /// No description provided for @deliverySealRequiredMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This warehouse asks for a photo of the shipment seal before the order is completed. Take a clear photo of the seal/stamp on the package.'**
+  String get deliverySealRequiredMessage;
+
+  /// No description provided for @takeSealPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Add seal photo'**
+  String get takeSealPhoto;
+
+  /// No description provided for @retakeSealPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'Retake photo'**
+  String get retakeSealPhoto;
+
+  /// No description provided for @confirmDeliveryButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm delivery'**
+  String get confirmDeliveryButton;
+
+  /// No description provided for @sealPhotoLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivery seal photo'**
+  String get sealPhotoLabel;
+
+  /// No description provided for @deliverySealConfirmedOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivery confirmed on {date}'**
+  String deliverySealConfirmedOn(String date);
+
+  /// No description provided for @errorDeliverySealPhotoRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'A seal photo is required to confirm delivery.'**
+  String get errorDeliverySealPhotoRequired;
+
+  /// No description provided for @errorInvalidDeliverySealPhoto.
+  ///
+  /// In en, this message translates to:
+  /// **'That file isn\'t a valid image. Please choose another photo.'**
+  String get errorInvalidDeliverySealPhoto;
+
+  /// No description provided for @errorOrderNotAwaitingDelivery.
+  ///
+  /// In en, this message translates to:
+  /// **'This order isn\'t awaiting a delivery confirmation right now.'**
+  String get errorOrderNotAwaitingDelivery;
 }
 
 class _AppLocalizationsDelegate

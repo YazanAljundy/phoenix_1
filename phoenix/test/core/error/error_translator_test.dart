@@ -48,5 +48,29 @@ void main() {
     test('a known backend domain code is still localized', () {
       expect(translateErrorCode(en, 'CART_EMPTY', 'raw'), en.cartEmptyMessage);
     });
+
+    test('delivery seal photo codes are localized in both languages', () {
+      expect(
+        translateErrorCode(en, 'DELIVERY_SEAL_PHOTO_REQUIRED', 'raw'),
+        en.errorDeliverySealPhotoRequired,
+      );
+      expect(
+        translateErrorCode(ar, 'DELIVERY_SEAL_PHOTO_REQUIRED', 'raw'),
+        ar.errorDeliverySealPhotoRequired,
+      );
+      expect(
+        translateErrorCode(en, 'INVALID_DELIVERY_SEAL_PHOTO', 'raw'),
+        en.errorInvalidDeliverySealPhoto,
+      );
+      expect(
+        translateErrorCode(en, 'ORDER_NOT_AWAITING_DELIVERY', 'raw'),
+        en.errorOrderNotAwaitingDelivery,
+      );
+      // The raw code is never what the user sees.
+      expect(
+        translateErrorCode(en, 'DELIVERY_SEAL_PHOTO_REQUIRED', 'raw'),
+        isNot(contains('DELIVERY_SEAL')),
+      );
+    });
   });
 }

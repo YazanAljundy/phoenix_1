@@ -43,6 +43,24 @@ const list = asyncHandler(async (req, res) => {
   });
 });
 
+// Always paginated (unlike `list` above): this backs the advertisement
+// product picker, whose whole point is that a large catalog is searched
+// server-side a page at a time rather than downloaded and filtered.
+const search = asyncHandler(async (req, res) => {
+  const warehouse = await loadWarehouseOrThrow(req.user._id);
+  const { limit, after } = parseCursorQuery(req.query, 20);
+  const cursor = parseObjectIdCursor(after);
+  const { rows, hasMore, nextCursor } = await warehouseProductService.searchPaginatedProductsForWarehouse(
+    warehouse._id,
+    { q: req.query.q, limit, after: cursor }
+  );
+  res.json({
+    success: true,
+    ...warehouseProductViewModel.toProductListResponse(rows),
+    pagination: paginationMeta(hasMore, nextCursor),
+  });
+});
+
 const create = asyncHandler(async (req, res) => {
   const warehouse = await loadWarehouseOrThrow(req.user._id);
   const product = await warehouseProductService.createProduct(warehouse._id, req.body);
@@ -88,4 +106,4 @@ const importExcel = asyncHandler(async (req, res) => {
   res.json({ success: true, ...report });
 });
 
-module.exports = { list, create, update, downloadTemplate, importExcel };
+module.exports = { list, search, create, update, downloadTemplate, importExcel };

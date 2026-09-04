@@ -53,7 +53,7 @@ class _ManufacturersViewState extends State<ManufacturersView> {
   void _maybeAutoNavigate(ManufacturersState state) {
     if (_autoNavigated || widget.autoFilterManufacturer == null) return;
     if (state.status != ManufacturersStatus.loaded) return;
-    if (!state.manufacturers.contains(widget.autoFilterManufacturer)) return;
+    if (!state.manufacturers.any((m) => m.name == widget.autoFilterManufacturer)) return;
 
     _autoNavigated = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -117,14 +117,16 @@ class _ManufacturersViewState extends State<ManufacturersView> {
                     maxCrossAxisExtent: 160,
                     mainAxisSpacing: AppSizes.spacingMedium,
                     crossAxisSpacing: AppSizes.spacingMedium,
-                    mainAxisExtent: 180,
+                    // Was 180 - grew to fit the company-discount line the card
+                    // now carries under the name.
+                    mainAxisExtent: 198,
                   ),
                   itemCount: state.manufacturers.length,
                   itemBuilder: (context, index) {
                     final manufacturer = state.manufacturers[index];
                     return ManufacturerCard(
                       manufacturer: manufacturer,
-                      onSelect: () => _handleSelect(context, manufacturer),
+                      onSelect: () => _handleSelect(context, manufacturer.name),
                     );
                   },
                 ),

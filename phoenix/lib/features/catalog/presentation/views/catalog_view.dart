@@ -273,13 +273,13 @@ class _CatalogViewState extends State<CatalogView> {
                           maxCrossAxisExtent: 170,
                           mainAxisSpacing: AppSizes.spacingMedium,
                           crossAxisSpacing: AppSizes.spacingMedium,
-                          // 250 wasn't enough: with an active offer, the price
-                          // row (strikethrough + discounted + SYP hint) can
-                          // wrap to two lines on a narrow card and overflow
-                          // the cell - this leaves headroom for that case, plus
-                          // the in-cart quantity stepper that can replace the
-                          // "Add" button.
-                          mainAxisExtent: 300,
+                          // 250 wasn't enough: the SYP price (plus its "~ $x"
+                          // USD hint, and a strikethrough original when an
+                          // offer is active) can wrap to two lines on a narrow
+                          // card and overflow the cell - this leaves headroom
+                          // for that case, plus the in-cart quantity stepper
+                          // that can replace the "Add" button.
+                          mainAxisExtent: 316,
                         ),
                         delegate: SliverChildBuilderDelegate(
                           (context, index) {

@@ -34,6 +34,8 @@ stubModule('realtime/index.js', {
     OFFER_STATUS_UPDATED: 'offer.status.updated',
     BANNER_PENDING: 'banner.pending',
     BANNER_STATUS_UPDATED: 'banner.status.updated',
+    ADVERTISEMENT_PENDING: 'advertisement.pending',
+    ADVERTISEMENT_STATUS_UPDATED: 'advertisement.status.updated',
   },
 });
 
@@ -47,9 +49,29 @@ stubModule('services/notification.service.js', {
 const USER_ID = new mongoose.Types.ObjectId();
 const BANNER_ID = new mongoose.Types.ObjectId();
 const ADMIN_ID = new mongoose.Types.ObjectId();
+const ADVERTISEMENT_ID = new mongoose.Types.ObjectId();
+const WAREHOUSE_ID = new mongoose.Types.ObjectId();
+const PRODUCT_ID = new mongoose.Types.ObjectId();
 
 let userSaveBehavior = async () => {};
 let bannerSaveBehavior = async () => {};
+let advertisementSaveBehavior = async () => {};
+
+// The advertisement services chain .select()/.populate() off a find(), so the
+// flat `async () => []` stub the older services were happy with isn't enough.
+// This is a thenable that ignores every chained call and resolves to whatever
+// the caller set up - `await Model.find(...)` still works exactly as before.
+function chainableQuery(getResult) {
+  const query = {
+    select: () => query,
+    populate: () => query,
+    sort: () => query,
+    limit: () => query,
+    lean: () => query,
+    then: (resolve, reject) => Promise.resolve(getResult()).then(resolve, reject),
+  };
+  return query;
+}
 
 function buildPendingUser() {
   return {
@@ -77,27 +99,76 @@ function buildBanner() {
   };
 }
 
+function buildAdvertisement(status = 'pending') {
+  return {
+    _id: ADVERTISEMENT_ID,
+    warehouseId: WAREHOUSE_ID,
+    titleAr: 'إعلان',
+    titleEn: 'Ad',
+    items: [{ productId: PRODUCT_ID }],
+    totalPriceUsd: 5,
+    status,
+    rejectionNote: null,
+    approvedBy: null,
+    approvedAt: null,
+    save: () => advertisementSaveBehavior(),
+    deleteOne: async () => {},
+  };
+}
+
+// A create payload the advertisement service's validation accepts end to end.
+function advertisementPayload() {
+  return {
+    titleAr: 'إعلان',
+    titleEn: 'Ad',
+    items: [{ productId: PRODUCT_ID.toString() }],
+    totalPriceUsd: 5,
+    startDate: '2026-01-01',
+    endDate: '2026-12-31',
+  };
+}
+
 // Mutated in place, never reassigned - the services captured these exact
 // objects at require time.
 const userModelStub = { findById: async () => buildPendingUser() };
 const bannerModelStub = { findById: async () => buildBanner() };
+const advertisementModelStub = {
+  create: async (doc) => ({ ...buildAdvertisement(), ...doc }),
+  findOne: async () => buildAdvertisement(),
+  findById: async () => buildAdvertisement(),
+  find: () => chainableQuery(() => []),
+  countDocuments: async () => 0,
+};
+// The ownership check in validateItems asks for the products it was handed;
+// returning exactly one satisfies a one-item advertisement.
+const productModelStub = {
+  find: () => chainableQuery(() => [{ _id: PRODUCT_ID, nameAr: 'دواء', nameEn: 'Medicine' }]),
+  findOne: async () => null,
+};
 
 stubModule('models/user.model.js', userModelStub);
 stubModule('models/banner.model.js', bannerModelStub);
+stubModule('models/advertisement.model.js', advertisementModelStub);
 stubModule('models/pharmacy.model.js', { find: async () => [], findOne: async () => null });
 stubModule('models/warehouse.model.js', { find: async () => [], findById: async () => null });
-stubModule('models/product.model.js', { find: async () => [], findOne: async () => null });
+stubModule('models/product.model.js', productModelStub);
 stubModule('models/counter.model.js', { findOneAndUpdate: async () => ({ seq: 1 }) });
 
 const adminService = require('../src/services/admin.service');
 const adminBannerService = require('../src/services/adminBanner.service');
+const warehouseAdvertisementService = require('../src/services/warehouseAdvertisement.service');
+const adminAdvertisementService = require('../src/services/adminAdvertisement.service');
 
 test.beforeEach(() => {
   emitted.length = 0;
   userSaveBehavior = async () => {};
   bannerSaveBehavior = async () => {};
+  advertisementSaveBehavior = async () => {};
   userModelStub.findById = async () => buildPendingUser();
   bannerModelStub.findById = async () => buildBanner();
+  advertisementModelStub.create = async (doc) => ({ ...buildAdvertisement(), ...doc });
+  advertisementModelStub.findOne = async () => buildAdvertisement();
+  advertisementModelStub.findById = async () => buildAdvertisement();
 });
 
 // --- Accounts --------------------------------------------------------------
@@ -234,5 +305,114 @@ test('an unknown banner emits nothing', async () => {
   bannerModelStub.findById = async () => null;
 
   await assert.rejects(() => adminBannerService.approveBanner(BANNER_ID.toString(), ADMIN_ID));
+  assert.deepStrictEqual(emitted, []);
+});
+
+// --- Advertisements --------------------------------------------------------
+
+test('createAdvertisement emits exactly one advertisement.pending, to admins', async () => {
+  await warehouseAdvertisementService.createAdvertisement(WAREHOUSE_ID, advertisementPayload());
+
+  assert.strictEqual(emitted.length, 1);
+  assert.strictEqual(emitted[0].room, 'admin');
+  assert.strictEqual(emitted[0].event, 'advertisement.pending');
+  assert.strictEqual(emitted[0].payload.advertisementId, ADVERTISEMENT_ID.toString());
+  assert.strictEqual(emitted[0].payload.warehouseId, WAREHOUSE_ID.toString());
+});
+
+test('a rejected advertisement validation emits nothing', async () => {
+  // Two independent rules, neither of which may announce anything.
+  await assert.rejects(() =>
+    warehouseAdvertisementService.createAdvertisement(
+      WAREHOUSE_ID,
+      { ...advertisementPayload(), totalPriceUsd: -1 }
+    )
+  );
+  await assert.rejects(() =>
+    warehouseAdvertisementService.createAdvertisement(WAREHOUSE_ID, { ...advertisementPayload(), items: [] })
+  );
+
+  assert.deepStrictEqual(emitted, [], 'a rejected business rule is not an event');
+});
+
+test('editing a pending advertisement does not re-announce it', async () => {
+  await warehouseAdvertisementService.updateAdvertisement(
+    ADVERTISEMENT_ID.toString(),
+    WAREHOUSE_ID,
+    advertisementPayload()
+  );
+  assert.deepStrictEqual(emitted, [], 'it is already in the queue');
+});
+
+test('editing an approved advertisement re-queues it with one advertisement.pending', async () => {
+  advertisementModelStub.findOne = async () => buildAdvertisement('approved');
+
+  await warehouseAdvertisementService.updateAdvertisement(
+    ADVERTISEMENT_ID.toString(),
+    WAREHOUSE_ID,
+    advertisementPayload()
+  );
+
+  assert.strictEqual(emitted.length, 1);
+  assert.strictEqual(emitted[0].event, 'advertisement.pending');
+});
+
+test('a failed advertisement write emits nothing', async () => {
+  advertisementModelStub.findOne = async () => buildAdvertisement('approved');
+  advertisementSaveBehavior = async () => {
+    throw new Error('mongo write failed');
+  };
+
+  await assert.rejects(
+    () =>
+      warehouseAdvertisementService.updateAdvertisement(
+        ADVERTISEMENT_ID.toString(),
+        WAREHOUSE_ID,
+        advertisementPayload()
+      ),
+    /mongo write failed/
+  );
+  assert.deepStrictEqual(emitted, []);
+});
+
+test('approveAdvertisement emits exactly one advertisement.status.updated {approved}', async () => {
+  await adminAdvertisementService.approveAdvertisement(ADVERTISEMENT_ID.toString(), ADMIN_ID);
+
+  assert.strictEqual(emitted.length, 1);
+  assert.strictEqual(emitted[0].room, 'admin');
+  assert.strictEqual(emitted[0].event, 'advertisement.status.updated');
+  assert.strictEqual(emitted[0].payload.advertisementId, ADVERTISEMENT_ID.toString());
+  assert.strictEqual(emitted[0].payload.status, 'approved');
+});
+
+test('rejectAdvertisement emits exactly one advertisement.status.updated {rejected}', async () => {
+  await adminAdvertisementService.rejectAdvertisement(ADVERTISEMENT_ID.toString(), 'prices look wrong');
+
+  assert.strictEqual(emitted.length, 1);
+  assert.strictEqual(emitted[0].payload.status, 'rejected');
+});
+
+test('rejectAdvertisement with no note throws before any write, and emits nothing', async () => {
+  await assert.rejects(() => adminAdvertisementService.rejectAdvertisement(ADVERTISEMENT_ID.toString(), '  '));
+  assert.deepStrictEqual(emitted, [], 'validation failure must not announce a decision');
+});
+
+test('an unknown advertisement emits nothing', async () => {
+  advertisementModelStub.findOne = async () => null;
+
+  await assert.rejects(() => adminAdvertisementService.approveAdvertisement(ADVERTISEMENT_ID.toString(), ADMIN_ID));
+  await assert.rejects(() => adminAdvertisementService.rejectAdvertisement(ADVERTISEMENT_ID.toString(), 'note'));
+  assert.deepStrictEqual(emitted, []);
+});
+
+test('a failed approval write emits nothing', async () => {
+  advertisementSaveBehavior = async () => {
+    throw new Error('mongo write failed');
+  };
+
+  await assert.rejects(
+    () => adminAdvertisementService.approveAdvertisement(ADVERTISEMENT_ID.toString(), ADMIN_ID),
+    /mongo write failed/
+  );
   assert.deepStrictEqual(emitted, []);
 });

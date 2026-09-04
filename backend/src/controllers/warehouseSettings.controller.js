@@ -25,6 +25,7 @@ const update = asyncHandler(async (req, res) => {
   const updated = await settingsService.updateOrderLimits(warehouse._id, {
     minOrderAmountUsd: req.body.minOrderAmountUsd,
     maxOrderAmountUsd: req.body.maxOrderAmountUsd,
+    requireDeliverySealPhoto: req.body.requireDeliverySealPhoto,
   });
   res.json({
     success: true,

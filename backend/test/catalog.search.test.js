@@ -22,6 +22,7 @@ const Product = require('../src/models/product.model');
 const ProductCatalog = require('../src/models/productCatalog.model');
 const Warehouse = require('../src/models/warehouse.model');
 const User = require('../src/models/user.model');
+const ManufacturerDiscount = require('../src/models/manufacturerDiscount.model');
 const productService = require('../src/services/product.service');
 const productViewModel = require('../src/viewmodels/product.viewmodel');
 const { applyResolvedIdentity, escapeRegex } = require('../src/services/productCatalog.service');
@@ -372,6 +373,27 @@ test('manufacturers are isolated per warehouse', async () => {
   const theirs = await productService.listDistinctManufacturersForWarehouse(OTHER_WAREHOUSE_ID);
   assert.ok(theirs.includes('اخر'));
   assert.ok(!mine.includes('اخر'), 'must not leak another warehouse\'s manufacturer');
+});
+
+test('manufacturers-with-discounts pairs each name with its standing discount, 0 when none', async () => {
+  await ManufacturerDiscount.deleteMany({ warehouseId: WAREHOUSE_ID });
+  await ManufacturerDiscount.create({
+    warehouseId: WAREHOUSE_ID, manufacturerAr: 'جي اس كي', discountPercentage: 10,
+  });
+
+  const names = await productService.listDistinctManufacturersForWarehouse(WAREHOUSE_ID);
+  const withDiscounts = await productService.listManufacturersWithDiscountsForWarehouse(WAREHOUSE_ID);
+
+  // Same names, same order, just enriched.
+  assert.deepStrictEqual(withDiscounts.map((m) => m.manufacturerAr), names);
+
+  const gsk = withDiscounts.find((m) => m.manufacturerAr === 'جي اس كي');
+  assert.strictEqual(gsk.discountPercentage, 10, 'the configured discount is surfaced');
+
+  const undiscounted = withDiscounts.find((m) => m.manufacturerAr === 'قديم');
+  assert.strictEqual(undiscounted.discountPercentage, 0, 'no rule -> 0, never missing/hidden');
+
+  await ManufacturerDiscount.deleteMany({ warehouseId: WAREHOUSE_ID });
 });
 
 test('manufacturers for a warehouse with no products is an empty array', async () => {

@@ -207,7 +207,9 @@ async function attachComplaintContext(complaints, { withPharmacy = false } = {})
       .select('_id nameAr nameEn phone city address logo')
       .lean(),
     orderIds.length
-      ? Order.find({ _id: { $in: orderIds } }).select('_id orderNumber').lean()
+      ? Order.find({ _id: { $in: orderIds } })
+          .select('_id orderNumber deliverySealPhoto deliverySealConfirmedAt')
+          .lean()
       : Promise.resolve([]),
     pharmacyIds.length
       ? Pharmacy.find({ _id: { $in: pharmacyIds } })

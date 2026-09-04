@@ -58,6 +58,8 @@ export const REALTIME_EVENTS = {
   OFFER_STATUS_UPDATED: 'offer.status.updated',
   BANNER_PENDING: 'banner.pending',
   BANNER_STATUS_UPDATED: 'banner.status.updated',
+  ADVERTISEMENT_PENDING: 'advertisement.pending',
+  ADVERTISEMENT_STATUS_UPDATED: 'advertisement.status.updated',
 
   // Complaints. Routed to BOTH rooms server-side (see events.js): the admin
   // triage queue and the one warehouse a complaint is filed against.

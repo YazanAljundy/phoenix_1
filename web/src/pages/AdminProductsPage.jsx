@@ -10,7 +10,7 @@ import {
 import { LoadMoreControl } from '../components/LoadMoreControl';
 import { usePaginatedData } from '../hooks/usePaginatedData';
 import { useExchangeRate } from '../context/ExchangeRateContext';
-import { formatPriceWithSyp } from '../utils/currency';
+import { formatUsdAsSyp } from '../utils/currency';
 import { withArFallback } from '../utils/displayName';
 
 const PAGE_SIZE = 30;
@@ -159,7 +159,7 @@ export function AdminProductsPage() {
                     <td>{withArFallback(product.nameEn, product.nameAr)}</td>
                     <td>{product.warehouseNameEn}</td>
                     <td>{withArFallback(product.manufacturerEn, product.manufacturerAr)}</td>
-                    <td className="adm-num">{formatPriceWithSyp(product.priceUsd, usdToSyp)}</td>
+                    <td className="adm-num">{formatUsdAsSyp(product.priceUsd, usdToSyp)}</td>
                     <td>
                       {product.isActive ? (
                         <span className={`availability-badge ${productAvailabilityClass(product)}`}>
@@ -203,7 +203,7 @@ export function AdminProductsPage() {
       {editingProduct && (
         <ProductFormModal
           mode="edit"
-          initialForm={productFormFromProduct(editingProduct)}
+          initialForm={productFormFromProduct(editingProduct, usdToSyp)}
           categories={categories}
           usdToSyp={usdToSyp}
           onClose={() => setEditingProduct(null)}

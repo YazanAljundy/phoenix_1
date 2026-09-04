@@ -91,6 +91,19 @@ const bannerImageUpload = wrapMulter(
   'Banner image must be smaller than 5MB.'
 );
 
+// Delivery seal photo - a single photo the pharmacy attaches when confirming
+// a delivery (order.controller.js's confirmDelivery). Same shape as
+// bannerImageUpload: one file under the 'image' field, memory-stored, streamed
+// straight to Cloudinary.
+const deliverySealPhotoUpload = wrapMulter(
+  multer({
+    storage,
+    fileFilter: imageFileFilter,
+    limits: { fileSize: MAX_FILE_SIZE_BYTES },
+  }).single('image'),
+  'Seal photo must be smaller than 5MB.'
+);
+
 // Checks the first bytes of an in-memory upload against known image
 // signatures - a spoofed extension/MIME type won't pass this. Returns false
 // (the caller rejects the request) when the content isn't actually one of
@@ -114,6 +127,7 @@ module.exports = {
   returnPhotosUpload,
   catalogImportUpload,
   bannerImageUpload,
+  deliverySealPhotoUpload,
   verifyImageMagicBytes,
   MAX_RETURN_PHOTOS,
 };

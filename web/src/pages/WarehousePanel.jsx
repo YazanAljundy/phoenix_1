@@ -7,6 +7,7 @@ import { WarehouseOrdersPage } from './WarehouseOrdersPage';
 import { WarehouseOrderDetailPage } from './WarehouseOrderDetailPage';
 import { WarehouseProductsPage } from './WarehouseProductsPage';
 import { WarehouseOffersPage } from './WarehouseOffersPage';
+import { WarehouseAdvertisementsPage } from './WarehouseAdvertisementsPage';
 import { WarehouseBannersPage } from './WarehouseBannersPage';
 import { WarehouseReturnsPage } from './WarehouseReturnsPage';
 import { WarehouseReturnDetailPage } from './WarehouseReturnDetailPage';
@@ -35,7 +36,10 @@ export function WarehousePanel() {
     { path: '/warehouse/orders', label: t('nav.orders') },
     { path: '/warehouse/products', label: t('nav.catalog') },
     { path: '/warehouse/offers', label: t('nav.offers') },
-    { path: '/warehouse/banners', label: t('nav.banners') },
+    // One tab, two sub-sections (general ads / package ads) - see
+    // AdvertisementsSubNav. They were separate tabs until it turned out both
+    // render as "الإعلانات" in Arabic.
+    { path: '/warehouse/advertisements', label: t('nav.advertisements') },
     { path: '/warehouse/discounts', label: t('nav.discounts') },
     { path: '/warehouse/debts', label: t('nav.debts') },
     { path: '/warehouse/returns', label: t('nav.returns') },
@@ -100,7 +104,20 @@ export function WarehousePanel() {
             <Route path="/warehouse/orders/:orderId" element={<WarehouseOrderDetailPage />} />
             <Route path="/warehouse/products" element={<WarehouseProductsPage />} />
             <Route path="/warehouse/offers" element={<WarehouseOffersPage />} />
-            <Route path="/warehouse/banners" element={<WarehouseBannersPage />} />
+            <Route
+              path="/warehouse/advertisements"
+              element={<Navigate to="/warehouse/advertisements/general" replace />}
+            />
+            <Route path="/warehouse/advertisements/general" element={<WarehouseBannersPage />} />
+            <Route
+              path="/warehouse/advertisements/packages"
+              element={<WarehouseAdvertisementsPage />}
+            />
+            {/* Old bookmark - banners became the "general" half of Advertisements. */}
+            <Route
+              path="/warehouse/banners"
+              element={<Navigate to="/warehouse/advertisements/general" replace />}
+            />
             <Route path="/warehouse/discounts" element={<WarehouseDiscountsPage />} />
             <Route path="/warehouse/debts" element={<WarehouseDebtsPage />} />
             <Route path="/warehouse/returns" element={<WarehouseReturnsPage />} />

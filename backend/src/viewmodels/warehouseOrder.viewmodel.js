@@ -48,6 +48,10 @@ function toWarehouseOrderDetailResponse({ order, items, pharmacy, hasReturn }) {
       totalPrice: order.totalPrice,
       discountAmount: order.discountAmount,
       commissionAmount: order.commissionAmount,
+      // Its own line, never folded into discountAmount above - see
+      // order.model.js. null/0 on a normal order.
+      advertisementId: order.advertisementId ?? null,
+      advertisementDiscountAmount: order.advertisementDiscountAmount ?? 0,
       finalPrice: order.finalPrice,
       notes: order.notes,
       cancelReason: order.cancelReason,
@@ -57,6 +61,13 @@ function toWarehouseOrderDetailResponse({ order, items, pharmacy, hasReturn }) {
         changedAt: entry.changedAt,
         note: entry.note ?? null,
       })),
+      // Section: optional delivery seal photo, decided per order.
+      // `requiresDeliverySealPhoto` drives the per-order toggle + the "waiting
+      // for the photo" hint next to the advance button; the other two are the
+      // stored result, shown read-only.
+      requiresDeliverySealPhoto: order.requiresDeliverySealPhoto ?? false,
+      deliverySealPhoto: order.deliverySealPhoto ?? null,
+      deliverySealConfirmedAt: order.deliverySealConfirmedAt ?? null,
       pharmacy: serializePharmacy(pharmacy),
       items: items.map((item) => ({
         ...serializeOrderItem(item),

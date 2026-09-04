@@ -1,6 +1,9 @@
 import 'dart:async';
+import 'dart:developer' as developer;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:phoenix/core/error/failure.dart';
 import 'package:phoenix/features/cart/data/models/order_model.dart';
 import 'package:phoenix/features/cart/data/repositories/order_repository.dart';
@@ -39,6 +42,7 @@ class OrderTrackingCubit extends Cubit<OrderTrackingState> {
     try {
       final order = await _orderRepository.getOrder(_orderId);
       if (isClosed) return;
+      _logDeliverySealState(order);
       emit(state.copyWith(status: OrderTrackingStatus.loaded, order: order));
       unawaited(_loadWarehousePhone(order.warehouseId));
     } on Failure catch (f) {
@@ -57,6 +61,24 @@ class OrderTrackingCubit extends Cubit<OrderTrackingState> {
       if (isClosed) return;
       emit(state.copyWith(status: OrderTrackingStatus.error, errorMessage: 'Unexpected error', errorCode: 'UNEXPECTED_ERROR'));
     }
+  }
+
+  // TEMPORARY DIAGNOSTIC (delivery-seal "UI not showing" report). Prints the
+  // exact runtime state the DeliverySealSection visibility depends on, so it
+  // is obvious whether the section is hidden because the order isn't
+  // out_for_delivery, because the warehouse didn't enable the setting, or
+  // because a field isn't reaching the client. Debug builds only; never logs
+  // anything sensitive. Safe to delete once confirmed.
+  void _logDeliverySealState(OrderModel order) {
+    if (!kDebugMode) return;
+    developer.log(
+      'order ${order.id} status=${order.status} '
+      'requiresDeliverySealPhoto=${order.requiresDeliverySealPhoto} '
+      'deliverySealPhotoUrl=${order.deliverySealPhotoUrl} '
+      'deliverySealConfirmedAt=${order.deliverySealConfirmedAt} '
+      'needsDeliverySealConfirmation=${order.needsDeliverySealConfirmation}',
+      name: 'DeliverySeal',
+    );
   }
 
   // Best-effort: the WhatsApp icon just doesn't show if this fails, so
@@ -144,6 +166,38 @@ class OrderTrackingCubit extends Cubit<OrderTrackingState> {
     } catch (e) {
       if (isClosed) return false;
       emit(state.copyWith(isSubmittingReview: false, errorMessage: 'Unexpected error', errorCode: 'UNEXPECTED_ERROR'));
+      return false;
+    }
+  }
+
+  // Section: optional delivery seal photo. Uploads the photo and records it on
+  // the order; on success the order is patched in place with the server's
+  // refreshed copy (which now carries deliverySealPhoto), so the tracking
+  // screen flips straight to the confirmed state. The order status itself is
+  // NOT changed - the warehouse still finalises it. On failure the order is
+  // left untouched and the caller keeps the picked photo so the pharmacist can
+  // retry. isClosed-guarded like every other emit here.
+  Future<bool> confirmDelivery(XFile photo) async {
+    emit(state.copyWith(isConfirmingDelivery: true, clearError: true));
+    try {
+      final order = await _orderRepository.confirmDeliveryWithSealPhoto(
+        orderId: _orderId,
+        sealPhoto: photo,
+      );
+      if (isClosed) return true;
+      emit(state.copyWith(isConfirmingDelivery: false, order: order));
+      return true;
+    } on Failure catch (f) {
+      if (isClosed) return false;
+      emit(state.copyWith(isConfirmingDelivery: false, errorMessage: f.errMessage, errorCode: f.code));
+      return false;
+    } catch (e) {
+      if (isClosed) return false;
+      emit(state.copyWith(
+        isConfirmingDelivery: false,
+        errorMessage: 'Unexpected error',
+        errorCode: 'UNEXPECTED_ERROR',
+      ));
       return false;
     }
   }

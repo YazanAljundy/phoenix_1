@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:4000/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000/api';
 const TOKEN_STORAGE_KEY = 'phoenix.admin.token';
 
 export function getToken() {
@@ -139,6 +139,12 @@ export const api = {
       method: 'PATCH',
       body: { addItems, removeItems, updateItems },
     }),
+  // Per-order proof-of-delivery toggle - flips just order.requiresDeliverySealPhoto.
+  setOrderDeliverySealRequirement: (orderId, requiresDeliverySealPhoto) =>
+    request(`/warehouse/orders/${orderId}/delivery-seal`, {
+      method: 'PATCH',
+      body: { requiresDeliverySealPhoto },
+    }),
   categories: () => request('/categories'),
   // No args: the full, alphabetical list - used by the banner/offer "linked
   // product" pickers, which need every product. Pass { limit, after } for
@@ -158,18 +164,55 @@ export const api = {
     request(`/warehouse/products/${productId}`, { method: 'PATCH', body: changes }),
   warehouseOffers: () => request('/warehouse/offers'),
   createWarehouseOffer: (data) => request('/warehouse/offers', { method: 'POST', body: data }),
-  // No args: every pending offer - used by the Dashboard's stat card/recent
-  // list. Pass { limit, after } for the Offers management page's own
-  // paginated view.
-  pendingOffers: ({ limit, after } = {}) => {
+  // An edit to a still-pending offer is applied in place; an edit to an
+  // approved offer is parked for admin review (backend updateOffer).
+  updateWarehouseOffer: (offerId, data) =>
+    request(`/warehouse/offers/${offerId}`, { method: 'PATCH', body: data }),
+  deleteWarehouseOffer: (offerId) => request(`/warehouse/offers/${offerId}`, { method: 'DELETE' }),
+  // No args: the moderation queue (pending offers + parked edits) - used by the
+  // Dashboard's stat card/recent list.
+  pendingOffers: () => request('/admin/offers'),
+  // Section 5: every offer, every warehouse, every status. Unpaginated - the
+  // Offers page filters it client-side.
+  allOffers: () => request('/admin/offers/all'),
+  approveOffer: (offerId) => request(`/admin/offers/${offerId}/approve`, { method: 'POST' }),
+  rejectOffer: (offerId) => request(`/admin/offers/${offerId}/reject`, { method: 'POST' }),
+  updateAdminOffer: (offerId, data) => request(`/admin/offers/${offerId}`, { method: 'PATCH', body: data }),
+  deleteAdminOffer: (offerId) => request(`/admin/offers/${offerId}`, { method: 'DELETE' }),
+  // Always paginated, unlike `warehouseProducts` above: this backs the
+  // advertisement product picker, which searches server-side a page at a time
+  // rather than pulling the whole catalog down to filter it here.
+  searchWarehouseProducts: ({ q, limit, after } = {}) => {
+    const params = new URLSearchParams();
+    if (q) params.set('q', q);
+    if (limit) params.set('limit', limit);
+    if (after) params.set('after', after);
+    const qs = params.toString();
+    return request(`/warehouse/products/search${qs ? `?${qs}` : ''}`);
+  },
+  warehouseAdvertisements: () => request('/warehouse/advertisements'),
+  createWarehouseAdvertisement: (data) =>
+    request('/warehouse/advertisements', { method: 'POST', body: data }),
+  updateWarehouseAdvertisement: (advertisementId, data) =>
+    request(`/warehouse/advertisements/${advertisementId}`, { method: 'PATCH', body: data }),
+  deleteWarehouseAdvertisement: (advertisementId) =>
+    request(`/warehouse/advertisements/${advertisementId}`, { method: 'DELETE' }),
+  // Same two shapes as pendingOffers: no args for the full pending list,
+  // { limit, after } for the management page's paginated view.
+  pendingAdvertisements: ({ limit, after } = {}) => {
     const params = new URLSearchParams();
     if (limit) params.set('limit', limit);
     if (after) params.set('after', after);
     const qs = params.toString();
-    return request(`/admin/offers${qs ? `?${qs}` : ''}`);
+    return request(`/admin/advertisements${qs ? `?${qs}` : ''}`);
   },
-  approveOffer: (offerId) => request(`/admin/offers/${offerId}/approve`, { method: 'POST' }),
-  rejectOffer: (offerId) => request(`/admin/offers/${offerId}/reject`, { method: 'POST' }),
+  approveAdvertisement: (advertisementId) =>
+    request(`/admin/advertisements/${advertisementId}/approve`, { method: 'POST' }),
+  rejectAdvertisement: (advertisementId, rejectionNote) =>
+    request(`/admin/advertisements/${advertisementId}/reject`, {
+      method: 'POST',
+      body: { rejectionNote },
+    }),
   // No args: the full list - used by WarehouseOrderDetailPage's "does this
   // order already have a pending return" lookup. Pass { limit, after } for
   // the Returns management page's own paginated, newest-first view.
@@ -247,10 +290,12 @@ export const api = {
   updatePayment: (id, changes) => request(`/warehouse/payments/${id}`, { method: 'PATCH', body: changes }),
   deletePayment: (id) => request(`/warehouse/payments/${id}`, { method: 'DELETE' }),
   warehouseSettings: () => request('/warehouse/settings'),
-  updateWarehouseOrderLimits: ({ minOrderAmountUsd, maxOrderAmountUsd }) =>
+  // `requireDeliverySealPhoto` is optional - omitted keys are left untouched
+  // server-side (warehouseSettings.service.js).
+  updateWarehouseOrderLimits: ({ minOrderAmountUsd, maxOrderAmountUsd, requireDeliverySealPhoto }) =>
     request('/warehouse/settings', {
       method: 'PATCH',
-      body: { minOrderAmountUsd, maxOrderAmountUsd },
+      body: { minOrderAmountUsd, maxOrderAmountUsd, requireDeliverySealPhoto },
     }),
   warehouseBanners: ({ limit, after } = {}) => {
     const params = new URLSearchParams();

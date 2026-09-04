@@ -1,144 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../api/client';
 import { useExchangeRate } from '../context/ExchangeRateContext';
-import { formatPriceWithSyp } from '../utils/currency';
+import { OfferModal } from '../components/OfferModal';
 import { withArFallback } from '../utils/displayName';
-
-const EMPTY_FORM = {
-  productId: '',
-  titleAr: '',
-  titleEn: '',
-  discountPercentage: '',
-  startDate: '',
-  endDate: '',
-};
-
-function CreateOfferModal({ products, usdToSyp, onClose, onCreated }) {
-  const { t } = useTranslation();
-  const [form, setForm] = useState(EMPTY_FORM);
-  const [isSaving, setIsSaving] = useState(false);
-  const [error, setError] = useState(null);
-
-  const setField = (field, value) => setForm((prev) => ({ ...prev, [field]: value }));
-
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    setError(null);
-
-    if (!form.productId || !form.titleAr.trim() || !form.titleEn.trim() || !form.startDate || !form.endDate) {
-      setError(t('common.requiredFields'));
-      return;
-    }
-    const discountPercentage = Number(form.discountPercentage);
-    if (!Number.isFinite(discountPercentage) || discountPercentage <= 0 || discountPercentage > 100) {
-      setError(t('offers.warehouse.discountRange'));
-      return;
-    }
-    if (new Date(form.endDate) <= new Date(form.startDate)) {
-      setError(t('common.endAfterStart'));
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      await api.createWarehouseOffer({
-        productId: form.productId,
-        titleAr: form.titleAr.trim(),
-        titleEn: form.titleEn.trim(),
-        discountPercentage,
-        startDate: form.startDate,
-        endDate: form.endDate,
-      });
-      onCreated();
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={(event) => event.stopPropagation()}>
-        <h2>{t('offers.warehouse.modalTitle')}</h2>
-        <form onSubmit={handleSubmit} className="product-form">
-          <label>
-            {t('orderDetail.product')}
-            <select value={form.productId} onChange={(e) => setField('productId', e.target.value)} required>
-              <option value="" disabled>
-                {t('offers.warehouse.selectProduct')}
-              </option>
-              {products.map((product) => (
-                <option key={product.id} value={product.id}>
-                  {withArFallback(product.nameEn, product.nameAr)} (
-                  {formatPriceWithSyp(product.priceUsd, usdToSyp)})
-                </option>
-              ))}
-            </select>
-          </label>
-          <div className="form-row">
-            <label>
-              {t('offers.warehouse.titleEn')}
-              <input value={form.titleEn} onChange={(e) => setField('titleEn', e.target.value)} required />
-            </label>
-            <label>
-              {t('offers.warehouse.titleAr')}
-              <input
-                value={form.titleAr}
-                onChange={(e) => setField('titleAr', e.target.value)}
-                dir="rtl"
-                required
-              />
-            </label>
-          </div>
-          <label>
-            {t('offers.warehouse.discountPercentage')}
-            <input
-              type="number"
-              min="1"
-              max="100"
-              value={form.discountPercentage}
-              onChange={(e) => setField('discountPercentage', e.target.value)}
-              required
-            />
-          </label>
-          <div className="form-row">
-            <label>
-              {t('common.startDate')}
-              <input
-                type="date"
-                value={form.startDate}
-                onChange={(e) => setField('startDate', e.target.value)}
-                required
-              />
-            </label>
-            <label>
-              {t('common.endDate')}
-              <input
-                type="date"
-                value={form.endDate}
-                onChange={(e) => setField('endDate', e.target.value)}
-                required
-              />
-            </label>
-          </div>
-
-          {error && <p className="error-text">{error}</p>}
-
-          <div className="modal-actions">
-            <button type="button" className="btn-secondary" onClick={onClose}>
-              {t('common.cancel')}
-            </button>
-            <button type="submit" className="btn-primary" disabled={isSaving}>
-              {isSaving ? t('offers.warehouse.submitting') : t('offers.warehouse.submitForApproval')}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
+import { OFFER_FILTERS, filterOffers, offerEditSource, reviewCount } from './offersFilters';
 
 export function WarehouseOffersPage() {
   const { t } = useTranslation();
@@ -147,7 +13,14 @@ export function WarehouseOffersPage() {
   const [products, setProducts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [showCreate, setShowCreate] = useState(false);
+  // null = closed, 'new' = create, otherwise the offer being edited.
+  const [editing, setEditing] = useState(null);
+  const [busyId, setBusyId] = useState(null);
+
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [search, setSearch] = useState('');
+  const [discountMin, setDiscountMin] = useState('');
+  const [discountMax, setDiscountMax] = useState('');
 
   const statusLabel = (offer) =>
     offer.status === 'approved' ? t('offers.warehouse.statusApproved') : t('offers.warehouse.statusPending');
@@ -170,21 +43,94 @@ export function WarehouseOffersPage() {
     load();
   }, [load]);
 
-  const handleCreated = () => {
-    setShowCreate(false);
+  const visibleOffers = useMemo(
+    () => filterOffers(offers, { status: statusFilter, search, discountMin, discountMax }),
+    [offers, statusFilter, search, discountMin, discountMax]
+  );
+  const pendingCount = useMemo(() => reviewCount(offers), [offers]);
+
+  const handleSaved = () => {
+    setEditing(null);
     load();
   };
+
+  const handleDelete = async (offer) => {
+    if (!window.confirm(t('offers.warehouse.confirmDelete'))) return;
+    setBusyId(offer.id);
+    setError(null);
+    try {
+      await api.deleteWarehouseOffer(offer.id);
+      await load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const periodCell = (offer) =>
+    offer.isPermanent ? (
+      <span className="wh-badge-permanent">{t('offers.warehouse.permanentLabel')}</span>
+    ) : (
+      new Date(offer.endDate).toLocaleDateString()
+    );
 
   return (
     <div>
       <div className="wh-page-head">
         <h1>{t('nav.offers')}</h1>
-        <button className="btn-primary" style={{ width: 'auto', marginTop: 0 }} onClick={() => setShowCreate(true)}>
+        <button
+          className="btn-primary"
+          style={{ width: 'auto', marginTop: 0 }}
+          onClick={() => setEditing('new')}
+        >
           {t('offers.warehouse.newOffer')}
         </button>
       </div>
 
       <p className="wh-notice">{t('offers.warehouse.approvalNotice')}</p>
+
+      <div className="wh-pills">
+        {OFFER_FILTERS.map((value) => (
+          <button
+            key={value}
+            className={`wh-pill${statusFilter === value ? ' active' : ''}`}
+            onClick={() => setStatusFilter(value)}
+          >
+            {value === 'review'
+              ? t('offers.filters.review', { count: pendingCount })
+              : t(`offers.filters.${value}`)}
+          </button>
+        ))}
+      </div>
+
+      <div className="wh-filters">
+        <input
+          type="search"
+          className="wh-filter-search"
+          placeholder={t('offers.searchPlaceholder')}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <input
+          type="number"
+          min="1"
+          max="100"
+          className="wh-filter-num"
+          placeholder={t('offers.discountMin')}
+          value={discountMin}
+          onChange={(e) => setDiscountMin(e.target.value)}
+        />
+        <input
+          type="number"
+          min="1"
+          max="100"
+          className="wh-filter-num"
+          placeholder={t('offers.discountMax')}
+          value={discountMax}
+          onChange={(e) => setDiscountMax(e.target.value)}
+        />
+      </div>
 
       {error && <p className="error-text">{error}</p>}
 
@@ -192,6 +138,8 @@ export function WarehouseOffersPage() {
         <p className="hint">{t('common.loading')}</p>
       ) : offers.length === 0 ? (
         <p className="hint">{t('offers.warehouse.noOffers')}</p>
+      ) : visibleOffers.length === 0 ? (
+        <p className="hint">{t('offers.noneMatchFilter')}</p>
       ) : (
         <div className="wh-card table-scroll">
           <table className="wh-table">
@@ -202,10 +150,11 @@ export function WarehouseOffersPage() {
                 <th>{t('offers.warehouse.fromColumn')}</th>
                 <th>{t('offers.warehouse.toColumn')}</th>
                 <th>{t('common.status')}</th>
+                <th aria-label={t('common.edit')}></th>
               </tr>
             </thead>
             <tbody>
-              {offers.map((offer) => (
+              {visibleOffers.map((offer) => (
                 <tr key={offer.id}>
                   <td>
                     {withArFallback(offer.productNameEn, offer.productNameAr)}
@@ -215,13 +164,30 @@ export function WarehouseOffersPage() {
                     {offer.discountPercentage}%
                   </td>
                   <td className="wh-num wh-table-date">{new Date(offer.startDate).toLocaleDateString()}</td>
-                  <td className="wh-num wh-table-date">{new Date(offer.endDate).toLocaleDateString()}</td>
+                  <td className="wh-num wh-table-date">{periodCell(offer)}</td>
                   <td>
                     <span
                       className={`status-badge ${offer.status === 'approved' ? 'status-delivered' : 'status-pending'}`}
                     >
                       {statusLabel(offer)}
                     </span>
+                    {offer.pendingUpdate && (
+                      <div className="wh-badge-review">{t('offers.warehouse.updatePendingBadge')}</div>
+                    )}
+                  </td>
+                  <td>
+                    <div className="table-row-actions">
+                      <button className="btn-secondary" onClick={() => setEditing(offer)}>
+                        {t('common.edit')}
+                      </button>
+                      <button
+                        className="btn-reject"
+                        disabled={busyId === offer.id}
+                        onClick={() => handleDelete(offer)}
+                      >
+                        {t('common.delete')}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
@@ -230,12 +196,19 @@ export function WarehouseOffersPage() {
         </div>
       )}
 
-      {showCreate && (
-        <CreateOfferModal
+      {editing && (
+        <OfferModal
+          mode={editing === 'new' ? 'create' : 'edit'}
+          offer={editing === 'new' ? null : offerEditSource(editing)}
           products={products}
           usdToSyp={usdToSyp}
-          onClose={() => setShowCreate(false)}
-          onCreated={handleCreated}
+          onClose={() => setEditing(null)}
+          onSaved={handleSaved}
+          onSubmit={(payload) =>
+            editing === 'new'
+              ? api.createWarehouseOffer(payload)
+              : api.updateWarehouseOffer(editing.id, payload)
+          }
         />
       )}
     </div>

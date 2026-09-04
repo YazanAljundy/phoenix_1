@@ -74,4 +74,27 @@ const updateItems = asyncHandler(async (req, res) => {
   });
 });
 
-module.exports = { list, getDetail, advance, updateItems };
+// Section: the warehouse turns this one order's seal-photo requirement on/off
+// from the order-detail screen. Own-warehouse only (resolved from the JWT).
+const setDeliverySealRequirement = asyncHandler(async (req, res) => {
+  if (typeof req.body.requiresDeliverySealPhoto !== 'boolean') {
+    throw ApiError.badRequest(
+      'requiresDeliverySealPhoto must be true or false.',
+      undefined,
+      'INVALID_SEAL_REQUIREMENT'
+    );
+  }
+  const warehouse = await loadWarehouseOrThrow(req.user._id);
+  const order = await warehouseOrderService.setDeliverySealRequirement(
+    req.params.id,
+    warehouse._id,
+    req.body.requiresDeliverySealPhoto
+  );
+  res.json({
+    success: true,
+    message: 'Delivery seal requirement updated.',
+    order: { id: order._id, requiresDeliverySealPhoto: order.requiresDeliverySealPhoto },
+  });
+});
+
+module.exports = { list, getDetail, advance, updateItems, setDeliverySealRequirement };

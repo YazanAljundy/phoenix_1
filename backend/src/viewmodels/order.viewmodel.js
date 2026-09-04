@@ -8,6 +8,11 @@ function serializeOrder(order) {
     totalPrice: order.totalPrice,
     discountAmount: order.discountAmount,
     commissionAmount: order.commissionAmount,
+    // The package discount from a warehouse advertisement, kept as its own
+    // line so it never silently disappears into the platform discount above.
+    // null/0 on a normal order.
+    advertisementId: order.advertisementId ?? null,
+    advertisementDiscountAmount: order.advertisementDiscountAmount ?? 0,
     finalPrice: order.finalPrice,
     notes: order.notes,
     warehouseId: order.warehouseId,
@@ -78,6 +83,13 @@ function toOrderDetailResponse(
       cancelReason: order.cancelReason,
       warehouseNameAr: warehouse.nameAr,
       warehouseNameEn: warehouse.nameEn,
+      // Section: optional delivery seal photo, decided per order.
+      // `requiresDeliverySealPhoto` tells the tracking screen whether to prompt
+      // the pharmacist while the order is out for delivery; the other two are
+      // the stored result. All three are null/false on every pre-existing order.
+      requiresDeliverySealPhoto: order.requiresDeliverySealPhoto ?? false,
+      deliverySealPhoto: order.deliverySealPhoto ?? null,
+      deliverySealConfirmedAt: order.deliverySealConfirmedAt ?? null,
       statusHistory: (order.statusHistory || []).map((entry) => ({
         status: entry.status,
         changedAt: entry.changedAt,
@@ -117,6 +129,11 @@ function toOrderListItemSummary(order, warehouse) {
     totalPrice: order.totalPrice,
     discountAmount: order.discountAmount,
     commissionAmount: order.commissionAmount,
+    // The package discount from a warehouse advertisement, kept as its own
+    // line so it never silently disappears into the platform discount above.
+    // null/0 on a normal order.
+    advertisementId: order.advertisementId ?? null,
+    advertisementDiscountAmount: order.advertisementDiscountAmount ?? 0,
     finalPrice: order.finalPrice,
     warehouseNameAr: warehouse ? warehouse.nameAr : null,
     warehouseNameEn: warehouse ? warehouse.nameEn : null,
@@ -155,7 +172,20 @@ function toReorderResponse({ warehouse, items = [], unavailableItems = [] }) {
   };
 }
 
-module.exports = { toOrderResponse, toOrderDetailResponse, toOrderListResponse, toReorderResponse };
+// Account History "Money Saved" card - a single running total, in the
+// catalog's native USD, that the Flutter client converts to SYP for display
+// via the live exchange rate (same as every other USD-stored figure).
+function toSavingsSummaryResponse({ totalSavingsUsd }) {
+  return { savings: { totalSavingsUsd } };
+}
+
+module.exports = {
+  toOrderResponse,
+  toOrderDetailResponse,
+  toOrderListResponse,
+  toReorderResponse,
+  toSavingsSummaryResponse,
+};
 
 // Section: an order the pharmacy could still return (order.service.js's
 // listReturnableOrders). hoursRemaining is computed on the server - the

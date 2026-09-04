@@ -13,8 +13,11 @@ class RouteNames {
   static const String cart = 'cart';
   static const String orderTracking = 'order-tracking';
   static const String myOrders = 'my-orders';
+  static const String accountHistory = 'account-history';
   static const String myReturns = 'my-returns';
   static const String profile = 'profile';
+  static const String pharmacyReviews = 'pharmacy-reviews';
+  static const String myDebts = 'my-debts';
   static const String debtDetail = 'debt-detail';
   static const String privacyPolicy = 'privacy-policy';
   static const String notifications = 'notifications';

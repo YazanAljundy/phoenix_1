@@ -110,15 +110,15 @@ class _BalanceSummaryCard extends StatelessWidget {
     final l10n = context.l10n;
     final isCredit = detail.balanceUsd < 0;
     final usdToSyp = context.watch<ExchangeRateCubit>().state.usdToSyp;
-    final balanceSypText = formatSypApprox(detail.balanceUsd.abs(), usdToSyp, l10n.currencySuffix);
+    final balanceUsdHint = usdHintFromUsd(detail.balanceUsd.abs(), usdToSyp);
 
     return CustomCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _SummaryLine(label: l10n.totalOrdersLabel, valueUsd: detail.totalOrdersUsd),
+          _SummaryLine(label: l10n.totalOrdersLabel, valueUsd: detail.totalOrdersUsd, usdToSyp: usdToSyp),
           const SizedBox(height: AppSizes.spacingSmall),
-          _SummaryLine(label: l10n.totalPaidLabel, valueUsd: detail.totalPaidUsd),
+          _SummaryLine(label: l10n.totalPaidLabel, valueUsd: detail.totalPaidUsd, usdToSyp: usdToSyp),
           const Divider(height: AppSizes.spacingLarge),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -137,14 +137,14 @@ class _BalanceSummaryCard extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      '\$${detail.balanceUsd.abs()}',
+                      formatMoneyFromUsd(detail.balanceUsd.abs(), usdToSyp, l10n.currencySuffix),
                       style: context.textTheme.titleMedium?.copyWith(
                         color: isCredit ? AppColors.secondaryOf(context) : AppColors.errorOf(context),
                         fontWeight: FontWeight.bold,
                       ),
                       textAlign: TextAlign.end,
                     ),
-                    if (balanceSypText != null) SecondaryPriceHint(text: balanceSypText),
+                    if (balanceUsdHint != null) SecondaryPriceHint(text: balanceUsdHint),
                   ],
                 ),
               ),
@@ -157,10 +157,11 @@ class _BalanceSummaryCard extends StatelessWidget {
 }
 
 class _SummaryLine extends StatelessWidget {
-  const _SummaryLine({required this.label, required this.valueUsd});
+  const _SummaryLine({required this.label, required this.valueUsd, required this.usdToSyp});
 
   final String label;
   final num valueUsd;
+  final double? usdToSyp;
 
   @override
   Widget build(BuildContext context) {
@@ -177,9 +178,13 @@ class _SummaryLine extends StatelessWidget {
         ),
         Flexible(
           // No ellipsis on the amount itself - truncating a monetary figure
-          // would be misleading (an obscured "$27..." reads as a different,
+          // would be misleading (an obscured "27,..." reads as a different,
           // smaller number). It wraps instead if genuinely squeezed.
-          child: Text('\$$valueUsd', style: context.textTheme.bodyMedium, textAlign: TextAlign.end),
+          child: Text(
+            formatMoneyFromUsd(valueUsd, usdToSyp, context.l10n.currencySuffix),
+            style: context.textTheme.bodyMedium,
+            textAlign: TextAlign.end,
+          ),
         ),
       ],
     );
@@ -217,7 +222,7 @@ class _OrderRow extends StatelessWidget {
         ),
         const SizedBox(width: AppSizes.spacingSmall),
         Text(
-          '${order.finalPrice} ${l10n.currencySuffix}',
+          formatSyp(order.finalPrice, l10n.currencySuffix),
           style: context.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
         ),
       ],
@@ -232,6 +237,14 @@ class _PaymentRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    // A payment is shown in the currency it was actually recorded in (the
+    // warehouse chooses SYP or USD when entering it) - SYP grouped and
+    // suffixed like every other amount, USD as the plain dollar figure.
+    final amountText = payment.currency == 'USD'
+        ? formatUsd(payment.amount)
+        : formatSyp(payment.amount, l10n.currencySuffix);
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -252,7 +265,7 @@ class _PaymentRow extends StatelessWidget {
           ),
         ),
         Text(
-          '${payment.amount} ${payment.currency}',
+          amountText,
           style: context.textTheme.bodyMedium?.copyWith(
             color: AppColors.secondaryOf(context),
             fontWeight: FontWeight.bold,

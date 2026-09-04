@@ -102,6 +102,11 @@ function serializeForAdmin({ complaint, warehouse, pharmacy, relatedOrder, respo
   return {
     ...base(complaint),
     relatedOrderNumber: relatedOrder ? relatedOrder.orderNumber : complaint.relatedOrderNumber ?? null,
+    // Section: optional delivery seal photo - surfaced to the admin only, and
+    // only for an order-context complaint whose order actually has one. null
+    // everywhere else.
+    relatedOrderSealPhoto: relatedOrder?.deliverySealPhoto ?? null,
+    relatedOrderSealConfirmedAt: relatedOrder?.deliverySealConfirmedAt ?? null,
     warehouse: serializeWarehouseRef(warehouse),
     pharmacy: serializePharmacyRef(pharmacy),
     respondedBy: serializeResponder(responder),

@@ -5,6 +5,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:phoenix/core/widgets/quantity_stepper.dart';
 import 'package:phoenix/features/catalog/data/models/product_model.dart';
 import 'package:phoenix/features/catalog/presentation/widgets/product_card.dart';
+import 'package:phoenix/features/exchange_rate/data/models/exchange_rate_model.dart';
 import 'package:phoenix/features/exchange_rate/data/repositories/exchange_rate_repository.dart';
 import 'package:phoenix/features/exchange_rate/presentation/managers/exchange_rate_cubit.dart';
 import 'package:phoenix/generated/app_localizations.dart';
@@ -25,11 +26,19 @@ const _product = ProductModel(
 
 void main() {
   late ExchangeRateCubit rateCubit;
+  late _MockExchangeRateRepository rateRepository;
 
   setUp(() {
-    rateCubit = ExchangeRateCubit(exchangeRateRepository: _MockExchangeRateRepository());
+    rateRepository = _MockExchangeRateRepository();
+    rateCubit = ExchangeRateCubit(exchangeRateRepository: rateRepository);
   });
   tearDown(() => rateCubit.close());
+
+  Future<void> loadRate(double usdToSyp) async {
+    when(() => rateRepository.getExchangeRate())
+        .thenAnswer((_) async => ExchangeRateModel(usdToSyp: usdToSyp));
+    await rateCubit.load();
+  }
 
   Future<void> pumpCard(
     WidgetTester tester, {
@@ -48,7 +57,7 @@ void main() {
             body: Center(
               child: SizedBox(
                 width: 160,
-                height: 300,
+                height: 316,
                 child: ProductCard(
                   product: _product,
                   cartQuantity: cartQuantity,
@@ -69,6 +78,20 @@ void main() {
 
     expect(find.text('Add'), findsOneWidget);
     expect(find.byType(QuantityStepper), findsNothing);
+  });
+
+  testWidgets('price is shown in SYP (converted from the stored USD price) with a USD hint', (tester) async {
+    await loadRate(5000); // 1 USD = 5000 SYP -> $5 product => 25,000 ل.س
+    await pumpCard(tester, cartQuantity: 0);
+
+    expect(find.text('25,000 SYP'), findsOneWidget);
+    expect(find.textContaining('~\$5.00'), findsOneWidget);
+  });
+
+  testWidgets('falls back to the USD figure when no exchange rate has loaded', (tester) async {
+    await pumpCard(tester, cartQuantity: 0);
+
+    expect(find.text('\$5.00'), findsOneWidget);
   });
 
   testWidgets('in the cart -> shows a stepper reflecting the cart quantity', (tester) async {

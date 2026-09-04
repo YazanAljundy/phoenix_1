@@ -29,6 +29,8 @@ const EVENTS = {
   OFFER_STATUS_UPDATED: 'offer.status.updated',
   BANNER_PENDING: 'banner.pending',
   BANNER_STATUS_UPDATED: 'banner.status.updated',
+  ADVERTISEMENT_PENDING: 'advertisement.pending',
+  ADVERTISEMENT_STATUS_UPDATED: 'advertisement.status.updated',
 
   // Complaint events. Unlike everything above, a complaint has TWO dashboards
   // that care: the admin queue that triages and answers it (admin room), and

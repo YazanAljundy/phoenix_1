@@ -1,10 +1,11 @@
 const { ApiError } = require('../utils/ApiError');
 const Warehouse = require('../models/warehouse.model');
 
-// Section: the warehouse's own order-size limits (warehouse.model.js's
-// minOrderAmountUsd/maxOrderAmountUsd). Deliberately a narrow update - only
-// these two fields are writable here, so this endpoint can never be used to
-// edit the name/rates/anything else the admin owns.
+// Section: the warehouse's own settings it is allowed to change itself -
+// currently the order-size limits (warehouse.model.js's minOrderAmountUsd/
+// maxOrderAmountUsd) plus the requireDeliverySealPhoto toggle. Deliberately a
+// narrow update - only these fields are writable here, so this endpoint can
+// never be used to edit the name/rates/anything else the admin owns.
 
 // `undefined` means "not sent", which leaves the stored value untouched.
 // An explicit null/'' clears the maximum ("no maximum"); the minimum has no
@@ -31,7 +32,10 @@ async function getSettings(warehouseId) {
   return warehouse;
 }
 
-async function updateOrderLimits(warehouseId, { minOrderAmountUsd, maxOrderAmountUsd }) {
+async function updateOrderLimits(
+  warehouseId,
+  { minOrderAmountUsd, maxOrderAmountUsd, requireDeliverySealPhoto }
+) {
   const warehouse = await getSettings(warehouseId);
 
   const nextMin = parseAmount(minOrderAmountUsd, 'Minimum order amount', 'INVALID_MIN_ORDER_AMOUNT', {
@@ -56,6 +60,13 @@ async function updateOrderLimits(warehouseId, { minOrderAmountUsd, maxOrderAmoun
 
   if (nextMin !== undefined) warehouse.minOrderAmountUsd = nextMin;
   if (nextMax !== undefined) warehouse.maxOrderAmountUsd = nextMax;
+
+  // `undefined` = not sent, leave as-is; anything else is coerced to a plain
+  // boolean so the client can never store a non-boolean into this flag.
+  if (requireDeliverySealPhoto !== undefined) {
+    warehouse.requireDeliverySealPhoto = Boolean(requireDeliverySealPhoto);
+  }
+
   await warehouse.save();
 
   return warehouse;

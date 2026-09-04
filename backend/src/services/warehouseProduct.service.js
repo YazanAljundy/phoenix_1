@@ -117,6 +117,60 @@ async function listPaginatedProductsForWarehouse(
   return { rows: page, hasMore, nextCursor };
 }
 
+// Backs the advertisement product picker: search this warehouse's own
+// products by name (or manufacturer), paginated - so the panel never has to
+// pull the whole catalog down and filter it client-side.
+//
+// A product's name lives on the linked catalog entry (masterProductId), not on
+// the product itself, so a plain field regex would miss every catalog-linked
+// row. Same two-step as adminProduct.service.listPaginatedAllProducts:
+// regex-match ProductCatalog first, then $in those ids - plus the product's own
+// legacy identity fields, for rows created before Section 14 Part 2. One
+// catalog query + one product query, whatever the page size.
+//
+// A blank `q` is not an error - it just yields the same newest-first page
+// listPaginatedProductsForWarehouse gives, so the picker can show something
+// before anything is typed.
+async function searchPaginatedProductsForWarehouse(
+  warehouseId,
+  { q = '', limit = WAREHOUSE_PRODUCTS_DEFAULT_LIMIT, after = null } = {}
+) {
+  const filter = { warehouseId, isActive: true };
+
+  const search = typeof q === 'string' ? q.trim() : '';
+  if (search) {
+    // 'i' covers English case-insensitivity; Arabic is caseless, so the same
+    // pattern matches either script without a second code path.
+    const pattern = new RegExp(escapeRegex(search), 'i');
+    const matchingCatalogEntries = await ProductCatalog.find(
+      { $or: [{ nameAr: pattern }, { nameEn: pattern }, { manufacturerAr: pattern }, { manufacturerEn: pattern }] },
+      '_id'
+    );
+    filter.$or = [
+      { nameAr: pattern },
+      { nameEn: pattern },
+      { manufacturerAr: pattern },
+      { manufacturerEn: pattern },
+      { masterProductId: { $in: matchingCatalogEntries.map((c) => c._id) } },
+    ];
+  }
+
+  if (after !== null) {
+    filter._id = { $lt: after };
+  }
+
+  const rows = await Product.find(filter)
+    .sort({ _id: -1 })
+    .limit(limit + 1)
+    .populate({ path: 'masterProductId', select: 'nameAr nameEn manufacturerAr manufacturerEn' });
+  const hasMore = rows.length > limit;
+  const page = hasMore ? rows.slice(0, limit) : rows;
+  page.forEach(applyResolvedIdentity);
+  const nextCursor = page.length > 0 ? String(page[page.length - 1]._id) : null;
+
+  return { rows: page, hasMore, nextCursor };
+}
+
 // Section 8/14 Part 2: every field a warehouse can set at creation.
 // name/manufacturer are no longer among them - masterProductId (chosen via
 // catalog search, see warehouseCatalog.routes.js) is what identifies the
@@ -326,6 +380,7 @@ async function importProductsFromExcel(warehouseId, userId, file) {
 module.exports = {
   listProductsForWarehouse,
   listPaginatedProductsForWarehouse,
+  searchPaginatedProductsForWarehouse,
   createProduct,
   updateProduct,
   findOwnedProductOrThrow,

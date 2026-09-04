@@ -119,6 +119,15 @@
       }
     }
   },
+  "companyDiscountValue": "Company Discount: {percent}%",
+  "@companyDiscountValue": {
+    "description": "The warehouse's standing discount for a manufacturer, shown on its company card. Pre-formatted by the caller so the exact stored figure is preserved: 0 shows as 0%, a whole number as e.g. 15%, a fractional one as e.g. 25.5%.",
+    "placeholders": {
+      "percent": {
+        "type": "String"
+      }
+    }
+  },
   "warehouseProfileTooltip": "Warehouse info",
   "deliveryInfoTitle": "Delivery Information",
   "deliveryHoursValue": "From {start} to {end}",
@@ -227,6 +236,52 @@
       }
     }
   },
+  "advertisementsSectionTitle": "Special packages",
+  "advertisementPackageTotal": "Package price",
+  "advertisementSavingPercent": "Save {percent}%",
+  "@advertisementSavingPercent": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "advertisementProductCount": "{count, plural, =1{1 product} other{{count} products}}",
+  "@advertisementProductCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "advertisementItemQuantity": "× {count}",
+  "@advertisementItemQuantity": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "advertisementDiscountLabel": "Package discount",
+  "advertisementTotalToPay": "Total to pay",
+  "advertisementAddToCartButton": "Add package to cart",
+  "advertisementReplaceCartTitle": "Replace your cart?",
+  "advertisementReplaceCartMessage": "Your current cart will be replaced with this package. You can still edit everything before checkout.",
+  "advertisementReplaceCartConfirm": "Replace cart",
+  "advertisementUnavailableTitle": "Package unavailable",
+  "advertisementUnavailableMessage": "This package is no longer available. It may have expired or been withdrawn.",
+  "advertisementIncompleteMessage": "Some products in this package are no longer sold by this warehouse, so it can't be added: {names}",
+  "@advertisementIncompleteMessage": {
+    "placeholders": {
+      "names": {
+        "type": "String"
+      }
+    }
+  },
+  "advertisementPackageBrokenMessage": "Removing a product ends the package price. The remaining items are now priced normally.",
+  "advertisementsLoading": "Loading packages...",
+  "advertisementsEmpty": "No packages are running right now.",
+  "advertisementsError": "Packages couldn't be loaded.",
   "notificationsTitle": "Notifications",
   "noNotificationsYet": "No notifications yet",
   "noNotificationsYetHint": "Order updates and offers will show up here.",
@@ -338,11 +393,29 @@
     }
   },
   "noReturnsYet": "You haven't requested any returns yet.",
+  "noReturnsYetHint": "Once you request a return on a delivered order, it will show up here so you can follow its status.",
+  "noReturnableOrdersTitle": "No orders eligible for return",
+  "myReturnsListSectionTitle": "Your return requests",
   "newReturnRequestButton": "New return request",
   "selectOrderForReturnTitle": "Select the order you want to return items from",
   "noEligibleOrdersForReturn": "No delivered orders are currently eligible for a return.",
   "requestReturnTitle": "Request a return",
   "requestReturnButton": "Submit return request",
+  "requestReturnAction": "Request Return",
+  "accountHistoryTitle": "Account History",
+  "moneySavedTitle": "Money Saved",
+  "fromDiscountsLabel": "From Discounts",
+  "debtsTitle": "Debts",
+  "outstandingBalanceLabel": "Outstanding Balance",
+  "viewReturnsLabel": "View Returns",
+  "returnsRequestsShort": "{count, plural, zero{No requests} one{1 request} other{{count} requests}}",
+  "@returnsRequestsShort": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
   "returnQuantityLabel": "Quantity",
   "returnReasonLabel": "Reason",
   "reasonDamaged": "Damaged",
@@ -378,8 +451,8 @@
   "errorReturnPhotoRequired": "Please attach at least one photo of the item.",
   "errorDuplicateReturnItem": "Each item can only appear once in a return request.",
   "errorRejectionNoteRequired": "Please explain why this return is being rejected.",
-  "returnPhotosLabel": "Photos (required)",
-  "returnPhotosHint": "Add photos of the item to help the warehouse verify the reason",
+  "returnPhotosLabel": "Photos (optional)",
+  "returnPhotosHint": "Optionally add photos of the item to help the warehouse verify the reason",
   "addPhotoButton": "Add photo",
   "cameraOption": "Take a photo",
   "galleryOption": "Choose from gallery",
@@ -393,6 +466,8 @@
   "logoutConfirmTitle": "Log out?",
   "logoutConfirmMessage": "Are you sure you want to log out?",
   "yourRatingTitle": "Your rating",
+  "ratingsTitle": "Ratings",
+  "viewRatingsLabel": "View Ratings",
   "noRatingsYet": "No warehouse has rated you yet.",
   "ratingSummary": "{average} average ({count} ratings)",
   "@ratingSummary": {
@@ -429,12 +504,12 @@
     }
   },
   "errorAlreadyReviewed": "This order has already been rated.",
-  "minOrderLabel": "Minimum order: ${amount}",
-  "maxOrderLabel": "Maximum order: ${amount}",
-  "addMoreToReachMinimum": "Add ${amount} more to reach the minimum",
-  "removeToMeetMaximum": "Over the ${amount} maximum — remove some items",
-  "orderBelowMinimum": "The minimum order from this warehouse is ${amount}.",
-  "orderAboveMaximum": "The maximum order from this warehouse is ${amount}.",
+  "minOrderLabel": "Minimum order: {amount}",
+  "maxOrderLabel": "Maximum order: {amount}",
+  "addMoreToReachMinimum": "Add {amount} more to reach the minimum",
+  "removeToMeetMaximum": "Over the {amount} maximum — remove some items",
+  "orderBelowMinimum": "The minimum order from this warehouse is {amount}.",
+  "orderAboveMaximum": "The maximum order from this warehouse is {amount}.",
   "@minOrderLabel": {
     "placeholders": {
       "amount": {
@@ -477,8 +552,16 @@
       }
     }
   },
-  "returnableSectionTitle": "🔄 Orders eligible for return",
+  "returnableSectionTitle": "Orders eligible for return",
   "returnableSectionSubtitle": "You can request a return within 48 hours of delivery",
+  "returnableDeliveredOnLabel": "Delivered {date}",
+  "@returnableDeliveredOnLabel": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
   "returnableOrderNumber": "Order #{number}",
   "returnableHoursLeft": "{hours}h left",
   "returnableEndingSoon": "Ending soon",
@@ -624,5 +707,22 @@
   "updateRequiredMessage": "Your current version of Phoenix is no longer supported. Please update the application to continue.",
   "updateNow": "Update Now",
   "later": "Later",
-  "updateOpenStoreFailed": "Unable to open Google Play. Please try again."
+  "updateOpenStoreFailed": "Unable to open Google Play. Please try again.",
+  "deliverySealRequiredTitle": "Confirm delivery",
+  "deliverySealRequiredMessage": "This warehouse asks for a photo of the shipment seal before the order is completed. Take a clear photo of the seal/stamp on the package.",
+  "takeSealPhoto": "Add seal photo",
+  "retakeSealPhoto": "Retake photo",
+  "confirmDeliveryButton": "Confirm delivery",
+  "sealPhotoLabel": "Delivery seal photo",
+  "deliverySealConfirmedOn": "Delivery confirmed on {date}",
+  "@deliverySealConfirmedOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "errorDeliverySealPhotoRequired": "A seal photo is required to confirm delivery.",
+  "errorInvalidDeliverySealPhoto": "That file isn't a valid image. Please choose another photo.",
+  "errorOrderNotAwaitingDelivery": "This order isn't awaiting a delivery confirmation right now."
 }

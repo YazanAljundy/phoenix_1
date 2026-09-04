@@ -21,10 +21,9 @@ class DebtOrderModel {
   );
 }
 
-// Section 16: a payment the warehouse recorded against this debt. `canEdit`
-// is read but never acted on here - only the warehouse's own panel offers
-// edit/delete (see warehousePayment routes); the pharmacist's view is
-// strictly read-only.
+// Section 16: a payment the warehouse recorded against this debt. Read-only
+// here - only the warehouse's own panel offers edit/delete (at any time; see
+// warehousePayment routes). The pharmacist's view never renders those actions.
 class DebtPaymentModel {
   const DebtPaymentModel({
     required this.id,

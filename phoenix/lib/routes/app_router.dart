@@ -2,6 +2,9 @@ import 'package:flutter/foundation.dart'; // TEMP DIAGNOSTIC (router-lifecycle) 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:phoenix/core/services/navigation_service.dart';
+import 'package:phoenix/features/account_history/data/repositories/savings_repository.dart';
+import 'package:phoenix/features/account_history/presentation/managers/savings_cubit.dart';
+import 'package:phoenix/features/account_history/presentation/views/account_history_view.dart';
 import 'package:phoenix/features/auth/data/models/registration_draft.dart';
 import 'package:phoenix/features/auth/presentation/views/approval_pending_view.dart';
 import 'package:phoenix/features/auth/presentation/views/otp_verification_view.dart';
@@ -30,6 +33,7 @@ import 'package:phoenix/features/debts/data/repositories/debt_repository.dart';
 import 'package:phoenix/features/debts/presentation/managers/debt_detail_cubit.dart';
 import 'package:phoenix/features/debts/presentation/managers/debts_cubit.dart';
 import 'package:phoenix/features/debts/presentation/views/debt_detail_view.dart';
+import 'package:phoenix/features/debts/presentation/views/my_debts_view.dart';
 import 'package:phoenix/features/my_orders/presentation/managers/my_orders_cubit.dart';
 import 'package:phoenix/features/my_orders/presentation/views/my_orders_view.dart';
 import 'package:phoenix/features/notifications/presentation/views/notification_center_view.dart';
@@ -41,6 +45,7 @@ import 'package:phoenix/features/returns/presentation/managers/my_returns_cubit.
 import 'package:phoenix/features/returns/presentation/views/my_returns_view.dart';
 import 'package:phoenix/features/reviews/data/repositories/review_repository.dart';
 import 'package:phoenix/features/reviews/presentation/managers/pharmacy_reviews_cubit.dart';
+import 'package:phoenix/features/reviews/presentation/views/pharmacy_reviews_view.dart';
 import 'package:phoenix/features/warehouse_selection/data/repositories/warehouse_repository.dart';
 import 'package:phoenix/features/warehouse_selection/presentation/managers/warehouse_profile_cubit.dart';
 import 'package:phoenix/features/warehouse_selection/presentation/views/warehouse_profile_view.dart';
@@ -267,6 +272,51 @@ class AppRouter {
           );
         },
       ),
+      // Returns and Debts used to be bottom-nav tabs; the Account History tab
+      // took the returns slot, so both now push full-screen over the shell
+      // (opened from the Account History cards, or a deep link). Each provides
+      // the exact same cubit its old tab branch did.
+      GoRoute(
+        name: RouteNames.myReturns,
+        path: RoutePaths.myReturns,
+        pageBuilder: (context, state) => buildPageTransition(
+          state: state,
+          child: BlocProvider(
+            create: (context) => MyReturnsCubit(
+              returnRepository: context.read<ReturnRepository>(),
+            )..load(),
+            child: const MyReturnsView(),
+          ),
+        ),
+      ),
+      GoRoute(
+        name: RouteNames.myDebts,
+        path: RoutePaths.myDebts,
+        pageBuilder: (context, state) => buildPageTransition(
+          state: state,
+          child: BlocProvider(
+            create: (context) => DebtsCubit(
+              debtRepository: context.read<DebtRepository>(),
+            )..load(),
+            child: const MyDebtsView(),
+          ),
+        ),
+      ),
+      // The pharmacist's own ratings list, opened from the Profile screen's
+      // compact Ratings entry - the full list ProfileView used to show inline.
+      GoRoute(
+        name: RouteNames.pharmacyReviews,
+        path: RoutePaths.pharmacyReviews,
+        pageBuilder: (context, state) => buildPageTransition(
+          state: state,
+          child: BlocProvider(
+            create: (context) => PharmacyReviewsCubit(
+              reviewRepository: context.read<ReviewRepository>(),
+            )..load(),
+            child: const PharmacyReviewsView(),
+          ),
+        ),
+      ),
       GoRoute(
         name: RouteNames.orderTracking,
         path: RoutePaths.orderTracking,
@@ -319,17 +369,36 @@ class AppRouter {
               ),
             ],
           ),
+          // Section 6 (Account History): this tab replaced the old Returns
+          // tab. The screen only presents existing data - SavingsCubit (the
+          // "money saved" total), DebtsCubit (outstanding balance) and
+          // MyReturnsCubit (return count) - and its Debts / Returns cards push
+          // the standalone /my-debts and /my-returns routes above.
           StatefulShellBranch(
             routes: [
               GoRoute(
-                name: RouteNames.myReturns,
-                path: RoutePaths.myReturns,
+                name: RouteNames.accountHistory,
+                path: RoutePaths.accountHistory,
                 builder: (context, state) {
-                  return BlocProvider(
-                    create: (context) => MyReturnsCubit(
-                      returnRepository: context.read<ReturnRepository>(),
-                    )..load(),
-                    child: const MyReturnsView(),
+                  return MultiBlocProvider(
+                    providers: [
+                      BlocProvider(
+                        create: (context) => SavingsCubit(
+                          savingsRepository: context.read<SavingsRepository>(),
+                        )..load(),
+                      ),
+                      BlocProvider(
+                        create: (context) => DebtsCubit(
+                          debtRepository: context.read<DebtRepository>(),
+                        )..load(),
+                      ),
+                      BlocProvider(
+                        create: (context) => MyReturnsCubit(
+                          returnRepository: context.read<ReturnRepository>(),
+                        )..load(),
+                      ),
+                    ],
+                    child: const AccountHistoryView(),
                   );
                 },
               ),
@@ -340,23 +409,10 @@ class AppRouter {
               GoRoute(
                 name: RouteNames.profile,
                 path: RoutePaths.profile,
-                builder: (context, state) {
-                  return MultiBlocProvider(
-                    providers: [
-                      BlocProvider(
-                        create: (context) => PharmacyReviewsCubit(
-                          reviewRepository: context.read<ReviewRepository>(),
-                        )..load(),
-                      ),
-                      BlocProvider(
-                        create: (context) => DebtsCubit(
-                          debtRepository: context.read<DebtRepository>(),
-                        )..load(),
-                      ),
-                    ],
-                    child: const ProfileView(),
-                  );
-                },
+                // Profile no longer loads reviews or debts itself - the
+                // ratings section is now a link to /my-ratings, and the debts
+                // section was removed (it lives on Account History -> Debts).
+                builder: (context, state) => const ProfileView(),
               ),
             ],
           ),

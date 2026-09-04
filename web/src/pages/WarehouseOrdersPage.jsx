@@ -7,6 +7,7 @@ import { LoadMoreControl } from '../components/LoadMoreControl';
 import { usePaginatedData } from '../hooks/usePaginatedData';
 import { REALTIME_EVENTS, useRealtimeSync } from '../realtime/useRealtimeSync';
 import { withArFallback } from '../utils/displayName';
+import { formatSyp } from '../utils/currency';
 
 const PAGE_SIZE = 20;
 const STATUS_VALUES = ['pending', 'confirmed', 'preparing', 'out_for_delivery', 'delivered', 'cancelled'];
@@ -105,12 +106,16 @@ export function WarehouseOrdersPage() {
   const { data: loadedOrders, isLoading, isLoadingMore, hasMore, error, loadMore, reset } =
     usePaginatedData(fetchPage);
 
-  // Pending stays oldest-first (the fulfillment queue) - every other tab
-  // (including "All") shows newest-first, flipping the server's oldest-first
-  // page order (orderNumber ascending) without touching the endpoint. This
-  // reverses everything loaded so far, so it stays correct as more pages
-  // come in via "Load more".
-  const orders = statusFilter === 'pending' ? loadedOrders : loadedOrders.slice().reverse();
+  // "Pending" (the fulfillment queue) and "All" (a chronological history:
+  // first/oldest order at the top, most recent at the bottom) both render the
+  // server's own page order as-is, which is already oldest-first (orderNumber
+  // ascending - the codebase's chronological ordering). Every other status
+  // tab flips that to newest-first. Applied to everything loaded so far, so it
+  // stays correct as more pages come in via "Load more".
+  const orders =
+    statusFilter === 'pending' || statusFilter === ''
+      ? loadedOrders
+      : loadedOrders.slice().reverse();
 
   useEffect(() => {
     reset();
@@ -234,7 +239,7 @@ export function WarehouseOrdersPage() {
                       <div className="wh-table-sub">{order.pharmacy?.city}</div>
                     </td>
                     <td className="wh-num">{order.items.length}</td>
-                    <td className="wh-num wh-table-total">{order.finalPrice} SYP</td>
+                    <td className="wh-num wh-table-total">{formatSyp(order.finalPrice)}</td>
                     <td className="wh-num wh-table-date">
                       {order.createdAt ? new Date(order.createdAt).toLocaleString() : ''}
                     </td>

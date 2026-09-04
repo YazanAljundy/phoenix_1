@@ -11,6 +11,8 @@ import 'package:phoenix/core/widgets/empty_view.dart';
 import 'package:phoenix/core/error/error_translator.dart';
 import 'package:phoenix/core/widgets/failure_widget.dart';
 import 'package:phoenix/features/auth/presentation/managers/auth_cubit.dart';
+import 'package:phoenix/features/advertisements/presentation/managers/advertisements_cubit.dart';
+import 'package:phoenix/features/advertisements/presentation/widgets/advertisements_section.dart';
 import 'package:phoenix/features/banners/data/models/banner_model.dart';
 import 'package:phoenix/features/banners/presentation/managers/banners_cubit.dart';
 import 'package:phoenix/features/banners/presentation/widgets/banner_slider.dart';
@@ -55,6 +57,8 @@ class _WarehouseSelectionViewState extends State<WarehouseSelectionView> {
       // Fetched once here, same "screen open" trigger as everything else
       // above - no pull-to-refresh/polling for banners (see BannersCubit).
       context.read<BannersCubit>().load();
+      // Same "screen open" trigger as the banners above - no polling.
+      context.read<AdvertisementsCubit>().load();
     });
     _searchController.addListener(() {
       setState(() => _query = _searchController.text.trim());
@@ -231,6 +235,10 @@ class _WarehouseSelectionViewState extends State<WarehouseSelectionView> {
             SliverToBoxAdapter(
               child: BannerSlider(onBannerTap: _handleBannerTap),
             ),
+            // Renders nothing at all when there are no live packages, exactly
+            // as the banner slider above does - the warehouse list below is
+            // never disturbed by a slow or failed advertisement fetch.
+            const SliverToBoxAdapter(child: AdvertisementsSection()),
             BlocBuilder<WarehouseSelectionCubit, WarehouseSelectionState>(
               builder: (context, state) {
                 switch (state.status) {
