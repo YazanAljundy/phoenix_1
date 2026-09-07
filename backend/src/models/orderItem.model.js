@@ -28,6 +28,11 @@ const orderItemSchema = new Schema(
     // rather than back-converted from the SYP fields above, so it isn't
     // compounding two separate roundings. 0 when nothing was discounted.
     savingsUsd: { type: Number, default: 0 },
+    // Money-Flow V2: the same saving in SYP, frozen at order time. V1 stored
+    // only the USD figure and re-converted it at the live rate for display, so
+    // a pharmacy's "money saved" moved every time the lira did. Frozen here,
+    // it does not.
+    savingsSyp: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

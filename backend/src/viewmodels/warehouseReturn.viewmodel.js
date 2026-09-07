@@ -14,31 +14,58 @@ function toWarehouseReturnsResponse(rows) {
   return { returns: rows.map(serializeWarehouseReturn) };
 }
 
-// Same shape as the list row, plus the replacement order's number (only
-// meaningful once approved) - the returns list intentionally skips this
-// since it's the detail page's job (per the request), not a queue column.
-function toWarehouseReturnDetailResponse({ returnRequest, order, orderItemById, pharmacy, replacementOrder }) {
+// Same shape as the list row, plus the full credit working - the detail page
+// is where an operator would want to see HOW the credited figure was reached,
+// not just what it was.
+function toWarehouseReturnDetailResponse({ returnRequest, order, orderItemById, pharmacy }) {
   return {
     return: {
       ...serializeWarehouseReturn({ returnRequest, order, orderItemById, pharmacy }),
-      replacementOrderNumber: replacementOrder ? replacementOrder.orderNumber : null,
+      creditValuation: returnRequest.creditValuation ?? null,
     },
   };
 }
 
-function toResolvedReturnResponse(returnRequest, replacementOrder) {
+// Money-Flow V2: approving a return credits the pharmacy's account. There is
+// no replacement order any more, so the resolved response carries the credited
+// amount and the ledger entry that moved it instead of a replacement order id.
+function toResolvedReturnResponse(returnRequest, creditEntry = null) {
   return {
     return: {
       id: returnRequest._id,
       status: returnRequest.status,
       rejectionNote: returnRequest.rejectionNote,
-      replacementOrderId: returnRequest.replacementOrderId,
+      creditSyp: returnRequest.creditSyp ?? null,
+      creditUsd: returnRequest.creditUsd ?? null,
       resolvedAt: returnRequest.resolvedAt,
     },
-    replacementOrder: replacementOrder
-      ? { id: replacementOrder._id, orderNumber: replacementOrder.orderNumber }
+    creditEntry: creditEntry
+      ? {
+          id: creditEntry._id,
+          entryNumber: creditEntry.entryNumber,
+          amountSyp: creditEntry.amountSyp,
+          amountUsd: creditEntry.amountUsd,
+        }
       : null,
   };
 }
 
-module.exports = { toWarehouseReturnsResponse, toResolvedReturnResponse, toWarehouseReturnDetailResponse };
+// The read-only "what would this credit?" answer, so the warehouse sees the
+// number and the working before it commits to approving.
+function toReturnCreditPreviewResponse({ creditSyp, creditUsd, breakdown, alreadyResolved }) {
+  return {
+    preview: {
+      creditSyp: creditSyp ?? null,
+      creditUsd: creditUsd ?? null,
+      alreadyResolved: Boolean(alreadyResolved),
+      breakdown: breakdown ?? null,
+    },
+  };
+}
+
+module.exports = {
+  toWarehouseReturnsResponse,
+  toResolvedReturnResponse,
+  toWarehouseReturnDetailResponse,
+  toReturnCreditPreviewResponse,
+};

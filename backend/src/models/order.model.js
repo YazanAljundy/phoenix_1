@@ -25,6 +25,21 @@ const orderSchema = new Schema(
       enum: ['pending', 'confirmed', 'preparing', 'out_for_delivery', 'delivered', 'cancelled'],
       default: 'pending',
     },
+    // Money-Flow V2. Every money field below is SYP, locked in at order
+    // creation. `currency` is explicit rather than implied so a future
+    // multi-currency order is a data change, not a schema change.
+    currency: { type: String, enum: ['SYP'], default: 'SYP' },
+    // The exchange rate this order was priced through, captured ONCE at
+    // creation and never recomputed. A later change to the global rate prices
+    // new orders only - it can no longer reach back and restate this one (the
+    // V1 defect: pharmacyBalance re-divided every historical order by TODAY's
+    // rate on every recompute).
+    fx: {
+      rate: { type: Number, default: null },
+      source: { type: String, enum: ['api', 'manual', 'order', 'estimated', 'migration'], default: null },
+      rateAsOf: { type: Date, default: null },
+      estimated: { type: Boolean, default: false },
+    },
     totalPrice: { type: Number, required: true },
     // The PLATFORM discount - always round(totalPrice * warehouse.discountRate
     // / 100), recomputed from that rate on every order edit. Deliberately not
@@ -33,7 +48,13 @@ const orderSchema = new Schema(
     discountAmount: { type: Number, required: true },
     commissionAmount: { type: Number, required: true },
     // finalPrice = totalPrice - discountAmount - advertisementDiscountAmount.
+    // This is the amount the pharmacy owes, and the amount the delivery posts
+    // to the ledger as a `charge`.
     finalPrice: { type: Number, required: true },
+    // Money-Flow V2: the same figure in USD, frozen at creation through
+    // fx.rate above. Reports sum THIS rather than dividing finalPrice by
+    // whatever the rate happens to be when the report runs.
+    finalAmountUsd: { type: Number, default: null },
     // Set when this order came from a warehouse advertisement package
     // (advertisement.model.js). The package total is the authoritative price
     // for the advertised lines, so the difference between the sum of their
@@ -62,6 +83,21 @@ const orderSchema = new Schema(
     cancelledBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
     cancelReason: { type: String, default: null },
     statusHistory: { type: [statusHistoryEntrySchema], default: [] },
+
+    // Money-Flow V2 -----------------------------------------------------
+    // Assigned once, at the delivery transaction, from the `invoice_number`
+    // counter. Null until delivered; never reused, and kept (marked void)
+    // even if the delivery is later reversed - an invoice number that changes
+    // meaning is worse than a gap.
+    invoiceNumber: { type: Number, default: null },
+    deliveredAt: { type: Date, default: null },
+    // Back-reference to the one `charge` ledger entry this order produced.
+    // The authoritative guard against double-charging is the unique partial
+    // index on LedgerEntry.source.orderId; this is for cheap reads.
+    chargeEntryId: { type: Schema.Types.ObjectId, ref: 'LedgerEntry', default: null },
+    // Client-supplied UUID. A retried submission with the same key returns the
+    // original order instead of creating a second one.
+    idempotencyKey: { type: String, default: null },
   },
   { timestamps: true }
 );
@@ -78,7 +114,20 @@ orderSchema.index({ warehouseId: 1, status: 1, orderNumber: 1 });
 // listOrdersForWarehouse ("all" tab, no status): find({ warehouseId, orderNumber:{$gt} }).sort({ orderNumber:1 })
 orderSchema.index({ warehouseId: 1, orderNumber: 1 });
 // listReturnableOrders: find({ pharmacyId, status:'delivered', updatedAt:{$gte} })
-// (its { pharmacyId, status } prefix also serves pharmacyBalance.recomputeBalance)
+// (its { pharmacyId, status } prefix also serves the delivered-order reads)
 orderSchema.index({ pharmacyId: 1, status: 1, updatedAt: -1 });
+
+// Money-Flow V2. Sparse-unique: only delivered orders carry a number, and no
+// two ever share one.
+orderSchema.index(
+  { invoiceNumber: 1 },
+  { unique: true, partialFilterExpression: { invoiceNumber: { $type: 'number' } } }
+);
+// Order-creation idempotency, scoped per pharmacy - a key only has to be
+// unique to the pharmacy that generated it.
+orderSchema.index(
+  { pharmacyId: 1, idempotencyKey: 1 },
+  { unique: true, partialFilterExpression: { idempotencyKey: { $type: 'string' } } }
+);
 
 module.exports = model('Order', orderSchema);

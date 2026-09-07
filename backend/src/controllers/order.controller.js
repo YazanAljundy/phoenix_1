@@ -38,8 +38,21 @@ function validateItems(items) {
   });
 }
 
+// Money-Flow V2. `idempotencyKey` is a client-generated UUID: a retried
+// submission with the same key returns the order the first attempt created
+// instead of placing a second one. Optional for now so an older app build
+// keeps working, but the Flutter cart always sends it.
+function parseIdempotencyKey(value) {
+  if (value === undefined || value === null || value === '') return null;
+  if (typeof value !== 'string' || value.length > 100) {
+    throw ApiError.badRequest('Invalid idempotency key.', undefined, 'INVALID_IDEMPOTENCY_KEY');
+  }
+  return value;
+}
+
 const create = asyncHandler(async (req, res) => {
   const { warehouseId, notes, advertisementId } = req.body;
+  const idempotencyKey = parseIdempotencyKey(req.body.idempotencyKey);
 
   if (typeof warehouseId !== 'string' || !mongoose.Types.ObjectId.isValid(warehouseId)) {
     throw ApiError.badRequest('Invalid warehouse.', undefined, 'INVALID_WAREHOUSE');
@@ -67,9 +80,16 @@ const create = asyncHandler(async (req, res) => {
     items,
     advertisementId: advertisementId || null,
     notes: typeof notes === 'string' && notes.trim() ? notes.trim() : null,
+    idempotencyKey,
   });
 
-  res.status(201).json({
+  // A replayed idempotent request gets 200 + the header rather than a second
+  // 201, so the client can tell "already placed" from "just placed". The
+  // service sets this on the document it returns when it recognised the key.
+  const isReplay = Boolean(order.$locals && order.$locals.idempotentReplay);
+  if (isReplay) res.set('Idempotent-Replay', 'true');
+
+  res.status(isReplay ? 200 : 201).json({
     success: true,
     message: 'Order submitted.',
     ...orderViewModel.toOrderResponse(order),
@@ -170,7 +190,7 @@ const confirmDelivery = asyncHandler(async (req, res) => {
   });
 });
 
-// Section: GET /orders/returnable - orders still inside the 48-hour
+// Section: GET /orders/returnable - orders still inside the 24-hour
 // return window. Scoped to the caller's own pharmacy, resolved from the
 // JWT rather than any client-supplied id.
 const listReturnable = asyncHandler(async (req, res) => {

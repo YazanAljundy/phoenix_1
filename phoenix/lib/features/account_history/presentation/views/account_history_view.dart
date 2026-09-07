@@ -13,7 +13,6 @@ import 'package:phoenix/features/account_history/presentation/managers/savings_c
 import 'package:phoenix/features/account_history/presentation/managers/savings_state.dart';
 import 'package:phoenix/features/debts/presentation/managers/debts_cubit.dart';
 import 'package:phoenix/features/debts/presentation/managers/debts_state.dart';
-import 'package:phoenix/features/exchange_rate/presentation/managers/exchange_rate_cubit.dart';
 import 'package:phoenix/features/returns/presentation/managers/my_returns_cubit.dart';
 import 'package:phoenix/features/returns/presentation/managers/my_returns_state.dart';
 import 'package:phoenix/routes/route_names.dart';
@@ -117,8 +116,6 @@ class _MoneySavedCard extends StatelessWidget {
           const SizedBox(height: AppSizes.spacingLarge),
           BlocBuilder<SavingsCubit, SavingsState>(
             builder: (context, state) {
-              final usdToSyp = context.watch<ExchangeRateCubit>().state.usdToSyp;
-
               if (state.status == SavingsStatus.loading ||
                   state.status == SavingsStatus.initial) {
                 return const _AmountPlaceholder(height: 34);
@@ -131,11 +128,15 @@ class _MoneySavedCard extends StatelessWidget {
               }
               // scaleDown, never ellipsis - an obscured monetary figure reads
               // as a different, smaller number.
+              // Money-Flow V2: SYP-native and frozen, so this figure no
+              // longer drifts every time the exchange rate moves - and it now
+              // includes the package saving and Phoenix's platform discount,
+              // which V1 left out entirely.
               return FittedBox(
                 fit: BoxFit.scaleDown,
                 alignment: AlignmentDirectional.centerStart,
                 child: Text(
-                  formatMoneyFromUsd(state.totalSavingsUsd, usdToSyp, l10n.currencySuffix),
+                  formatSyp(state.savings.totalSavingsSyp, l10n.currencySuffix),
                   style: context.textTheme.headlineMedium?.copyWith(
                     color: accent,
                     fontWeight: FontWeight.w800,
@@ -180,18 +181,39 @@ class _DebtsCard extends StatelessWidget {
           if (state.status == DebtsStatus.error && state.debts.isEmpty) {
             return _MiniError(onRetry: () => context.read<DebtsCubit>().load());
           }
-          final usdToSyp = context.watch<ExchangeRateCubit>().state.usdToSyp;
-          final total = state.debts.fold<num>(0, (sum, d) => sum + d.balanceUsd);
-          return FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: AlignmentDirectional.centerStart,
-            child: Text(
-              formatMoneyFromUsd(total, usdToSyp, l10n.currencySuffix),
-              style: context.textTheme.titleMedium?.copyWith(
-                color: AppColors.errorOf(context),
-                fontWeight: FontWeight.w800,
+          // Money-Flow V2: the server computes all three figures. V1 summed
+          // balances here in the client and silently dropped every credit, so
+          // a pharmacy in credit at one warehouse never saw it.
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: AlignmentDirectional.centerStart,
+                child: Text(
+                  formatSyp(state.summary.totalDebtSyp, l10n.currencySuffix),
+                  style: context.textTheme.titleMedium?.copyWith(
+                    color: AppColors.errorOf(context),
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
               ),
-            ),
+              if (state.summary.hasCredit)
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(
+                    l10n.creditBalanceShort(
+                      formatSyp(state.summary.totalCreditSyp, l10n.currencySuffix),
+                    ),
+                    style: context.textTheme.bodySmall?.copyWith(
+                      color: AppColors.secondaryOf(context),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+            ],
           );
         },
       ),

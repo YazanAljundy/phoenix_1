@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api } from '../api/client';
 import { withArFallback } from '../utils/displayName';
+import { formatSyp } from '../utils/currency';
 
 const REASON_KEYS = {
   damaged: 'returns.reasonDamaged',
@@ -70,7 +71,22 @@ export function WarehouseReturnDetailPage() {
   }, [load]);
 
   const handleApprove = async () => {
-    const confirmed = window.confirm(t('returns.confirmApprove', { number: returnRequest.orderNumber }));
+    // Money-Flow V2: approving credits the pharmacy, so the operator is shown
+    // the exact figure (server-computed, from the original order's frozen
+    // prices) before committing rather than after.
+    let preview;
+    try {
+      preview = await api.returnCreditPreview(returnRequest.id);
+    } catch (err) {
+      setError(err.message);
+      return;
+    }
+    const confirmed = window.confirm(
+      t('returns.confirmApproveCredit', {
+        number: returnRequest.orderNumber,
+        amount: formatSyp(preview.preview.creditSyp),
+      })
+    );
     if (!confirmed) return;
 
     setBusy(true);
@@ -241,16 +257,15 @@ export function WarehouseReturnDetailPage() {
               <div className="wh-notice">{t('returnDetail.rejectionNoteHint')}</div>
             )}
 
+            {/* Money-Flow V2: an approved return credits the pharmacy's account.
+                The credited figure is frozen on the return at approval, so this
+                shows what actually moved rather than recomputing it. */}
             {returnRequest.status === 'approved' && (
               <div className="wh-detail-card">
-                <p style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                  {t('returnDetail.approvedWithReplacement')}
-                  <button
-                    className="btn-secondary"
-                    onClick={() => navigate(`/warehouse/orders/${returnRequest.replacementOrderId}`)}
-                  >
-                    {t('orders.orderNumber', { number: returnRequest.replacementOrderNumber })}
-                  </button>
+                <p className="order-notes" style={{ margin: 0 }}>
+                  {t('returnDetail.approvedWithCredit', {
+                    amount: formatSyp(returnRequest.creditSyp ?? 0),
+                  })}
                 </p>
               </div>
             )}

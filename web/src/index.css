@@ -3480,3 +3480,73 @@ a.adm-pill {
   color: var(--color-secondary);
   font-weight: 600;
 }
+
+/* ---------------------------------------------------------------------------
+   Money-Flow V2 - warehouse settlement
+   What the warehouse sold, what came back, what the platform takes, and what
+   is left. Built from the panel's existing .wh-card / .wh-table vocabulary so
+   it sits with the rest of the shell rather than introducing a second look.
+   --------------------------------------------------------------------------- */
+.wh-settlement-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: flex-end;
+  padding: 16px 20px;
+  margin-bottom: 16px;
+}
+.wh-settlement-filters label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--wh-text-muted, #667);
+}
+.wh-settlement-filters input {
+  padding: 8px 10px;
+  border: 1px solid var(--wh-border, #DDD);
+  border-radius: 6px;
+  font: inherit;
+}
+
+.wh-settlement-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+.wh-settlement-tile {
+  background: var(--wh-surface, #FFF);
+  border: 2px solid var(--wh-border, #EEE);
+  border-radius: 10px;
+  padding: 16px 18px;
+}
+/* The platform's cut and the warehouse's take-home are the two figures a
+   warehouse actually looks for, so they are the two that carry colour. */
+.wh-settlement-tile.is-cost { border-color: #E5C9C2; }
+.wh-settlement-tile.is-net { border-color: #BFD8C6; background: #F6FAF7; }
+.wh-settlement-tile-label {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--wh-text-muted, #778);
+  margin-bottom: 8px;
+}
+.wh-settlement-tile-value {
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.15;
+}
+.wh-settlement-tile.is-cost .wh-settlement-tile-value { color: #A5331E; }
+.wh-settlement-tile.is-net .wh-settlement-tile-value { color: #2F6B3D; }
+.wh-settlement-tile-hint {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--wh-text-muted, #889);
+}
+
+/* The order-detail summary gains the platform's cut and the resulting net. */
+.wh-summary-commission { color: #A5331E; }
+.wh-summary-net { color: #2F6B3D; }

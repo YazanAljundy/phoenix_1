@@ -3,6 +3,7 @@ import 'package:phoenix/core/constants/app_colors.dart';
 import 'package:phoenix/core/constants/app_radius.dart';
 import 'package:phoenix/core/constants/app_sizes.dart';
 import 'package:phoenix/core/extensions/build_context_extensions.dart';
+import 'package:phoenix/core/utils/currency_formatter.dart';
 import 'package:phoenix/core/utils/date_formatter.dart';
 import 'package:phoenix/core/widgets/custom_card.dart';
 import 'package:phoenix/core/widgets/status_badge.dart';
@@ -15,7 +16,6 @@ class ReturnListTile extends StatelessWidget {
     required this.returnRequest,
     this.onEdit,
     this.onDelete,
-    this.onViewReplacementOrder,
   });
 
   final ReturnModel returnRequest;
@@ -23,7 +23,6 @@ class ReturnListTile extends StatelessWidget {
   // record is final (Section 6.9).
   final VoidCallback? onEdit;
   final VoidCallback? onDelete;
-  final VoidCallback? onViewReplacementOrder;
 
   @override
   Widget build(BuildContext context) {
@@ -140,19 +139,23 @@ class ReturnListTile extends StatelessWidget {
               ),
             ),
           ],
-          if (returnRequest.isApproved && onViewReplacementOrder != null) ...[
+          // Money-Flow V2: an approved return credits the pharmacy's account
+          // rather than creating a replacement order, so what it shows is what
+          // it was worth. SYP is the settled figure - it is already the amount
+          // that moved the balance, so it is rendered directly rather than
+          // converted from USD at whatever the rate is today.
+          if (returnRequest.isApproved && returnRequest.creditSyp != null) ...[
             const SizedBox(height: AppSizes.spacingXSmall),
             Align(
               alignment: AlignmentDirectional.centerStart,
-              child: TextButton.icon(
-                onPressed: onViewReplacementOrder,
-                style: TextButton.styleFrom(
-                  padding: EdgeInsets.zero,
-                  minimumSize: const Size(0, 36),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              child: Text(
+                l10n.returnCreditedLabel(
+                  formatSyp(returnRequest.creditSyp!, l10n.currencySuffix),
                 ),
-                icon: const Icon(Icons.open_in_new_rounded, size: 16),
-                label: Text(l10n.viewReplacementOrderButton),
+                style: context.textTheme.bodyMedium?.copyWith(
+                  color: AppColors.secondaryOf(context),
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ],

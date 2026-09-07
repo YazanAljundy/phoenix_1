@@ -1484,11 +1484,11 @@ abstract class AppLocalizations {
   /// **'Rejection reason'**
   String get returnRejectionNoteLabel;
 
-  /// No description provided for @viewReplacementOrderButton.
+  /// No description provided for @returnCreditedLabel.
   ///
   /// In en, this message translates to:
-  /// **'View replacement order'**
-  String get viewReplacementOrderButton;
+  /// **'Credited to your account: {amount}'**
+  String returnCreditedLabel(String amount);
 
   /// No description provided for @editButton.
   ///
@@ -1517,7 +1517,7 @@ abstract class AppLocalizations {
   /// No description provided for @returnApprovedBanner.
   ///
   /// In en, this message translates to:
-  /// **'Return approved — a replacement order has been created'**
+  /// **'Return approved — your account has been credited'**
   String get returnApprovedBanner;
 
   /// No description provided for @returnPendingReviewBanner.
@@ -1591,12 +1591,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Please select at least one item to return.'**
   String get errorReturnItemsEmpty;
-
-  /// No description provided for @errorReturnPhotoRequired.
-  ///
-  /// In en, this message translates to:
-  /// **'Please attach at least one photo of the item.'**
-  String get errorReturnPhotoRequired;
 
   /// No description provided for @errorDuplicateReturnItem.
   ///
@@ -1871,7 +1865,7 @@ abstract class AppLocalizations {
   /// No description provided for @returnableSectionSubtitle.
   ///
   /// In en, this message translates to:
-  /// **'You can request a return within 48 hours of delivery'**
+  /// **'You can request a return within 24 hours of delivery'**
   String get returnableSectionSubtitle;
 
   /// No description provided for @returnableDeliveredOnLabel.
@@ -1913,7 +1907,7 @@ abstract class AppLocalizations {
   /// No description provided for @returnWindowExpired.
   ///
   /// In en, this message translates to:
-  /// **'A return must be requested within 48 hours of delivery.'**
+  /// **'A return must be requested within 24 hours of delivery.'**
   String get returnWindowExpired;
 
   /// No description provided for @privacyPolicy.
@@ -2353,6 +2347,114 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This order isn\'t awaiting a delivery confirmation right now.'**
   String get errorOrderNotAwaitingDelivery;
+
+  /// No description provided for @statementTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Account statement'**
+  String get statementTitle;
+
+  /// No description provided for @statementEmpty.
+  ///
+  /// In en, this message translates to:
+  /// **'No activity yet.'**
+  String get statementEmpty;
+
+  /// No description provided for @statementOpening.
+  ///
+  /// In en, this message translates to:
+  /// **'Opening balance'**
+  String get statementOpening;
+
+  /// No description provided for @statementCharges.
+  ///
+  /// In en, this message translates to:
+  /// **'Charged'**
+  String get statementCharges;
+
+  /// No description provided for @statementPayments.
+  ///
+  /// In en, this message translates to:
+  /// **'Paid'**
+  String get statementPayments;
+
+  /// No description provided for @statementReturnCredits.
+  ///
+  /// In en, this message translates to:
+  /// **'Returned'**
+  String get statementReturnCredits;
+
+  /// No description provided for @statementKindCharge.
+  ///
+  /// In en, this message translates to:
+  /// **'Order delivered'**
+  String get statementKindCharge;
+
+  /// No description provided for @statementKindChargeReversal.
+  ///
+  /// In en, this message translates to:
+  /// **'Delivery reversed'**
+  String get statementKindChargeReversal;
+
+  /// No description provided for @statementKindPayment.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment received'**
+  String get statementKindPayment;
+
+  /// No description provided for @statementKindPaymentReversal.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment reversed'**
+  String get statementKindPaymentReversal;
+
+  /// No description provided for @statementKindReturnCredit.
+  ///
+  /// In en, this message translates to:
+  /// **'Return credited'**
+  String get statementKindReturnCredit;
+
+  /// No description provided for @statementKindReturnCreditReversal.
+  ///
+  /// In en, this message translates to:
+  /// **'Return credit reversed'**
+  String get statementKindReturnCreditReversal;
+
+  /// No description provided for @statementKindManualCredit.
+  ///
+  /// In en, this message translates to:
+  /// **'Credit added'**
+  String get statementKindManualCredit;
+
+  /// No description provided for @statementKindManualDebit.
+  ///
+  /// In en, this message translates to:
+  /// **'Charge added'**
+  String get statementKindManualDebit;
+
+  /// No description provided for @statementKindOther.
+  ///
+  /// In en, this message translates to:
+  /// **'Adjustment'**
+  String get statementKindOther;
+
+  /// No description provided for @statementInvoiceRef.
+  ///
+  /// In en, this message translates to:
+  /// **'Invoice INV-{number}'**
+  String statementInvoiceRef(String number);
+
+  /// No description provided for @statementPaymentRef.
+  ///
+  /// In en, this message translates to:
+  /// **'Payment PAY-{number}'**
+  String statementPaymentRef(String number);
+
+  /// No description provided for @creditBalanceShort.
+  ///
+  /// In en, this message translates to:
+  /// **'Credit: {amount}'**
+  String creditBalanceShort(String amount);
 }
 
 class _AppLocalizationsDelegate

@@ -42,7 +42,8 @@ class ReturnModel {
     this.images = const [],
     required this.status,
     this.rejectionNote,
-    this.replacementOrderId,
+    this.creditSyp,
+    this.creditUsd,
     required this.createdAt,
     this.orderNumber,
   });
@@ -54,7 +55,11 @@ class ReturnModel {
   final List<String> images;
   final String status;
   final String? rejectionNote;
-  final String? replacementOrderId;
+  // Money-Flow V2: approving a return credits the pharmacy's account. There is
+  // no replacement order any more - what an approved return carries is what it
+  // was worth. SYP is the settled figure; USD is the frozen hint beside it.
+  final num? creditSyp;
+  final num? creditUsd;
   final DateTime createdAt;
 
   // Only present on the list response (joined in server-side).
@@ -74,7 +79,8 @@ class ReturnModel {
     images: json['images'] != null ? List<String>.from(json['images'] as List) : const [],
     status: json['status'] as String,
     rejectionNote: json['rejectionNote'] as String?,
-    replacementOrderId: json['replacementOrderId'] as String?,
+    creditSyp: json['creditSyp'] as num?,
+    creditUsd: json['creditUsd'] as num?,
     createdAt: DateTime.parse(json['createdAt'] as String),
     orderNumber: json['orderNumber'] as int?,
   );

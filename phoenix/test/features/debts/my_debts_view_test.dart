@@ -25,17 +25,24 @@ void main() {
     final rate = MockExchangeRateCubit();
     when(() => debts.load()).thenAnswer((_) async {});
     when(() => debts.state).thenReturn(
-      DebtsState(
+      const DebtsState(
         status: DebtsStatus.loaded,
-        debts: const [
-          WarehouseDebtModel(
-            warehouseId: 'w1',
-            nameAr: 'مستودع',
-            nameEn: 'Warehouse One',
-            phone: '0999',
-            balanceUsd: 10,
-          ),
-        ],
+        // Money-Flow V2: the server computes the totals and every balance is
+        // SYP-native, so the view no longer folds or converts anything.
+        summary: DebtsSummaryModel(
+          totalDebtSyp: 150000,
+          totalCreditSyp: 0,
+          netPositionSyp: 150000,
+          accounts: [
+            WarehouseDebtModel(
+              warehouseId: 'w1',
+              nameAr: 'مستودع',
+              nameEn: 'Warehouse One',
+              phone: '0999',
+              balanceSyp: 150000,
+            ),
+          ],
+        ),
       ),
     );
     when(() => rate.state).thenReturn(const ExchangeRateState(usdToSyp: 15000));

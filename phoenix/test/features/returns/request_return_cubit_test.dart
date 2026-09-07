@@ -110,6 +110,24 @@ void main() {
     await cubit.close();
   });
 
+  // The rule is reason-agnostic - no reasonType re-introduces a photo
+  // requirement, which is the one thing a per-reason branch would break.
+  test('no reason type requires a photo', () async {
+    for (final reason in kReturnReasonTypes) {
+      final cubit = build();
+      await cubit.initialize();
+      cubit.toggleItem('a');
+      cubit.setItemReasonType('a', reason);
+      // 'other' still needs its free-text reason; that rule is unrelated to
+      // photos and is asserted separately below.
+      if (reason == 'other') cubit.setItemCustomReason('a', 'expired stock');
+
+      expect(cubit.state.newImages, isEmpty);
+      expect(cubit.isValid, isTrue, reason: 'reason "$reason" must not require a photo');
+      await cubit.close();
+    }
+  });
+
   test('submit() still forwards photos when the pharmacist picked some', () async {
     final cubit = build();
     await cubit.initialize();

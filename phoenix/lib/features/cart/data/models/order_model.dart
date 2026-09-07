@@ -5,12 +5,21 @@ import 'order_status_history_entry.dart';
 // - the full items/photos live in the returns feature itself, fetched
 // separately when the pharmacist opens "My Returns".
 class LinkedReturnModel {
-  const LinkedReturnModel({required this.id, required this.status, this.rejectionNote, this.replacementOrderId});
+  const LinkedReturnModel({
+    required this.id,
+    required this.status,
+    this.rejectionNote,
+    this.creditSyp,
+    this.creditUsd,
+  });
 
   final String id;
   final String status;
   final String? rejectionNote;
-  final String? replacementOrderId;
+  // Money-Flow V2: an approved return credits the account rather than creating
+  // a replacement order, so what it carries is the credited amount.
+  final num? creditSyp;
+  final num? creditUsd;
 
   bool get isPending => status == 'pending';
   bool get isApproved => status == 'approved';
@@ -20,7 +29,8 @@ class LinkedReturnModel {
     id: json['id'] as String,
     status: json['status'] as String,
     rejectionNote: json['rejectionNote'] as String?,
-    replacementOrderId: json['replacementOrderId'] as String?,
+    creditSyp: json['creditSyp'] as num?,
+    creditUsd: json['creditUsd'] as num?,
   );
 }
 

@@ -1,6 +1,8 @@
 const env = require('../config/env');
 const { ApiError } = require('../utils/ApiError');
 const ExchangeRate = require('../models/exchangeRate.model');
+const ExchangeRateHistory = require('../models/exchangeRateHistory.model');
+const financialAudit = require('./financialAudit.service');
 
 const SINGLETON_ID = 'singleton';
 const REFRESH_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24h
@@ -17,6 +19,56 @@ function validateUsdToSyp(usdToSyp) {
 // file all use findByIdAndUpdate rather than mutating a loaded document.
 async function getRate() {
   return ExchangeRate.findById(SINGLETON_ID).lean();
+}
+
+// Money-Flow V2. Appends to the append-only history whenever the stored rate
+// actually MOVES - the daily API refresh usually re-fetches the same number,
+// and a row per no-op fetch would bury the real changes.
+//
+// Best-effort by design: the history is provenance, not the rate itself, so a
+// failure here must never stop a rate from being stored or an order from being
+// priced. It is logged instead.
+async function recordRateChange({ usdToSyp, source, previousUsdToSyp, changedBy = null }) {
+  if (previousUsdToSyp === usdToSyp) return null;
+  try {
+    const row = await ExchangeRateHistory.create({
+      usdToSyp,
+      source,
+      effectiveFrom: new Date(),
+      changedBy,
+      previousUsdToSyp: previousUsdToSyp ?? null,
+    });
+    await financialAudit.record({
+      action: 'exchangeRate.changed',
+      actorId: changedBy,
+      actorRole: changedBy ? 'admin' : 'system',
+      entityType: 'ExchangeRate',
+      before: { usdToSyp: previousUsdToSyp ?? null },
+      after: { usdToSyp, source },
+    });
+    return row;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('Failed to record an exchange-rate change in the history.', err.message);
+    return null;
+  }
+}
+
+// Money-Flow V2. THE place a money event gets its exchange rate.
+//
+// Every Order, Payment and LedgerEntry freezes what this returns, so the
+// figures it produced never move again - a later change to the singleton only
+// prices NEW events. Callers that cannot proceed without a rate (order
+// creation) throw on null; callers that can (reporting) fall back.
+async function captureFxSnapshot({ source = null } = {}) {
+  const rate = await getRate();
+  if (!rate) return null;
+  return {
+    rate: rate.usdToSyp,
+    source: source ?? rate.source ?? 'api',
+    rateAsOf: rate.lastUpdated ?? new Date(),
+    estimated: false,
+  };
 }
 
 // Open Exchange Rates' rates.SYP is the pre-redenomination lira - this app
@@ -38,11 +90,13 @@ async function fetchRateFromApi() {
 
 async function fetchAndStoreFromApi() {
   const usdToSyp = await fetchRateFromApi();
+  const previous = await getRate();
   const rate = await ExchangeRate.findByIdAndUpdate(
     SINGLETON_ID,
     { usdToSyp, source: 'api', lastUpdated: new Date(), manualOverride: false },
     { upsert: true, new: true }
   );
+  await recordRateChange({ usdToSyp, source: 'api', previousUsdToSyp: previous?.usdToSyp ?? null });
   // eslint-disable-next-line no-console
   console.log(`Exchange rate updated from API: 1 USD = ${usdToSyp} SYP.`);
   return rate;
@@ -98,13 +152,32 @@ async function startScheduledRefresh() {
   }, delayMs);
 }
 
-async function setManualRate(usdToSyp) {
+// The admin's manual override. Deliberately unchanged in its validation: any
+// positive number is accepted, with no bounds/sanity check and no approval
+// step (product owner's decision). What V2 adds is the paper trail - the
+// previous value is preserved in the history and the change is audited.
+async function setManualRate(usdToSyp, changedBy = null) {
   validateUsdToSyp(usdToSyp);
-  return ExchangeRate.findByIdAndUpdate(
+  const previous = await getRate();
+  const rate = await ExchangeRate.findByIdAndUpdate(
     SINGLETON_ID,
     { usdToSyp, source: 'manual', lastUpdated: new Date(), manualOverride: true },
     { upsert: true, new: true }
   );
+  await recordRateChange({
+    usdToSyp,
+    source: 'manual',
+    previousUsdToSyp: previous?.usdToSyp ?? null,
+    changedBy,
+  });
+  return rate;
+}
+
+// The rates the singleton has held, newest first - shown beside the admin's
+// rate card so a change is visible in context rather than replacing the only
+// copy of the old number.
+async function listRateHistory({ limit = 20 } = {}) {
+  return ExchangeRateHistory.find({}).sort({ effectiveFrom: -1 }).limit(limit).lean();
 }
 
 // Admin-triggered "hand control back to the API". Always clears
@@ -135,6 +208,9 @@ async function resetToApi() {
 
 module.exports = {
   getRate,
+  captureFxSnapshot,
+  recordRateChange,
+  listRateHistory,
   refreshFromApi,
   startScheduledRefresh,
   setManualRate,

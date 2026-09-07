@@ -14,8 +14,8 @@ class DebtsCubit extends Cubit<DebtsState> {
   Future<void> load() async {
     emit(state.copyWith(status: DebtsStatus.loading));
     try {
-      final debts = await _debtRepository.getMyDebts();
-      emit(state.copyWith(status: DebtsStatus.loaded, debts: debts));
+      final summary = await _debtRepository.getMyDebts();
+      emit(state.copyWith(status: DebtsStatus.loaded, summary: summary));
     } on Failure catch (f) {
       emit(state.copyWith(status: DebtsStatus.error, errorMessage: f.errMessage, errorCode: f.code));
     }

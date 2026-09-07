@@ -853,7 +853,9 @@ class AppLocalizationsAr extends AppLocalizations {
   String get returnRejectionNoteLabel => 'سبب الرفض';
 
   @override
-  String get viewReplacementOrderButton => 'عرض طلب الاستبدال';
+  String returnCreditedLabel(String amount) {
+    return 'تمت إضافته لحسابك: $amount';
+  }
 
   @override
   String get editButton => 'تعديل';
@@ -869,7 +871,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get returnApprovedBanner =>
-      'تمت الموافقة على المرتجع — تم إنشاء طلب استبدال';
+      'تمت الموافقة على المرتجع — تمت إضافة المبلغ إلى حسابك';
 
   @override
   String get returnPendingReviewBanner =>
@@ -911,10 +913,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get errorReturnItemsEmpty => 'يرجى اختيار صنف واحد على الأقل للإرجاع.';
-
-  @override
-  String get errorReturnPhotoRequired =>
-      'يرجى إرفاق صورة واحدة على الأقل للمنتج.';
 
   @override
   String get errorDuplicateReturnItem =>
@@ -1073,7 +1071,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get returnableSectionSubtitle =>
-      'يمكنك تقديم طلب إرجاع خلال 48 ساعة من التسليم';
+      'يمكنك تقديم طلب إرجاع خلال 24 ساعة من التسليم';
 
   @override
   String returnableDeliveredOnLabel(String date) {
@@ -1103,7 +1101,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get returnWindowExpired =>
-      'يجب تقديم طلب الإرجاع خلال 48 ساعة من التسليم.';
+      'يجب تقديم طلب الإرجاع خلال 24 ساعة من التسليم.';
 
   @override
   String get privacyPolicy => 'سياسة الخصوصية';
@@ -1371,4 +1369,64 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get errorOrderNotAwaitingDelivery =>
       'هذا الطلب ليس بانتظار تأكيد التسليم حالياً.';
+
+  @override
+  String get statementTitle => 'كشف الحساب';
+
+  @override
+  String get statementEmpty => 'لا توجد حركات بعد.';
+
+  @override
+  String get statementOpening => 'الرصيد الافتتاحي';
+
+  @override
+  String get statementCharges => 'إجمالي المطالبات';
+
+  @override
+  String get statementPayments => 'المدفوع';
+
+  @override
+  String get statementReturnCredits => 'المرتجعات';
+
+  @override
+  String get statementKindCharge => 'تسليم طلب';
+
+  @override
+  String get statementKindChargeReversal => 'إلغاء تسليم';
+
+  @override
+  String get statementKindPayment => 'دفعة مستلمة';
+
+  @override
+  String get statementKindPaymentReversal => 'عكس دفعة';
+
+  @override
+  String get statementKindReturnCredit => 'رصيد مرتجع';
+
+  @override
+  String get statementKindReturnCreditReversal => 'عكس رصيد مرتجع';
+
+  @override
+  String get statementKindManualCredit => 'إضافة رصيد';
+
+  @override
+  String get statementKindManualDebit => 'إضافة مطالبة';
+
+  @override
+  String get statementKindOther => 'تسوية';
+
+  @override
+  String statementInvoiceRef(String number) {
+    return 'فاتورة INV-$number';
+  }
+
+  @override
+  String statementPaymentRef(String number) {
+    return 'دفعة PAY-$number';
+  }
+
+  @override
+  String creditBalanceShort(String amount) {
+    return 'رصيد لك: $amount';
+  }
 }

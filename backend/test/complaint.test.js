@@ -4,13 +4,13 @@
 // end, same pattern as readpath.lean.test.js / notification.fanout.test.js.
 // The realtime layer is left as-is: emitToWarehouse/emitToAdmins tolerate a
 // null io (no socket server booted here) and simply no-op.
-process.env.MONGODB_URI = 'mongodb://localhost:27017/phoenix-complaint-test';
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-complaint-tests';
 process.env.NODE_ENV = 'test';
 
 const test = require('node:test');
 const assert = require('node:assert');
 const mongoose = require('mongoose');
+const { startMemoryMongo, stopMemoryMongo } = require('./helpers/mongo');
 
 const User = require('../src/models/user.model');
 const Pharmacy = require('../src/models/pharmacy.model');
@@ -37,8 +37,7 @@ function withCode(expected) {
 }
 
 test.before(async () => {
-  await mongoose.connect(process.env.MONGODB_URI);
-  await mongoose.connection.dropDatabase();
+  await startMemoryMongo({ dbName: 'phoenix-complaint-test' });
 
   const [phUserA, phUserB, whUserA, whUserB, adminUser] = await User.create([
     { name: 'Pharm A', phone: '0930000001', role: 'pharmacy', status: 'active' },
@@ -95,8 +94,7 @@ test.before(async () => {
 });
 
 test.after(async () => {
-  await mongoose.connection.dropDatabase();
-  await mongoose.disconnect();
+  await stopMemoryMongo();
 });
 
 // ---------------------------------------------------------------------------

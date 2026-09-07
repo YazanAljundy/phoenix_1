@@ -57,19 +57,18 @@ export function formatUsdAsSyp(usdAmount, usdToSyp) {
   return `${group(syp)} ${sypSuffix()} (${formatUsd(usdAmount)})`;
 }
 
-// The "Full amount" button on the record-payment forms: the outstanding
-// balance is stored in USD (pharmacyBalance.balanceUsd), so this converts it
-// into whichever currency the warehouse picked for the payment. SYP is
-// rounded to a whole lira; a missing rate means only the USD figure can be
-// offered, so the button stays disabled for SYP in that case (callers check
-// for null). A zero-or-credit balance returns null - nothing to prefill.
-export function remainingPaymentAmount(balanceUsd, currency, usdToSyp) {
-  const remaining = Number(balanceUsd);
+// Money-Flow V2: balances are SYP-native now (the ledger's settlement
+// currency), so the "Full amount" prefill starts from SYP and only converts
+// when the warehouse is recording a USD payment. A zero-or-credit balance
+// returns null - there is nothing to prefill.
+export function remainingPaymentAmountFromSyp(balanceSyp, currency, usdToSyp) {
+  const remaining = Number(balanceSyp);
   if (!Number.isFinite(remaining) || remaining <= 0) return null;
-  if (currency === 'USD') return Math.round(remaining * 100) / 100;
-  if (currency === 'SYP') {
-    const syp = sypFromUsd(remaining, usdToSyp);
-    return syp;
+  if (currency === 'SYP') return Math.round(remaining);
+  if (currency === 'USD') {
+    if (usdToSyp == null || !Number.isFinite(Number(usdToSyp)) || Number(usdToSyp) <= 0) return null;
+    return Math.round((remaining / Number(usdToSyp)) * 100) / 100;
   }
   return null;
 }
+

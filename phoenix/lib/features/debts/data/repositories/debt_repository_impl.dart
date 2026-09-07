@@ -13,12 +13,13 @@ class DebtRepositoryImpl implements DebtRepository {
   final ApiClient _apiClient;
 
   @override
-  Future<List<WarehouseDebtModel>> getMyDebts() async {
+  Future<DebtsSummaryModel> getMyDebts() async {
     try {
       final response = await _apiClient.dio.get(Endpoints.debts);
-      final data = response.data as Map<String, dynamic>;
-      final warehouses = (data['warehouses'] as List).cast<Map<String, dynamic>>();
-      return warehouses.map(WarehouseDebtModel.fromJson).toList();
+      // Money-Flow V2: the endpoint returns every account plus the three
+      // headline totals, all computed server-side. V1 returned only the
+      // accounts in debt and left the client to sum them.
+      return DebtsSummaryModel.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
       throw ServerFailure.fromDioError(e);
     }

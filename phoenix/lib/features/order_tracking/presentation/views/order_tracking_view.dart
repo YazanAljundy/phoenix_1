@@ -8,6 +8,7 @@ import 'package:phoenix/core/constants/app_sizes.dart';
 import 'package:phoenix/core/error/error_translator.dart';
 import 'package:phoenix/core/error/failure.dart';
 import 'package:phoenix/core/extensions/build_context_extensions.dart';
+import 'package:phoenix/core/utils/currency_formatter.dart';
 import 'package:phoenix/core/utils/date_formatter.dart';
 import 'package:phoenix/core/widgets/app_dialog.dart';
 import 'package:phoenix/core/widgets/app_loading.dart';
@@ -426,7 +427,7 @@ class _CancelOrderButton extends StatelessWidget {
 // linked return's status - never left disconnected from the order. Renders
 // one of three states: no return yet (a single "request a return" action for
 // the whole order), a still-pending one (editable/deletable), or a decided
-// one (approved with a link to its replacement order, or rejected with the
+// one (approved with the amount it credited, or rejected with the
 // warehouse's note).
 class _ReturnStatusSection extends StatelessWidget {
   const _ReturnStatusSection({
@@ -494,16 +495,20 @@ class _ReturnStatusSection extends StatelessWidget {
               child: Text('${l10n.returnRejectionNoteLabel}: ${linkedReturn.rejectionNote}'),
             ),
           ],
-          if (linkedReturn.isApproved && linkedReturn.replacementOrderId != null) ...[
+          // Money-Flow V2: an approved return credits the account against this
+          // order rather than producing a replacement order to link to.
+          if (linkedReturn.isApproved && linkedReturn.creditSyp != null) ...[
             const SizedBox(height: AppSizes.spacingSmall),
             Align(
               alignment: AlignmentDirectional.centerStart,
-              child: TextButton(
-                onPressed: () => context.pushNamed(
-                  RouteNames.orderTracking,
-                  pathParameters: {'orderId': linkedReturn.replacementOrderId!},
+              child: Text(
+                l10n.returnCreditedLabel(
+                  formatSyp(linkedReturn.creditSyp!, l10n.currencySuffix),
                 ),
-                child: Text(l10n.viewReplacementOrderButton),
+                style: context.textTheme.bodyMedium?.copyWith(
+                  color: AppColors.secondaryOf(context),
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ],

@@ -9,13 +9,13 @@
 //
 // Runs against its own database and drops it at the end - same pattern as
 // readpath.lean.test.js / catalog.search.test.js.
-process.env.MONGODB_URI = 'mongodb://localhost:27017/phoenix-projection-test';
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-projection-tests';
 process.env.NODE_ENV = 'test';
 
 const test = require('node:test');
 const assert = require('node:assert');
 const mongoose = require('mongoose');
+const { startMemoryMongo, stopMemoryMongo } = require('./helpers/mongo');
 
 const User = require('../src/models/user.model');
 const Pharmacy = require('../src/models/pharmacy.model');
@@ -30,7 +30,6 @@ const Return = require('../src/models/return.model');
 const Offer = require('../src/models/offer.model');
 const Banner = require('../src/models/banner.model');
 const Payment = require('../src/models/payment.model');
-const PharmacyBalance = require('../src/models/pharmacyBalance.model');
 const ManufacturerDiscount = require('../src/models/manufacturerDiscount.model');
 
 const adminService = require('../src/services/admin.service');
@@ -61,8 +60,10 @@ const adminBannerService = require('../src/services/adminBanner.service');
 const adminBannerViewModel = require('../src/viewmodels/adminBanner.viewmodel');
 const warehouseBannerService = require('../src/services/warehouseBanner.service');
 const warehouseBannerViewModel = require('../src/viewmodels/warehouseBanner.viewmodel');
-const balanceService = require('../src/services/pharmacyBalance.service');
-const balanceViewModel = require('../src/viewmodels/pharmacyBalance.viewmodel');
+const statementService = require('../src/services/accountStatement.service');
+const ledger = require('../src/services/ledger.service');
+const { runInTransaction } = require('../src/utils/transaction');
+const statementViewModel = require('../src/viewmodels/accountStatement.viewmodel');
 
 const ids = {
   pharmUser: new mongoose.Types.ObjectId(),
@@ -84,8 +85,7 @@ const ids = {
 const DELIVERED_AT = new Date(Date.now() - 60 * 60 * 1000);
 
 test.before(async () => {
-  await mongoose.connect(process.env.MONGODB_URI);
-  await mongoose.connection.dropDatabase();
+  await startMemoryMongo({ dbName: 'phoenix-projection-test' });
 
   await User.create([
     { _id: ids.pharmUser, name: 'Pharm Owner', phone: '0930000001', role: 'pharmacy', status: 'active' },
@@ -180,15 +180,27 @@ test.before(async () => {
     pharmacyId: ids.pharmacy, warehouseId: ids.warehouse, amount: 100, currency: 'USD',
     recordedBy: ids.whUser,
   });
-  await PharmacyBalance.create({
-    pharmacyId: ids.pharmacy, warehouseId: ids.warehouse,
-    totalOrdersUsd: 300, totalPaidUsd: 100, balanceUsd: 200,
-  });
+  // Money-Flow V2: a ledger account with one real charge on it, rather than a
+  // hand-written cache row. The account exists BECAUSE something financial
+  // happened, which is the whole point of the model.
+  const account = await ledger.resolveAccount(ids.pharmacy, ids.warehouse);
+  await runInTransaction((session) =>
+    ledger.postEntry(
+      {
+        account,
+        kind: 'charge',
+        amountSyp: 2000000,
+        amountUsd: 200,
+        fx: { rate: 10000, source: 'manual', rateAsOf: new Date() },
+        source: { orderId: ids.order ?? new mongoose.Types.ObjectId() },
+      },
+      session
+    )
+  );
 });
 
 test.after(async () => {
-  await mongoose.connection.dropDatabase();
-  await mongoose.disconnect();
+  await stopMemoryMongo();
 });
 
 // --- admin pending accounts ------------------------------------------------
@@ -518,33 +530,40 @@ test('warehouse banners list keeps its fields', async () => {
   assert.strictEqual(banners[0].title, 'Promo');
 });
 
-// --- balances --------------------------------------------------------
+// --- accounts --------------------------------------------------------
 
-test('debtor / debt lists keep the counterparty name + totals', async () => {
-  const debtorRows = await balanceService.listPaginatedDebtorsForWarehouse(ids.warehouse, { limit: 10 });
-  const { pharmacies } = balanceViewModel.toDebtorListResponse(debtorRows.rows);
+test('the account lists keep the counterparty name + phone', async () => {
+  // Money-Flow V2: sourced from LedgerAccount, not the retired
+  // PharmacyBalance cache. What is being checked is unchanged - a projection
+  // must still carry enough of the other party to render a row.
+  const { rows } = await statementService.listAccountsForWarehouse(ids.warehouse, { limit: 10 });
+  const { pharmacies } = statementViewModel.toWarehouseAccountsResponse({ rows });
   assert.strictEqual(pharmacies.length, 1);
   assert.strictEqual(pharmacies[0].nameEn, 'Pharmacy One');
   assert.strictEqual(pharmacies[0].phone, '0930000001');
-  assert.strictEqual(pharmacies[0].balanceUsd, 200);
+  assert.strictEqual(typeof pharmacies[0].balanceSyp, 'number');
 
-  const debtRows = await balanceService.listDebtsForPharmacy(ids.pharmacy);
-  const { warehouses } = balanceViewModel.toDebtListResponse(debtRows);
-  assert.strictEqual(warehouses[0].nameEn, 'Warehouse One');
-  assert.strictEqual(warehouses[0].phone, '0930000002');
-  assert.strictEqual(warehouses[0].totalOrdersUsd, 300);
+  const summary = await statementService.getPharmacyAccountsSummary(ids.pharmacy);
+  const { accounts } = statementViewModel.toPharmacyAccountsResponse(summary);
+  assert.strictEqual(accounts[0].nameEn, 'Warehouse One');
+  assert.strictEqual(accounts[0].phone, '0930000002');
 });
 
-test('balance detail keeps the "other party" name + phone for each viewer role', async () => {
-  const detail = await balanceService.getBalanceDetail(ids.pharmacy, ids.warehouse);
+test('the statement keeps the "other party" name + phone for each viewer role', async () => {
+  const data = await statementService.getStatement({
+    pharmacyId: ids.pharmacy,
+    warehouseId: ids.warehouse,
+    from: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000),
+    to: new Date(Date.now() + 24 * 60 * 60 * 1000),
+  });
 
-  const asPharmacy = balanceViewModel.toBalanceDetailResponse(detail, 'pharmacy');
+  const asPharmacy = statementViewModel.toStatementResponse(data, 'pharmacy').statement;
   assert.strictEqual(asPharmacy.warehouse.nameEn, 'Warehouse One');
   assert.strictEqual(asPharmacy.warehouse.phone, '0930000002');
   assert.strictEqual(asPharmacy.pharmacy, undefined);
 
-  const asWarehouse = balanceViewModel.toBalanceDetailResponse(detail, 'warehouse');
+  const asWarehouse = statementViewModel.toStatementResponse(data, 'warehouse').statement;
   assert.strictEqual(asWarehouse.pharmacy.nameEn, 'Pharmacy One');
   assert.strictEqual(asWarehouse.pharmacy.phone, '0930000001');
-  assert.strictEqual(asWarehouse.balanceUsd, 200);
+  assert.strictEqual(asWarehouse.warehouse, undefined);
 });

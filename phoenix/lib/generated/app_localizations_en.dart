@@ -841,7 +841,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get returnRejectionNoteLabel => 'Rejection reason';
 
   @override
-  String get viewReplacementOrderButton => 'View replacement order';
+  String returnCreditedLabel(String amount) {
+    return 'Credited to your account: $amount';
+  }
 
   @override
   String get editButton => 'Edit';
@@ -858,7 +860,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get returnApprovedBanner =>
-      'Return approved — a replacement order has been created';
+      'Return approved — your account has been credited';
 
   @override
   String get returnPendingReviewBanner =>
@@ -904,10 +906,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get errorReturnItemsEmpty =>
       'Please select at least one item to return.';
-
-  @override
-  String get errorReturnPhotoRequired =>
-      'Please attach at least one photo of the item.';
 
   @override
   String get errorDuplicateReturnItem =>
@@ -1067,7 +1065,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get returnableSectionSubtitle =>
-      'You can request a return within 48 hours of delivery';
+      'You can request a return within 24 hours of delivery';
 
   @override
   String returnableDeliveredOnLabel(String date) {
@@ -1097,7 +1095,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get returnWindowExpired =>
-      'A return must be requested within 48 hours of delivery.';
+      'A return must be requested within 24 hours of delivery.';
 
   @override
   String get privacyPolicy => 'Privacy Policy';
@@ -1367,4 +1365,64 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get errorOrderNotAwaitingDelivery =>
       'This order isn\'t awaiting a delivery confirmation right now.';
+
+  @override
+  String get statementTitle => 'Account statement';
+
+  @override
+  String get statementEmpty => 'No activity yet.';
+
+  @override
+  String get statementOpening => 'Opening balance';
+
+  @override
+  String get statementCharges => 'Charged';
+
+  @override
+  String get statementPayments => 'Paid';
+
+  @override
+  String get statementReturnCredits => 'Returned';
+
+  @override
+  String get statementKindCharge => 'Order delivered';
+
+  @override
+  String get statementKindChargeReversal => 'Delivery reversed';
+
+  @override
+  String get statementKindPayment => 'Payment received';
+
+  @override
+  String get statementKindPaymentReversal => 'Payment reversed';
+
+  @override
+  String get statementKindReturnCredit => 'Return credited';
+
+  @override
+  String get statementKindReturnCreditReversal => 'Return credit reversed';
+
+  @override
+  String get statementKindManualCredit => 'Credit added';
+
+  @override
+  String get statementKindManualDebit => 'Charge added';
+
+  @override
+  String get statementKindOther => 'Adjustment';
+
+  @override
+  String statementInvoiceRef(String number) {
+    return 'Invoice INV-$number';
+  }
+
+  @override
+  String statementPaymentRef(String number) {
+    return 'Payment PAY-$number';
+  }
+
+  @override
+  String creditBalanceShort(String amount) {
+    return 'Credit: $amount';
+  }
 }

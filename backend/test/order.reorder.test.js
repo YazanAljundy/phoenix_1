@@ -6,7 +6,6 @@
 // projection.select.test.js. realtime is stubbed through require.cache so
 // order.created can be observed; the exchange rate is stubbed so checkout can
 // price without a seeded rate document.
-process.env.MONGODB_URI = 'mongodb://localhost:27017/phoenix-order-reorder-test';
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-order-reorder-tests';
 process.env.NODE_ENV = 'test';
 
@@ -14,6 +13,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const path = require('node:path');
 const mongoose = require('mongoose');
+const { startMemoryMongo, stopMemoryMongo } = require('./helpers/mongo');
 
 const emitted = [];
 
@@ -34,6 +34,14 @@ stubModule('realtime/index.js', {
 });
 stubModule('services/exchangeRate.service.js', {
   getRate: async () => ({ usdToSyp: 15000 }),
+  // Money-Flow V2: createOrder freezes the rate it priced through onto the
+  // order, so the stub has to supply the snapshot too - not just the number.
+  captureFxSnapshot: async () => ({
+    rate: 15000,
+    source: 'manual',
+    rateAsOf: new Date('2026-01-01T00:00:00Z'),
+    estimated: false,
+  }),
 });
 stubModule('services/notification.service.js', {
   sendToUser: async () => {},
@@ -106,8 +114,7 @@ async function makeDeliveredOrder(pharmacyId, warehouseId, lines) {
 }
 
 test.before(async () => {
-  await mongoose.connect(process.env.MONGODB_URI);
-  await mongoose.connection.dropDatabase();
+  await startMemoryMongo({ dbName: 'phoenix-order-reorder-test' });
 
   const [pharmacyUser, otherPharmacyUser, warehouseUser] = await User.create([
     { name: 'Pharm', phone: '0932000001', role: 'pharmacy', status: 'active' },
@@ -144,8 +151,7 @@ test.before(async () => {
 });
 
 test.after(async () => {
-  await mongoose.connection.dropDatabase();
-  await mongoose.disconnect();
+  await stopMemoryMongo();
 });
 
 test.beforeEach(() => {

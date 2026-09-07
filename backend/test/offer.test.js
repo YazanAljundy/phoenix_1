@@ -4,13 +4,13 @@
 // consequence (a permanent offer counts as "active" with no end date).
 //
 // Runs against its own database (phoenix-offer-test) and drops it at the end.
-process.env.MONGODB_URI = 'mongodb://localhost:27017/phoenix-offer-test';
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-offer-tests';
 process.env.NODE_ENV = 'test';
 
 const test = require('node:test');
 const assert = require('node:assert');
 const mongoose = require('mongoose');
+const { startMemoryMongo, stopMemoryMongo } = require('./helpers/mongo');
 
 const User = require('../src/models/user.model');
 const Warehouse = require('../src/models/warehouse.model');
@@ -49,14 +49,12 @@ async function seed() {
 }
 
 test.before(async () => {
-  await mongoose.connect(process.env.MONGODB_URI);
-  await mongoose.connection.dropDatabase();
+  await startMemoryMongo({ dbName: 'phoenix-offer-test' });
   await seed();
 });
 
 test.after(async () => {
-  await mongoose.connection.dropDatabase();
-  await mongoose.disconnect();
+  await stopMemoryMongo();
 });
 
 test.beforeEach(async () => {

@@ -10,6 +10,7 @@ import { AdminAdvertisementsPage } from './AdminAdvertisementsPage';
 import { AdminProductsPage } from './AdminProductsPage';
 import { AdminCatalogPage } from './AdminCatalogPage';
 import { AdminBannersPage } from './AdminBannersPage';
+import { AdminCommissionPage } from './AdminCommissionPage';
 import { AdminExchangeRatePage } from './AdminExchangeRatePage';
 import { AdminNotificationsPage } from './AdminNotificationsPage';
 import { AdminComplaintsPage } from './AdminComplaintsPage';
@@ -38,6 +39,9 @@ export function AdminPanel() {
     { path: '/admin/advertisements', label: t('nav.advertisements') },
     { path: '/admin/products', label: t('nav.products') },
     { path: '/admin/catalog', label: t('nav.centralCatalog') },
+    // The platform's side of the money: what each warehouse owes in
+    // commission for a chosen window, and what it has actually handed over.
+    { path: '/admin/commission', label: t('nav.commission') },
     { path: '/admin/exchange-rate', label: t('nav.exchangeRate') },
     { path: '/admin/notifications', label: t('nav.notifications') },
     { path: '/admin/complaints', label: t('nav.complaints') },
@@ -111,6 +115,7 @@ export function AdminPanel() {
             />
             <Route path="/admin/products" element={<AdminProductsPage />} />
             <Route path="/admin/catalog" element={<AdminCatalogPage />} />
+            <Route path="/admin/commission" element={<AdminCommissionPage />} />
             <Route path="/admin/exchange-rate" element={<AdminExchangeRatePage />} />
             <Route path="/admin/notifications" element={<AdminNotificationsPage />} />
             <Route path="/admin/complaints" element={<AdminComplaintsPage />} />

@@ -4,7 +4,6 @@
 // was created, and that the one real gate (status) still holds.
 //
 // Own database, dropped at the end - same pattern as order.status.test.js.
-process.env.MONGODB_URI = 'mongodb://localhost:27017/phoenix-order-edit-test';
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-order-edit-tests';
 process.env.NODE_ENV = 'test';
 
@@ -12,6 +11,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const path = require('node:path');
 const mongoose = require('mongoose');
+const { startMemoryMongo, stopMemoryMongo } = require('./helpers/mongo');
 
 function stubModule(relativePath, exportsValue) {
   const resolved = require.resolve(path.join(__dirname, '..', 'src', relativePath));
@@ -66,8 +66,7 @@ const MINUTE = 60 * 1000;
 const DAY = 24 * 60 * MINUTE;
 
 test.before(async () => {
-  await mongoose.connect(process.env.MONGODB_URI);
-  await mongoose.connection.dropDatabase();
+  await startMemoryMongo({ dbName: 'phoenix-order-edit-test' });
 
   const [pharmacyUser, whUser] = await User.create([
     { name: 'Ph', phone: '0932000201', role: 'pharmacy', status: 'active' },
@@ -87,8 +86,7 @@ test.before(async () => {
 });
 
 test.after(async () => {
-  await mongoose.connection.dropDatabase();
-  await mongoose.disconnect();
+  await stopMemoryMongo();
 });
 
 async function editQuantity(order, item, quantity) {

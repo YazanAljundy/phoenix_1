@@ -5,13 +5,13 @@
 // end, same pattern as complaint.test.js / readpath.lean.test.js. The
 // realtime layer is left as-is: emitToWarehouse tolerates a null io (no
 // socket server booted here) and simply no-ops.
-process.env.MONGODB_URI = 'mongodb://localhost:27017/phoenix-return-test';
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-return-tests';
 process.env.NODE_ENV = 'test';
 
 const test = require('node:test');
 const assert = require('node:assert');
 const mongoose = require('mongoose');
+const { startMemoryMongo, stopMemoryMongo } = require('./helpers/mongo');
 
 const User = require('../src/models/user.model');
 const Pharmacy = require('../src/models/pharmacy.model');
@@ -74,8 +74,7 @@ async function makeDeliveredOrder() {
 }
 
 test.before(async () => {
-  await mongoose.connect(process.env.MONGODB_URI);
-  await mongoose.connection.dropDatabase();
+  await startMemoryMongo({ dbName: 'phoenix-return-test' });
 
   const [phUser, whUser] = await User.create([
     { name: 'Pharm', phone: '0940000001', role: 'pharmacy', status: 'active' },
@@ -97,8 +96,7 @@ test.before(async () => {
 });
 
 test.after(async () => {
-  await mongoose.connection.dropDatabase();
-  await mongoose.disconnect();
+  await stopMemoryMongo();
 });
 
 // ---------------------------------------------------------------------------
@@ -121,6 +119,51 @@ test('createReturn with NO images succeeds and stores an empty images array', as
 
   const stored = await Return.findById(returnRequest._id).lean();
   assert.deepStrictEqual(stored.images, []);
+});
+
+// The rule is reason-agnostic: no reasonType, and no combination of them,
+// re-introduces a photo requirement.
+test('a photo-less return is accepted for every reason type', async () => {
+  for (const reasonType of ['damaged', 'wrong_item', 'other']) {
+    const { order, itemA } = await makeDeliveredOrder();
+
+    const { returnRequest } = await returnService.createReturn({
+      pharmacyId: ids.pharmacy,
+      orderId: order._id.toString(),
+      items: [
+        {
+          orderItemId: itemA._id.toString(),
+          quantity: 1,
+          reasonType,
+          // 'other' still needs its free-text reason - that rule is unrelated
+          // to photos and stays exactly as it was.
+          customReason: reasonType === 'other' ? 'past its expiry date' : undefined,
+        },
+      ],
+      images: [],
+    });
+
+    assert.strictEqual(returnRequest.status, 'pending');
+    assert.strictEqual(returnRequest.items[0].reasonType, reasonType);
+    assert.deepStrictEqual(returnRequest.images, [], `reason ${reasonType} must not require a photo`);
+  }
+});
+
+test('a photo-less return spanning several reason types at once is accepted', async () => {
+  const { order, itemA, itemB } = await makeDeliveredOrder();
+
+  const { returnRequest } = await returnService.createReturn({
+    pharmacyId: ids.pharmacy,
+    orderId: order._id.toString(),
+    items: [
+      { orderItemId: itemA._id.toString(), quantity: 2, reasonType: 'damaged' },
+      { orderItemId: itemB._id.toString(), quantity: 1, reasonType: 'wrong_item' },
+    ],
+    notes: 'no photos attached',
+  });
+
+  assert.strictEqual(returnRequest.items.length, 2);
+  assert.deepStrictEqual(returnRequest.images, []);
 });
 
 test('createReturn with images still works exactly as before', async () => {

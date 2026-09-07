@@ -29,13 +29,29 @@ const returnSchema = new Schema(
     // One overall note and one shared photo set for the whole return, not per item.
     notes: { type: String, default: null },
     images: { type: [String], default: [] },
-    // No "refund" - COD makes it meaningless. Approve always means a
-    // no-extra-charge replacement order; reject always carries a note.
+    // Money-Flow V2: approving a return CREDITS the pharmacy's account.
+    //
+    // V1 approved by creating a zero-priced replacement order and moving no
+    // money at all, so a pharmacy that handed goods back kept the full bill -
+    // and if the product could not be reshipped the approval failed outright,
+    // leaving reject as the only option. The replacement mechanism is gone;
+    // there is exactly one financial outcome now, and reject still carries a note.
     status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
     rejectionNote: { type: String, default: null },
-    replacementOrderId: { type: Schema.Types.ObjectId, ref: 'Order', default: null },
     resolvedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
     resolvedAt: { type: Date, default: null },
+
+    // The `return_credit` ledger entry this return produced, set on approval.
+    // The authoritative "only one credit per return" guard is the unique
+    // partial index on LedgerEntry.source.returnId; this is for cheap reads.
+    creditEntryId: { type: Schema.Types.ObjectId, ref: 'LedgerEntry', default: null },
+    // The credited amounts, frozen at approval, and the full working behind
+    // them (returnCredit.service.js's breakdown) - so the statement, the
+    // invoice and any later dispute all read the same numbers rather than
+    // recomputing them against whatever the catalog and the rate say later.
+    creditSyp: { type: Number, default: null },
+    creditUsd: { type: Number, default: null },
+    creditValuation: { type: Schema.Types.Mixed, default: null },
   },
   { timestamps: true }
 );

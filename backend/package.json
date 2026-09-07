@@ -14,8 +14,10 @@
     "seed-catalog": "node scripts/seed-catalog.js",
     "migrate-prices-to-usd": "node scripts/migrate-prices-to-usd.js",
     "backfill-warehouse-manufacturers": "node scripts/backfill-warehouse-manufacturers.js",
-    "backfill-pharmacy-balances": "node scripts/backfill-pharmacy-balances.js",
-    "migrate-level2-indexes": "node scripts/level2-index-migration.js"
+    "migrate-level2-indexes": "node scripts/level2-index-migration.js",
+    "check-replica-set": "node scripts/check-replica-set.js",
+    "dev-replset": "node scripts/start-dev-replset.js",
+    "reset-dev-db": "node scripts/reset-dev-db.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
@@ -35,6 +37,7 @@
     "socket.io": "^4.8.3"
   },
   "devDependencies": {
+    "mongodb-memory-server": "^11.2.0",
     "nodemon": "^3.1.9",
     "socket.io-client": "^4.8.3"
   },

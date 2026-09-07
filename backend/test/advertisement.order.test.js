@@ -6,13 +6,13 @@
 // advertisement by id and nothing else.
 //
 // Own database, dropped at the end - same pattern as advertisement.test.js.
-process.env.MONGODB_URI = 'mongodb://localhost:27017/phoenix-advertisement-order-test';
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-advertisement-order-tests';
 process.env.NODE_ENV = 'test';
 
 const test = require('node:test');
 const assert = require('node:assert');
 const mongoose = require('mongoose');
+const { startMemoryMongo, stopMemoryMongo } = require('./helpers/mongo');
 
 const User = require('../src/models/user.model');
 const Pharmacy = require('../src/models/pharmacy.model');
@@ -27,7 +27,7 @@ const orderService = require('../src/services/order.service');
 const advertisementService = require('../src/services/advertisement.service');
 const advertisementViewModel = require('../src/viewmodels/advertisement.viewmodel');
 const warehouseOrderService = require('../src/services/warehouseOrder.service');
-const balanceService = require('../src/services/pharmacyBalance.service');
+const ledger = require('../src/services/ledger.service');
 
 const RATE = 10000; // 1 USD = 10,000 SYP, so SYP figures below are USD * 10,000.
 const ids = {};
@@ -89,8 +89,7 @@ function submit(extra = {}) {
 }
 
 test.before(async () => {
-  await mongoose.connect(process.env.MONGODB_URI);
-  await mongoose.connection.dropDatabase();
+  await startMemoryMongo({ dbName: 'phoenix-advertisement-order-test' });
   await ExchangeRate.create({ _id: 'singleton', usdToSyp: RATE, source: 'manual' });
 
   const [whUser, otherWhUser, phUser] = await User.create([
@@ -123,8 +122,7 @@ test.before(async () => {
 });
 
 test.after(async () => {
-  await mongoose.connection.dropDatabase();
-  await mongoose.disconnect();
+  await stopMemoryMongo();
 });
 
 test.afterEach(async () => {
@@ -466,36 +464,48 @@ test('a normal order without an advertisement is completely unaffected', async (
   assert.strictEqual(order.finalPrice, 67 * RATE);
 });
 
-test('commission still follows totalPrice, unreduced by the package discount', async () => {
+test('commission follows finalPrice - the revenue actually realised', async () => {
+  // Money-Flow V2. V1 charged commission on the pre-discount catalog subtotal
+  // ($67), so a warehouse paid commission on money it had discounted away.
   await Warehouse.updateOne({ _id: ids.warehouse }, { commissionRate: 10, discountRate: 0 });
   const advertisement = await makeAdvertisement();
   const order = await submit({ advertisementId: advertisement._id.toString() });
 
-  assert.strictEqual(order.commissionAmount, Math.round(67 * RATE * 0.1));
   assert.strictEqual(order.finalPrice, 40 * RATE);
+  assert.strictEqual(order.commissionAmount, Math.round(40 * RATE * 0.1), '10% of what is paid');
   await Warehouse.updateOne({ _id: ids.warehouse }, { commissionRate: 0 });
 });
 
-test('the platform discount and the package discount are both applied, separately', async () => {
+test('the platform discount is taken on the package price, not the catalog sum', async () => {
+  // Money-Flow V2. V1 took 10% of the 670,000 catalog subtotal (67,000) even
+  // though the pharmacy was buying the package for 400,000, so the warehouse
+  // lost far more of its advertised price than the platform rate implies.
   await Warehouse.updateOne({ _id: ids.warehouse }, { discountRate: 10 });
   const advertisement = await makeAdvertisement();
   const order = await submit({ advertisementId: advertisement._id.toString() });
 
-  // totalPrice 670,000; platform 10% = 67,000; package = 670,000 - 400,000 = 270,000.
-  assert.strictEqual(order.discountAmount, 67000);
-  assert.strictEqual(order.advertisementDiscountAmount, 270000);
-  assert.strictEqual(order.finalPrice, 670000 - 67000 - 270000); // == 400,000 - 67,000
+  assert.strictEqual(order.advertisementDiscountAmount, 270000, '670,000 - 400,000');
+  assert.strictEqual(order.discountAmount, 40000, '10% of the 400,000 package price');
+  assert.strictEqual(order.finalPrice, 360000);
   await Warehouse.updateOne({ _id: ids.warehouse }, { discountRate: 0 });
 });
 
-test('the pharmacy balance is built from the discounted finalPrice', async () => {
+test('the charge posted on delivery is the discounted finalPrice', async () => {
   const advertisement = await makeAdvertisement();
   const order = await submit({ advertisementId: advertisement._id.toString() });
-  await Order.updateOne({ _id: order._id }, { status: 'delivered' });
 
-  const balance = await balanceService.recomputeBalance(ids.pharmacy, ids.warehouse);
-  assert.strictEqual(balance.totalOrdersUsd, 40); // the package price, not $67
-  assert.strictEqual(balance.balanceUsd, 40);
+  // Walk it to delivery through the real transitions, so the charge is posted
+  // by the code that actually posts it.
+  let current = order;
+  for (let i = 0; i < 4; i += 1) {
+    current = await warehouseOrderService.advanceOrderStatus(
+      current._id.toString(), ids.warehouse, ids.whUser
+    );
+  }
+
+  const account = await ledger.findAccount(ids.pharmacy, ids.warehouse);
+  assert.strictEqual(account.balanceCache.syp, 40 * RATE, 'the package price, not $67');
+  assert.strictEqual(account.balanceCache.usd, 40);
 });
 
 // --- Order editing --------------------------------------------------------
@@ -512,7 +522,9 @@ test('a warehouse edit that keeps the package intact preserves the discount', as
   assert.strictEqual(String(reread.advertisementId), String(advertisement._id));
   assert.strictEqual(reread.advertisementDiscountAmount, 27 * RATE); // 67 - 40
   assert.strictEqual(reread.totalPrice, 72 * RATE); // 67 + the $5 extra
-  assert.strictEqual(reread.finalPrice, 45 * RATE); // 72 - 27
+  // discountRate/commissionRate are 0 in this fixture, so the discount base
+  // (package 40 + the $5 extra) passes through untouched.
+  assert.strictEqual(reread.finalPrice, 45 * RATE);
 });
 
 test('a warehouse edit that breaks the package drops the discount and reprices', async () => {
@@ -531,6 +543,7 @@ test('a warehouse edit that breaks the package drops the discount and reprices',
   assert.strictEqual(reread.advertisementDiscountAmount, 0);
   assert.strictEqual(reread.totalPrice, 55 * RATE); // 30 + 25 catalog prices
   assert.strictEqual(reread.finalPrice, 55 * RATE);
+  assert.strictEqual(reread.commissionAmount, 0, 'commissionRate is 0 in this fixture');
 });
 
 // --- Reorder / returns ----------------------------------------------------
@@ -552,23 +565,26 @@ test('reordering an advertisement order does not resurrect package pricing', asy
   assert.strictEqual(reordered.totalPrice, 67 * RATE);
 });
 
-test('a replacement order for a returned package item is still zero-priced', async () => {
+test('the replacement-order path is gone - createOrder always prices normally', async () => {
+  // Money-Flow V2 removed replacement orders entirely: approving a return now
+  // credits the pharmacy's ledger account instead of spinning up a zero-priced
+  // order. A caller still passing the old flag must not get a free order - the
+  // argument is simply ignored and the items price as they normally would.
   const advertisement = await makeAdvertisement();
   const order = await submit({ advertisementId: advertisement._id.toString() });
 
-  const replacement = await orderService.createOrder({
+  const stillNormal = await orderService.createOrder({
     userId: ids.whUser,
     pharmacyId: ids.pharmacy,
     warehouseId: ids.warehouse,
     items: [{ productId: ids.productA.toString(), quantity: 1 }],
-    notes: `Replacement for return on order #${order.orderNumber}`,
+    notes: `Formerly a replacement for order #${order.orderNumber}`,
     isReplacement: true,
   });
 
-  assert.strictEqual(replacement.totalPrice, 0);
-  assert.strictEqual(replacement.finalPrice, 0);
-  assert.strictEqual(replacement.advertisementDiscountAmount, 0);
-  assert.strictEqual(replacement.advertisementId, null);
+  assert.strictEqual(stillNormal.totalPrice, 30 * RATE, 'priced at the catalog price');
+  assert.strictEqual(stillNormal.finalPrice, 30 * RATE);
+  assert.strictEqual(stillNormal.advertisementId, null);
 });
 
 // --- The cart-prefill endpoint --------------------------------------------

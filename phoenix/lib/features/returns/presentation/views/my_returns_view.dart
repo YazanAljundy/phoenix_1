@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 import 'package:phoenix/core/constants/app_colors.dart';
 import 'package:phoenix/core/constants/app_radius.dart';
 import 'package:phoenix/core/constants/app_sizes.dart';
@@ -18,7 +17,6 @@ import 'package:phoenix/features/returns/presentation/managers/my_returns_cubit.
 import 'package:phoenix/features/returns/presentation/managers/my_returns_state.dart';
 import 'package:phoenix/features/returns/presentation/widgets/request_return_sheet.dart';
 import 'package:phoenix/features/returns/presentation/widgets/return_list_tile.dart';
-import 'package:phoenix/routes/route_names.dart';
 
 // Extra room under the scrolling content so the floating "Request Return"
 // button never sits on top of the last card or a page-level empty/error
@@ -179,12 +177,6 @@ class _MyReturnsViewState extends State<MyReturnsView> with SingleTickerProvider
           returnRequest: returnRequest,
           onEdit: returnRequest.isPending ? () => _edit(context, returnRequest) : null,
           onDelete: returnRequest.isPending ? () => _delete(context, returnRequest) : null,
-          onViewReplacementOrder: returnRequest.replacementOrderId != null
-              ? () => context.pushNamed(
-                  RouteNames.orderTracking,
-                  pathParameters: {'orderId': returnRequest.replacementOrderId!},
-                )
-              : null,
         ),
       _PaginationFooter(hasMore: state.hasMore, isLoadingMore: state.isLoadingMore),
     ];

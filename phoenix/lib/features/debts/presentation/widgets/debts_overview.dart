@@ -12,7 +12,6 @@ import 'package:phoenix/core/widgets/failure_widget.dart';
 import 'package:phoenix/features/debts/data/models/warehouse_debt_model.dart';
 import 'package:phoenix/features/debts/presentation/managers/debts_cubit.dart';
 import 'package:phoenix/features/debts/presentation/managers/debts_state.dart';
-import 'package:phoenix/features/exchange_rate/presentation/managers/exchange_rate_cubit.dart';
 import 'package:phoenix/routes/route_names.dart';
 
 // Section 16: the pharmacist's "my debts" list - one row per warehouse they
@@ -52,9 +51,10 @@ class DebtsOverview extends StatelessWidget {
         if (debtsState.debts.isEmpty) {
           return _EmptyHint(l10n.noDebtsYet);
         }
-        final usdToSyp = context.watch<ExchangeRateCubit>().state.usdToSyp;
-        final total = debtsState.debts.fold<num>(0, (sum, d) => sum + d.balanceUsd);
-        final totalUsdHint = usdHintFromUsd(total, usdToSyp);
+        // Money-Flow V2: the server computes debt, credit and net. V1 folded
+        // the balances here, and again in account_history_view, and silently
+        // dropped every credit balance in the process.
+        final summary = debtsState.summary;
 
         return CustomCard(
           padding: const EdgeInsets.symmetric(
@@ -65,7 +65,7 @@ class DebtsOverview extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               for (final debt in debtsState.debts)
-                _DebtTile(debt: debt, isArabic: isArabic, usdToSyp: usdToSyp),
+                _DebtTile(debt: debt, isArabic: isArabic),
               Divider(height: AppSizes.spacingLarge, color: AppColors.borderOf(context)),
               Padding(
                 padding: const EdgeInsets.only(bottom: AppSizes.spacingSmall),
@@ -78,16 +78,22 @@ class DebtsOverview extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Text(
-                          formatMoneyFromUsd(total, usdToSyp, l10n.currencySuffix),
+                          formatSyp(summary.totalDebtSyp, l10n.currencySuffix),
                           style: context.textTheme.titleMedium?.copyWith(
                             color: AppColors.errorOf(context),
                           ),
                         ),
-                        if (totalUsdHint != null)
+                        // Shown only when there is one - a credit at another
+                        // warehouse is real money the pharmacy should see, but
+                        // an always-present zero would just be noise.
+                        if (summary.hasCredit)
                           Text(
-                            totalUsdHint,
+                            l10n.creditBalanceShort(
+                              formatSyp(summary.totalCreditSyp, l10n.currencySuffix),
+                            ),
                             style: context.textTheme.bodySmall?.copyWith(
-                              color: AppColors.textSecondaryOf(context),
+                              color: AppColors.secondaryOf(context),
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
                       ],
@@ -138,17 +144,18 @@ class _EmptyHint extends StatelessWidget {
 // design's per-row "last payment date" isn't shown - WarehouseDebtModel
 // doesn't carry it.
 class _DebtTile extends StatelessWidget {
-  const _DebtTile({required this.debt, required this.isArabic, required this.usdToSyp});
+  const _DebtTile({required this.debt, required this.isArabic});
 
   final WarehouseDebtModel debt;
   final bool isArabic;
-  final double? usdToSyp;
 
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
     final name = isArabic ? debt.nameAr : (debt.nameEn ?? debt.nameAr);
-    final usdHint = usdHintFromUsd(debt.balanceUsd, usdToSyp);
+    // A credit reads as money the pharmacy is owed, not a debt - so it gets
+    // its own colour and label rather than a bare negative number.
+    final isCredit = debt.isCredit;
 
     return InkWell(
       onTap: () => context.pushNamed(
@@ -183,20 +190,18 @@ class _DebtTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
-                  formatMoneyFromUsd(debt.balanceUsd, usdToSyp, l10n.currencySuffix),
+                  isCredit
+                      ? l10n.creditBalanceShort(
+                          formatSyp(debt.creditBalanceSyp, l10n.currencySuffix),
+                        )
+                      : formatSyp(debt.outstandingDebtSyp, l10n.currencySuffix),
                   style: context.textTheme.bodyMedium?.copyWith(
-                    color: AppColors.errorOf(context),
+                    color: isCredit
+                        ? AppColors.secondaryOf(context)
+                        : AppColors.errorOf(context),
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                if (usdHint != null)
-                  Text(
-                    usdHint,
-                    style: context.textTheme.bodySmall?.copyWith(
-                      fontSize: 10.5,
-                      color: AppColors.textSecondaryOf(context),
-                    ),
-                  ),
               ],
             ),
             const SizedBox(width: AppSizes.spacingXSmall),

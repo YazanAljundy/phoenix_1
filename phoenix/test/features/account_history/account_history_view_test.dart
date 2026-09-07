@@ -17,6 +17,7 @@ import 'package:phoenix/features/returns/data/models/return_model.dart';
 import 'package:phoenix/features/returns/presentation/managers/my_returns_cubit.dart';
 import 'package:phoenix/features/returns/presentation/managers/my_returns_state.dart';
 import 'package:phoenix/generated/app_localizations.dart';
+import 'package:phoenix/features/account_history/data/models/savings_summary.dart';
 import 'package:phoenix/routes/route_names.dart';
 
 class MockSavingsCubit extends MockCubit<SavingsState> implements SavingsCubit {}
@@ -27,12 +28,14 @@ class MockMyReturnsCubit extends MockCubit<MyReturnsState> implements MyReturnsC
 
 class MockExchangeRateCubit extends MockCubit<ExchangeRateState> implements ExchangeRateCubit {}
 
-WarehouseDebtModel _debt(num usd) => WarehouseDebtModel(
+// Money-Flow V2: balances are SYP-native (the ledger's settlement currency)
+// and frozen, so nothing here converts through an exchange rate.
+WarehouseDebtModel _debt(num syp) => WarehouseDebtModel(
   warehouseId: 'w1',
   nameAr: 'مستودع',
   nameEn: 'Warehouse',
   phone: '0999',
-  balanceUsd: usd,
+  balanceSyp: syp,
 );
 
 ReturnModel _return(String id) => ReturnModel(
@@ -56,10 +59,27 @@ void main() {
     rate = MockExchangeRateCubit();
 
     when(() => savings.state).thenReturn(
-      const SavingsState(status: SavingsStatus.loaded, totalSavingsUsd: 10),
+      const SavingsState(
+        status: SavingsStatus.loaded,
+        savings: SavingsSummary(
+          offerAndManufacturerSyp: 100000,
+          advertisementSyp: 0,
+          platformDiscountSyp: 50000,
+          totalSavingsSyp: 150000,
+          totalSavingsUsd: 10,
+        ),
+      ),
     );
     when(() => debts.state).thenReturn(
-      DebtsState(status: DebtsStatus.loaded, debts: [_debt(20)]),
+      DebtsState(
+        status: DebtsStatus.loaded,
+        summary: DebtsSummaryModel(
+          totalDebtSyp: 300000,
+          totalCreditSyp: 0,
+          netPositionSyp: 300000,
+          accounts: [_debt(300000)],
+        ),
+      ),
     );
     when(() => returns.state).thenReturn(
       MyReturnsState(status: MyReturnsStatus.loaded, returns: [_return('1'), _return('2'), _return('3')]),

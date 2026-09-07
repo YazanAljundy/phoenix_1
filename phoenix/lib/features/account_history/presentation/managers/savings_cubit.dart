@@ -18,7 +18,7 @@ class SavingsCubit extends Cubit<SavingsState> {
     emit(state.copyWith(status: SavingsStatus.loading));
     try {
       final summary = await _savingsRepository.getSavingsSummary();
-      emit(state.copyWith(status: SavingsStatus.loaded, totalSavingsUsd: summary.totalSavingsUsd));
+      emit(state.copyWith(status: SavingsStatus.loaded, savings: summary));
     } on Failure catch (f) {
       emit(state.copyWith(status: SavingsStatus.error, errorMessage: f.errMessage, errorCode: f.code));
     }

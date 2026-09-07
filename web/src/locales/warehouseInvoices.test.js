@@ -32,11 +32,25 @@ describe('warehouse Invoices section labels', () => {
     expect(ar.debts.backToDebts).toBe('رجوع للفواتير');
   });
 
-  // The detail view keeps its existing financial labels untouched.
-  it('detail financial labels are unchanged', () => {
-    expect(en.debts.totalOrders).toBe('Total orders');
-    expect(en.debts.totalPaid).toBe('Total paid');
-    expect(en.debts.balance).toBe('Balance');
-    expect(en.debts.payments).toBe('Payments');
+  // Money-Flow V2 replaced the detail view with an account statement, so the
+  // two V1 cache columns ("Total orders" / "Total paid", read off the retired
+  // PharmacyBalance) are gone. The labels the statement actually uses are
+  // pinned instead - and both languages have to carry them.
+  it('the detail view carries the statement labels in both languages', () => {
+    for (const table of [en, ar]) {
+      for (const key of ['title', 'date', 'type', 'reference', 'debit', 'credit', 'balance', 'opening']) {
+        expect(table.statement[key], key).toBeTruthy();
+      }
+      expect(table.debts.balance).toBeTruthy();
+      expect(table.debts.payments).toBeTruthy();
+      expect(table.debts.lastActivity).toBeTruthy();
+    }
+  });
+
+  it('the retired V1 cache labels are gone', () => {
+    expect(en.debts.totalOrders).toBeUndefined();
+    expect(en.debts.totalPaid).toBeUndefined();
+    expect(ar.debts.totalOrders).toBeUndefined();
+    expect(ar.debts.totalPaid).toBeUndefined();
   });
 });

@@ -5,6 +5,7 @@ import { api } from '../api/client';
 import { LoadMoreControl } from '../components/LoadMoreControl';
 import { usePaginatedData } from '../hooks/usePaginatedData';
 import { REALTIME_EVENTS, useRealtimeSync } from '../realtime/useRealtimeSync';
+import { formatSyp } from '../utils/currency';
 
 const PAGE_SIZE = 15;
 
@@ -58,7 +59,22 @@ export function WarehouseReturnsPage() {
   );
 
   const handleApprove = async (returnRequest) => {
-    const confirmed = window.confirm(t('returns.confirmApprove', { number: returnRequest.orderNumber }));
+    // Money-Flow V2: approving credits the pharmacy, so the operator is shown
+    // the exact figure (server-computed, from the original order's frozen
+    // prices) before committing rather than after.
+    let preview;
+    try {
+      preview = await api.returnCreditPreview(returnRequest.id);
+    } catch (err) {
+      setError(err.message);
+      return;
+    }
+    const confirmed = window.confirm(
+      t('returns.confirmApproveCredit', {
+        number: returnRequest.orderNumber,
+        amount: formatSyp(preview.preview.creditSyp),
+      })
+    );
     if (!confirmed) return;
 
     setBusyId(returnRequest.id);

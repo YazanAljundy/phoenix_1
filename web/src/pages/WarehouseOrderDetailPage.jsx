@@ -5,7 +5,8 @@ import { api } from '../api/client';
 import { withArFallback } from '../utils/displayName';
 import { useExchangeRate } from '../context/ExchangeRateContext';
 import { REALTIME_EVENTS, useRealtimeSync } from '../realtime/useRealtimeSync';
-import { formatUsdAsSyp, formatSyp, formatMoneyFromUsd, remainingPaymentAmount } from '../utils/currency';
+import { formatUsdAsSyp, formatSyp, formatMoneyFromUsd, remainingPaymentAmountFromSyp } from '../utils/currency';
+import { PAYMENT_METHODS, PAYMENT_CURRENCIES as CURRENCIES, newIdempotencyKey } from '../utils/payments';
 
 function statusKeySuffix(status) {
   return status
@@ -31,27 +32,31 @@ const REASON_KEYS = {
 };
 
 // SYP first: it is the default currency for every amount in the panel.
-const CURRENCIES = ['SYP', 'USD'];
 
 function RecordPaymentModal({ pharmacyId, onClose, onRecorded }) {
   const { t } = useTranslation();
   const usdToSyp = useExchangeRate();
   const [amount, setAmount] = useState('');
   const [currency, setCurrency] = useState('SYP');
+  const [method, setMethod] = useState('cash');
   const [note, setNote] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
-  // The pharmacy's outstanding balance with this warehouse (USD), for the
-  // "Full amount" prefill. Payments settle the running balance, not a single
-  // order - same figure the Debts tab shows.
-  const [remainingUsd, setRemainingUsd] = useState(null);
+  // The pharmacy's outstanding balance with this warehouse, for the "Full
+  // amount" prefill. Payments settle the running balance, not a single order -
+  // the same figure the Invoices tab shows.
+  //
+  // Money-Flow V2: SYP-native, read off the account statement's closing
+  // position. This modal read the old `balanceUsd` field, which the endpoint
+  // stopped returning when the read path moved to the ledger.
+  const [remainingSyp, setRemainingSyp] = useState(null);
 
   useEffect(() => {
     let active = true;
     api
       .warehouseBalanceDetail(pharmacyId)
       .then((data) => {
-        if (active) setRemainingUsd(data.balanceUsd);
+        if (active) setRemainingSyp(data.statement?.outstandingDebtSyp ?? null);
       })
       .catch(() => {
         // Non-fatal: the form still works, "Full amount" just stays disabled.
@@ -61,7 +66,7 @@ function RecordPaymentModal({ pharmacyId, onClose, onRecorded }) {
     };
   }, [pharmacyId]);
 
-  const fullAmount = remainingPaymentAmount(remainingUsd, currency, usdToSyp);
+  const fullAmount = remainingPaymentAmountFromSyp(remainingSyp, currency, usdToSyp);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -75,7 +80,17 @@ function RecordPaymentModal({ pharmacyId, onClose, onRecorded }) {
 
     setIsSaving(true);
     try {
-      await api.createPayment({ pharmacyId, amount: value, currency, note: note.trim() || undefined });
+      await api.createPayment({
+        pharmacyId,
+        amount: value,
+        currency,
+        method,
+        note: note.trim() || undefined,
+        // One key per submission attempt: if the response never arrives and
+        // the operator submits again, the server returns the payment it
+        // already recorded instead of crediting the pharmacy twice.
+        idempotencyKey: newIdempotencyKey(),
+      });
       onRecorded();
     } catch (err) {
       setError(err.message);
@@ -99,6 +114,16 @@ function RecordPaymentModal({ pharmacyId, onClose, onRecorded }) {
               onChange={(e) => setAmount(e.target.value)}
               required
             />
+          </label>
+          <label>
+            {t('debts.method')}
+            <select value={method} onChange={(e) => setMethod(e.target.value)}>
+              {PAYMENT_METHODS.map((m) => (
+                <option key={m} value={m}>
+                  {t(`debts.method_${m}`)}
+                </option>
+              ))}
+            </select>
           </label>
           <label>
             {t('debts.currency')}
@@ -512,7 +537,20 @@ export function WarehouseOrderDetailPage() {
   };
 
   const handleApproveReturn = async () => {
-    const confirmed = window.confirm(t('orderDetail.confirmApproveReturn', { number: order.orderNumber }));
+    // Money-Flow V2: show the operator the exact credit before committing.
+    let preview;
+    try {
+      preview = await api.returnCreditPreview(pendingReturn.id);
+    } catch (err) {
+      setError(err.message);
+      return;
+    }
+    const confirmed = window.confirm(
+      t('orderDetail.confirmApproveReturnCredit', {
+        number: order.orderNumber,
+        amount: formatSyp(preview.preview.creditSyp),
+      })
+    );
     if (!confirmed) return;
 
     setReturnBusy(true);
@@ -704,6 +742,20 @@ export function WarehouseOrderDetailPage() {
               <div className="wh-summary-total">
                 <span>{t('orderDetail.finalPriceColumn')}</span>
                 <span className="wh-num">{formatSyp(order.finalPrice)}</span>
+              </div>
+              {/* Money-Flow V2: what this order actually nets the warehouse.
+                  V1 stored a commission on every order and showed it nowhere,
+                  so a warehouse could not tell what a package deal really
+                  earned. Both figures are frozen on the order. */}
+              <div className="wh-summary-row wh-summary-commission">
+                <span>{t('orderDetail.commissionLabel')}</span>
+                <span className="wh-num">− {formatSyp(order.commissionAmount)}</span>
+              </div>
+              <div className="wh-summary-total wh-summary-net">
+                <span>{t('orderDetail.warehouseNetLabel')}</span>
+                <span className="wh-num">
+                  {formatSyp(order.warehouseNetSyp ?? order.finalPrice - order.commissionAmount)}
+                </span>
               </div>
             </div>
 

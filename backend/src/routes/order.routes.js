@@ -2,6 +2,7 @@ const { Router } = require('express');
 const { authenticate, authorize, requireActiveStatus } = require('../middlewares/auth.middleware');
 const { deliverySealPhotoUpload } = require('../middlewares/upload.middleware');
 const controller = require('../controllers/order.controller');
+const pharmacyDebtController = require('../controllers/pharmacyDebt.controller');
 
 const router = Router();
 
@@ -16,6 +17,15 @@ router.get(
   authorize('pharmacy'),
   requireActiveStatus,
   controller.savingsSummary
+);
+// Money-Flow V2: the immutable invoice for a delivered order. Registered
+// before '/:id' would otherwise swallow it.
+router.get(
+  '/:orderId/invoice',
+  authenticate,
+  authorize('pharmacy'),
+  requireActiveStatus,
+  pharmacyDebtController.invoice
 );
 router.get('/:id', authenticate, authorize('pharmacy'), requireActiveStatus, controller.getOne);
 router.post('/:id/cancel', authenticate, authorize('pharmacy'), requireActiveStatus, controller.cancel);

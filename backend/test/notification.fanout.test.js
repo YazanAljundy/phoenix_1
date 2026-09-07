@@ -8,13 +8,13 @@
 // What has to stay true: every eligible recipient still gets exactly one
 // Notification row, one failing recipient never costs the others, and the
 // number of simultaneous operations is actually capped.
-process.env.MONGODB_URI = 'mongodb://localhost:27017/phoenix-fanout-test';
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-fanout-tests';
 process.env.NODE_ENV = 'test';
 
 const test = require('node:test');
 const assert = require('node:assert');
 const mongoose = require('mongoose');
+const { startMemoryMongo, stopMemoryMongo } = require('./helpers/mongo');
 
 const User = require('../src/models/user.model');
 const Notification = require('../src/models/notification.model');
@@ -29,13 +29,11 @@ const PAYLOAD = {
 };
 
 test.before(async () => {
-  await mongoose.connect(process.env.MONGODB_URI);
-  await mongoose.connection.dropDatabase();
+  await startMemoryMongo({ dbName: 'phoenix-fanout-test' });
 });
 
 test.after(async () => {
-  await mongoose.connection.dropDatabase();
-  await mongoose.disconnect();
+  await stopMemoryMongo();
 });
 
 // ---------------------------------------------------------------------------

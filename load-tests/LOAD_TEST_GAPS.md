@@ -82,10 +82,11 @@ Nothing listed here was worked around by changing production code.
 ## 6. Return creation at high concurrency
 
 - **Area:** `POST /returns`, `PUT /returns/:id`
-- **Why:** every return requires at least one photo, and the controller streams
-  each photo to Cloudinary *before* validating the return. At sweep
-  concurrency this stops being a test of Phoenix and becomes a stress test of a
-  third party, spending real quota on the project's own Cloudinary account.
+- **Why:** photos are optional on a return, but the requests that do carry
+  them have every photo streamed to Cloudinary by the controller *before* the
+  return is validated. At sweep concurrency this stops being a test of Phoenix
+  and becomes a stress test of a third party, spending real quota on the
+  project's own Cloudinary account.
 - **What was tested instead:** the return **read** paths at full sweep
   concurrency, and the upload path separately at 1/4/8 concurrency with small
   images, deleting every return it created afterwards

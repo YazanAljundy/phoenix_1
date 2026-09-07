@@ -224,6 +224,9 @@ export const api = {
     return request(`/warehouse/returns${qs ? `?${qs}` : ''}`);
   },
   warehouseReturnDetail: (returnId) => request(`/warehouse/returns/${returnId}`),
+  // Money-Flow V2: what approving would credit, before committing to it.
+  // Read-only - creates nothing.
+  returnCreditPreview: (returnId) => request(`/warehouse/returns/${returnId}/credit-preview`),
   approveReturn: (returnId) => request(`/warehouse/returns/${returnId}/approve`, { method: 'POST' }),
   rejectReturn: (returnId, rejectionNote) =>
     request(`/warehouse/returns/${returnId}/reject`, { method: 'POST', body: { rejectionNote } }),
@@ -253,6 +256,33 @@ export const api = {
     request(`/admin/products/${productId}`, { method: 'PATCH', body: changes }),
   deleteAdminProduct: (productId) => request(`/admin/products/${productId}`, { method: 'DELETE' }),
   exchangeRate: () => request('/exchange-rate'),
+  // Money-Flow V2 - the platform's side of commission. The warehouse's own
+  // Settlement tab shows the same computation for itself; this is every
+  // warehouse at once, plus what each has actually handed over.
+  //
+  // `from`/`to` are free - the admin picks any window - and are applied to the
+  // whole table, so the figures on every row describe the same period.
+  adminCommissionOverview: ({ from, to } = {}) => {
+    const params = new URLSearchParams();
+    if (from) params.set('from', from);
+    if (to) params.set('to', to);
+    const qs = params.toString();
+    return request(`/admin/commission/overview${qs ? `?${qs}` : ''}`);
+  },
+  adminCommissionWarehouse: (warehouseId, { from, to } = {}) => {
+    const params = new URLSearchParams();
+    if (from) params.set('from', from);
+    if (to) params.set('to', to);
+    const qs = params.toString();
+    return request(`/admin/commission/warehouses/${warehouseId}${qs ? `?${qs}` : ''}`);
+  },
+  recordCommissionCollection: (data) =>
+    request('/admin/commission/collections', { method: 'POST', body: data }),
+  // Like a payment, a collection is corrected by reversing it, never by
+  // editing or deleting - the row stays visible with the reason that undid it.
+  reverseCommissionCollection: (id, body) =>
+    request(`/admin/commission/collections/${id}/reverse`, { method: 'POST', body }),
+
   adminExchangeRate: () => request('/admin/exchange-rate'),
   setExchangeRate: (usdToSyp) => request('/admin/exchange-rate', { method: 'PATCH', body: { usdToSyp } }),
   resetExchangeRate: () => request('/admin/exchange-rate/reset', { method: 'PATCH' }),
@@ -286,9 +316,21 @@ export const api = {
     return request(`/warehouse/balances${qs ? `?${qs}` : ''}`);
   },
   warehouseBalanceDetail: (pharmacyId) => request(`/warehouse/balances/${pharmacyId}`),
+  // Money-Flow V2: commission owed to the platform for a period, and what the
+  // warehouse nets after it. Read-only.
+  warehouseSettlement: ({ from, to } = {}) => {
+    const params = new URLSearchParams();
+    if (from) params.set('from', from);
+    if (to) params.set('to', to);
+    const qs = params.toString();
+    return request(`/warehouse/settlement${qs ? `?${qs}` : ''}`);
+  },
+  // Money-Flow V2: payments are append-only. `updatePayment` / `deletePayment`
+  // are gone - a mistake is corrected by reversing it, which keeps both the
+  // original and the correction in the history.
   createPayment: (data) => request('/warehouse/payments', { method: 'POST', body: data }),
-  updatePayment: (id, changes) => request(`/warehouse/payments/${id}`, { method: 'PATCH', body: changes }),
-  deletePayment: (id) => request(`/warehouse/payments/${id}`, { method: 'DELETE' }),
+  reversePayment: (id, body) =>
+    request(`/warehouse/payments/${id}/reverse`, { method: 'POST', body }),
   warehouseSettings: () => request('/warehouse/settings'),
   // `requireDeliverySealPhoto` is optional - omitted keys are left untouched
   // server-side (warehouseSettings.service.js).

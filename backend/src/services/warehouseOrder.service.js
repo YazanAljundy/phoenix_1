@@ -9,12 +9,15 @@ const Warehouse = require('../models/warehouse.model');
 const Review = require('../models/review.model');
 const Return = require('../models/return.model');
 const Advertisement = require('../models/advertisement.model');
-const { recomputeBalance } = require('./pharmacyBalance.service');
+const orderLedger = require('./orderLedger.service');
+const ledgerService = require('./ledger.service');
+const { runInTransaction } = require('../utils/transaction');
 const notificationService = require('./notification.service');
 const {
   stackedDiscountSyp,
   advertisementDiscountSyp,
   advertisementPackageBreak,
+  rollUpOrderMoney,
 } = require('./order.service');
 const { getRate } = require('./exchangeRate.service');
 const { applyResolvedIdentity } = require('./productCatalog.service');
@@ -112,7 +115,7 @@ async function advanceOrderStatus(orderId, warehouseId, userId) {
   if (!mongoose.Types.ObjectId.isValid(orderId)) {
     throw ApiError.notFound('Order not found.', 'ORDER_NOT_FOUND');
   }
-  const order = await Order.findOne({ _id: orderId, warehouseId });
+  let order = await Order.findOne({ _id: orderId, warehouseId });
   if (!order) {
     throw ApiError.notFound('Order not found.', 'ORDER_NOT_FOUND');
   }
@@ -143,32 +146,71 @@ async function advanceOrderStatus(orderId, warehouseId, userId) {
   }
 
   const now = new Date();
-  order.status = next;
-  order.statusHistory.push({ status: next, changedBy: userId, changedAt: now });
-  await order.save();
 
-  // Persisted - now tell this warehouse's other open dashboards/tabs. The tab
-  // that made the change updates from its own HTTP response as it always has;
-  // this is what keeps a second operator's screen from going stale.
-  emitToWarehouse(order.warehouseId, EVENTS.ORDER_STATUS_UPDATED, {
-    orderId: order._id.toString(),
-    orderNumber: order.orderNumber,
-    warehouseId: order.warehouseId.toString(),
+  // Resolved before the transaction opens, never inside it: creating an
+  // account is an upsert, and an upsert that also has to create the
+  // collection or wait on Mongoose's lazy index build inside a transaction
+  // produces write conflicts that burn the retry budget for no reason.
+  const account =
+    next === 'delivered'
+      ? await ledgerService.resolveAccount(order.pharmacyId, order.warehouseId)
+      : null;
+
+  // Money-Flow V2. The whole transition is one transaction, and the move is a
+  // compare-and-swap on the CURRENT status rather than a read-then-save.
+  //
+  // Two operators clicking "advance" at the same moment used to both read
+  // 'preparing', both write 'out_for_delivery', and both push a history entry.
+  // Now the second one matches zero documents and gets a clean conflict, so an
+  // order can never skip a stage or be delivered twice.
+  //
+  // On 'delivered' the charge is posted inside this same transaction: an order
+  // cannot end up delivered without its charge, and a charge cannot exist for
+  // an order that is not delivered.
+  const advanced = await runInTransaction(async (session) => {
+    const moved = await Order.findOneAndUpdate(
+      { _id: order._id, warehouseId, status: order.status },
+      {
+        $set: { status: next },
+        $push: { statusHistory: { status: next, changedBy: userId, changedAt: now } },
+      },
+      { new: true, session }
+    );
+
+    if (!moved) {
+      throw ApiError.conflict(
+        'This order was already advanced by someone else.',
+        'ORDER_ALREADY_ADVANCED'
+      );
+    }
+
+    if (next !== 'delivered') return moved;
+
+    const { entry, alreadyPosted } = await orderLedger.postChargeForDelivery(
+      { order: moved, userId, deliveredAt: now, account },
+      session
+    );
+    // postChargeForDelivery sets invoiceNumber / deliveredAt / chargeEntryId
+    // on the document; persist them in the same transaction as the entry.
+    await moved.save({ session });
+    await orderLedger.auditDelivery({ order: moved, entry, userId, alreadyPosted }, session);
+
+    return moved;
+  });
+
+  // Everything below is post-commit and best-effort: a realtime emit, a legacy
+  // cache refresh or a push notification failing must never undo a transition
+  // that already succeeded.
+  emitToWarehouse(advanced.warehouseId, EVENTS.ORDER_STATUS_UPDATED, {
+    orderId: advanced._id.toString(),
+    orderNumber: advanced.orderNumber,
+    warehouseId: advanced.warehouseId.toString(),
     status: next,
   });
 
-  // Section 16: a delivered order is what actually creates the debt - the
-  // balance cache is rebuilt right away so it never has to wait on a
-  // payment or another trigger to catch up. Never lets a cache hiccup block
-  // the order transition itself, which already succeeded above.
-  if (next === 'delivered') {
-    try {
-      await recomputeBalance(order.pharmacyId, order.warehouseId);
-    } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error('Failed to update pharmacy balance after delivery.', err.message);
-    }
-  }
+  // The notification block below (and the caller) reads pharmacyId /
+  // orderNumber off `order`; point it at the committed document.
+  order = advanced;
 
   // Push the pharmacist a status update for the two stages they'd actually
   // want to be pinged for (on the way / delivered) - not every stage,
@@ -426,8 +468,10 @@ async function updateOrderItems(orderId, warehouseId, userId, payload) {
 
   const allItems = [...survivingItems, ...newItems];
   const totalPrice = allItems.reduce((sum, item) => sum + item.discountPrice * item.quantity, 0);
-  const discountAmount = Math.round((totalPrice * warehouse.discountRate) / 100);
-  const commissionAmount = Math.round((totalPrice * warehouse.commissionRate) / 100);
+  // The platform discount and the commission are both rolled up AFTER the
+  // advertisement block below, because both now depend on the package
+  // discount: the discount is taken on what the pharmacy would otherwise pay,
+  // and the commission on what it finally does. See rollUpOrderMoney.
 
   // An edit can break the advertisement package it was ordered as - the
   // warehouse may have removed one of the advertised products. Re-validate
@@ -461,12 +505,34 @@ async function updateOrderItems(orderId, warehouseId, userId, payload) {
       const advertisedQtyById = new Map(
         advertisement.items.map((i) => [i.productId.toString(), i.quantity])
       );
-      const advertisedSypSubtotal = allItems
-        .filter((line) => advertisedQtyById.has(line.productId.toString()))
-        .reduce(
-          (sum, line) => sum + line.discountPrice * advertisedQtyById.get(line.productId.toString()),
-          0
-        );
+      // The package covers `advertisedQty` UNITS of each product - counted
+      // once per product, not once per order line.
+      //
+      // updateOrderItems appends a new OrderItem row rather than merging into
+      // an existing one, so adding a unit of a product the package already
+      // covers leaves two lines for it. Weighting each of those lines by the
+      // advertised quantity (which is what this did) counted the package
+      // benefit twice, inflating the discount until the extra unit came out
+      // free. Consuming the advertised quantity ACROSS a product's lines
+      // charges the extras at their normal price, which is the same rule
+      // createOrder applies (it merges duplicates before pricing).
+      const linesByProductId = new Map();
+      for (const line of allItems) {
+        const key = line.productId.toString();
+        if (!linesByProductId.has(key)) linesByProductId.set(key, []);
+        linesByProductId.get(key).push(line);
+      }
+
+      let advertisedSypSubtotal = 0;
+      for (const [productId, advertisedQty] of advertisedQtyById) {
+        let remaining = advertisedQty;
+        for (const line of linesByProductId.get(productId) ?? []) {
+          if (remaining <= 0) break;
+          const covered = Math.min(remaining, line.quantity);
+          advertisedSypSubtotal += line.discountPrice * covered;
+          remaining -= covered;
+        }
+      }
       advertisementDiscountAmount = advertisementDiscountSyp(
         advertisedSypSubtotal,
         advertisement.totalPriceUsd,
@@ -480,13 +546,25 @@ async function updateOrderItems(orderId, warehouseId, userId, payload) {
     }
   }
 
-  const finalPrice = totalPrice - discountAmount - advertisementDiscountAmount;
+  const { discountAmount, commissionAmount, finalPrice } = rollUpOrderMoney({
+    subtotalSyp: totalPrice,
+    advertisementDiscountSypAmount: advertisementDiscountAmount,
+    discountRate: warehouse.discountRate,
+    commissionRate: warehouse.commissionRate,
+  });
 
   order.totalPrice = totalPrice;
   order.discountAmount = discountAmount;
   order.commissionAmount = commissionAmount;
   order.advertisementDiscountAmount = advertisementDiscountAmount;
   order.finalPrice = finalPrice;
+  // The frozen USD figure has to move with the SYP total it mirrors, and it is
+  // re-derived through the ORDER's own captured rate - the one its lines were
+  // priced at - not whatever the rate happens to be on the day of the edit.
+  // An order edited before it is delivered stays internally consistent that way.
+  if (order.fx?.rate) {
+    order.finalAmountUsd = Math.round((finalPrice / order.fx.rate) * 100) / 100;
+  }
   order.statusHistory.push({
     status: 'modified',
     changedBy: userId,

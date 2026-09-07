@@ -17,13 +17,13 @@
 // guard reads would return undefined for it. The auth tests below pin the full
 // key set of every auth response and exercise the blocked-status guard and the
 // password comparison, so a too-narrow projection fails loudly here.
-process.env.MONGODB_URI = 'mongodb://localhost:27017/phoenix-leanpath-test';
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-lean-tests';
 process.env.NODE_ENV = 'test';
 
 const test = require('node:test');
 const assert = require('node:assert');
 const mongoose = require('mongoose');
+const { startMemoryMongo, stopMemoryMongo } = require('./helpers/mongo');
 const bcrypt = require('bcrypt');
 
 const User = require('../src/models/user.model');
@@ -49,8 +49,7 @@ const PASSWORD_USER_PHONE = '0910000009';
 const PASSWORD_USER_SECRET = 'correct horse';
 
 test.before(async () => {
-  await mongoose.connect(process.env.MONGODB_URI);
-  await mongoose.connection.dropDatabase();
+  await startMemoryMongo({ dbName: 'phoenix-leanpath-test' });
 
   const legacyUserId = LEGACY_WAREHOUSE_USER_ID;
   const modernUserId = new mongoose.Types.ObjectId();
@@ -103,8 +102,7 @@ test.before(async () => {
 });
 
 test.after(async () => {
-  await mongoose.connection.dropDatabase();
-  await mongoose.disconnect();
+  await stopMemoryMongo();
 });
 
 test('warehouse list still reports order limits for a document that predates those fields', async () => {

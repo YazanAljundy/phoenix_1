@@ -6,7 +6,6 @@
 // projection.select.test.js / complaint.test.js. The realtime module is stubbed
 // through require.cache (before the services load) so an admin-room emission can
 // be observed without a socket server, while the Mongoose models stay real.
-process.env.MONGODB_URI = 'mongodb://localhost:27017/phoenix-admin-accounts-test';
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-admin-accounts-tests';
 process.env.NODE_ENV = 'test';
 
@@ -14,6 +13,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const path = require('node:path');
 const mongoose = require('mongoose');
+const { startMemoryMongo, stopMemoryMongo } = require('./helpers/mongo');
 
 const emitted = [];
 
@@ -81,8 +81,7 @@ async function seedWarehouse(key, { name, nameEn, nameAr, city, phone, status })
 }
 
 test.before(async () => {
-  await mongoose.connect(process.env.MONGODB_URI);
-  await mongoose.connection.dropDatabase();
+  await startMemoryMongo({ dbName: 'phoenix-admin-accounts-test' });
 
   const admin = await User.create({
     name: 'The Admin',
@@ -134,8 +133,7 @@ test.before(async () => {
 });
 
 test.after(async () => {
-  await mongoose.connection.dropDatabase();
-  await mongoose.disconnect();
+  await stopMemoryMongo();
 });
 
 test.beforeEach(() => {

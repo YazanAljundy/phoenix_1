@@ -81,8 +81,6 @@ String translateErrorCode(AppLocalizations l10n, String? code, String fallbackMe
       return l10n.errorReturnNotEditable;
     case 'RETURN_ITEMS_EMPTY':
       return l10n.errorReturnItemsEmpty;
-    case 'RETURN_PHOTO_REQUIRED':
-      return l10n.errorReturnPhotoRequired;
     case 'DUPLICATE_RETURN_ITEM':
       return l10n.errorDuplicateReturnItem;
     case 'REJECTION_NOTE_REQUIRED':

@@ -53,6 +53,12 @@ function toWarehouseOrderDetailResponse({ order, items, pharmacy, hasReturn }) {
       advertisementId: order.advertisementId ?? null,
       advertisementDiscountAmount: order.advertisementDiscountAmount ?? 0,
       finalPrice: order.finalPrice,
+      // Money-Flow V2: what the WAREHOUSE actually keeps on this order, once
+      // the platform's commission comes off what the pharmacy pays. V1 stored
+      // commissionAmount and showed it nowhere, so a warehouse could not see
+      // what a package deal really netted it. Derived rather than stored -
+      // it is a pure function of two frozen fields.
+      warehouseNetSyp: order.finalPrice - order.commissionAmount,
       notes: order.notes,
       cancelReason: order.cancelReason,
       createdAt: order.createdAt,

@@ -5,7 +5,6 @@
 // Own database, dropped at the end; realtime / notification / balance are
 // stubbed through require.cache exactly like order.status.test.js so advancing
 // to 'delivered' needs no socket or FCM.
-process.env.MONGODB_URI = 'mongodb://localhost:27017/phoenix-delivery-seal-test';
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-delivery-seal-tests';
 process.env.NODE_ENV = 'test';
 
@@ -13,6 +12,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const path = require('node:path');
 const mongoose = require('mongoose');
+const { startMemoryMongo, stopMemoryMongo } = require('./helpers/mongo');
 
 const emitted = [];
 
@@ -34,9 +34,6 @@ stubModule('realtime/index.js', {
 stubModule('services/notification.service.js', {
   sendToUser: async () => {},
   sendToAll: async () => {},
-});
-stubModule('services/pharmacyBalance.service.js', {
-  recomputeBalance: async () => {},
 });
 
 const User = require('../src/models/user.model');
@@ -92,8 +89,7 @@ async function setWarehouseDefault(value) {
 }
 
 test.before(async () => {
-  await mongoose.connect(process.env.MONGODB_URI);
-  await mongoose.connection.dropDatabase();
+  await startMemoryMongo({ dbName: 'phoenix-delivery-seal-test' });
   await ExchangeRate.create({ _id: 'singleton', usdToSyp: 10000, source: 'manual' });
 
   const [pharmacyUser, warehouseUser] = await User.create([
@@ -124,8 +120,7 @@ test.before(async () => {
 });
 
 test.after(async () => {
-  await mongoose.connection.dropDatabase();
-  await mongoose.disconnect();
+  await stopMemoryMongo();
 });
 
 test.beforeEach(async () => {

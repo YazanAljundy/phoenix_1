@@ -1,92 +1,188 @@
-// Section 16: one delivered order contributing to a debt - a read-only
-// snapshot (orderNumber/finalPrice/date), not a live order lookup.
-class DebtOrderModel {
-  const DebtOrderModel({
+// Money-Flow V2. The account statement for one warehouse relationship
+// (GET /pharmacy/debts/:warehouseId).
+//
+// V1's "debt detail" was two disconnected lists - every delivered order, every
+// payment - under three summary cards computed on a DIFFERENT basis from the
+// rows beneath them (the cards live-converted a USD cache; the rows were
+// frozen SYP), so after any exchange-rate move the two visibly disagreed.
+//
+// This is one chronological list of financial events with a running balance.
+// Every row and every total is the same frozen SYP figure off the same
+// immutable ledger entries, so they cannot tell different stories.
+
+/// What a statement row refers to - an invoice, a payment - so the pharmacist
+/// can quote something when asking about it.
+class StatementReference {
+  const StatementReference({
+    this.invoiceNumber,
+    this.orderNumber,
+    this.orderId,
+    this.paymentNumber,
+    this.method,
+  });
+
+  final int? invoiceNumber;
+  final int? orderNumber;
+  final String? orderId;
+  final int? paymentNumber;
+  final String? method;
+
+  factory StatementReference.fromJson(Map<String, dynamic>? json) {
+    if (json == null) return const StatementReference();
+    return StatementReference(
+      invoiceNumber: json['invoiceNumber'] as int?,
+      orderNumber: json['orderNumber'] as int?,
+      orderId: json['orderId'] as String?,
+      paymentNumber: json['paymentNumber'] as int?,
+      method: json['method'] as String?,
+    );
+  }
+}
+
+/// One line of the statement: what happened, on what date, and the balance
+/// after it. Debit and credit are separate so the reader never has to work out
+/// a sign.
+class StatementRowModel {
+  const StatementRowModel({
     required this.id,
-    required this.orderNumber,
-    required this.finalPrice,
-    required this.createdAt,
+    required this.kind,
+    required this.effectiveAt,
+    required this.debitSyp,
+    required this.creditSyp,
+    required this.balanceSyp,
+    this.entryNumber,
+    this.amountUsd,
+    this.reason,
+    this.reversalOf,
+    this.reference = const StatementReference(),
   });
 
   final String id;
-  final int orderNumber;
-  final num finalPrice; // SYP
-  final DateTime createdAt;
 
-  factory DebtOrderModel.fromJson(Map<String, dynamic> json) => DebtOrderModel(
+  /// One of the ledger's entry kinds: charge, payment, payment_reversal,
+  /// return_credit, manual_credit, manual_debit, ... The UI maps it to a label.
+  final String kind;
+  final DateTime effectiveAt;
+
+  /// Exactly one of these is non-zero.
+  final num debitSyp;
+  final num creditSyp;
+
+  /// The running balance after this row.
+  final num balanceSyp;
+
+  final int? entryNumber;
+  final num? amountUsd;
+
+  /// Mandatory on manual adjustments and every reversal - it is what makes
+  /// those rows legible rather than mysterious.
+  final String? reason;
+
+  /// Set on a reversal: the entry it undid.
+  final String? reversalOf;
+  final StatementReference reference;
+
+  bool get isDebit => debitSyp > 0;
+  num get amountSyp => isDebit ? debitSyp : creditSyp;
+
+  factory StatementRowModel.fromJson(Map<String, dynamic> json) => StatementRowModel(
     id: json['id'] as String,
-    orderNumber: json['orderNumber'] as int,
-    finalPrice: json['finalPrice'] as num,
-    createdAt: DateTime.parse(json['createdAt'] as String),
+    kind: json['kind'] as String,
+    effectiveAt: DateTime.parse(json['effectiveAt'] as String),
+    debitSyp: (json['debitSyp'] as num?) ?? 0,
+    creditSyp: (json['creditSyp'] as num?) ?? 0,
+    balanceSyp: (json['balanceSyp'] as num?) ?? 0,
+    entryNumber: json['entryNumber'] as int?,
+    amountUsd: json['amountUsd'] as num?,
+    reason: json['reason'] as String?,
+    reversalOf: json['reversalOf'] as String?,
+    reference: StatementReference.fromJson(json['reference'] as Map<String, dynamic>?),
   );
 }
 
-// Section 16: a payment the warehouse recorded against this debt. Read-only
-// here - only the warehouse's own panel offers edit/delete (at any time; see
-// warehousePayment routes). The pharmacist's view never renders those actions.
-class DebtPaymentModel {
-  const DebtPaymentModel({
-    required this.id,
-    required this.amount,
-    required this.currency,
-    this.note,
-    required this.createdAt,
+/// The period's movement, grouped the way a reader asks about it. Reversals
+/// are netted into the family they belong to, so a payment that was reversed
+/// shows the pair's true effect rather than inflating the column.
+class StatementSummary {
+  const StatementSummary({
+    required this.chargesSyp,
+    required this.paymentsSyp,
+    required this.returnCreditsSyp,
+    required this.adjustmentsSyp,
   });
 
-  final String id;
-  final num amount;
-  final String currency; // 'USD' or 'SYP'
-  final String? note;
-  final DateTime createdAt;
+  final num chargesSyp;
+  final num paymentsSyp;
+  final num returnCreditsSyp;
+  final num adjustmentsSyp;
 
-  factory DebtPaymentModel.fromJson(Map<String, dynamic> json) => DebtPaymentModel(
-    id: json['id'] as String,
-    amount: json['amount'] as num,
-    currency: json['currency'] as String,
-    note: json['note'] as String?,
-    createdAt: DateTime.parse(json['createdAt'] as String),
+  factory StatementSummary.fromJson(Map<String, dynamic>? json) => StatementSummary(
+    chargesSyp: (json?['chargesSyp'] as num?) ?? 0,
+    paymentsSyp: (json?['paymentsSyp'] as num?) ?? 0,
+    returnCreditsSyp: (json?['returnCreditsSyp'] as num?) ?? 0,
+    adjustmentsSyp: (json?['adjustmentsSyp'] as num?) ?? 0,
   );
 }
 
-// Section 16: GET /pharmacy/debts/:warehouseId - the full read-only picture
-// behind one row of the pharmacist's debts list: the running totals plus
-// every delivered order and payment that made them up.
 class DebtDetailModel {
   const DebtDetailModel({
-    required this.balanceUsd,
-    required this.totalOrdersUsd,
-    required this.totalPaidUsd,
+    required this.openingSyp,
+    required this.closingSyp,
+    required this.outstandingDebtSyp,
+    required this.creditBalanceSyp,
+    required this.summary,
+    required this.rows,
     required this.warehouseNameAr,
     this.warehouseNameEn,
     required this.warehousePhone,
-    required this.orders,
-    required this.payments,
+    this.periodFrom,
+    this.periodTo,
   });
 
-  final num balanceUsd;
-  final num totalOrdersUsd;
-  final num totalPaidUsd;
+  /// The balance carried in from before the window, so the running total in
+  /// the rows starts from something visible.
+  final num openingSyp;
+
+  /// The balance after the last row. Positive: owed. Negative: in credit.
+  final num closingSyp;
+
+  /// The same figure split so a screen can show two positive numbers.
+  final num outstandingDebtSyp;
+  final num creditBalanceSyp;
+
+  final StatementSummary summary;
+  final List<StatementRowModel> rows;
+
   final String warehouseNameAr;
   final String? warehouseNameEn;
   final String warehousePhone;
-  final List<DebtOrderModel> orders;
-  final List<DebtPaymentModel> payments;
+  final DateTime? periodFrom;
+  final DateTime? periodTo;
+
+  bool get isCredit => closingSyp < 0;
 
   factory DebtDetailModel.fromJson(Map<String, dynamic> json) {
-    final warehouse = json['warehouse'] as Map<String, dynamic>;
+    final statement = json['statement'] as Map<String, dynamic>;
+    final warehouse = (statement['warehouse'] as Map<String, dynamic>?) ?? const {};
+    final period = (statement['period'] as Map<String, dynamic>?) ?? const {};
+    final opening = (statement['opening'] as Map<String, dynamic>?) ?? const {};
+    final closing = (statement['closing'] as Map<String, dynamic>?) ?? const {};
+
     return DebtDetailModel(
-      balanceUsd: json['balanceUsd'] as num,
-      totalOrdersUsd: json['totalOrdersUsd'] as num,
-      totalPaidUsd: json['totalPaidUsd'] as num,
-      warehouseNameAr: warehouse['nameAr'] as String,
+      openingSyp: (opening['syp'] as num?) ?? 0,
+      closingSyp: (closing['syp'] as num?) ?? 0,
+      outstandingDebtSyp: (statement['outstandingDebtSyp'] as num?) ?? 0,
+      creditBalanceSyp: (statement['creditBalanceSyp'] as num?) ?? 0,
+      summary: StatementSummary.fromJson(statement['summary'] as Map<String, dynamic>?),
+      rows: ((statement['rows'] as List?) ?? const [])
+          .cast<Map<String, dynamic>>()
+          .map(StatementRowModel.fromJson)
+          .toList(),
+      warehouseNameAr: (warehouse['nameAr'] as String?) ?? '',
       warehouseNameEn: warehouse['nameEn'] as String?,
-      warehousePhone: warehouse['phone'] as String,
-      orders: (json['orders'] as List)
-          .map((e) => DebtOrderModel.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      payments: (json['payments'] as List)
-          .map((e) => DebtPaymentModel.fromJson(e as Map<String, dynamic>))
-          .toList(),
+      warehousePhone: (warehouse['phone'] as String?) ?? '',
+      periodFrom: period['from'] != null ? DateTime.parse(period['from'] as String) : null,
+      periodTo: period['to'] != null ? DateTime.parse(period['to'] as String) : null,
     );
   }
 }

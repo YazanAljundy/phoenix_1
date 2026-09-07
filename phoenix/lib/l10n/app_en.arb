@@ -430,12 +430,19 @@
   "returnStatusRejected": "Rejected",
   "returnPickItemsLabel": "Select the items you're returning",
   "returnRejectionNoteLabel": "Rejection reason",
-  "viewReplacementOrderButton": "View replacement order",
+  "returnCreditedLabel": "Credited to your account: {amount}",
+  "@returnCreditedLabel": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
   "editButton": "Edit",
   "deleteReturnButton": "Delete",
   "deleteReturnConfirmTitle": "Delete return request?",
   "deleteReturnConfirmMessage": "Are you sure you want to delete this return request?",
-  "returnApprovedBanner": "Return approved — a replacement order has been created",
+  "returnApprovedBanner": "Return approved — your account has been credited",
   "returnPendingReviewBanner": "Return submitted, awaiting the warehouse's review",
   "returnRejectedBanner": "Return rejected",
   "errorOrderNotDelivered": "This order hasn't been delivered yet.",
@@ -448,7 +455,6 @@
   "errorReturnAlreadyExists": "A return request has already been submitted for this order.",
   "errorReturnNotEditable": "This return request has already been decided and can no longer be changed.",
   "errorReturnItemsEmpty": "Please select at least one item to return.",
-  "errorReturnPhotoRequired": "Please attach at least one photo of the item.",
   "errorDuplicateReturnItem": "Each item can only appear once in a return request.",
   "errorRejectionNoteRequired": "Please explain why this return is being rejected.",
   "returnPhotosLabel": "Photos (optional)",
@@ -553,7 +559,7 @@
     }
   },
   "returnableSectionTitle": "Orders eligible for return",
-  "returnableSectionSubtitle": "You can request a return within 48 hours of delivery",
+  "returnableSectionSubtitle": "You can request a return within 24 hours of delivery",
   "returnableDeliveredOnLabel": "Delivered {date}",
   "@returnableDeliveredOnLabel": {
     "placeholders": {
@@ -567,7 +573,7 @@
   "returnableEndingSoon": "Ending soon",
   "returnableRequestButton": "Request a return",
   "returnableMoreItems": "+{count} more",
-  "returnWindowExpired": "A return must be requested within 48 hours of delivery.",
+  "returnWindowExpired": "A return must be requested within 24 hours of delivery.",
   "privacyPolicy": "Privacy Policy",
   "privacyPolicyLastUpdated": "Last updated: {date}",
   "@privacyPolicyLastUpdated": {
@@ -724,5 +730,44 @@
   },
   "errorDeliverySealPhotoRequired": "A seal photo is required to confirm delivery.",
   "errorInvalidDeliverySealPhoto": "That file isn't a valid image. Please choose another photo.",
-  "errorOrderNotAwaitingDelivery": "This order isn't awaiting a delivery confirmation right now."
+  "errorOrderNotAwaitingDelivery": "This order isn't awaiting a delivery confirmation right now.",
+  "statementTitle": "Account statement",
+  "statementEmpty": "No activity yet.",
+  "statementOpening": "Opening balance",
+  "statementCharges": "Charged",
+  "statementPayments": "Paid",
+  "statementReturnCredits": "Returned",
+  "statementKindCharge": "Order delivered",
+  "statementKindChargeReversal": "Delivery reversed",
+  "statementKindPayment": "Payment received",
+  "statementKindPaymentReversal": "Payment reversed",
+  "statementKindReturnCredit": "Return credited",
+  "statementKindReturnCreditReversal": "Return credit reversed",
+  "statementKindManualCredit": "Credit added",
+  "statementKindManualDebit": "Charge added",
+  "statementKindOther": "Adjustment",
+  "statementInvoiceRef": "Invoice INV-{number}",
+  "@statementInvoiceRef": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "statementPaymentRef": "Payment PAY-{number}",
+  "@statementPaymentRef": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "creditBalanceShort": "Credit: {amount}",
+  "@creditBalanceShort": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  }
 }

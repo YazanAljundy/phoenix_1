@@ -10,9 +10,27 @@ const getRate = asyncHandler(async (req, res) => {
   res.json({ success: true, ...exchangeRateViewModel.toAdminExchangeRateResponse(rate) });
 });
 
+// Money-Flow V2: the acting admin is passed through so exchangeRate.service
+// can name them in the audit trail. The validation itself is unchanged - any
+// positive rate is still accepted, with no bounds check (product owner's call).
 const setManualRate = asyncHandler(async (req, res) => {
-  const rate = await exchangeRateService.setManualRate(req.body.usdToSyp);
+  const rate = await exchangeRateService.setManualRate(req.body.usdToSyp, req.user._id);
   res.json({ success: true, ...exchangeRateViewModel.toAdminExchangeRateResponse(rate) });
+});
+
+// The append-only history behind the current rate, newest first.
+const listHistory = asyncHandler(async (req, res) => {
+  const history = await exchangeRateService.listRateHistory({ limit: 20 });
+  res.json({
+    success: true,
+    history: history.map((row) => ({
+      id: row._id,
+      usdToSyp: row.usdToSyp,
+      previousUsdToSyp: row.previousUsdToSyp,
+      source: row.source,
+      effectiveFrom: row.effectiveFrom,
+    })),
+  });
 });
 
 const resetToApi = asyncHandler(async (req, res) => {
@@ -20,4 +38,4 @@ const resetToApi = asyncHandler(async (req, res) => {
   res.json({ success: true, ...exchangeRateViewModel.toAdminExchangeRateResponse(rate) });
 });
 
-module.exports = { getRate, setManualRate, resetToApi };
+module.exports = { getRate, setManualRate, resetToApi, listHistory };

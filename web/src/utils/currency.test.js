@@ -5,7 +5,6 @@ import {
   sypFromUsd,
   formatMoneyFromUsd,
   formatUsdAsSyp,
-  remainingPaymentAmount,
 } from './currency';
 
 // SYP is the panel's primary display currency; the catalog still stores USD.
@@ -42,29 +41,3 @@ describe('SYP formatting', () => {
 // Backs the "Full amount" button on the record-payment forms: it prefills the
 // outstanding balance (stored in USD) into the amount field, converted to the
 // currency the warehouse picked.
-describe('remainingPaymentAmount', () => {
-  it('returns the USD balance as-is when USD is selected', () => {
-    expect(remainingPaymentAmount(100, 'USD', 15000)).toBe(100);
-    expect(remainingPaymentAmount(12.345, 'USD', null)).toBe(12.35); // rounded to cents
-  });
-
-  it('converts to whole lira when SYP is selected', () => {
-    expect(remainingPaymentAmount(10, 'SYP', 15000)).toBe(150000);
-    expect(remainingPaymentAmount(1.5, 'SYP', 10000)).toBe(15000);
-  });
-
-  it('is null (button disabled) when nothing is owed', () => {
-    expect(remainingPaymentAmount(0, 'USD', 15000)).toBeNull();
-    expect(remainingPaymentAmount(-25, 'USD', 15000)).toBeNull(); // a credit
-  });
-
-  it('is null (button disabled) for SYP with no exchange rate loaded', () => {
-    expect(remainingPaymentAmount(100, 'SYP', null)).toBeNull();
-    expect(remainingPaymentAmount(100, 'SYP', undefined)).toBeNull();
-  });
-
-  it('is null for an unexpected currency or a non-numeric balance', () => {
-    expect(remainingPaymentAmount(100, 'EUR', 15000)).toBeNull();
-    expect(remainingPaymentAmount('abc', 'USD', 15000)).toBeNull();
-  });
-});

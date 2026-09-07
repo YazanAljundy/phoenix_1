@@ -47,18 +47,28 @@ const getDetail = asyncHandler(async (req, res) => {
   res.json({ success: true, ...warehouseReturnViewModel.toWarehouseReturnDetailResponse(data) });
 });
 
+// Money-Flow V2: approving credits the pharmacy's account. There is no
+// replacement order and no resolution to choose - credit is the only outcome.
 const approve = asyncHandler(async (req, res) => {
   const warehouse = await loadWarehouseOrThrow(req.user._id);
-  const { returnRequest, replacementOrder } = await warehouseReturnService.approveReturn(
+  const { returnRequest, creditEntry } = await warehouseReturnService.approveReturn(
     req.params.id,
     warehouse._id,
     req.user._id
   );
   res.json({
     success: true,
-    message: 'Return approved. A replacement order has been created.',
-    ...warehouseReturnViewModel.toResolvedReturnResponse(returnRequest, replacementOrder),
+    message: 'Return approved. The pharmacy has been credited.',
+    ...warehouseReturnViewModel.toResolvedReturnResponse(returnRequest, creditEntry),
   });
+});
+
+// Read-only: what approving would credit, and the working behind it, so the
+// operator sees the figure before committing to it.
+const previewCredit = asyncHandler(async (req, res) => {
+  const warehouse = await loadWarehouseOrThrow(req.user._id);
+  const preview = await warehouseReturnService.previewReturnCredit(req.params.id, warehouse._id);
+  res.json({ success: true, ...warehouseReturnViewModel.toReturnCreditPreviewResponse(preview) });
 });
 
 const reject = asyncHandler(async (req, res) => {
@@ -76,4 +86,4 @@ const reject = asyncHandler(async (req, res) => {
   });
 });
 
-module.exports = { list, getDetail, approve, reject };
+module.exports = { list, getDetail, approve, reject, previewCredit };

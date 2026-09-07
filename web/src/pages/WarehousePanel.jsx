@@ -17,6 +17,7 @@ import { WarehouseReviewsPage } from './WarehouseReviewsPage';
 import { WarehouseSettingsPage } from './WarehouseSettingsPage';
 import { WarehouseDiscountsPage } from './WarehouseDiscountsPage';
 import { WarehouseDebtsPage } from './WarehouseDebtsPage';
+import { WarehouseSettlementPage } from './WarehouseSettlementPage';
 
 function navLinkClassName({ isActive }) {
   return `wh-nav-link${isActive ? ' active' : ''}`;
@@ -42,6 +43,7 @@ export function WarehousePanel() {
     { path: '/warehouse/advertisements', label: t('nav.advertisements') },
     { path: '/warehouse/discounts', label: t('nav.discounts') },
     { path: '/warehouse/debts', label: t('nav.debts') },
+    { path: '/warehouse/settlement', label: t('nav.settlement') },
     { path: '/warehouse/returns', label: t('nav.returns') },
     { path: '/warehouse/reviews', label: t('nav.reviews') },
     { path: '/warehouse/complaints', label: t('nav.complaints') },
@@ -120,6 +122,7 @@ export function WarehousePanel() {
             />
             <Route path="/warehouse/discounts" element={<WarehouseDiscountsPage />} />
             <Route path="/warehouse/debts" element={<WarehouseDebtsPage />} />
+            <Route path="/warehouse/settlement" element={<WarehouseSettlementPage />} />
             <Route path="/warehouse/returns" element={<WarehouseReturnsPage />} />
             <Route path="/warehouse/returns/:returnId" element={<WarehouseReturnDetailPage />} />
             <Route path="/warehouse/complaints" element={<WarehouseComplaintsPage />} />

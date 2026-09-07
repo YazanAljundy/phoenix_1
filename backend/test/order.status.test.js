@@ -12,7 +12,6 @@
 // realtime + notification are stubbed through require.cache so the emitted
 // event and the notification payload can be observed without a socket server or
 // FCM.
-process.env.MONGODB_URI = 'mongodb://localhost:27017/phoenix-order-status-test';
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-order-status-tests';
 process.env.NODE_ENV = 'test';
 
@@ -20,6 +19,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const path = require('node:path');
 const mongoose = require('mongoose');
+const { startMemoryMongo, stopMemoryMongo } = require('./helpers/mongo');
 
 const emitted = [];
 const notifications = [];
@@ -44,11 +44,6 @@ stubModule('services/notification.service.js', {
     notifications.push({ userId: String(userId), ...payload });
   },
   sendToAll: async () => {},
-});
-// recomputeBalance runs (best-effort, try/caught) when an order hits
-// 'delivered'; neutralised so this test exercises only the status path.
-stubModule('services/pharmacyBalance.service.js', {
-  recomputeBalance: async () => {},
 });
 
 const User = require('../src/models/user.model');
@@ -85,8 +80,7 @@ async function makeOrder(status) {
 }
 
 test.before(async () => {
-  await mongoose.connect(process.env.MONGODB_URI);
-  await mongoose.connection.dropDatabase();
+  await startMemoryMongo({ dbName: 'phoenix-order-status-test' });
 
   const [pharmacyUser, warehouseUser] = await User.create([
     { name: 'Pharm', phone: '0931111111', role: 'pharmacy', status: 'active' },
@@ -108,8 +102,7 @@ test.before(async () => {
 });
 
 test.after(async () => {
-  await mongoose.connection.dropDatabase();
-  await mongoose.disconnect();
+  await stopMemoryMongo();
 });
 
 test.beforeEach(() => {

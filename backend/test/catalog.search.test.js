@@ -10,13 +10,13 @@
 //
 // Runs against its own database (phoenix-catalog-test) and drops it at the
 // end, so it never touches the development data.
-process.env.MONGODB_URI = 'mongodb://localhost:27017/phoenix-catalog-test';
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-catalog-tests';
 process.env.NODE_ENV = 'test';
 
 const test = require('node:test');
 const assert = require('node:assert');
 const mongoose = require('mongoose');
+const { startMemoryMongo, stopMemoryMongo } = require('./helpers/mongo');
 
 const Product = require('../src/models/product.model');
 const ProductCatalog = require('../src/models/productCatalog.model');
@@ -169,14 +169,12 @@ async function seed() {
 }
 
 test.before(async () => {
-  await mongoose.connect(process.env.MONGODB_URI);
-  await mongoose.connection.dropDatabase();
+  await startMemoryMongo({ dbName: 'phoenix-catalog-test' });
   await seed();
 });
 
 test.after(async () => {
-  await mongoose.connection.dropDatabase();
-  await mongoose.disconnect();
+  await stopMemoryMongo();
 });
 
 // ---------------------------------------------------------------------------

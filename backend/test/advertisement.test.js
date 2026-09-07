@@ -6,13 +6,13 @@
 // These tests pin that, plus that a package never touches Product.price.
 //
 // Own database, dropped at the end - same pattern as warehouse.invoices.test.js.
-process.env.MONGODB_URI = 'mongodb://localhost:27017/phoenix-advertisement-test';
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-advertisement-tests';
 process.env.NODE_ENV = 'test';
 
 const test = require('node:test');
 const assert = require('node:assert');
 const mongoose = require('mongoose');
+const { startMemoryMongo, stopMemoryMongo } = require('./helpers/mongo');
 
 const User = require('../src/models/user.model');
 const Warehouse = require('../src/models/warehouse.model');
@@ -62,8 +62,7 @@ async function makeProduct(key, warehouseId, nameEn, nameAr, priceUsd) {
 }
 
 test.before(async () => {
-  await mongoose.connect(process.env.MONGODB_URI);
-  await mongoose.connection.dropDatabase();
+  await startMemoryMongo({ dbName: 'phoenix-advertisement-test' });
 
   const [whUser, otherWhUser, adminUser] = await User.create([
     { name: 'WH', phone: '0942000401', role: 'warehouse', status: 'active' },
@@ -90,8 +89,7 @@ test.before(async () => {
 });
 
 test.after(async () => {
-  await mongoose.connection.dropDatabase();
-  await mongoose.disconnect();
+  await stopMemoryMongo();
 });
 
 test.afterEach(async () => {

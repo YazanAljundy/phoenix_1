@@ -3,8 +3,11 @@ const { ApiError } = require('../utils/ApiError');
 const Return = require('../models/return.model');
 const Order = require('../models/order.model');
 const Pharmacy = require('../models/pharmacy.model');
-const { createOrder } = require('./order.service');
 const { attachOrderContext } = require('./return.service');
+const { valueReturn } = require('./returnCredit.service');
+const { runInTransaction } = require('../utils/transaction');
+const ledger = require('./ledger.service');
+const financialAudit = require('./financialAudit.service');
 const { emitToWarehouse, EVENTS } = require('../realtime');
 
 const WAREHOUSE_RETURNS_DEFAULT_LIMIT = 15;
@@ -40,7 +43,9 @@ async function listReturnsForWarehouse(warehouseId, status) {
   if (status) filter.status = status;
 
   const returns = await Return.find(filter)
-    .select('orderId pharmacyId items notes images status rejectionNote replacementOrderId resolvedAt createdAt')
+    .select(
+      'orderId pharmacyId items notes images status rejectionNote creditSyp creditUsd creditEntryId resolvedAt createdAt'
+    )
     .sort({ createdAt: 1 });
   if (returns.length === 0) return [];
 
@@ -65,7 +70,9 @@ async function listPaginatedReturnsForWarehouse(
   }
 
   const returns = await Return.find(filter)
-    .select('orderId pharmacyId items notes images status rejectionNote replacementOrderId resolvedAt createdAt')
+    .select(
+      'orderId pharmacyId items notes images status rejectionNote creditSyp creditUsd creditEntryId resolvedAt createdAt'
+    )
     .sort({ _id: -1 })
     .limit(limit + 1);
   const hasMore = returns.length > limit;
@@ -96,72 +103,143 @@ async function findOwnReturnOrThrow(returnId, warehouseId) {
   if (!mongoose.Types.ObjectId.isValid(returnId)) {
     throw ApiError.notFound('Return not found.', 'RETURN_NOT_FOUND');
   }
-  // Only getReturnDetailForWarehouse (read-only) uses this - the decision
-  // paths load their own document via loadPendingReturnOrThrow.
-  const returnRequest = await Return.findOne({ _id: returnId, warehouseId })
-    .select('orderId pharmacyId items notes images status rejectionNote replacementOrderId resolvedAt createdAt');
+  const returnRequest = await Return.findOne({ _id: returnId, warehouseId }).select(
+    'orderId pharmacyId items notes images status rejectionNote creditSyp creditUsd creditEntryId creditValuation resolvedAt createdAt'
+  );
   if (!returnRequest) {
     throw ApiError.notFound('Return not found.', 'RETURN_NOT_FOUND');
   }
   return returnRequest;
 }
 
-// Read-only detail - reuses the same attachOrderContext (order/item
-// snapshots) and pharmacy lookup as listReturnsForWarehouse above, plus the
-// replacement order's number when one exists (only set once approved).
+// Read-only detail - reuses the same attachOrderContext (order/item snapshots)
+// and pharmacy lookup as listReturnsForWarehouse above.
 async function getReturnDetailForWarehouse(returnId, warehouseId) {
   const returnRequest = await findOwnReturnOrThrow(returnId, warehouseId);
 
-  const [contextRows, pharmacy, replacementOrder] = await Promise.all([
+  const [contextRows, pharmacy] = await Promise.all([
     attachOrderContext([returnRequest]),
     Pharmacy.findById(returnRequest.pharmacyId).select('nameAr nameEn phone'),
-    returnRequest.replacementOrderId
-      ? Order.findById(returnRequest.replacementOrderId, 'orderNumber')
-      : Promise.resolve(null),
   ]);
   const { order, orderItemById } = contextRows[0];
 
-  return { returnRequest, order, orderItemById, pharmacy, replacementOrder };
+  return { returnRequest, order, orderItemById, pharmacy };
 }
 
-// Section 6.9/8: approving always means "replace, at no extra charge" - no
-// "refund" (meaningless under COD). Creates a brand-new order through the
-// exact same order-creation path a normal order uses, just zero-priced, with
-// the pharmacist's own returned items/quantities.
+// What approving this return would credit, WITHOUT approving it - so the
+// warehouse sees the number and the working before it commits. Read-only:
+// creates nothing, moves nothing.
+async function previewReturnCredit(returnId, warehouseId) {
+  const returnRequest = await findOwnReturnOrThrow(returnId, warehouseId);
+  // An already-decided return reports what it actually credited rather than a
+  // fresh hypothetical.
+  if (returnRequest.status !== 'pending') {
+    return {
+      returnRequest,
+      creditSyp: returnRequest.creditSyp,
+      creditUsd: returnRequest.creditUsd,
+      breakdown: returnRequest.creditValuation,
+      alreadyResolved: true,
+    };
+  }
+  const valuation = await valueReturn(returnRequest);
+  return { returnRequest, ...valuation, alreadyResolved: false };
+}
+
+// Money-Flow V2. Approving a return CREDITS the pharmacy's account - there is
+// exactly one financial outcome, and no replacement order.
+//
+// The whole thing is one transaction: the status change, the credit entry, the
+// balance movement and the audit record land together or not at all. The
+// status move is a compare-and-swap, so two operators approving the same
+// return at the same moment produce one credit and one clean conflict - V1
+// produced two replacement orders, one of them orphaned.
 async function approveReturn(returnId, warehouseId, userId) {
   const returnRequest = await loadPendingReturnOrThrow(returnId, warehouseId);
-  // Only its orderNumber is used, for the replacement order's notes string.
-  const originalOrder = await Order.findById(returnRequest.orderId).select('orderNumber');
 
-  const replacementOrder = await createOrder({
-    userId,
-    pharmacyId: returnRequest.pharmacyId,
-    warehouseId,
-    items: returnRequest.items.map((item) => ({
-      productId: item.productId.toString(),
-      quantity: item.quantity,
-    })),
-    notes: `Replacement for return on order #${originalOrder?.orderNumber ?? ''}`,
-    isReplacement: true,
+  const valuation = await valueReturn(returnRequest);
+  // Resolved before the transaction opens - see ledger.service.js on upserts
+  // and lazy index builds inside transactions.
+  const account = await ledger.resolveAccount(returnRequest.pharmacyId, warehouseId);
+  const now = new Date();
+
+  const result = await runInTransaction(async (session) => {
+    const claimed = await Return.findOneAndUpdate(
+      { _id: returnRequest._id, warehouseId, status: 'pending' },
+      {
+        $set: {
+          status: 'approved',
+          resolvedBy: userId,
+          resolvedAt: now,
+          creditSyp: valuation.creditSyp,
+          creditUsd: valuation.creditUsd,
+          creditValuation: valuation.breakdown,
+        },
+      },
+      { new: true, session }
+    );
+    if (!claimed) {
+      throw ApiError.conflict(
+        'This return has already been decided by someone else.',
+        'RETURN_ALREADY_RESOLVED'
+      );
+    }
+
+    const { entry } = await ledger.postEntry(
+      {
+        account,
+        kind: 'return_credit',
+        amountSyp: valuation.creditSyp,
+        amountUsd: valuation.creditUsd,
+        // The ORDER's frozen rate, carried through the valuation - a credit
+        // undoes a specific historical charge, so it speaks that charge's
+        // currency terms rather than today's.
+        fx: { rate: valuation.breakdown.fxRate, source: 'order', rateAsOf: null },
+        effectiveAt: now,
+        source: { returnId: claimed._id },
+        createdBy: userId,
+        // orderId lives in metadata (not source) because `source.orderId` is
+        // uniquely indexed for charges - one charge per order. The invoice
+        // view reads credits back through this key.
+        metadata: { orderId: returnRequest.orderId, ...valuation.breakdown },
+      },
+      session
+    );
+
+    // Saved on the document itself rather than through a separate updateOne,
+    // so the object handed back to the caller carries the link too - a bare
+    // updateOne would leave `claimed` stale in memory.
+    claimed.creditEntryId = entry._id;
+    await claimed.save({ session });
+
+    await financialAudit.record(
+      {
+        action: 'return.approved',
+        actorId: userId,
+        actorRole: 'warehouse',
+        entityType: 'Return',
+        entityId: claimed._id,
+        accountId: account._id,
+        ledgerEntryIds: [entry._id],
+        before: { status: 'pending' },
+        after: { status: 'approved', creditSyp: valuation.creditSyp },
+      },
+      session
+    );
+
+    return { returnRequest: claimed, entry };
   });
 
-  returnRequest.status = 'approved';
-  returnRequest.replacementOrderId = replacementOrder._id;
-  returnRequest.resolvedBy = userId;
-  returnRequest.resolvedAt = new Date();
-  await returnRequest.save();
-
-  // Note the replacement order created above already emitted its own
-  // order.created through createOrder - this is only the return's own status
-  // transition, so the returns queue and the orders queue each update.
-  emitToWarehouse(returnRequest.warehouseId, EVENTS.RETURN_STATUS_UPDATED, {
-    returnId: returnRequest._id.toString(),
-    orderId: returnRequest.orderId.toString(),
-    warehouseId: returnRequest.warehouseId.toString(),
+  // Post-commit, best-effort: a realtime emit may never undo a credit that has
+  // already been posted.
+  emitToWarehouse(warehouseId, EVENTS.RETURN_STATUS_UPDATED, {
+    returnId: result.returnRequest._id.toString(),
+    orderId: result.returnRequest.orderId.toString(),
+    warehouseId: String(warehouseId),
     status: 'approved',
   });
 
-  return { returnRequest, replacementOrder };
+  return { returnRequest: result.returnRequest, creditEntry: result.entry };
 }
 
 async function rejectReturn(returnId, warehouseId, userId, rejectionNote) {
@@ -176,20 +254,42 @@ async function rejectReturn(returnId, warehouseId, userId, rejectionNote) {
     );
   }
 
-  returnRequest.status = 'rejected';
-  returnRequest.rejectionNote = trimmedNote;
-  returnRequest.resolvedBy = userId;
-  returnRequest.resolvedAt = new Date();
-  await returnRequest.save();
+  const now = new Date();
+  // Same compare-and-swap as approval: a rejection racing an approval must not
+  // be able to overwrite a decision that has already moved money.
+  const claimed = await Return.findOneAndUpdate(
+    { _id: returnRequest._id, warehouseId, status: 'pending' },
+    { $set: { status: 'rejected', rejectionNote: trimmedNote, resolvedBy: userId, resolvedAt: now } },
+    { new: true }
+  );
+  if (!claimed) {
+    throw ApiError.conflict(
+      'This return has already been decided by someone else.',
+      'RETURN_ALREADY_RESOLVED'
+    );
+  }
 
-  emitToWarehouse(returnRequest.warehouseId, EVENTS.RETURN_STATUS_UPDATED, {
-    returnId: returnRequest._id.toString(),
-    orderId: returnRequest.orderId.toString(),
-    warehouseId: returnRequest.warehouseId.toString(),
+  // A rejection moves no money, so there is no ledger entry - but it is still
+  // a discretionary financial decision with a mandatory reason, so it is audited.
+  await financialAudit.record({
+    action: 'return.rejected',
+    actorId: userId,
+    actorRole: 'warehouse',
+    entityType: 'Return',
+    entityId: claimed._id,
+    before: { status: 'pending' },
+    after: { status: 'rejected' },
+    reason: trimmedNote,
+  });
+
+  emitToWarehouse(warehouseId, EVENTS.RETURN_STATUS_UPDATED, {
+    returnId: claimed._id.toString(),
+    orderId: claimed.orderId.toString(),
+    warehouseId: String(warehouseId),
     status: 'rejected',
   });
 
-  return returnRequest;
+  return claimed;
 }
 
 module.exports = {
@@ -198,4 +298,5 @@ module.exports = {
   approveReturn,
   rejectReturn,
   getReturnDetailForWarehouse,
+  previewReturnCredit,
 };

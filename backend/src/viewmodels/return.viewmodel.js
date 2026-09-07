@@ -21,7 +21,11 @@ function serializeReturn(returnRequest, orderItemById = new Map()) {
     images: returnRequest.images,
     status: returnRequest.status,
     rejectionNote: returnRequest.rejectionNote,
-    replacementOrderId: returnRequest.replacementOrderId,
+    // Money-Flow V2: an approved return credits the pharmacy's account. There
+    // is no replacement order any more, so no replacementOrderId - what the
+    // client shows instead is what the return was worth.
+    creditSyp: returnRequest.creditSyp ?? null,
+    creditUsd: returnRequest.creditUsd ?? null,
     resolvedAt: returnRequest.resolvedAt,
     createdAt: returnRequest.createdAt,
   };

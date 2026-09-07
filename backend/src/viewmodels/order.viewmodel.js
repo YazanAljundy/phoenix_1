@@ -39,7 +39,9 @@ function serializeLinkedReturn(returnRequest) {
     id: returnRequest._id,
     status: returnRequest.status,
     rejectionNote: returnRequest.rejectionNote,
-    replacementOrderId: returnRequest.replacementOrderId,
+    // What an approved return credited back against this order (Money-Flow V2).
+    creditSyp: returnRequest.creditSyp ?? null,
+    creditUsd: returnRequest.creditUsd ?? null,
   };
 }
 
@@ -172,11 +174,24 @@ function toReorderResponse({ warehouse, items = [], unavailableItems = [] }) {
   };
 }
 
-// Account History "Money Saved" card - a single running total, in the
-// catalog's native USD, that the Flutter client converts to SYP for display
-// via the live exchange rate (same as every other USD-stored figure).
-function toSavingsSummaryResponse({ totalSavingsUsd }) {
-  return { savings: { totalSavingsUsd } };
+// Account History "Money Saved" card.
+//
+// Money-Flow V2: SYP is the primary figure and it is a sum of FROZEN per-order
+// amounts, so the number stops moving every time the exchange rate does. The
+// three components are broken out because they answer different questions -
+// "the warehouse discounted this", "this was a package deal", "Phoenix
+// subsidised this" - while `totalSavingsSyp` is the headline.
+function toSavingsSummaryResponse(summary) {
+  return {
+    savings: {
+      offerAndManufacturerSyp: summary.offerAndManufacturerSyp,
+      advertisementSyp: summary.advertisementSyp,
+      platformDiscountSyp: summary.platformDiscountSyp,
+      totalSavingsSyp: summary.totalSavingsSyp,
+      // A frozen hint beside the SYP total, not a live conversion of it.
+      totalSavingsUsd: summary.totalSavingsUsd,
+    },
+  };
 }
 
 module.exports = {
