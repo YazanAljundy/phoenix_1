@@ -23,6 +23,7 @@ import 'package:phoenix/features/complaints/data/repositories/complaint_reposito
 import 'package:phoenix/features/debts/data/repositories/debt_repository_impl.dart';
 import 'package:phoenix/features/exchange_rate/data/repositories/exchange_rate_repository_impl.dart';
 import 'package:phoenix/features/notifications/data/repositories/notification_repository.dart';
+import 'package:phoenix/features/offers/data/repositories/offers_repository_impl.dart';
 import 'package:phoenix/features/returns/data/repositories/return_repository_impl.dart';
 import 'package:phoenix/features/reviews/data/repositories/review_repository_impl.dart';
 import 'package:phoenix/features/settings/presentation/managers/settings_cubit.dart';
@@ -49,6 +50,7 @@ Future<AppRouter> _pumpApp(WidgetTester tester) async {
   final debtRepository = DebtRepositoryImpl(apiClient: apiClient);
   final bannersRepository = BannersRepositoryImpl(apiClient: apiClient);
   final advertisementsRepository = AdvertisementsRepositoryImpl(apiClient: apiClient);
+  final offersRepository = OffersRepositoryImpl(apiClient: apiClient);
   final notificationRepository = NotificationRepository(storageService);
   final fcmService = FcmService(
     authRepository: authRepository,
@@ -81,6 +83,7 @@ Future<AppRouter> _pumpApp(WidgetTester tester) async {
       debtRepository: debtRepository,
       bannersRepository: bannersRepository,
       advertisementsRepository: advertisementsRepository,
+      offersRepository: offersRepository,
       notificationRepository: notificationRepository,
       fcmService: fcmService,
       appRouter: appRouter,

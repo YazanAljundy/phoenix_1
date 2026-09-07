@@ -3,11 +3,17 @@ import 'package:go_router/go_router.dart';
 import 'package:phoenix/core/constants/app_colors.dart';
 import 'package:phoenix/core/extensions/build_context_extensions.dart';
 
-// Section 6: the four top-level tabs (warehouses / my orders / account
-// history / profile) - everything else (catalog, cart, order tracking, and
-// now the returns and debts pages) pushes on top of this shell as a
+// Section 6: the five top-level tabs (warehouses / offers & ads / my orders /
+// account history / profile) - everything else (catalog, cart, order tracking,
+// and the returns and debts pages) pushes on top of this shell as a
 // full-screen route instead of being a tab, since those are detail flows
 // entered FROM a tab, not destinations of their own.
+//
+// The Offers & Ads tab sits second, next to the warehouse list: both are
+// browsing destinations, and a promotion leads straight back into that same
+// catalog flow. Its label is the short `navOffers` rather than the screen's own
+// "Offers & Ads" title - five labels have to fit one bar in both languages, and
+// every other tab here is one word too.
 class ScaffoldWithBottomNav extends StatelessWidget {
   const ScaffoldWithBottomNav({super.key, required this.navigationShell});
 
@@ -45,6 +51,11 @@ class ScaffoldWithBottomNav extends StatelessWidget {
               icon: const Icon(Icons.storefront_outlined),
               selectedIcon: Icon(Icons.storefront, color: AppColors.primaryOf(context)),
               label: l10n.navWarehouses,
+            ),
+            NavigationDestination(
+              icon: const Icon(Icons.local_offer_outlined),
+              selectedIcon: Icon(Icons.local_offer, color: AppColors.primaryOf(context)),
+              label: l10n.navOffers,
             ),
             NavigationDestination(
               icon: const Icon(Icons.receipt_long_outlined),

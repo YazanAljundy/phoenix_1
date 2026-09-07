@@ -6,6 +6,7 @@ const Offer = require('../models/offer.model');
 const { isWarehouseAvailable } = require('./warehouse.service');
 const { applyResolvedIdentity, escapeRegex } = require('./productCatalog.service');
 const { getDiscountMapForWarehouse } = require('./manufacturerDiscount.service');
+const { activeOfferFilter } = require('./offer.service');
 
 // The four fields a product's identity is made of (Section 14 Part 2). Both
 // the search below and the manufacturer list resolve them the same way:
@@ -178,11 +179,12 @@ async function listWarehouseProducts(
   const [offers, manufacturerDiscountByName] = await Promise.all([
     Offer.find({
       warehouseId,
-      status: 'approved',
-      startDate: { $lte: now },
-      // A permanent offer has no endDate (isPermanent true, endDate null) and
+      // The one "this offer is running right now" predicate, shared with the
+      // pharmacist-facing offers listing (offer.service.js) so the catalog and
+      // the Offers & Ads tab can never disagree about which offers are live. A
+      // permanent offer has no endDate (isPermanent true, endDate null) and
       // stays live from its start date on.
-      $or: [{ isPermanent: true }, { endDate: { $gte: now } }],
+      ...activeOfferFilter(now),
       productId: { $in: products.map((p) => p._id) },
     }).select('productId discountPercentage titleAr titleEn'),
     getDiscountMapForWarehouse(warehouseId),

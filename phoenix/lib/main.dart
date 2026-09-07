@@ -38,6 +38,8 @@ import 'package:phoenix/features/exchange_rate/data/repositories/exchange_rate_r
 import 'package:phoenix/features/exchange_rate/data/repositories/exchange_rate_repository_impl.dart';
 import 'package:phoenix/features/exchange_rate/presentation/managers/exchange_rate_cubit.dart';
 import 'package:phoenix/features/notifications/data/repositories/notification_repository.dart';
+import 'package:phoenix/features/offers/data/repositories/offers_repository.dart';
+import 'package:phoenix/features/offers/data/repositories/offers_repository_impl.dart';
 import 'package:phoenix/features/notifications/presentation/managers/notification_cubit.dart';
 import 'package:phoenix/features/returns/data/repositories/return_repository.dart';
 import 'package:phoenix/features/returns/data/repositories/return_repository_impl.dart';
@@ -99,6 +101,7 @@ Future<void> main() async {
   final debtRepository = DebtRepositoryImpl(apiClient: apiClient);
   final bannersRepository = BannersRepositoryImpl(apiClient: apiClient);
   final advertisementsRepository = AdvertisementsRepositoryImpl(apiClient: apiClient);
+  final offersRepository = OffersRepositoryImpl(apiClient: apiClient);
   final appRouter = AppRouter();
   runApp(
     MyApp(
@@ -118,6 +121,7 @@ Future<void> main() async {
       debtRepository: debtRepository,
       bannersRepository: bannersRepository,
       advertisementsRepository: advertisementsRepository,
+      offersRepository: offersRepository,
       notificationRepository: notificationRepository,
       fcmService: fcmService,
       appRouter: appRouter,
@@ -184,6 +188,7 @@ class MyApp extends StatelessWidget {
     required this.debtRepository,
     required this.bannersRepository,
     required this.advertisementsRepository,
+    required this.offersRepository,
     required this.notificationRepository,
     required this.fcmService,
     required this.appRouter,
@@ -206,6 +211,7 @@ class MyApp extends StatelessWidget {
   final DebtRepositoryImpl debtRepository;
   final BannersRepositoryImpl bannersRepository;
   final AdvertisementsRepositoryImpl advertisementsRepository;
+  final OffersRepositoryImpl offersRepository;
   final NotificationRepository notificationRepository;
   final FcmService fcmService;
   final AppRouter appRouter;
@@ -229,9 +235,11 @@ class MyApp extends StatelessWidget {
         ),
         RepositoryProvider<DebtRepository>.value(value: debtRepository),
         RepositoryProvider<BannersRepository>.value(value: bannersRepository),
-        // Read by AdvertisementCard to re-fetch a tapped package before it
-        // reaches the cart.
+        // Read by the shared package -> cart flow to re-fetch a tapped package
+        // before it reaches the cart (advertisement_cart_launcher.dart), and
+        // by the Offers & Ads tab to list what is running.
         RepositoryProvider<AdvertisementsRepository>.value(value: advertisementsRepository),
+        RepositoryProvider<OffersRepository>.value(value: offersRepository),
       ],
       child: MultiBlocProvider(
         providers: [

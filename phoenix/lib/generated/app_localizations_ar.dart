@@ -1429,4 +1429,75 @@ class AppLocalizationsAr extends AppLocalizations {
   String creditBalanceShort(String amount) {
     return 'رصيد لك: $amount';
   }
+
+  @override
+  String get navOffers => 'العروض';
+
+  @override
+  String get offersAndAdsTitle => 'العروض والإعلانات';
+
+  @override
+  String promotionsCountSubtitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count عرض حالياً',
+      many: '$count عرضاً حالياً',
+      few: '$count عروض حالياً',
+      two: 'عرضان حالياً',
+      one: 'عرض واحد حالياً',
+      zero: 'لا يوجد شيء حالياً',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get promotionsAllTitle => 'كل العروض والباقات';
+
+  @override
+  String get promotionsFilterAllTypes => 'الكل';
+
+  @override
+  String get promotionsFilterOffers => 'العروض';
+
+  @override
+  String get promotionsFilterPackages => 'الباقات';
+
+  @override
+  String get promotionsAllWarehouses => 'كل المستودعات';
+
+  @override
+  String get promotionsWarehouseFilterTitle => 'تصفية حسب المستودع';
+
+  @override
+  String get promotionsPackageBadge => 'باقة';
+
+  @override
+  String get promotionsEmptyTitle => 'لا توجد عروض حالياً';
+
+  @override
+  String get promotionsEmptyMessage =>
+      'ستظهر هنا العروض والباقات من المستودعات.';
+
+  @override
+  String get promotionsNoFilterResults => 'لا يوجد شيء يطابق هذه التصفية.';
+
+  @override
+  String get promotionsClearFilters => 'إزالة التصفية';
+
+  @override
+  String get promotionsError => 'تعذّر تحميل العروض.';
+
+  @override
+  String offerDiscountPercent(int percent) {
+    return 'خصم $percent٪';
+  }
+
+  @override
+  String offerEndsOn(String date) {
+    return 'حتى $date';
+  }
+
+  @override
+  String get offerPermanent => 'عرض دائم';
 }

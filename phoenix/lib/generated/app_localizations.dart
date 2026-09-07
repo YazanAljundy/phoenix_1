@@ -2455,6 +2455,114 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Credit: {amount}'**
   String creditBalanceShort(String amount);
+
+  /// Bottom-navigation label for the Offers & Ads tab. Deliberately shorter than the screen's own title (offersAndAdsTitle) so it fits a five-tab bar in both languages, matching the app's other one-word tab labels.
+  ///
+  /// In en, this message translates to:
+  /// **'Offers'**
+  String get navOffers;
+
+  /// No description provided for @offersAndAdsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Offers & Ads'**
+  String get offersAndAdsTitle;
+
+  /// No description provided for @promotionsCountSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, zero{Nothing running right now} one{1 running now} other{{count} running now}}'**
+  String promotionsCountSubtitle(int count);
+
+  /// No description provided for @promotionsAllTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'All offers & packages'**
+  String get promotionsAllTitle;
+
+  /// No description provided for @promotionsFilterAllTypes.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get promotionsFilterAllTypes;
+
+  /// No description provided for @promotionsFilterOffers.
+  ///
+  /// In en, this message translates to:
+  /// **'Offers'**
+  String get promotionsFilterOffers;
+
+  /// No description provided for @promotionsFilterPackages.
+  ///
+  /// In en, this message translates to:
+  /// **'Packages'**
+  String get promotionsFilterPackages;
+
+  /// No description provided for @promotionsAllWarehouses.
+  ///
+  /// In en, this message translates to:
+  /// **'All warehouses'**
+  String get promotionsAllWarehouses;
+
+  /// No description provided for @promotionsWarehouseFilterTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Filter by warehouse'**
+  String get promotionsWarehouseFilterTitle;
+
+  /// No description provided for @promotionsPackageBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Package'**
+  String get promotionsPackageBadge;
+
+  /// No description provided for @promotionsEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing on offer right now'**
+  String get promotionsEmptyTitle;
+
+  /// No description provided for @promotionsEmptyMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Offers and packages from your warehouses will show up here.'**
+  String get promotionsEmptyMessage;
+
+  /// No description provided for @promotionsNoFilterResults.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing matches these filters.'**
+  String get promotionsNoFilterResults;
+
+  /// No description provided for @promotionsClearFilters.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear filters'**
+  String get promotionsClearFilters;
+
+  /// No description provided for @promotionsError.
+  ///
+  /// In en, this message translates to:
+  /// **'Offers couldn\'t be loaded.'**
+  String get promotionsError;
+
+  /// No description provided for @offerDiscountPercent.
+  ///
+  /// In en, this message translates to:
+  /// **'{percent}% off'**
+  String offerDiscountPercent(int percent);
+
+  /// No description provided for @offerEndsOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Until {date}'**
+  String offerEndsOn(String date);
+
+  /// No description provided for @offerPermanent.
+  ///
+  /// In en, this message translates to:
+  /// **'Ongoing'**
+  String get offerPermanent;
 }
 
 class _AppLocalizationsDelegate

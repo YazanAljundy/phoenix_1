@@ -1425,4 +1425,72 @@ class AppLocalizationsEn extends AppLocalizations {
   String creditBalanceShort(String amount) {
     return 'Credit: $amount';
   }
+
+  @override
+  String get navOffers => 'Offers';
+
+  @override
+  String get offersAndAdsTitle => 'Offers & Ads';
+
+  @override
+  String promotionsCountSubtitle(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count running now',
+      one: '1 running now',
+      zero: 'Nothing running right now',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get promotionsAllTitle => 'All offers & packages';
+
+  @override
+  String get promotionsFilterAllTypes => 'All';
+
+  @override
+  String get promotionsFilterOffers => 'Offers';
+
+  @override
+  String get promotionsFilterPackages => 'Packages';
+
+  @override
+  String get promotionsAllWarehouses => 'All warehouses';
+
+  @override
+  String get promotionsWarehouseFilterTitle => 'Filter by warehouse';
+
+  @override
+  String get promotionsPackageBadge => 'Package';
+
+  @override
+  String get promotionsEmptyTitle => 'Nothing on offer right now';
+
+  @override
+  String get promotionsEmptyMessage =>
+      'Offers and packages from your warehouses will show up here.';
+
+  @override
+  String get promotionsNoFilterResults => 'Nothing matches these filters.';
+
+  @override
+  String get promotionsClearFilters => 'Clear filters';
+
+  @override
+  String get promotionsError => 'Offers couldn\'t be loaded.';
+
+  @override
+  String offerDiscountPercent(int percent) {
+    return '$percent% off';
+  }
+
+  @override
+  String offerEndsOn(String date) {
+    return 'Until $date';
+  }
+
+  @override
+  String get offerPermanent => 'Ongoing';
 }

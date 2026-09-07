@@ -5,6 +5,7 @@ import 'package:phoenix/core/services/navigation_service.dart';
 import 'package:phoenix/features/account_history/data/repositories/savings_repository.dart';
 import 'package:phoenix/features/account_history/presentation/managers/savings_cubit.dart';
 import 'package:phoenix/features/account_history/presentation/views/account_history_view.dart';
+import 'package:phoenix/features/advertisements/data/repositories/advertisements_repository.dart';
 import 'package:phoenix/features/auth/data/models/registration_draft.dart';
 import 'package:phoenix/features/auth/presentation/views/approval_pending_view.dart';
 import 'package:phoenix/features/auth/presentation/views/otp_verification_view.dart';
@@ -37,9 +38,12 @@ import 'package:phoenix/features/debts/presentation/views/my_debts_view.dart';
 import 'package:phoenix/features/my_orders/presentation/managers/my_orders_cubit.dart';
 import 'package:phoenix/features/my_orders/presentation/views/my_orders_view.dart';
 import 'package:phoenix/features/notifications/presentation/views/notification_center_view.dart';
+import 'package:phoenix/features/offers/data/repositories/offers_repository.dart';
 import 'package:phoenix/features/order_tracking/presentation/managers/order_tracking_cubit.dart';
 import 'package:phoenix/features/order_tracking/presentation/views/order_tracking_view.dart';
 import 'package:phoenix/features/profile/presentation/views/profile_view.dart';
+import 'package:phoenix/features/promotions/presentation/managers/promotions_cubit.dart';
+import 'package:phoenix/features/promotions/presentation/views/promotions_view.dart';
 import 'package:phoenix/features/returns/data/repositories/return_repository.dart';
 import 'package:phoenix/features/returns/presentation/managers/my_returns_cubit.dart';
 import 'package:phoenix/features/returns/presentation/views/my_returns_view.dart';
@@ -350,6 +354,28 @@ class AppRouter {
                 name: RouteNames.warehouseSelection,
                 path: RoutePaths.warehouseSelection,
                 builder: (context, state) => const WarehouseSelectionView(),
+              ),
+            ],
+          ),
+          // The Offers & Ads tab. Its own branch, so browsing promotions keeps
+          // its scroll position and filters while the pharmacist steps away to
+          // another tab - and so a tapped promotion pushes the existing
+          // catalog / cart screens full-screen over the shell, exactly as
+          // every other entry point into them does.
+          StatefulShellBranch(
+            routes: [
+              GoRoute(
+                name: RouteNames.promotions,
+                path: RoutePaths.promotions,
+                builder: (context, state) {
+                  return BlocProvider(
+                    create: (context) => PromotionsCubit(
+                      offersRepository: context.read<OffersRepository>(),
+                      advertisementsRepository: context.read<AdvertisementsRepository>(),
+                    ),
+                    child: const PromotionsView(),
+                  );
+                },
               ),
             ],
           ),

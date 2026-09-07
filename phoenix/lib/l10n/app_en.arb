@@ -769,5 +769,47 @@
         "type": "String"
       }
     }
-  }
+  },
+  "navOffers": "Offers",
+  "@navOffers": {
+    "description": "Bottom-navigation label for the Offers & Ads tab. Deliberately shorter than the screen's own title (offersAndAdsTitle) so it fits a five-tab bar in both languages, matching the app's other one-word tab labels."
+  },
+  "offersAndAdsTitle": "Offers & Ads",
+  "promotionsCountSubtitle": "{count, plural, zero{Nothing running right now} one{1 running now} other{{count} running now}}",
+  "@promotionsCountSubtitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "promotionsAllTitle": "All offers & packages",
+  "promotionsFilterAllTypes": "All",
+  "promotionsFilterOffers": "Offers",
+  "promotionsFilterPackages": "Packages",
+  "promotionsAllWarehouses": "All warehouses",
+  "promotionsWarehouseFilterTitle": "Filter by warehouse",
+  "promotionsPackageBadge": "Package",
+  "promotionsEmptyTitle": "Nothing on offer right now",
+  "promotionsEmptyMessage": "Offers and packages from your warehouses will show up here.",
+  "promotionsNoFilterResults": "Nothing matches these filters.",
+  "promotionsClearFilters": "Clear filters",
+  "promotionsError": "Offers couldn't be loaded.",
+  "offerDiscountPercent": "{percent}% off",
+  "@offerDiscountPercent": {
+    "placeholders": {
+      "percent": {
+        "type": "int"
+      }
+    }
+  },
+  "offerEndsOn": "Until {date}",
+  "@offerEndsOn": {
+    "placeholders": {
+      "date": {
+        "type": "String"
+      }
+    }
+  },
+  "offerPermanent": "Ongoing"
 }

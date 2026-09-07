@@ -42,6 +42,11 @@ class Endpoints {
 
   static const String activeBanners = '/banners/active';
 
+  // Every product offer currently running, across every warehouse - the
+  // Offers & Ads tab's other half. Read-only: buying a discounted product
+  // still goes through the catalog and POST /orders.
+  static const String activeOffers = '/offers/active';
+
   static const String activeAdvertisements = '/advertisements/active';
   // Builds a cart payload from an advertisement package - creates no order,
   // same as the reorder endpoint above.
