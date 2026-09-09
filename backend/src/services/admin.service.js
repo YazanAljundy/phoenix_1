@@ -401,7 +401,7 @@ const DEFAULT_COMMISSION_RATE = 1;
 // approval step, so there's deliberately no second confirmation.
 //
 // This is the only place in the app that mints a warehouse login. There's no
-// warehouse self-registration route (auth.service.js's registerOrLogin is
+// warehouse self-registration route (auth.service.js's register is
 // hardcoded to role 'pharmacy'), which is what keeps the role boundary intact.
 async function createWarehouseAccount({
   ownerName,

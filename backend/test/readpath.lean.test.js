@@ -47,6 +47,8 @@ const LEGACY_WAREHOUSE_USER_ID = new mongoose.Types.ObjectId();
 const PASSWORD_USER_ID = new mongoose.Types.ObjectId();
 const PASSWORD_USER_PHONE = '0910000009';
 const PASSWORD_USER_SECRET = 'correct horse';
+// Deliberately not seeded in test.before - the register test creates it.
+const NEW_REGISTRATION_PHONE = '0910000010';
 
 test.before(async () => {
   await startMemoryMongo({ dbName: 'feniq-leanpath-test' });
@@ -235,19 +237,51 @@ test('loginWithPassword is unaffected by the +password projection', async () => 
   await User.updateOne({ _id: PASSWORD_USER_ID }, { status: 'active' });
 });
 
-test('registerOrLogin re-entry returns the full auth shape for an existing user', async () => {
-  const result = await authService.registerOrLogin({
-    name: 'ignored', pharmacyName: 'ignored', phone: PASSWORD_USER_PHONE,
-    address: 'ignored', password: 'ignored',
+// Was 'registerOrLogin re-entry returns the full auth shape for an existing
+// user'. That re-entry branch WAS the F-01 authentication bypass - it issued a
+// token for any existing phone with no password check - so the assertion now
+// runs the other way. The full-auth-shape coverage this used to provide lives
+// on in the new-account case below and in the loginWithPassword test above.
+test('register refuses an existing phone instead of issuing a token', async () => {
+  await assert.rejects(
+    () => authService.register({
+      name: 'ignored', pharmacyName: 'ignored', phone: PASSWORD_USER_PHONE,
+      address: 'ignored', password: 'ignored',
+    }),
+    (err) => {
+      assert.strictEqual(err.statusCode, 409, 'conflict, not a successful login');
+      assert.strictEqual(err.code, 'PHONE_ALREADY_REGISTERED');
+      return true;
+    }
+  );
+});
+
+// The new-account branch had no coverage at all before F-01. It is the only
+// path left that mints a token from /auth/register, so its shape matters.
+test('register creates a pending pharmacy and returns the documented auth shape', async () => {
+  const result = await authService.register({
+    name: 'Fresh Owner',
+    pharmacyName: 'Fresh Pharmacy',
+    phone: NEW_REGISTRATION_PHONE,
+    address: 'Somewhere',
+    password: 'fresh-password',
   });
   const payload = authViewModel.toAuthResponse(result);
+
   assert.deepStrictEqual(
     Object.keys(payload.user).sort(),
     ['id', 'lang', 'name', 'phone', 'role', 'status'].sort()
   );
-  assert.strictEqual(payload.user.name, 'Pw Pharm', 'the stored name, not the re-typed one');
-  assert.strictEqual(payload.pharmacy.ownerName, 'Pw Owner');
+  assert.strictEqual(payload.user.role, 'pharmacy');
+  assert.strictEqual(payload.user.status, 'pending', 'new accounts await admin approval');
+  assert.strictEqual(payload.pharmacy.ownerName, 'Fresh Owner');
+  assert.strictEqual(payload.warehouse, null);
   assert.ok(result.token);
+
+  // The password is hashed, never stored as typed.
+  const stored = await User.findOne({ phone: NEW_REGISTRATION_PHONE }).select('+password');
+  assert.notStrictEqual(stored.password, 'fresh-password');
+  assert.ok(stored.password.startsWith('$2'), 'a bcrypt hash');
 });
 
 test('authenticateToken still enforces its rules with the narrowed projection', async () => {

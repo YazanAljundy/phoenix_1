@@ -27,7 +27,7 @@ function issueToken(user) {
   });
 }
 
-// .lean(): every caller (registerOrLogin, login, loginWithPassword, getMe)
+// .lean(): every caller (register, login, loginWithPassword, getMe)
 // passes the result straight to auth.viewmodel.js and never saves it.
 //
 // .select(): serializePharmacy / serializeWarehouse in auth.viewmodel.js are
@@ -63,15 +63,22 @@ async function loadProfile(user) {
 // intact (not deleted) so this can be restored later by re-adding the
 // otpService.verifyOtp(phone, otpCode) call this function used to make.
 //
-// The registration screen (Section 6.2) is the app's only entry point - there is
-// no separate "log back in" screen in the 10-screen MVP. So a phone that already
-// has an account is treated as a re-entry: registering again logs the existing
-// account back in and the freshly typed name/pharmacyName/address are discarded
-// rather than rejected with a conflict error. This also gracefully covers JWT
-// expiry (7 days) and reinstalls, without adding a screen the spec doesn't call
-// for. The same discard applies to password (Section 6-2 update): it's only
-// ever captured once, at the account's actual creation.
-async function registerOrLogin({
+// SECURITY (audit F-01): this function used to double as a login. When `phone`
+// already existed it returned a freshly issued token for that account WITHOUT
+// ever comparing the submitted password - and without filtering by role, so
+// knowing any phone number (a warehouse's, published by GET /warehouses, or an
+// admin's) was enough to mint a valid token for it. That re-entry branch is
+// gone: an existing phone is now a 409 and no token is issued from this path at
+// all. Returning users go through POST /auth/login-password, which the pharmacy
+// app has had a dedicated screen for since PasswordLoginView landed - the
+// "registration is the only entry point" premise this branch was built on had
+// already stopped being true.
+//
+// Note the 409 makes this endpoint an account-existence oracle. That is
+// inherent to any synchronous registration (the caller has to be told the
+// number is taken) and is the accepted trade-off; the enumeration that mattered
+// - silently handing over the account - is what actually got closed here.
+async function register({
   name,
   pharmacyName,
   phone,
@@ -79,13 +86,12 @@ async function registerOrLogin({
   password,
   location,
 }) {
-  const existingUser = await User.findOne({ phone }).select(AUTH_USER_FIELDS);
+  const existingUser = await User.findOne({ phone }).select('_id').lean();
   if (existingUser) {
-    if (existingUser.status === 'blocked') {
-      throw ApiError.forbidden('This account has been blocked. Please contact support.');
-    }
-    const { pharmacy, warehouse } = await loadProfile(existingUser);
-    return { user: existingUser, pharmacy, warehouse, token: issueToken(existingUser) };
+    throw ApiError.conflict(
+      'This phone number is already registered. Please log in instead.',
+      'PHONE_ALREADY_REGISTERED'
+    );
   }
 
   const hashedPassword = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
@@ -127,7 +133,7 @@ async function registerOrLogin({
 }
 
 // TODO(re-enable-otp): kept fully working, but no current client calls this -
-// they use loginWithPassword below instead. See the TODO on registerOrLogin.
+// they use loginWithPassword below instead. See the TODO on register.
 async function login({ phone, otpCode }) {
   await otpService.verifyOtp(phone, otpCode);
 
@@ -145,7 +151,7 @@ async function login({ phone, otpCode }) {
 
 // Section 6-2/3: phone + password, no OTP - now the ONLY login mechanism for
 // all three roles (pharmacy, warehouse, admin) while OTP is disabled (see the
-// TODO on registerOrLogin above). Previously scoped to role='pharmacy' only;
+// TODO on register above). Previously scoped to role='pharmacy' only;
 // generalized here since the warehouse React panel and admin now use this
 // same endpoint instead of their own OTP flow.
 async function loginWithPassword({ phone, password }) {
@@ -199,4 +205,4 @@ async function getMe(userId) {
   return { user, pharmacy, warehouse };
 }
 
-module.exports = { registerOrLogin, login, loginWithPassword, getMe, registerDeviceToken };
+module.exports = { register, login, loginWithPassword, getMe, registerDeviceToken };

@@ -188,9 +188,13 @@ class AuthCubit extends Cubit<AuthState> {
   }
 
   // Section 6-2/3: registers and saves directly - no OTP step (temporarily
-  // disabled, see auth_repository.dart). Also serves as the returning-user
-  // re-entry path: if `phone` already has an account, the backend logs it
-  // back in and ignores name/pharmacyName/address/password.
+  // disabled, see auth_repository.dart).
+  //
+  // Creates NEW accounts only. This used to double as the returning-user
+  // re-entry path - a phone that already had an account was silently logged
+  // back in - but that was an authentication bypass (audit F-01) and the
+  // backend now answers an existing phone with 409 PHONE_ALREADY_REGISTERED.
+  // Returning users go through loginWithPassword / PasswordLoginView.
   Future<bool> register({
     required String name,
     required String pharmacyName,

@@ -39,7 +39,7 @@ function parseOptionalLocation(body) {
 
 // TODO(re-enable-otp): route stays live and fully working, but no current
 // client calls it - registration/login are password-only for now. See the
-// TODO in auth.service.js's registerOrLogin.
+// TODO in auth.service.js's register.
 const sendOtp = asyncHandler(async (req, res) => {
   const phone = normalizePhone(req.body.phone);
   if (!isValidPhone(phone)) {
@@ -70,7 +70,7 @@ const register = asyncHandler(async (req, res) => {
 
   const location = parseOptionalLocation(req.body);
 
-  const result = await authService.registerOrLogin({
+  const result = await authService.register({
     name,
     pharmacyName,
     phone,
