@@ -1,8 +1,10 @@
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
+const crypto = require('crypto');
 const env = require('../config/env');
 const { ApiError } = require('../utils/ApiError');
 const User = require('../models/user.model');
+const RefreshToken = require('../models/refreshToken.model');
 const Pharmacy = require('../models/pharmacy.model');
 const Warehouse = require('../models/warehouse.model');
 const otpService = require('./otp.service');
@@ -36,12 +38,87 @@ async function comparePasswordAgainstNothing(password) {
 //   - createdAt / updatedAt: never serialised, never branched on.
 // loadProfile only needs role/_id, issueToken only needs role/_id, and the
 // blocked-account guard only needs status - all still present here.
-const AUTH_USER_FIELDS = 'name phone role status lang';
+// tokenVersion is here so issueToken can stamp the current value into every
+// token it mints; serializeUser does not read it and it never reaches a
+// response.
+const AUTH_USER_FIELDS = 'name phone role status lang tokenVersion';
 
+// `sub` and `role` are unchanged - both are part of the contract three
+// clients and rateLimiter.js already depend on. tokenVersion is additive:
+// authenticate reads it back to decide whether this token has been revoked.
 function issueToken(user) {
-  return jwt.sign({ sub: user._id.toString(), role: user.role }, env.jwtSecret, {
-    expiresIn: env.jwtExpiresIn,
+  return jwt.sign(
+    { sub: user._id.toString(), role: user.role, tokenVersion: user.tokenVersion ?? 0 },
+    env.jwtSecret,
+    { expiresIn: env.jwtExpiresIn }
+  );
+}
+
+// The raw token the client stores. 32 bytes of CSPRNG output - it is a
+// bearer credential, not a password, so it needs entropy rather than a slow
+// hash. Only its digest is ever persisted.
+function generateRefreshToken() {
+  return crypto.randomBytes(32).toString('base64url');
+}
+
+function hashRefreshToken(rawToken) {
+  return crypto.createHash('sha256').update(rawToken).digest('hex');
+}
+
+// Issues a short-lived access token plus a refresh token row. Every
+// successful authentication goes through here.
+async function issueTokenPair(user) {
+  const refreshToken = generateRefreshToken();
+  await RefreshToken.create({
+    userId: user._id,
+    tokenHash: hashRefreshToken(refreshToken),
+    expiresAt: new Date(Date.now() + env.refreshTokenTtlDays * 24 * 60 * 60 * 1000),
   });
+  return { token: issueToken(user), refreshToken };
+}
+
+// Kills every live session for one account: the refresh rows go, and the
+// tokenVersion bump invalidates access tokens already in the wild that would
+// otherwise stay valid until they expired on their own. Callers that hold a
+// hydrated user document pass it so the bump lands in their own .save().
+async function revokeAllSessions(userId) {
+  await RefreshToken.deleteMany({ userId });
+}
+
+// Exchanges a refresh token for a fresh pair, rotating as it goes: the row
+// just used is deleted and replaced. A replayed token therefore finds
+// nothing and is refused - if an attacker uses a stolen refresh token, the
+// real client is logged out on its next refresh, which is the signal that
+// something went wrong. Every guard authenticate applies is re-applied here,
+// so a blocked or deleted account cannot refresh its way back in.
+async function refreshSession(rawToken) {
+  if (typeof rawToken !== 'string' || !rawToken) {
+    throw ApiError.unauthorized('Invalid or expired session.', 'INVALID_REFRESH_TOKEN');
+  }
+
+  const existing = await RefreshToken.findOne({ tokenHash: hashRefreshToken(rawToken) });
+  if (!existing || existing.expiresAt.getTime() <= Date.now()) {
+    throw ApiError.unauthorized('Invalid or expired session.', 'INVALID_REFRESH_TOKEN');
+  }
+
+  // Consume it before anything else can go wrong, so a token cannot be spent
+  // twice even if the work below throws.
+  await RefreshToken.deleteOne({ _id: existing._id });
+
+  const user = await User.findById(existing.userId).select(AUTH_USER_FIELDS);
+  if (!user) {
+    throw ApiError.unauthorized('Invalid or expired session.', 'INVALID_REFRESH_TOKEN');
+  }
+  if (user.status === 'blocked') {
+    throw ApiError.forbidden(
+      'This account has been blocked. Please contact support.',
+      'ACCOUNT_BLOCKED'
+    );
+  }
+
+  const { pharmacy, warehouse } = await loadProfile(user);
+  const pair = await issueTokenPair(user);
+  return { user, pharmacy, warehouse, ...pair };
 }
 
 // .lean(): every caller (register, login, loginWithPassword, getMe)
@@ -146,7 +223,7 @@ async function register({
     role: user.role,
   });
 
-  return { user, pharmacy, warehouse: null, token: issueToken(user) };
+  return { user, pharmacy, warehouse: null, ...(await issueTokenPair(user)) };
 }
 
 // TODO(re-enable-otp): kept fully working, but no current client calls this -
@@ -174,7 +251,7 @@ async function login({ phone, otpCode }) {
   }
 
   const { pharmacy, warehouse } = await loadProfile(user);
-  return { user, pharmacy, warehouse, token: issueToken(user) };
+  return { user, pharmacy, warehouse, ...(await issueTokenPair(user)) };
 }
 
 // Section 6-2/3: phone + password, no OTP - now the ONLY login mechanism for
@@ -213,7 +290,7 @@ async function loginWithPassword({ phone, password }) {
   }
 
   const { pharmacy, warehouse } = await loadProfile(user);
-  return { user, pharmacy, warehouse, token: issueToken(user) };
+  return { user, pharmacy, warehouse, ...(await issueTokenPair(user)) };
 }
 
 // A token can only ever belong to one user at a time - if this exact device
@@ -246,4 +323,12 @@ async function getMe(userId) {
   return { user, pharmacy, warehouse };
 }
 
-module.exports = { register, login, loginWithPassword, getMe, registerDeviceToken };
+module.exports = {
+  register,
+  login,
+  loginWithPassword,
+  getMe,
+  registerDeviceToken,
+  refreshSession,
+  revokeAllSessions,
+};

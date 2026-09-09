@@ -13,7 +13,13 @@ module.exports = {
   port: parseInt(process.env.PORT, 10) || 4000,
   mongodbUri: required('MONGODB_URI'),
   jwtSecret: required('JWT_SECRET'),
-  jwtExpiresIn: process.env.JWT_EXPIRES_IN || '7d',
+  // 24h, down from 7d (audit F-03). A stolen access token is now useful for
+  // a day rather than a week; clients ride over the expiry with the refresh
+  // token instead of bouncing the user to the login screen.
+  jwtExpiresIn: process.env.JWT_EXPIRES_IN || '24h',
+  // How long a refresh token stays valid. Rotated on every use, so this is
+  // the cap on an idle session, not on a live one.
+  refreshTokenTtlDays: parseInt(process.env.REFRESH_TOKEN_TTL_DAYS, 10) || 30,
   corsOrigins: (process.env.CORS_ORIGINS || '')
     .split(',')
     .map((origin) => origin.trim())

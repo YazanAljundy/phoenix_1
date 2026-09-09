@@ -3,6 +3,7 @@ const bcrypt = require('bcrypt');
 const { ApiError } = require('../utils/ApiError');
 const { normalizePhone, isValidPhone } = require('../utils/phone');
 const User = require('../models/user.model');
+const RefreshToken = require('../models/refreshToken.model');
 const Pharmacy = require('../models/pharmacy.model');
 const Warehouse = require('../models/warehouse.model');
 const notificationService = require('./notification.service');
@@ -297,7 +298,14 @@ async function blockAccount(userId) {
     );
   }
   user.status = 'blocked';
+  // Blocking already stops the next request - authenticate re-reads status
+  // from the DB every time. What it did not stop was the refresh token: the
+  // account could mint itself a fresh access token for another 30 days. Bump
+  // the version and drop the sessions so the block is total and immediate
+  // (audit F-03).
+  user.tokenVersion = (user.tokenVersion ?? 0) + 1;
   await user.save();
+  await RefreshToken.deleteMany({ userId: user._id });
 
   emitToAdmins(EVENTS.ACCOUNT_STATUS_UPDATED, {
     userId: user._id.toString(),
@@ -370,7 +378,14 @@ async function approveAccount(userId) {
 async function rejectAccount(userId) {
   const user = await findPendingUserOrThrow(userId);
   user.status = 'blocked';
+  // Blocking already stops the next request - authenticate re-reads status
+  // from the DB every time. What it did not stop was the refresh token: the
+  // account could mint itself a fresh access token for another 30 days. Bump
+  // the version and drop the sessions so the block is total and immediate
+  // (audit F-03).
+  user.tokenVersion = (user.tokenVersion ?? 0) + 1;
   await user.save();
+  await RefreshToken.deleteMany({ userId: user._id });
 
   emitToAdmins(EVENTS.ACCOUNT_STATUS_UPDATED, {
     userId: user._id.toString(),

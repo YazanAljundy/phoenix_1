@@ -1,5 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useState } from 'react';
-import { api, getToken, setToken } from '../api/client';
+import { api, getToken, setSession } from '../api/client';
 
 const AuthContext = createContext(null);
 
@@ -25,7 +25,7 @@ export function AuthProvider({ children }) {
         setStatus('authenticated');
       })
       .catch(() => {
-        setToken(null);
+        setSession(null);
         setStatus('unauthenticated');
       });
   }, []);
@@ -41,14 +41,16 @@ export function AuthProvider({ children }) {
     if (!PANEL_ROLES.includes(data.user.role)) {
       throw new Error('This panel is for admin and warehouse accounts only.');
     }
-    setToken(data.token);
+    setSession({ token: data.token, refreshToken: data.refreshToken });
     setUser(data.user);
     setWarehouse(data.warehouse);
     setStatus('authenticated');
   }, []);
 
   const logout = useCallback(() => {
-    setToken(null);
+    // Both halves, or the refresh token would quietly outlive the session
+    // it belongs to and could mint a new access token after sign-out.
+    setSession(null);
     setUser(null);
     setWarehouse(null);
     setStatus('unauthenticated');

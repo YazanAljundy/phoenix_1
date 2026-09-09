@@ -123,6 +123,21 @@ const loginWithPassword = asyncHandler(async (req, res) => {
   });
 });
 
+// Deliberately unauthenticated: the access token this is called with is
+// expired by definition, so requiring a valid one would make it useless.
+// The refresh token in the body is the credential.
+const refresh = asyncHandler(async (req, res) => {
+  const refreshToken = requireNonEmptyString(req.body.refreshToken, 'refreshToken is required.');
+
+  const result = await authService.refreshSession(refreshToken);
+
+  res.json({
+    success: true,
+    message: 'Session refreshed.',
+    ...authViewModel.toAuthResponse(result),
+  });
+});
+
 const me = asyncHandler(async (req, res) => {
   const result = await authService.getMe(req.user._id);
   res.json({ success: true, ...authViewModel.toMeResponse(result) });
@@ -154,4 +169,12 @@ const registerDeviceToken = asyncHandler(async (req, res) => {
   res.json({ success: true, message: 'Device registered.' });
 });
 
-module.exports = { sendOtp, register, login, loginWithPassword, me, registerDeviceToken };
+module.exports = {
+  sendOtp,
+  register,
+  login,
+  loginWithPassword,
+  refresh,
+  me,
+  registerDeviceToken,
+};

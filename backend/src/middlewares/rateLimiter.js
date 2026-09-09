@@ -87,9 +87,31 @@ const authLimiter = rateLimit({
   message: TOO_MANY_REQUESTS,
 });
 
+// POST /auth/refresh gets its own, far more generous per-IP bucket rather
+// than sharing authLimiter's 20.
+//
+// Access tokens live 24h, so a pharmacy that opened the app at 9am yesterday
+// refreshes at about 9am today - and behind a carrier NAT that is dozens of
+// pharmacies refreshing inside the same quarter-hour from one address. At 20
+// per 15 minutes that morning stampede would rediscover the exact CGNAT
+// availability cliff documented at the top of this file, except this time it
+// would log people out rather than just slow them down.
+//
+// Still IP-keyed and still bounded: a refresh presents no verifiable JWT
+// identity (that is the point of it), so the address is the only key
+// available, exactly as for authLimiter.
+const refreshLimiter = rateLimit({
+  windowMs: WINDOW_MS,
+  limit: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: TOO_MANY_REQUESTS,
+});
+
 module.exports = {
   apiLimiter,
   authLimiter,
+  refreshLimiter,
   // Exported for the rate-limiter tests, which assert the keying strategy
   // directly rather than by driving 300 requests through an app.
   _identify: identify,

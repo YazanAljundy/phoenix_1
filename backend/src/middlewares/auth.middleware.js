@@ -37,9 +37,21 @@ async function authenticateToken(token) {
   //    needed.
   //
   // Anything added here that needs a further field must extend this select.
-  const user = await User.findById(payload.sub).select('_id role status').lean();
+  const user = await User.findById(payload.sub).select('_id role status tokenVersion').lean();
   if (!user) {
     throw ApiError.unauthorized('User no longer exists.');
+  }
+
+  // Revocation check (audit F-03). Bumping users.tokenVersion invalidates
+  // every access token already issued for that account - there is otherwise
+  // no way to kill a stolen token before it expires on its own. This rides
+  // on the findById above, so it costs no extra query.
+  //
+  // Both sides default to 0 so the rollout is silent: tokens minted before
+  // the claim existed carry undefined, and user documents created before the
+  // field existed read undefined, and undefined ?? 0 === 0 either way.
+  if ((payload.tokenVersion ?? 0) !== (user.tokenVersion ?? 0)) {
+    throw ApiError.unauthorized('Session has been revoked. Please sign in again.');
   }
   if (user.status === 'blocked') {
     throw ApiError.forbidden('This account has been blocked.');

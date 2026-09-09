@@ -9,6 +9,7 @@ import 'package:feniq/core/services/auth_event_bus.dart';
 import 'package:feniq/core/services/fcm_service.dart';
 import 'package:feniq/core/services/navigation_service.dart';
 import 'package:feniq/core/services/secure_storage_service.dart';
+import 'package:feniq/features/auth/data/models/auth_response.dart';
 import 'package:feniq/features/auth/data/models/user_model.dart';
 import 'package:feniq/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:feniq/routes/route_names.dart';
@@ -215,7 +216,7 @@ class AuthCubit extends Cubit<AuthState> {
         latitude: latitude,
         longitude: longitude,
       );
-      await _secureStorage.write(StorageKeys.authToken, result.token);
+      await _persistSession(result);
       _onAuthenticated();
       final sessionStatus = _sessionStatusFor(result.user);
       emit(
@@ -252,7 +253,7 @@ class AuthCubit extends Cubit<AuthState> {
         phone: phone,
         password: password,
       );
-      await _secureStorage.write(StorageKeys.authToken, result.token);
+      await _persistSession(result);
       _onAuthenticated();
       final sessionStatus = _sessionStatusFor(result.user);
       emit(
@@ -281,11 +282,34 @@ class AuthCubit extends Cubit<AuthState> {
     _isHandlingUnauthorized = false;
     _lastValidatedAt = null;
     try {
-      await _secureStorage.delete(StorageKeys.authToken);
+      await _clearStoredSession();
     } catch (_) {
       // Best-effort - the local session is cleared regardless.
     }
     emit(const AuthState(sessionStatus: SessionStatus.unauthenticated));
+  }
+
+  // Both tokens land together or not at all. The refresh token is what lets
+  // AuthInterceptor ride over the 24h access-token expiry (audit F-03)
+  // without bouncing the user to the login screen.
+  Future<void> _persistSession(AuthResponse result) async {
+    await _secureStorage.write(StorageKeys.authToken, result.token);
+    final refreshToken = result.refreshToken;
+    if (refreshToken != null && refreshToken.isNotEmpty) {
+      await _secureStorage.write(StorageKeys.refreshToken, refreshToken);
+    } else {
+      // Talking to a backend that predates refresh tokens. Drop any stale
+      // one rather than leaving a previous session's credential behind.
+      await _secureStorage.delete(StorageKeys.refreshToken);
+    }
+  }
+
+  // Signing out must leave nothing behind that could resume the session -
+  // and the refresh token is exactly that, so it has to go with the access
+  // token rather than outliving it in secure storage.
+  Future<void> _clearStoredSession() async {
+    await _secureStorage.delete(StorageKeys.authToken);
+    await _secureStorage.delete(StorageKeys.refreshToken);
   }
 
   // A fresh, confirmed sign-in: re-arm the 401 handler and reset the
@@ -308,7 +332,7 @@ class AuthCubit extends Cubit<AuthState> {
         state.sessionStatus == SessionStatus.unauthenticated;
     _log('[AUTH] Handling unauthorized - clearing token and session');
     try {
-      await _secureStorage.delete(StorageKeys.authToken);
+      await _clearStoredSession();
     } catch (_) {
       // Best-effort cleanup.
     }

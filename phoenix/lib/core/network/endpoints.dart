@@ -5,6 +5,9 @@ class Endpoints {
   static const String register = '/auth/register';
   static const String login = '/auth/login';
   static const String loginPassword = '/auth/login-password';
+  /// Exchanges a refresh token for a new access token. Unauthenticated by
+  /// design - the access token it renews is expired by the time this runs.
+  static const String refresh = '/auth/refresh';
   static const String me = '/auth/me';
   static const String deviceToken = '/auth/device-token';
 

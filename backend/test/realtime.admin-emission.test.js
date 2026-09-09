@@ -153,6 +153,11 @@ stubModule('models/pharmacy.model.js', { find: async () => [], findOne: async ()
 stubModule('models/warehouse.model.js', { find: async () => [], findById: async () => null });
 stubModule('models/product.model.js', productModelStub);
 stubModule('models/counter.model.js', { findOneAndUpdate: async () => ({ seq: 1 }) });
+// blockAccount/rejectAccount revoke the account's live sessions (audit
+// F-03). Stubbed like every other model here so these tests keep needing no
+// database - without it the deleteMany waits on a connection that is never
+// made and the test times out.
+stubModule('models/refreshToken.model.js', { deleteMany: async () => ({ deletedCount: 0 }) });
 
 const adminService = require('../src/services/admin.service');
 const adminBannerService = require('../src/services/adminBanner.service');

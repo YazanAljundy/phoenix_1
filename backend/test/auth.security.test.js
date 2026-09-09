@@ -9,6 +9,10 @@
 // There was no HTTP-level coverage of /auth/* at all before this.
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-auth-security-tests';
 process.env.MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/feniq-auth-security-test';
+// Pinned rather than inherited: dotenv loads backend/.env for these tests,
+// and the access-token lifetime assertion below has to describe the code,
+// not whatever this particular machine has configured.
+process.env.JWT_EXPIRES_IN = '24h';
 process.env.NODE_ENV = 'test';
 
 const test = require('node:test');
@@ -241,4 +245,141 @@ test('F-02: a correct password still logs in and returns a token', async () => {
   assert.strictEqual(status, 200);
   assert.ok(body.token);
   assert.strictEqual(body.user.role, 'warehouse');
+});
+
+// --- F-03: short-lived access tokens, rotating refresh, revocation ---------
+
+const jwt = require('jsonwebtoken');
+const RefreshToken = require('../src/models/refreshToken.model');
+
+async function freshSession(role = 'pharmacy') {
+  const { body } = await loginAttempt(ACCOUNTS[role].phone, PASSWORD);
+  return body;
+}
+
+test('F-03: login returns a refresh token alongside a 24h access token', async () => {
+  const session = await freshSession();
+
+  assert.ok(session.token, 'access token');
+  assert.ok(session.refreshToken, 'refresh token');
+
+  const claims = jwt.decode(session.token);
+  const lifetimeHours = (claims.exp - claims.iat) / 3600;
+  assert.strictEqual(lifetimeHours, 24, 'down from the 7 days the audit found');
+
+  // The contract three clients and rateLimiter.js depend on is unchanged.
+  assert.ok(claims.sub, 'sub is still the user id');
+  assert.strictEqual(claims.role, 'pharmacy', 'role claim still present');
+  assert.strictEqual(claims.tokenVersion, 0, 'and tokenVersion is now stamped in');
+
+  // Only the digest is persisted - a database leak must not yield usable
+  // session credentials.
+  const stored = await RefreshToken.findOne({ userId: ids.pharmacy }).sort({ _id: -1 });
+  assert.ok(stored, 'a session row exists');
+  assert.notStrictEqual(stored.tokenHash, session.refreshToken, 'never stored raw');
+  assert.match(stored.tokenHash, /^[0-9a-f]{64}$/, 'sha256 digest');
+});
+
+test('F-03: a refresh token buys a new pair and is then spent', async () => {
+  const session = await freshSession();
+
+  const first = await call('POST', '/auth/refresh', {
+    body: { refreshToken: session.refreshToken },
+  });
+  assert.strictEqual(first.status, 200);
+  assert.ok(first.body.token, 'a new access token');
+  assert.ok(first.body.refreshToken, 'and a new refresh token - rotation');
+  assert.notStrictEqual(
+    first.body.refreshToken,
+    session.refreshToken,
+    'the refresh token must not be reusable as-is'
+  );
+
+  // Replaying the consumed token is refused. This is the rotation payoff: if
+  // an attacker spends a stolen token, the real client's next refresh fails
+  // and the theft surfaces instead of staying silent for 30 days.
+  const replay = await call('POST', '/auth/refresh', {
+    body: { refreshToken: session.refreshToken },
+  });
+  assert.strictEqual(replay.status, 401);
+  assert.strictEqual(replay.body.code, 'INVALID_REFRESH_TOKEN');
+
+  // The newly issued one still works.
+  const second = await call('POST', '/auth/refresh', {
+    body: { refreshToken: first.body.refreshToken },
+  });
+  assert.strictEqual(second.status, 200);
+});
+
+test('F-03: a garbage or expired refresh token is refused', async () => {
+  const garbage = await call('POST', '/auth/refresh', {
+    body: { refreshToken: 'not-a-real-token' },
+  });
+  assert.strictEqual(garbage.status, 401);
+  assert.strictEqual(garbage.body.code, 'INVALID_REFRESH_TOKEN');
+
+  const session = await freshSession();
+  await RefreshToken.updateOne(
+    { userId: ids.pharmacy },
+    { expiresAt: new Date(Date.now() - 1000) },
+    { sort: { _id: -1 } }
+  );
+  const expired = await call('POST', '/auth/refresh', {
+    body: { refreshToken: session.refreshToken },
+  });
+  assert.strictEqual(expired.status, 401);
+});
+
+test('F-03: bumping tokenVersion revokes access tokens already issued', async () => {
+  const session = await freshSession('warehouse');
+
+  const before = await call('GET', '/auth/me', { token: session.token });
+  assert.strictEqual(before.status, 200, 'the token works to begin with');
+
+  await User.updateOne({ _id: ids.warehouse }, { $inc: { tokenVersion: 1 } });
+
+  const after = await call('GET', '/auth/me', { token: session.token });
+  assert.strictEqual(after.status, 401, 'the very same token is now dead');
+
+  await User.updateOne({ _id: ids.warehouse }, { tokenVersion: 0 });
+});
+
+test('F-03: a token minted before tokenVersion existed still works', async () => {
+  // The rollout must not log the entire user base out. A token from the old
+  // code carries no tokenVersion claim at all; it has to read as 0 and match
+  // the schema default.
+  const legacyToken = jwt.sign(
+    { sub: String(ids.pharmacy), role: 'pharmacy' },
+    process.env.JWT_SECRET,
+    { expiresIn: '1h' }
+  );
+
+  const { status } = await call('GET', '/auth/me', { token: legacyToken });
+  assert.strictEqual(status, 200, 'existing sessions survive the deploy');
+});
+
+test('F-03: blocking an account kills its refresh tokens too', async () => {
+  const session = await freshSession('admin');
+  const adminService = require('../src/services/admin.service');
+
+  // blockAccount only handles pharmacy/warehouse roles, so use the pharmacy.
+  const pharmacySession = await freshSession('pharmacy');
+  await adminService.blockAccount(ids.pharmacy);
+
+  try {
+    const refreshed = await call('POST', '/auth/refresh', {
+      body: { refreshToken: pharmacySession.refreshToken },
+    });
+    assert.notStrictEqual(refreshed.status, 200, 'a blocked account cannot refresh back in');
+
+    const remaining = await RefreshToken.countDocuments({ userId: ids.pharmacy });
+    assert.strictEqual(remaining, 0, 'every session row is gone');
+
+    const withOldToken = await call('GET', '/auth/me', { token: pharmacySession.token });
+    assert.strictEqual(withOldToken.status, 401, 'and the access token is revoked, not just 403');
+  } finally {
+    await User.updateOne({ _id: ids.pharmacy }, { status: 'active', tokenVersion: 0 });
+  }
+
+  assert.ok(session.token, 'admin session untouched');
 });

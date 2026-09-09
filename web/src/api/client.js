@@ -1,5 +1,41 @@
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:5000/api';
+
+// Why the access token lives in localStorage, and why that is not changing
+// yet (audit F-05).
+//
+// localStorage is readable by any JavaScript running on this origin, so an
+// XSS on this panel would yield a working admin token. The textbook answer
+// is an HttpOnly cookie, which JavaScript cannot read at all. That is not a
+// drop-in swap here, and the reasons are structural rather than effort:
+//
+//   - The token is a shared contract. The Flutter app sends the same JWT as
+//     an `Authorization: Bearer` header from its own Dio interceptor, and
+//     Socket.IO carries it in the handshake `auth` payload. A cookie only
+//     helps the browser, so the server would have to accept both and the
+//     two paths would drift.
+//   - Cookies are sent automatically, which is exactly what makes them CSRF
+//     -vulnerable. Today's Bearer header is immune by construction; moving
+//     to cookies means introducing CSRF tokens across every mutating route.
+//
+// So the mitigation this round is to shrink the prize rather than move it:
+// F-03 cut the access token from 7 days to 24 hours, and the refresh token
+// that renews it is kept in sessionStorage (below) rather than here.
+//
+// Revisit HttpOnly cookies when the web panel no longer shares an auth
+// contract with the mobile app, or when a CSRF layer exists for other
+// reasons. Until then this is a known, accepted, and bounded risk.
 const TOKEN_STORAGE_KEY = 'phoenix.admin.token';
+
+// The refresh token deliberately does NOT sit beside the access token.
+//
+// It is valid for 30 days against the access token 24 hours, so putting it
+// in localStorage would have made an XSS strictly more valuable than before
+// F-03 - the opposite of the finding's intent. sessionStorage is scoped to
+// the tab and cleared when it closes, which caps what a stolen refresh token
+// is worth at one browsing session. The cost is that closing the browser
+// means logging in again, which is the right trade for a panel that can
+// approve accounts and move money.
+const REFRESH_TOKEN_STORAGE_KEY = 'phoenix.admin.refresh';
 
 export function getToken() {
   return localStorage.getItem(TOKEN_STORAGE_KEY);
@@ -10,6 +46,51 @@ export function setToken(token) {
     localStorage.setItem(TOKEN_STORAGE_KEY, token);
   } else {
     localStorage.removeItem(TOKEN_STORAGE_KEY);
+  }
+  notifyTokenChanged(token ?? null);
+}
+
+export function getRefreshToken() {
+  return sessionStorage.getItem(REFRESH_TOKEN_STORAGE_KEY);
+}
+
+export function setRefreshToken(token) {
+  if (token) {
+    sessionStorage.setItem(REFRESH_TOKEN_STORAGE_KEY, token);
+  } else {
+    sessionStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY);
+  }
+}
+
+// Stores or clears both halves of a session at once, so a caller can never
+// leave one behind.
+// Accepts null to clear, so `= {}` is not enough - a default only fills in
+// for undefined and destructuring null throws.
+export function setSession(session) {
+  const { token, refreshToken } = session ?? {};
+  setRefreshToken(refreshToken ?? null);
+  setToken(token ?? null);
+}
+
+// The socket bakes the JWT into its handshake at connect time and replays
+// that same value on every automatic reconnect, so it cannot notice a silent
+// refresh on its own - it would keep retrying forever with a dead credential
+// and, since nothing renders the connection state, do it invisibly.
+// RealtimeProvider subscribes here and reconnects with the new token.
+const tokenListeners = new Set();
+
+export function onTokenChange(listener) {
+  tokenListeners.add(listener);
+  return () => tokenListeners.delete(listener);
+}
+
+function notifyTokenChanged(token) {
+  for (const listener of tokenListeners) {
+    try {
+      listener(token);
+    } catch {
+      // A misbehaving listener must not break authentication.
+    }
   }
 }
 
@@ -26,16 +107,69 @@ export class ApiError extends Error {
   }
 }
 
-async function request(path, { method = 'GET', body } = {}) {
-  const headers = { 'Content-Type': 'application/json' };
+// The single in-flight refresh. A dashboard page can fire half a dozen
+// requests at once and, at expiry, get half a dozen 401s back together.
+// Because the backend rotates the refresh token on every use, letting them
+// all refresh would mean five of the six spending an already-consumed token
+// and logging the operator out. They await this one promise instead.
+let inFlightRefresh = null;
+
+async function performRefresh() {
+  const refreshToken = getRefreshToken();
+  if (!refreshToken) return false;
+
+  try {
+    const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken }),
+    });
+    if (!response.ok) return false;
+
+    const data = await response.json().catch(() => null);
+    if (!data?.token) return false;
+
+    setSession({ token: data.token, refreshToken: data.refreshToken });
+    return true;
+  } catch {
+    // Offline, DNS, CORS - "could not refresh", never "session is over".
+    // Nothing is cleared here; that decision belongs to the caller.
+    return false;
+  }
+}
+
+function refreshSession() {
+  if (!inFlightRefresh) {
+    inFlightRefresh = performRefresh().finally(() => {
+      inFlightRefresh = null;
+    });
+  }
+  return inFlightRefresh;
+}
+
+function buildHeaders(extra = {}) {
+  const headers = { ...extra };
   const token = getToken();
   if (token) headers.Authorization = `Bearer ${token}`;
+  return headers;
+}
 
+async function request(path, { method = 'GET', body, _retried = false } = {}) {
   const response = await fetch(`${API_BASE_URL}${path}`, {
     method,
-    headers,
+    headers: buildHeaders({ 'Content-Type': 'application/json' }),
     body: body ? JSON.stringify(body) : undefined,
   });
+
+  // Since F-03 an access token expires every 24h, so a 401 is routine rather
+  // than session-ending: spend the refresh token and replay once. Only if
+  // that fails does the 401 reach the caller as a real rejection.
+  if (response.status === 401 && !_retried) {
+    const refreshed = await refreshSession();
+    if (refreshed) {
+      return request(path, { method, body, _retried: true });
+    }
+  }
 
   const data = await response.json().catch(() => null);
 
@@ -54,8 +188,7 @@ async function request(path, { method = 'GET', body } = {}) {
 // Bypass `request()` - it always sends/expects JSON, which doesn't fit a
 // binary file download or a multipart upload.
 async function requestBlob(path) {
-  const token = getToken();
-  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  const headers = buildHeaders();
   const response = await fetch(`${API_BASE_URL}${path}`, { headers });
   if (!response.ok) {
     const data = await response.json().catch(() => null);
@@ -65,8 +198,7 @@ async function requestBlob(path) {
 }
 
 async function requestUpload(path, file) {
-  const token = getToken();
-  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  const headers = buildHeaders();
   const formData = new FormData();
   formData.append('file', file);
   const response = await fetch(`${API_BASE_URL}${path}`, { method: 'POST', headers, body: formData });
@@ -81,8 +213,7 @@ async function requestUpload(path, file) {
 // form fields (a banner's image + title/dates/productId) rather than just
 // the file alone - caller builds the FormData itself.
 async function requestFormData(path, formData) {
-  const token = getToken();
-  const headers = token ? { Authorization: `Bearer ${token}` } : {};
+  const headers = buildHeaders();
   const response = await fetch(`${API_BASE_URL}${path}`, { method: 'POST', headers, body: formData });
   const data = await response.json().catch(() => null);
   if (!response.ok) {
