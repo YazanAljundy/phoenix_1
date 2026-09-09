@@ -187,9 +187,24 @@ async function request(path, { method = 'GET', body, _retried = false } = {}) {
 
 // Bypass `request()` - it always sends/expects JSON, which doesn't fit a
 // binary file download or a multipart upload.
-async function requestBlob(path) {
+//
+// They each repeat its 401-refresh-retry step rather than inheriting it.
+// Missing that was a real gap: after the 24h access token expired, the first
+// template download or catalog import failed with "Download failed" instead
+// of renewing silently, while every JSON screen recovered on its own. They
+// all call the same single-flight refreshSession(), so a download and a page
+// load expiring together still refresh once between them.
+async function requestBlob(path, { _retried = false } = {}) {
   const headers = buildHeaders();
   const response = await fetch(`${API_BASE_URL}${path}`, { headers });
+
+  if (response.status === 401 && !_retried) {
+    const refreshed = await refreshSession();
+    if (refreshed) {
+      return requestBlob(path, { _retried: true });
+    }
+  }
+
   if (!response.ok) {
     const data = await response.json().catch(() => null);
     throw new ApiError(data?.message ?? 'Download failed. Please try again.', response.status);
@@ -197,11 +212,19 @@ async function requestBlob(path) {
   return response.blob();
 }
 
-async function requestUpload(path, file) {
+async function requestUpload(path, file, { _retried = false } = {}) {
   const headers = buildHeaders();
   const formData = new FormData();
   formData.append('file', file);
   const response = await fetch(`${API_BASE_URL}${path}`, { method: 'POST', headers, body: formData });
+
+  if (response.status === 401 && !_retried) {
+    const refreshed = await refreshSession();
+    if (refreshed) {
+      return requestUpload(path, file, { _retried: true });
+    }
+  }
+
   const data = await response.json().catch(() => null);
   if (!response.ok) {
     throw new ApiError(data?.message ?? 'Import failed. Please try again.', response.status);
@@ -212,9 +235,17 @@ async function requestUpload(path, file) {
 // Like requestUpload, but for endpoints that take a file *alongside* other
 // form fields (a banner's image + title/dates/productId) rather than just
 // the file alone - caller builds the FormData itself.
-async function requestFormData(path, formData) {
+async function requestFormData(path, formData, { _retried = false } = {}) {
   const headers = buildHeaders();
   const response = await fetch(`${API_BASE_URL}${path}`, { method: 'POST', headers, body: formData });
+
+  if (response.status === 401 && !_retried) {
+    const refreshed = await refreshSession();
+    if (refreshed) {
+      return requestFormData(path, formData, { _retried: true });
+    }
+  }
+
   const data = await response.json().catch(() => null);
   if (!response.ok) {
     throw new ApiError(data?.message ?? 'Upload failed. Please try again.', response.status);
