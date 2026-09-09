@@ -8,11 +8,41 @@ function required(name, fallback) {
   return value;
 }
 
+// A secret short enough to guess or brute-force offline is the same as no
+// authentication at all: HS256 tokens are signed with it, so anyone who
+// recovers it can mint a valid token for any account, with any role, and
+// nothing in the request path would notice (audit F-09).
+//
+// 32 characters is the floor because that is roughly the output of
+// `openssl rand -base64 32`, the generator documented in .env.example.
+//
+// This also closes a gap in required() above: it uses ??, so an empty string
+// passes it - and .env.example ships JWT_SECRET= empty, which means a
+// copied-but-unfilled env file would previously have started the server with
+// a secret of ''.
+//
+// Enforced in every environment, not just production: a staging box running
+// NODE_ENV=development is just as exposed, and a guard that only fires where
+// nobody is looking is not a guard.
+const MIN_SECRET_LENGTH = 32;
+
+function requireStrongSecret(name) {
+  const value = required(name);
+  if (typeof value !== 'string' || value.length < MIN_SECRET_LENGTH) {
+    throw new Error(
+      `${name} must be at least ${MIN_SECRET_LENGTH} characters (got ${
+        typeof value === 'string' ? value.length : 0
+      }). Generate one with: openssl rand -base64 32`
+    );
+  }
+  return value;
+}
+
 module.exports = {
   nodeEnv: process.env.NODE_ENV || 'development',
   port: parseInt(process.env.PORT, 10) || 4000,
   mongodbUri: required('MONGODB_URI'),
-  jwtSecret: required('JWT_SECRET'),
+  jwtSecret: requireStrongSecret('JWT_SECRET'),
   // 24h, down from 7d (audit F-03). A stolen access token is now useful for
   // a day rather than a week; clients ride over the expiry with the refresh
   // token instead of bouncing the user to the login screen.

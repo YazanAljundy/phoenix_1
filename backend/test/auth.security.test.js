@@ -592,3 +592,39 @@ test('F-07: unregistering requires authentication', async () => {
   });
   assert.strictEqual(response.status, 401);
 });
+
+// --- F-09: the JWT secret must actually be strong -------------------------
+
+// HS256 tokens are signed with this value, so a guessable one lets anyone mint
+// a valid token for any account with any role - and nothing further down the
+// request path would notice. The guard therefore has to run at startup, before
+// the server can accept a single request.
+test('F-09: the server refuses to start with a weak JWT_SECRET', () => {
+  const envPath = require.resolve('../src/config/env');
+  const original = process.env.JWT_SECRET;
+
+  const loadWith = (secret) => {
+    if (secret === undefined) delete process.env.JWT_SECRET;
+    else process.env.JWT_SECRET = secret;
+    delete require.cache[envPath];
+    return () => require('../src/config/env');
+  };
+
+  try {
+    assert.throws(loadWith('short'), /at least 32 characters/);
+
+    // required() uses ??, so an empty string passed it - and .env.example ships
+    // JWT_SECRET= empty, which made "copied the example and forgot to fill it
+    // in" a silently accepted configuration.
+    assert.throws(loadWith(''), /at least 32 characters/);
+
+    assert.throws(loadWith('a'.repeat(31)), /at least 32 characters/);
+
+    // Exactly at the boundary is fine.
+    assert.doesNotThrow(loadWith('a'.repeat(32)));
+  } finally {
+    process.env.JWT_SECRET = original;
+    delete require.cache[envPath];
+    require('../src/config/env');
+  }
+});

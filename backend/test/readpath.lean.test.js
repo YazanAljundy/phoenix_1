@@ -17,7 +17,7 @@
 // guard reads would return undefined for it. The auth tests below pin the full
 // key set of every auth response and exercise the blocked-status guard and the
 // password comparison, so a too-narrow projection fails loudly here.
-process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-lean-tests';
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-lean-tests-paddi';
 process.env.NODE_ENV = 'test';
 
 const test = require('node:test');

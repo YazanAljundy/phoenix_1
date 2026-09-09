@@ -8,7 +8,7 @@
 //
 // It is a REPORT over frozen order fields, not a second ledger: nothing here
 // posts an entry or moves a balance.
-process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-settlement';
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-settlement-paddi';
 process.env.NODE_ENV = 'test';
 
 const test = require('node:test');

@@ -10,7 +10,7 @@
 //
 // Runs against its own database (feniq-catalog-test) and drops it at the
 // end, so it never touches the development data.
-process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-catalog-tests';
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-catalog-tests-pa';
 process.env.NODE_ENV = 'test';
 
 const test = require('node:test');
