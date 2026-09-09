@@ -369,6 +369,17 @@ async function registerDeviceToken(userId, { fcmToken, deviceType }) {
   );
 }
 
+// Detaches one device from the calling account (audit F-07). Logging out
+// used to leave the fcmToken attached, so a shared phone kept receiving the
+// previous pharmacist's order and payment notifications on its lock screen
+// until somebody else happened to sign in on it.
+//
+// Scoped to userId as well as the token: a caller may only ever detach a
+// device from their own account, never from someone else's.
+async function deleteDeviceToken(userId, fcmToken) {
+  await User.updateOne({ _id: userId }, { $pull: { deviceTokens: { fcmToken } } });
+}
+
 // GET /auth/me is the most frequently called endpoint in the app (the Flutter
 // client calls it on every launch and resume). .lean(): read-only, straight
 // into auth.viewmodel.js. .select(AUTH_USER_FIELDS): `password` stays excluded
@@ -390,6 +401,7 @@ module.exports = {
   loginWithPassword,
   getMe,
   registerDeviceToken,
+  deleteDeviceToken,
   refreshSession,
   revokeAllSessions,
   changePassword,

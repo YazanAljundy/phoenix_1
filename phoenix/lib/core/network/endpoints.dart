@@ -9,6 +9,9 @@ class Endpoints {
   /// design - the access token it renews is expired by the time this runs.
   static const String refresh = '/auth/refresh';
   static const String me = '/auth/me';
+  /// POST registers this device for push, DELETE detaches it again on
+  /// logout so the next person on a shared phone does not receive the
+  /// previous account's notifications.
   static const String deviceToken = '/auth/device-token';
 
   static const String warehouses = '/warehouses';

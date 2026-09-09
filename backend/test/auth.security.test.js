@@ -524,3 +524,71 @@ test('F-06: a weak or unchanged new password is rejected', async () => {
   });
   assert.strictEqual(identical.status, 400);
 });
+
+// --- F-07: a device can detach itself on logout ---------------------------
+
+test('F-07: DELETE /auth/device-token removes only the caller own device', async () => {
+  const session = await freshSession('warehouse');
+  const otherSession = await freshSession('admin');
+
+  await call('POST', '/auth/device-token', {
+    token: session.token,
+    body: { fcmToken: 'device-a', deviceType: 'android' },
+  });
+  await call('POST', '/auth/device-token', {
+    token: otherSession.token,
+    body: { fcmToken: 'device-b', deviceType: 'android' },
+  });
+
+  const removed = await call('DELETE', '/auth/device-token', {
+    token: session.token,
+    body: { fcmToken: 'device-a' },
+  });
+  assert.strictEqual(removed.status, 200);
+
+  const warehouse = await User.findById(ids.warehouse).select('deviceTokens');
+  assert.strictEqual(
+    warehouse.deviceTokens.some((entry) => entry.fcmToken === 'device-a'),
+    false,
+    'the logged-out device stops receiving this account notifications'
+  );
+
+  const admin = await User.findById(ids.admin).select('deviceTokens');
+  assert.strictEqual(
+    admin.deviceTokens.some((entry) => entry.fcmToken === 'device-b'),
+    true,
+    'and nobody else device was touched'
+  );
+});
+
+test('F-07: one account cannot detach another account device', async () => {
+  const attacker = await freshSession('warehouse');
+  const victim = await freshSession('admin');
+
+  await call('POST', '/auth/device-token', {
+    token: victim.token,
+    body: { fcmToken: 'victim-device', deviceType: 'ios' },
+  });
+
+  // The $pull is scoped by userId, so naming someone else's token is a no-op
+  // rather than a way to silence their notifications.
+  const response = await call('DELETE', '/auth/device-token', {
+    token: attacker.token,
+    body: { fcmToken: 'victim-device' },
+  });
+  assert.strictEqual(response.status, 200, 'idempotent, so it reports success');
+
+  const admin = await User.findById(ids.admin).select('deviceTokens');
+  assert.strictEqual(
+    admin.deviceTokens.some((entry) => entry.fcmToken === 'victim-device'),
+    true,
+    'but the victim device is still registered'
+  );
+});
+
+test('F-07: unregistering requires authentication', async () => {
+  const response = await call('DELETE', '/auth/device-token', {
+    body: { fcmToken: 'device-a' },
+  });
+  assert.strictEqual(response.status, 401);
+});

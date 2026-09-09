@@ -207,6 +207,16 @@ const registerDeviceToken = asyncHandler(async (req, res) => {
   res.json({ success: true, message: 'Device registered.' });
 });
 
+// The logout counterpart of registerDeviceToken. Best-effort from the
+// client's point of view - it must never block signing out - so this stays
+// idempotent: detaching a token that is not attached is a success.
+const deleteDeviceToken = asyncHandler(async (req, res) => {
+  const fcmToken = requireNonEmptyString(req.body.fcmToken, 'fcmToken is required.');
+
+  await authService.deleteDeviceToken(req.user._id, fcmToken);
+  res.json({ success: true, message: 'Device unregistered.' });
+});
+
 module.exports = {
   sendOtp,
   register,
@@ -217,4 +227,5 @@ module.exports = {
   changePassword,
   adminResetPassword,
   registerDeviceToken,
+  deleteDeviceToken,
 };

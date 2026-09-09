@@ -17,5 +17,6 @@ router.post('/change-password', authenticate, controller.changePassword);
 // shares changePassword's hashing and session-revocation path.
 router.post('/admin/reset-password/:userId', authenticate, authorize('admin'), controller.adminResetPassword);
 router.post('/device-token', authenticate, controller.registerDeviceToken);
+router.delete('/device-token', authenticate, controller.deleteDeviceToken);
 
 module.exports = router;

@@ -85,14 +85,16 @@ void main() {
 
     final fcmService = _MockFcmService();
     when(() => fcmService.markAppReady()).thenReturn(null);
+
+    final notificationRepository = _MockNotificationRepository();
+    when(() => notificationRepository.current).thenReturn(const <NotificationModel>[]);
+
     authCubit = AuthCubit(
       authRepository: _MockAuthRepository(),
       secureStorage: _MockSecureStorage(),
       fcmService: fcmService,
+      notificationRepository: notificationRepository,
     );
-
-    final notificationRepository = _MockNotificationRepository();
-    when(() => notificationRepository.current).thenReturn(const <NotificationModel>[]);
     when(() => notificationRepository.changes)
         .thenAnswer((_) => const Stream<List<NotificationModel>>.empty());
     notificationCubit = NotificationCubit(repository: notificationRepository);
