@@ -35,6 +35,17 @@ String translateErrorCode(AppLocalizations l10n, String? code, String fallbackMe
       return l10n.errorServer;
 
     // --- Backend domain codes.
+    // Auth. Before F-01/F-02 the backend sent no `code` on any auth error,
+    // so every one of these fell through to `default` and an Arabic-locale
+    // pharmacist read the raw English sentence off the wire.
+    case 'INVALID_CREDENTIALS':
+      return l10n.errorInvalidCredentials;
+    case 'ACCOUNT_BLOCKED':
+      return l10n.errorAccountBlocked;
+    case 'ACCOUNT_NOT_FOUND':
+      return l10n.errorAccountNotFound;
+    case 'PHONE_ALREADY_REGISTERED':
+      return l10n.errorPhoneAlreadyRegistered;
     case 'CART_EMPTY':
       return l10n.cartEmptyMessage;
     case 'INVALID_PRODUCT':

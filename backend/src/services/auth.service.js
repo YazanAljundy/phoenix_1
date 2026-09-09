@@ -10,6 +10,23 @@ const { emitToAdmins, EVENTS } = require('../realtime');
 
 const BCRYPT_SALT_ROUNDS = 10;
 
+// A real bcrypt hash of a value nothing can ever submit, burned once at
+// startup. loginWithPassword compares against it when there is no account so
+// that a miss costs the same wall-clock time as a hit - see the comment
+// there. Generated rather than hard-coded so it always matches the cost
+// factor above.
+const DUMMY_PASSWORD_HASH = bcrypt.hashSync(
+  'feniq/no-such-account/timing-equaliser',
+  BCRYPT_SALT_ROUNDS
+);
+
+// Always returns false. Exists purely to spend the same time a real compare
+// would, so the absence of an account is not observable through latency.
+async function comparePasswordAgainstNothing(password) {
+  await bcrypt.compare(String(password ?? ''), DUMMY_PASSWORD_HASH);
+  return false;
+}
+
 // Exactly the fields auth.viewmodel.js's serializeUser reads, and nothing
 // else. Everything omitted is dead weight on every auth response:
 //   - deviceTokens: an unbounded array that no auth path reads (the push
@@ -139,10 +156,21 @@ async function login({ phone, otpCode }) {
 
   const user = await User.findOne({ phone }).select(AUTH_USER_FIELDS);
   if (!user) {
-    throw ApiError.notFound('No account found for this phone number. Please register first.');
+    // Deliberately NOT collapsed into the generic credential error the way
+    // loginWithPassword's is (audit F-02). Reaching this line means
+    // otpService.verifyOtp already succeeded, so the caller has proven they
+    // control this phone - telling them there is no account yet is useful,
+    // and discloses nothing they could not learn by trying to register.
+    throw ApiError.notFound(
+      'No account found for this phone number. Please register first.',
+      'ACCOUNT_NOT_FOUND'
+    );
   }
   if (user.status === 'blocked') {
-    throw ApiError.forbidden('This account has been blocked. Please contact support.');
+    throw ApiError.forbidden(
+      'This account has been blocked. Please contact support.',
+      'ACCOUNT_BLOCKED'
+    );
   }
 
   const { pharmacy, warehouse } = await loadProfile(user);
@@ -156,19 +184,32 @@ async function login({ phone, otpCode }) {
 // same endpoint instead of their own OTP flow.
 async function loginWithPassword({ phone, password }) {
   const user = await User.findOne({ phone }).select(`+password ${AUTH_USER_FIELDS}`);
-  if (!user) {
-    throw ApiError.notFound('No account found for this phone number. Please register first.');
-  }
-  if (user.status === 'blocked') {
-    throw ApiError.forbidden('This account has been blocked. Please contact support.');
-  }
-  if (!user.password) {
-    throw ApiError.badRequest('Password login is not available for this account.');
+
+  // One indistinguishable failure for all three ways this can go wrong: no
+  // such account, an account that has no password set, and a wrong password
+  // (audit F-02). They used to answer 404 / 400 / 401 with three different
+  // sentences, which made this endpoint an account-existence oracle: sweep
+  // the Syrian mobile range, keep every number that answers anything other
+  // than 404, and you have a list of every account on the platform.
+  //
+  // The dummy compare on the no-account path matters as much as the message.
+  // Without it an unknown number returns in ~1ms while a known one pays
+  // bcrypt's ~100ms, handing the same oracle back through the clock.
+  const matches = user && user.password
+    ? await bcrypt.compare(password, user.password)
+    : await comparePasswordAgainstNothing(password);
+  if (!matches) {
+    throw ApiError.unauthorized('Incorrect phone number or password.', 'INVALID_CREDENTIALS');
   }
 
-  const matches = await bcrypt.compare(password, user.password);
-  if (!matches) {
-    throw ApiError.unauthorized('Incorrect phone number or password.');
+  // Only now - to a caller who has proven they own this account - is it safe
+  // to say why they still cannot get in. Checking this before the password
+  // would leak the account's existence to anyone who guessed the number.
+  if (user.status === 'blocked') {
+    throw ApiError.forbidden(
+      'This account has been blocked. Please contact support.',
+      'ACCOUNT_BLOCKED'
+    );
   }
 
   const { pharmacy, warehouse } = await loadProfile(user);

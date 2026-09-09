@@ -175,3 +175,70 @@ test('F-01: a genuinely new phone still registers and gets a token', async () =>
   assert.strictEqual(body.user.role, 'pharmacy');
   assert.strictEqual(body.user.status, 'pending', 'still waiting on admin approval');
 });
+
+// --- F-02: login failures must not reveal which accounts exist -------------
+
+// The whole point is that these two responses are indistinguishable, so they
+// are compared against each other rather than against a hard-coded literal.
+async function loginAttempt(phone, password) {
+  return call('POST', '/auth/login-password', { body: { phone, password } });
+}
+
+test('F-02: an unknown phone and a wrong password give byte-identical answers', async () => {
+  const unknown = await loginAttempt('0939999999', 'anything-at-all');
+  const wrongPassword = await loginAttempt(ACCOUNTS.pharmacy.phone, 'not-the-password');
+
+  assert.strictEqual(unknown.status, 401, 'not 404 - that was the oracle');
+  assert.strictEqual(wrongPassword.status, 401);
+  assert.deepStrictEqual(
+    unknown.body,
+    wrongPassword.body,
+    'same code, same message, same everything - nothing to distinguish them by'
+  );
+  assert.strictEqual(unknown.body.code, 'INVALID_CREDENTIALS');
+});
+
+test('F-02: an account with no password set is indistinguishable too', async () => {
+  // This used to answer 400 "Password login is not available for this account",
+  // which confirmed the number belonged to someone just as loudly as a 404 did.
+  await User.create({
+    name: 'Passwordless',
+    phone: '0930000004',
+    role: 'pharmacy',
+    status: 'active',
+  });
+
+  const passwordless = await loginAttempt('0930000004', 'anything-at-all');
+  const unknown = await loginAttempt('0939999998', 'anything-at-all');
+
+  assert.strictEqual(passwordless.status, 401, 'not 400');
+  assert.deepStrictEqual(passwordless.body, unknown.body);
+});
+
+test('F-02: a blocked account does not leak its existence to a guesser', async () => {
+  await User.updateOne({ _id: ids.pharmacy }, { status: 'blocked' });
+  try {
+    // Wrong password: the caller has proven nothing, so they learn nothing.
+    // The blocked check deliberately runs after the password comparison now.
+    const guesser = await loginAttempt(ACCOUNTS.pharmacy.phone, 'not-the-password');
+    const unknown = await loginAttempt('0939999997', 'not-the-password');
+
+    assert.strictEqual(guesser.status, 401, 'not 403 - 403 would confirm the account exists');
+    assert.deepStrictEqual(guesser.body, unknown.body);
+
+    // The real owner still gets told why they cannot get in.
+    const owner = await loginAttempt(ACCOUNTS.pharmacy.phone, PASSWORD);
+    assert.strictEqual(owner.status, 403);
+    assert.strictEqual(owner.body.code, 'ACCOUNT_BLOCKED');
+  } finally {
+    await User.updateOne({ _id: ids.pharmacy }, { status: 'active' });
+  }
+});
+
+test('F-02: a correct password still logs in and returns a token', async () => {
+  const { status, body } = await loginAttempt(ACCOUNTS.warehouse.phone, PASSWORD);
+
+  assert.strictEqual(status, 200);
+  assert.ok(body.token);
+  assert.strictEqual(body.user.role, 'warehouse');
+});
