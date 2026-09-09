@@ -1,19 +1,18 @@
 import 'package:feniq/features/cart/data/models/cart_item.dart';
 import 'package:feniq/features/cart/data/models/reorder_preparation.dart';
-import 'package:feniq/features/catalog/data/models/product_model.dart';
 
-/// The server's response to GET /advertisements/:id/cart - everything the
-/// existing cart needs to be populated from an advertisement package.
+/// The server's response to GET /advertisements/:id/cart - everything the cart
+/// needs to hold a package.
 ///
-/// Deliberately the same `{ warehouse, items, unavailableItems }` shape
-/// [ReorderPreparation] parses, so the cart reuses `ProductModel` +
-/// `CartItem.fromProduct` instead of growing a second loading path. It carries
-/// no order id: opening a package creates nothing.
+/// A package goes into the cart as ONE line (see [toCartLine]), priced at
+/// [totalPriceUsd] per copy. Its products are not cart lines and are never
+/// priced here: they come back in [contents] purely so the tile can show what
+/// is inside, and the server builds the real order lines from its own record
+/// of the package when the order is placed (order.service.js).
 ///
-/// The two totals are for DISPLAY ONLY - they let the cart show the package
-/// price before checkout. `createOrder` re-reads all of them from MongoDB and
-/// never trusts what the client sends back (see order.service.js), so a
-/// tampered value here changes what the pharmacist *sees*, never what they pay.
+/// Every figure here is for DISPLAY. `createOrder` re-reads the package from
+/// MongoDB and computes the price itself, so a tampered value changes what the
+/// pharmacist *sees*, never what they pay.
 class AdvertisementCartPreparation {
   const AdvertisementCartPreparation({
     required this.advertisementId,
@@ -22,7 +21,8 @@ class AdvertisementCartPreparation {
     required this.warehouseId,
     required this.warehouseNameAr,
     this.warehouseNameEn,
-    required this.items,
+    required this.contents,
+    this.image,
     required this.itemsTotalUsd,
     required this.totalPriceUsd,
     this.unavailableItems = const [],
@@ -34,22 +34,48 @@ class AdvertisementCartPreparation {
   final String warehouseId;
   final String warehouseNameAr;
   final String? warehouseNameEn;
-  final List<CartItem> items;
+
+  /// What ONE copy of the package contains - display only.
+  final List<CartPackageContent> contents;
+
+  /// The first product image the package has, if any - a package carries no
+  /// image of its own. Null renders the app's standard themed placeholder.
+  final String? image;
+
+  /// The sum of the products' catalog prices, shown struck through next to the
+  /// package price so the saving is visible.
   final num itemsTotalUsd;
+
+  /// What one copy of the package costs - the price the line is charged at.
   final num totalPriceUsd;
-  // Advertised products this warehouse no longer sells or has marked
-  // unavailable. Reported so the pharmacist is told, never silently dropped.
+
+  /// Products this warehouse no longer sells or has marked unavailable.
+  /// Reported so the pharmacist is told, never silently dropped.
   final List<UnavailableReorderItem> unavailableItems;
 
-  bool get hasItems => items.isNotEmpty;
+  bool get hasItems => contents.isNotEmpty;
 
-  /// The package can only be bought whole. If any advertised product is
-  /// missing, the backend will reject the order (ADVERTISEMENT_ITEM_MISSING),
-  /// so the app must not offer it.
+  /// A package can only be bought whole. If any of its products is
+  /// unavailable the backend refuses the order outright
+  /// (ADVERTISEMENT_PRODUCT_UNAVAILABLE), so the app must not offer it.
   bool get isComplete => hasItems && unavailableItems.isEmpty;
 
+  /// The package as a single cart line, priced at the package total.
+  CartItem toCartLine({required bool isArabic, int copies = 1}) {
+    return CartItem.fromPackage(
+      packageId: advertisementId,
+      titleAr: titleAr,
+      titleEn: titleEn,
+      warehouseName: isArabic ? warehouseNameAr : (warehouseNameEn ?? warehouseNameAr),
+      image: image,
+      pricePerCopyUsd: totalPriceUsd,
+      copies: copies,
+      contents: contents,
+    );
+  }
+
   factory AdvertisementCartPreparation.fromJson(Map<String, dynamic> json) {
-    final rawItems = (json['items'] as List?) ?? const [];
+    final rawItems = ((json['items'] as List?) ?? const []).cast<Map<String, dynamic>>();
     return AdvertisementCartPreparation(
       advertisementId: json['advertisementId'] as String,
       titleAr: json['titleAr'] as String,
@@ -57,20 +83,18 @@ class AdvertisementCartPreparation {
       warehouseId: json['warehouseId'] as String,
       warehouseNameAr: (json['warehouseNameAr'] as String?) ?? '',
       warehouseNameEn: json['warehouseNameEn'] as String?,
-      items: rawItems.map((raw) {
-        final map = raw as Map<String, dynamic>;
-        final quantity = (map['quantity'] as num).toInt();
-        // `discountPriceUsd` on this payload is the catalog price, so the
-        // existing CartItem.fromProduct path prices the line correctly with no
-        // special case. `advertisementId` marks it as part of a package, and
-        // `advertisementQuantity` is the advertised minimum for that line.
-        return CartItem.fromProduct(
-          ProductModel.fromJson(map),
-          quantity: quantity,
-          advertisementId: json['advertisementId'] as String,
-          advertisementQuantity: quantity,
-        );
-      }).toList(),
+      contents: rawItems
+          .map((map) => CartPackageContent(
+                productId: map['id'] as String,
+                nameAr: map['nameAr'] as String,
+                nameEn: map['nameEn'] as String?,
+                quantityPerCopy: (map['quantity'] as num).toInt(),
+              ))
+          .toList(),
+      image: rawItems
+          .map((map) => map['image'] as String?)
+          .where((image) => image != null && image.trim().isNotEmpty)
+          .firstOrNull,
       itemsTotalUsd: (json['itemsTotalUsd'] as num?) ?? 0,
       totalPriceUsd: json['totalPriceUsd'] as num,
       unavailableItems: ((json['unavailableItems'] as List?) ?? const [])

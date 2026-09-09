@@ -9,10 +9,9 @@ abstract class OrderRepository {
     required String warehouseId,
     required List<CartItem> items,
     String? notes,
-    // Names the advertisement package this cart came from, and nothing else -
-    // no price, total or discount is ever sent. The server re-reads the
-    // package and computes every figure itself (order.service.js).
-    String? advertisementId,
+    // Packages are not a separate argument: they travel inside `items` as
+    // package lines, and the implementation splits them out into the API's
+    // `packages` array. Nothing but an id and a copy count is ever sent.
     // Money-Flow V2: minted once per submit attempt by CartCubit and reused
     // across retries, so a resubmitted cart (flaky network, a double-tap)
     // returns the order the first attempt created rather than placing a

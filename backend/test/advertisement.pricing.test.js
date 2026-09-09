@@ -303,24 +303,33 @@ test('a warehouse edit that keeps the package intact reprices by the same rule',
   assert.strictEqual(reread.finalAmountUsd, 49.92, 'the frozen USD figure moved with it');
 });
 
-test('an edit that breaks the package reprices as a normal order', async () => {
+// A package is bought as a unit, so there is no longer any such thing as an
+// edit that "breaks" one: its lines are locked, and dropping the whole group
+// is what reprices the order as a normal one. See package.groups.test.js for
+// the lock itself; this asserts the money that results.
+test('dropping the whole package reprices the order as a normal one', async () => {
   const advertisement = await makeAdvertisement();
   const order = await submit({ advertisementId: advertisement._id.toString() });
-  const items = await OrderItem.find({ orderId: order._id });
-  const productCItem = items.find((i) => String(i.productId) === String(ids.productC));
-
+  // One loose line, so the order still has something on it afterwards.
   await warehouseOrderService.updateOrderItems(
     order._id.toString(), ids.warehouse, ids.whUser,
-    { removeItems: [productCItem._id.toString()] }
+    { addItems: [{ productId: ids.productA.toString(), quantity: 1 }] }
+  );
+
+  const withGroups = await Order.findById(order._id);
+  await warehouseOrderService.updateOrderItems(
+    order._id.toString(), ids.warehouse, ids.whUser,
+    { removePackages: [withGroups.orderPackageGroups[0]._id.toString()] }
   );
 
   const reread = await Order.findById(order._id).lean();
   assert.strictEqual(reread.advertisementId, null);
   assert.strictEqual(reread.advertisementDiscountAmount, 0);
-  assert.strictEqual(reread.totalPrice, 550000, '30 + 25 at catalog price');
-  assert.strictEqual(reread.discountAmount, 22000, '4% of 550,000');
-  assert.strictEqual(reread.finalPrice, 528000);
-  assert.strictEqual(reread.commissionAmount, 5280);
+  assert.strictEqual(reread.orderPackageGroups.length, 0);
+  assert.strictEqual(reread.totalPrice, 300000, 'only the loose $30 line is left');
+  assert.strictEqual(reread.discountAmount, 12000, '4% of 300,000');
+  assert.strictEqual(reread.finalPrice, 288000);
+  assert.strictEqual(reread.commissionAmount, 2880);
 });
 
 // ---------------------------------------------------------------------------

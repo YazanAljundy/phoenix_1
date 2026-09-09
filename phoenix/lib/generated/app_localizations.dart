@@ -980,6 +980,18 @@ abstract class AppLocalizations {
   /// **'× {count}'**
   String advertisementItemQuantity(int count);
 
+  /// No description provided for @packageBadge.
+  ///
+  /// In en, this message translates to:
+  /// **'Package'**
+  String get packageBadge;
+
+  /// No description provided for @packageCopiesLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'package copies'**
+  String get packageCopiesLabel;
+
   /// No description provided for @advertisementDiscountLabel.
   ///
   /// In en, this message translates to:

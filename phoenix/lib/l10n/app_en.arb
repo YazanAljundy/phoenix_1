@@ -270,6 +270,8 @@
       }
     }
   },
+  "packageBadge": "Package",
+  "packageCopiesLabel": "package copies",
   "advertisementDiscountLabel": "Package discount",
   "advertisementTotalToPay": "Total to pay",
   "advertisementAddToCartButton": "Add package to cart",

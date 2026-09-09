@@ -143,35 +143,98 @@ function rollUpOrderMoney({
 // CREDITS the pharmacy's ledger account (warehouseReturn.service.js) instead
 // of spinning up a zero-priced replacement order through here, so every order
 // this function creates is a real, billable order.
-// An advertisement package lists a quantity per product. Each product is
-// billed at its CURRENT catalog price; the package total is the discount, so
-// it is the gap between the quantity-weighted sum of those catalog prices and
-// the total - counted ONCE, regardless of how many extra units the pharmacist
-// ordered. Extra units are simply charged the catalog price with no further
-// discount, which can never over-discount.
+// A package is bought as a UNIT: the pharmacy pays `totalPriceUsd` per copy,
+// and the products inside it are along for the ride. The order still carries
+// one OrderItem per package product (the warehouse picks and delivers real
+// products, returns are raised against real products, and the invoice lists
+// them), each billed at its catalog price - so the package's saving is the gap
+// between those catalog lines and the package total.
 //
-// `advertisedSypSubtotal` is passed by the caller as
-// Σ(catalog price x ADVERTISED quantity), in SYP, from the same line prices it
-// summed into the order total - so createOrder (fresh catalog prices) and the
-// warehouse edit path (the order's own stored line prices) each stay
-// internally consistent and `finalPrice` lands exactly on the package total.
-function advertisementDiscountSyp(advertisedSypSubtotal, totalPriceUsd, usdToSyp) {
+// `packageLinesSyp` is Σ(line price x units ordered) for the group's own
+// lines; `totalPriceUsd` and `usdToSyp` both come from the group's frozen
+// snapshot, never from the live Advertisement or the live rate. That is what
+// makes a `copies` edit months later land on exactly the price the pharmacy
+// agreed to.
+function advertisementDiscountSyp(packageLinesSyp, totalPriceUsd, usdToSyp) {
   const packageTotalSyp = Math.round(totalPriceUsd * usdToSyp);
   // Clamped at 0: a package total at or above the catalog sum is allowed
   // (warehouseAdvertisement.service.js deliberately doesn't forbid it - it just
   // means "no saving"), but it must never become a surcharge.
-  return Math.max(0, advertisedSypSubtotal - packageTotalSyp);
+  return Math.max(0, packageLinesSyp - packageTotalSyp);
 }
 
-// The package only holds if the pharmacist is actually buying it: every
-// advertised product ordered at AT LEAST its advertised quantity. Returns the
-// reason it doesn't hold, or null when it does.
-function advertisementPackageBreak(advertisement, quantityByProductId) {
-  for (const item of advertisement.items) {
-    const ordered = quantityByProductId.get(item.productId.toString());
-    if (!ordered || ordered < item.quantity) return 'ADVERTISEMENT_ITEM_MISSING';
+// `copies` is the one number the client gets to choose about a package, so it
+// is held to the same rule as a cart quantity: a whole number, at least one.
+function validateCopies(value) {
+  const copies = value === undefined || value === null ? 1 : value;
+  if (!Number.isInteger(copies) || copies < 1) {
+    throw ApiError.badRequest('Invalid package quantity.', undefined, 'INVALID_PACKAGE_COPIES');
   }
-  return null;
+  return copies;
+}
+
+// Accepts both shapes the API takes:
+//   packages: [{ advertisementId, copies }]   - current clients
+//   advertisementId: '...'                    - builds before packages existed
+// and folds the legacy single id into a one-copy package, so an old app keeps
+// working against the new storage with no special case anywhere below.
+//
+// Two entries naming the same advertisement are merged into one group with the
+// copies added up - the same rule mergeDuplicateItems applies to products, and
+// what keeps "one line per package" true on the order as well as in the cart.
+function normalizePackageRequests({ packages, advertisementId }) {
+  const raw = Array.isArray(packages) ? [...packages] : [];
+  if (advertisementId) raw.push({ advertisementId, copies: 1 });
+
+  const byAdvertisementId = new Map();
+  for (const entry of raw) {
+    if (!entry || typeof entry.advertisementId !== 'string') {
+      throw ApiError.badRequest('Invalid advertisement.', undefined, 'INVALID_ADVERTISEMENT');
+    }
+    const copies = validateCopies(entry.copies);
+    const existing = byAdvertisementId.get(entry.advertisementId);
+    byAdvertisementId.set(entry.advertisementId, (existing ?? 0) + copies);
+  }
+  return [...byAdvertisementId].map(([id, copies]) => ({
+    advertisementId: id,
+    copies,
+    // A pre-packages client also sends the package's products as ordinary cart
+    // lines, because that is how the old cart worked. The package now supplies
+    // those lines itself, so the duplicates have to come back out of `items` -
+    // see deductLegacyPackageItems. A current client sends `packages` and no
+    // such duplicates, and nothing is deducted.
+    fromLegacyField: id === advertisementId,
+  }));
+}
+
+// Removes what a legacy client double-sent: for each package, its advertised
+// quantity of each product comes off that product's loose line. Anything the
+// pharmacist ordered ON TOP of the package survives as a loose line and is
+// priced normally, which is exactly what the old code did with the units
+// beyond the advertised quantity.
+function deductLegacyPackageItems(rawItems, advertisements) {
+  const owed = new Map();
+  for (const { advertisement, copies, fromLegacyField } of advertisements) {
+    if (!fromLegacyField) continue;
+    for (const item of advertisement.items) {
+      const key = item.productId.toString();
+      owed.set(key, (owed.get(key) ?? 0) + item.quantity * copies);
+    }
+  }
+  if (owed.size === 0) return rawItems;
+
+  const kept = [];
+  for (const item of rawItems) {
+    const remaining = owed.get(item.productId) ?? 0;
+    if (remaining <= 0) {
+      kept.push(item);
+      continue;
+    }
+    const covered = Math.min(remaining, item.quantity);
+    owed.set(item.productId, remaining - covered);
+    if (item.quantity > covered) kept.push({ ...item, quantity: item.quantity - covered });
+  }
+  return kept;
 }
 
 async function createOrder({
@@ -181,6 +244,7 @@ async function createOrder({
   items,
   notes,
   advertisementId = null,
+  packages = null,
   idempotencyKey = null,
 }) {
   // Money-Flow V2 idempotency. A retried submission (flaky network, a
@@ -198,16 +262,24 @@ async function createOrder({
       return existing;
     }
   }
+  const packageRequests = normalizePackageRequests({ packages, advertisementId });
+
   // Defense in depth: order.controller.js's validateItems already rejects an
   // empty/invalid cart before this is ever called from the API, and a
   // return's own items are validated non-empty at creation time (the other
   // caller, approveReturn in warehouseReturn.service.js) - but this is the
   // one choke point every order write passes through, so it re-checks rather
   // than trusting every future caller to remember to.
-  if (!Array.isArray(items) || items.length === 0) {
+  //
+  // A cart holding nothing but packages has no loose items at all and is a
+  // perfectly good order - the package's own products become lines below.
+  const plainItems = Array.isArray(items) ? items : [];
+  if (plainItems.length === 0 && packageRequests.length === 0) {
     throw ApiError.badRequest('Your cart is empty.', undefined, 'CART_EMPTY');
   }
-  const invalidItem = items.find((item) => !Number.isInteger(item.quantity) || item.quantity <= 0);
+  const invalidItem = plainItems.find(
+    (item) => !Number.isInteger(item.quantity) || item.quantity <= 0
+  );
   if (invalidItem) {
     throw ApiError.badRequest('Invalid quantity in cart.', undefined, 'INVALID_QUANTITY');
   }
@@ -218,16 +290,50 @@ async function createOrder({
   }
 
   const warehouse = await Warehouse.findById(warehouseId);
-  const merged = mergeDuplicateItems(items);
+
+  // Section: packages. The client names a package by id and says how many
+  // copies it wants - nothing else. Every product in it, every price and the
+  // package total are read here, server-side, so a tampered request can't buy
+  // at its own numbers.
+  //
+  // Loaded BEFORE the items are merged, because a legacy client's cart holds
+  // duplicates of the package's own products that have to come off first.
+  const advertisements = [];
+  for (const request of packageRequests) {
+    // Throws ADVERTISEMENT_UNAVAILABLE unless it is approved AND inside its
+    // date window right now - the same single gate the cart-prefill endpoint
+    // used, so what the pharmacist saw and what checkout accepts agree.
+    const advertisement = await loadActiveAdvertisementOrThrow(request.advertisementId);
+    if (String(advertisement.warehouseId) !== String(warehouseId)) {
+      throw ApiError.badRequest(
+        'This advertisement belongs to a different warehouse.',
+        undefined,
+        'ADVERTISEMENT_WAREHOUSE_MISMATCH'
+      );
+    }
+    advertisements.push({
+      advertisement,
+      copies: request.copies,
+      fromLegacyField: request.fromLegacyField,
+    });
+  }
+
+  const merged = deductLegacyPackageItems(mergeDuplicateItems(plainItems), advertisements);
   const productIds = merged.map((item) => item.productId);
+
+  const packageProductIds = advertisements.flatMap(({ advertisement }) =>
+    advertisement.items.map((item) => item.productId.toString())
+  );
 
   // Section 14 Part 2: resolved here (read-only - these docs are never
   // saved, only their values get snapshotted into OrderItem below) so the
   // order's own productNameAr/productNameEn are correct whether the product
   // is catalog-linked or legacy.
-  const products = await Product.find({ _id: { $in: productIds }, warehouseId, isActive: true }).populate(
-    'masterProductId'
-  );
+  const products = await Product.find({
+    _id: { $in: [...new Set([...productIds, ...packageProductIds])] },
+    warehouseId,
+    isActive: true,
+  }).populate('masterProductId');
   products.forEach(applyResolvedIdentity);
   const productById = new Map(products.map((p) => [p._id.toString(), p]));
 
@@ -256,55 +362,22 @@ async function createOrder({
     throw ApiError.badRequest(fallbackText.join(' '), { problems }, 'STOCK_CHECK_FAILED');
   }
 
-  // Section: advertisement packages. The client sends only an id - every
-  // price, the package total, the discount and the warehouse are re-read here
-  // and re-validated, so a tampered request can't buy at its own numbers.
-  let advertisement = null;
-  // productId -> advertised quantity, for the package's products. Those lines
-  // are billed at the plain catalog price (skipping offer/manufacturer
-  // stacking), and Σ(catalog price x advertised quantity) feeds the single
-  // order-level package discount.
-  const advertisedQtyByProductId = new Map();
-  if (advertisementId) {
-    // Throws ADVERTISEMENT_UNAVAILABLE unless it is approved AND inside its
-    // date window right now - the same single gate the cart-prefill endpoint
-    // used, so what the pharmacist saw and what checkout accepts agree.
-    advertisement = await loadActiveAdvertisementOrThrow(advertisementId);
-
-    if (String(advertisement.warehouseId) !== String(warehouseId)) {
-      throw ApiError.badRequest(
-        'This advertisement belongs to a different warehouse.',
-        undefined,
-        'ADVERTISEMENT_WAREHOUSE_MISMATCH'
-      );
-    }
-
-    const quantityByProductId = new Map(merged.map((item) => [item.productId, item.quantity]));
-    const packageBreak = advertisementPackageBreak(advertisement, quantityByProductId);
-    if (packageBreak) {
-      throw ApiError.badRequest(
-        'The advertisement package is incomplete.',
-        undefined,
-        packageBreak
-      );
-    }
-
-    // Every advertised product must still be one of this warehouse's own live
-    // products. `productById` was built from
-    // { _id: {$in}, warehouseId, isActive: true } and the availability loop
-    // above already rejected anything not isAvailable, so membership here is
-    // the whole check - no extra query.
+  // Every advertised product must still be one of this warehouse's own live
+  // products. `productById` was built from
+  // { _id: {$in}, warehouseId, isActive: true }, so membership plus
+  // isAvailable is the whole check - no extra query. A package is
+  // all-or-nothing: one missing product and the whole thing is refused,
+  // rather than quietly shipping a partial package at the package price.
+  for (const { advertisement } of advertisements) {
     for (const item of advertisement.items) {
-      const productId = item.productId.toString();
-      const product = productById.get(productId);
-      if (!product) {
+      const product = productById.get(item.productId.toString());
+      if (!product || !product.isAvailable) {
         throw ApiError.badRequest(
           'A product in this advertisement is no longer available.',
           undefined,
           'ADVERTISEMENT_PRODUCT_UNAVAILABLE'
         );
       }
-      advertisedQtyByProductId.set(productId, item.quantity);
     }
   }
 
@@ -357,16 +430,15 @@ async function createOrder({
   // decides whether to charge silently or ask first. Resubmitting with the
   // refreshed price is what confirms it.
   //
-  // Skipped for two kinds of line, both of which would report a false
-  // mismatch: an advertisement package line (billed at the plain catalog
-  // price with the package discount applied once at the order level, not per
-  // line - see the pricing map below) and any line that sent no price at all
-  // (an older app build, or approveReturn's internally-built items).
+  // Only loose lines are checked. A package's own lines never are: the client
+  // never quoted a per-unit price for them (it showed one package price, and
+  // the package is named by id), so there is nothing to compare against.
+  // Lines that sent no price at all (an older app build, or approveReturn's
+  // internally-built items) skip it too.
   const priceProblems = [];
   const priceFallbackText = [];
   for (const item of merged) {
     if (item.displayedUnitPriceUsd === null) continue;
-    if (advertisedQtyByProductId.has(item.productId)) continue;
 
     const product = productById.get(item.productId);
     const offer = offerByProductId.get(item.productId);
@@ -408,11 +480,6 @@ async function createOrder({
   // warehouse's order-size limits are checked against, and it matches the
   // cart's own subtotal exactly, so the app's gate and this one agree.
   let subtotalUsd = 0;
-  // Σ(catalog line price x ADVERTISED quantity) for the package's products, in
-  // SYP - the same per-line prices summed into totalPrice above, weighted by
-  // the advertised quantity (not the ordered one), so the package discount
-  // below leaves finalPrice on the package total.
-  let advertisedSypSubtotal = 0;
   const orderItemsData = merged.map((item) => {
     const product = productById.get(item.productId);
     const offer = offerByProductId.get(item.productId);
@@ -425,37 +492,32 @@ async function createOrder({
     // today's rate (see comment above).
     const unitPrice = Math.round(product.price * usdToSyp);
 
-    // A package line is priced at the plain catalog price and deliberately
-    // SKIPS the offer/manufacturer stacking below: the package total is the
-    // discount for these lines, applied once at the order level, so stacking a
-    // percentage on top would discount them twice. Lines added to the cart
-    // outside the package price normally.
-    const isAdvertised = advertisedQtyByProductId.has(item.productId);
-
     // Section 4/15: the product-level offer and the warehouse's
     // manufacturer discount (if any) both apply here, stacked - the
     // platform discount/commission below applies afterward, to the order
     // total.
-    const discountPrice = isAdvertised
-      ? unitPrice
-      : stackedDiscountSyp(unitPrice, offer?.discountPercentage, manufacturerDiscountPercentage);
+    //
+    // Every line here is a LOOSE line. A product also sold inside a package
+    // gets its own separate line below and does not affect this one, so
+    // buying a package no longer costs the pharmacy the product's own offer
+    // on the units it bought outside that package.
+    const discountPrice = stackedDiscountSyp(
+      unitPrice,
+      offer?.discountPercentage,
+      manufacturerDiscountPercentage
+    );
     totalPrice += discountPrice * item.quantity;
-    // Weighted by the ADVERTISED quantity, not the ordered one - extra units
-    // are billed at the catalog price with no extra discount.
-    if (isAdvertised) advertisedSypSubtotal += discountPrice * advertisedQtyByProductId.get(item.productId);
 
     // Section 15: computed independently in USD, straight from the
     // catalog's native currency, rather than back-converted from the SYP
     // figures above - avoids compounding two separate roundings. Only the
     // amount is stored, deliberately not the percentage or which
     // manufacturer it came from (project owner's decision).
-    // A package line's per-line saving is 0: it is billed at the catalog price
-    // and the whole package saving is the one order-level
-    // advertisementDiscountAmount below, so counting it here too would
-    // double-count it in the invoice's savings footer.
-    const discountedPriceUsd = isAdvertised
-      ? product.price
-      : computeDiscountedPriceUsd(product.price, offer?.discountPercentage, manufacturerDiscountPercentage);
+    const discountedPriceUsd = computeDiscountedPriceUsd(
+      product.price,
+      offer?.discountPercentage,
+      manufacturerDiscountPercentage
+    );
     const savingsUsd = Math.max(
       0,
       Math.round((product.price - discountedPriceUsd) * item.quantity * 100) / 100
@@ -476,12 +538,83 @@ async function createOrder({
       // "money saved" figure stops moving with the exchange rate. Derived
       // from the two SYP line prices that were actually charged rather than
       // converted from savingsUsd, so it agrees with the invoice exactly.
-      // 0 for a replacement line and for an advertised package line (both are
-      // billed at unitPrice, with the package saving booked once at order
-      // level instead).
+      // 0 for a replacement line.
       savingsSyp: Math.max(0, (unitPrice - discountPrice) * item.quantity),
+      // A loose line belongs to no package and is freely editable.
+      packageGroupId: null,
     };
   });
+
+  // Section: package groups. Each package becomes one group carrying its
+  // frozen terms, plus one OrderItem per product in it at `quantity x copies`
+  // units. The lines are billed at the plain catalog price and deliberately
+  // SKIP the offer/manufacturer stacking - the package total IS the discount
+  // for them, so stacking a percentage on top would discount them twice.
+  //
+  // The group's saving is booked once, at order level, into
+  // advertisementDiscountAmount - never per line - so the invoice's savings
+  // footer can't count it twice.
+  const packageGroups = [];
+  let advertisementDiscountAmount = 0;
+  for (const { advertisement, copies } of advertisements) {
+    const groupId = new mongoose.Types.ObjectId();
+    const snapshotItems = advertisement.items.map((item) => ({
+      productId: item.productId,
+      quantity: item.quantity,
+    }));
+
+    let groupLinesSyp = 0;
+    for (const item of advertisement.items) {
+      const product = productById.get(item.productId.toString());
+      const unitPrice = Math.round(product.price * usdToSyp);
+      const units = item.quantity * copies;
+      groupLinesSyp += unitPrice * units;
+      totalPrice += unitPrice * units;
+
+      orderItemsData.push({
+        productId: product._id,
+        productNameAr: product.nameAr,
+        productNameEn: product.nameEn,
+        manufacturerAr: product.manufacturerAr,
+        manufacturerEn: product.manufacturerEn,
+        quantity: units,
+        unitPrice,
+        // Billed at the catalog price; the saving lives on the group.
+        discountPrice: unitPrice,
+        savingsUsd: 0,
+        savingsSyp: 0,
+        // What locks this line: the edit path refuses to touch it.
+        packageGroupId: groupId,
+      });
+    }
+
+    // The whole point of the snapshot: the terms the pharmacy agreed to,
+    // copied out of the live Advertisement here and never read from it again.
+    const snapshot = {
+      titleAr: advertisement.titleAr,
+      titleEn: advertisement.titleEn,
+      totalPriceUsd: advertisement.totalPriceUsd,
+      items: snapshotItems,
+      usdToSyp,
+    };
+    packageGroups.push({
+      _id: groupId,
+      advertisementId: advertisement._id,
+      advertisementSnapshot: snapshot,
+      copies,
+      totalPriceUsd: Math.round(advertisement.totalPriceUsd * copies * 100) / 100,
+    });
+
+    advertisementDiscountAmount += advertisementDiscountSyp(
+      groupLinesSyp,
+      advertisement.totalPriceUsd * copies,
+      usdToSyp
+    );
+    // The pharmacy pays the package price for these lines, so that - not the
+    // catalog sum - is what the order-size limits below compare, and what the
+    // cart shows for the same package. The two gates agree by construction.
+    subtotalUsd += advertisement.totalPriceUsd * copies;
+  }
 
   // Section: the warehouse's own order-size limits (warehouse.model.js).
   const orderSubtotalUsd = Math.round(subtotalUsd * 100) / 100;
@@ -500,12 +633,10 @@ async function createOrder({
     );
   }
 
-  // Kept as its own subtrahend rather than folded into discountAmount, which
-  // is always re-derived from warehouse.discountRate (here and in
+  // advertisementDiscountAmount was accumulated per group above. It stays its
+  // own subtrahend rather than being folded into discountAmount, which is
+  // always re-derived from warehouse.discountRate (here and in
   // warehouseOrder.service.js's edit path) and would silently erase this.
-  const advertisementDiscountAmount = advertisement
-    ? advertisementDiscountSyp(advertisedSypSubtotal, advertisement.totalPriceUsd, usdToSyp)
-    : 0;
   const { discountAmount, commissionAmount, finalPrice } = rollUpOrderMoney({
     subtotalSyp: totalPrice,
     advertisementDiscountSypAmount: advertisementDiscountAmount,
@@ -533,7 +664,12 @@ async function createOrder({
           totalPrice,
           discountAmount,
           commissionAmount,
-          advertisementId: advertisement ? advertisement._id : null,
+          orderPackageGroups: packageGroups,
+          // Legacy mirror of the FIRST group only, for the reports and clients
+          // that already read it - see the note on order.model.js. The groups
+          // above are the real record; advertisementIds is the complete list.
+          advertisementId: packageGroups.length > 0 ? packageGroups[0].advertisementId : null,
+          advertisementIds: packageGroups.map((group) => group.advertisementId),
           advertisementDiscountAmount,
           finalPrice,
           // The order total in USD, frozen at this rate. Reports sum this
@@ -1032,6 +1168,6 @@ module.exports = {
   // Shared with warehouseOrder.service.js's order-item editor, so the package
   // rule is stated once and the two paths can never drift.
   advertisementDiscountSyp,
-  advertisementPackageBreak,
   rollUpOrderMoney,
+  normalizePackageRequests,
 };

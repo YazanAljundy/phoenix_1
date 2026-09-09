@@ -534,6 +534,12 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get packageBadge => 'Package';
+
+  @override
+  String get packageCopiesLabel => 'package copies';
+
+  @override
   String get advertisementDiscountLabel => 'Package discount';
 
   @override
