@@ -43,11 +43,22 @@ const ids = {};
 let server;
 let baseUrl;
 
+// authLimiter allows 20 requests per 15 minutes per IP, and this file makes
+// far more than that against /auth/register and /auth/login-password. Every
+// call therefore presents a distinct forwarded address so it gets its own
+// bucket - app.js sets `trust proxy`, so this is the same header the real
+// proxy in front of the service supplies. Rate limiting itself is covered by
+// ratelimit.test.js; conflating the two here would just make these tests
+// fail in an order-dependent way.
+let callCounter = 0;
+
 async function call(method, path, { token, body } = {}) {
+  callCounter += 1;
   const response = await fetch(baseUrl + path, {
     method,
     headers: {
       'Content-Type': 'application/json',
+      'X-Forwarded-For': `10.${(callCounter >> 16) & 255}.${(callCounter >> 8) & 255}.${callCounter & 255}`,
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: body ? JSON.stringify(body) : undefined,
@@ -382,4 +393,134 @@ test('F-03: blocking an account kills its refresh tokens too', async () => {
   }
 
   assert.ok(session.token, 'admin session untouched');
+});
+
+// --- F-06: password rotation ----------------------------------------------
+
+// Before this there was no way to change a password at all - it was captured
+// once at registration and every later attempt was discarded - so a leaked
+// credential could only be handled by blocking the whole account.
+test('F-06: changing a password requires the current one', async () => {
+  const session = await freshSession('warehouse');
+
+  const wrong = await call('POST', '/auth/change-password', {
+    token: session.token,
+    body: { currentPassword: 'not-it', newPassword: 'a-brand-new-password' },
+  });
+
+  assert.strictEqual(wrong.status, 401, 'a borrowed session is not enough');
+  assert.strictEqual(wrong.body.code, 'INVALID_CREDENTIALS');
+
+  // And the password really is unchanged.
+  const stillWorks = await loginAttempt(ACCOUNTS.warehouse.phone, PASSWORD);
+  assert.strictEqual(stillWorks.status, 200);
+});
+
+test('F-06: a successful change signs other devices out but not this one', async () => {
+  const phone = '0930000005';
+  const original = 'original-password';
+  const replacement = 'replacement-password';
+  await User.create({
+    name: 'Rotating User',
+    phone,
+    password: await bcrypt.hash(original, 10),
+    role: 'pharmacy',
+    status: 'active',
+  });
+
+  // Two devices signed in on the same account.
+  const deviceA = (await loginAttempt(phone, original)).body;
+  const deviceB = (await loginAttempt(phone, original)).body;
+
+  const changed = await call('POST', '/auth/change-password', {
+    token: deviceA.token,
+    body: { currentPassword: original, newPassword: replacement },
+  });
+  assert.strictEqual(changed.status, 200);
+  assert.ok(changed.body.token, 'a replacement pair for the device that did it');
+  assert.ok(changed.body.refreshToken);
+
+  // The token the request arrived with died with the tokenVersion bump...
+  const withOldToken = await call('GET', '/auth/me', { token: deviceA.token });
+  assert.strictEqual(withOldToken.status, 401);
+
+  // ...and the replacement works, so the user is not thrown out of the screen
+  // they just used to secure their account.
+  const withNewToken = await call('GET', '/auth/me', { token: changed.body.token });
+  assert.strictEqual(withNewToken.status, 200);
+
+  // The other device is gone, both its access token and its refresh token.
+  assert.strictEqual((await call('GET', '/auth/me', { token: deviceB.token })).status, 401);
+  const deviceBRefresh = await call('POST', '/auth/refresh', {
+    body: { refreshToken: deviceB.refreshToken },
+  });
+  assert.strictEqual(deviceBRefresh.status, 401, 'it cannot refresh its way back in');
+
+  // Old password rejected, new one accepted.
+  assert.strictEqual((await loginAttempt(phone, original)).status, 401);
+  assert.strictEqual((await loginAttempt(phone, replacement)).status, 200);
+});
+
+test('F-06: only an admin can reset someone else password', async () => {
+  const warehouseSession = await freshSession('warehouse');
+
+  const forbidden = await call('POST', `/auth/admin/reset-password/${ids.pharmacy}`, {
+    token: warehouseSession.token,
+    body: { newPassword: 'seized-this-account' },
+  });
+  assert.strictEqual(forbidden.status, 403, 'a warehouse cannot reset a pharmacy');
+
+  const anonymous = await call('POST', `/auth/admin/reset-password/${ids.pharmacy}`, {
+    body: { newPassword: 'seized-this-account' },
+  });
+  assert.strictEqual(anonymous.status, 401);
+});
+
+test('F-06: an admin can force a new password and end that account sessions', async () => {
+  const adminSession = await freshSession('admin');
+
+  const phone = '0930000006';
+  const original = 'leaked-password';
+  const forced = 'admin-chosen-password';
+  const user = await User.create({
+    name: 'Departed Employee',
+    phone,
+    password: await bcrypt.hash(original, 10),
+    role: 'warehouse',
+    status: 'active',
+  });
+
+  const theirSession = (await loginAttempt(phone, original)).body;
+
+  const reset = await call('POST', `/auth/admin/reset-password/${user._id}`, {
+    token: adminSession.token,
+    body: { newPassword: forced },
+  });
+  assert.strictEqual(reset.status, 200);
+  assert.ok(!reset.body.token, 'a reset must not hand the admin that user session');
+  assert.ok(!reset.body.refreshToken);
+
+  assert.strictEqual((await call('GET', '/auth/me', { token: theirSession.token })).status, 401);
+  assert.strictEqual(
+    (await call('POST', '/auth/refresh', { body: { refreshToken: theirSession.refreshToken } })).status,
+    401
+  );
+  assert.strictEqual((await loginAttempt(phone, original)).status, 401, 'the leaked password is dead');
+  assert.strictEqual((await loginAttempt(phone, forced)).status, 200);
+});
+
+test('F-06: a weak or unchanged new password is rejected', async () => {
+  const session = await freshSession('warehouse');
+
+  const tooShort = await call('POST', '/auth/change-password', {
+    token: session.token,
+    body: { currentPassword: PASSWORD, newPassword: 'abc' },
+  });
+  assert.strictEqual(tooShort.status, 400);
+
+  const identical = await call('POST', '/auth/change-password', {
+    token: session.token,
+    body: { currentPassword: PASSWORD, newPassword: PASSWORD },
+  });
+  assert.strictEqual(identical.status, 400);
 });

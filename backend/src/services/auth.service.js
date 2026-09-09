@@ -293,6 +293,67 @@ async function loginWithPassword({ phone, password }) {
   return { user, pharmacy, warehouse, ...(await issueTokenPair(user)) };
 }
 
+// Changes the caller's own password (audit F-06). Before this there was no
+// way to rotate a password at all: it was captured once at account creation
+// and every later attempt was silently discarded, so a leaked warehouse
+// password could only be dealt with by blocking the account outright.
+//
+// Rotating a password has to end every other session - that is usually the
+// reason someone is doing it. Bumping tokenVersion kills the caller's own
+// access token too, so a fresh pair is returned for them to swap in; the
+// alternative would be logging someone out of the very screen they used to
+// secure their account.
+async function changePassword(userId, { currentPassword, newPassword }) {
+  const user = await User.findById(userId).select(`+password ${AUTH_USER_FIELDS}`);
+  if (!user) {
+    throw ApiError.unauthorized('Invalid or expired token.');
+  }
+  if (!user.password) {
+    throw ApiError.badRequest(
+      'This account has no password set. Please contact support.',
+      undefined,
+      'PASSWORD_LOGIN_UNAVAILABLE'
+    );
+  }
+
+  // Possession of a valid access token is not enough - an unattended
+  // session must not be able to take the account over permanently.
+  const matches = await bcrypt.compare(currentPassword, user.password);
+  if (!matches) {
+    throw ApiError.unauthorized('The current password is incorrect.', 'INVALID_CREDENTIALS');
+  }
+
+  user.password = await bcrypt.hash(newPassword, BCRYPT_SALT_ROUNDS);
+  user.tokenVersion = (user.tokenVersion ?? 0) + 1;
+  await user.save();
+  await revokeAllSessions(user._id);
+
+  const { pharmacy, warehouse } = await loadProfile(user);
+  return { user, pharmacy, warehouse, ...(await issueTokenPair(user)) };
+}
+
+// The admin-side counterpart: force a new password onto someone else's
+// account, for the "credentials leaked" / "employee left" cases the audit
+// called out. Deliberately returns no token - the admin is not that user,
+// and handing them one would turn a reset into an impersonation primitive.
+//
+// Admins are reachable here, unlike admin.service.js's block/unblock which
+// restrict themselves to pharmacy/warehouse: locking a compromised admin out
+// is exactly when this is needed most.
+async function adminResetPassword(userId, newPassword) {
+  const user = await User.findById(userId).select(AUTH_USER_FIELDS);
+  if (!user) {
+    throw ApiError.notFound('Account not found.', 'ACCOUNT_NOT_FOUND');
+  }
+
+  user.password = await bcrypt.hash(newPassword, BCRYPT_SALT_ROUNDS);
+  user.tokenVersion = (user.tokenVersion ?? 0) + 1;
+  await user.save();
+  await revokeAllSessions(user._id);
+
+  return { user };
+}
+
 // A token can only ever belong to one user at a time - if this exact device
 // was previously registered under a different account (a logout/login
 // switch on the same phone), remove it from wherever it was before
@@ -331,4 +392,6 @@ module.exports = {
   registerDeviceToken,
   refreshSession,
   revokeAllSessions,
+  changePassword,
+  adminResetPassword,
 };

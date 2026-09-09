@@ -143,6 +143,44 @@ const me = asyncHandler(async (req, res) => {
   res.json({ success: true, ...authViewModel.toMeResponse(result) });
 });
 
+// Section F-06. Requires the current password even though the caller is
+// already authenticated: a borrowed unlocked laptop must not be enough to
+// take an account over.
+const changePassword = asyncHandler(async (req, res) => {
+  const currentPassword = requireNonEmptyString(
+    req.body.currentPassword,
+    'Your current password is required.'
+  );
+  const newPassword = requirePassword(req.body.newPassword, 'A new password is required.');
+
+  if (currentPassword === newPassword) {
+    throw ApiError.badRequest('The new password must be different from the current one.');
+  }
+
+  const result = await authService.changePassword(req.user._id, {
+    currentPassword,
+    newPassword,
+  });
+
+  // The tokenVersion bump invalidated the token this request arrived with,
+  // so the caller is handed a replacement pair to store. Every other device
+  // stays signed out, which is the point of changing a password.
+  res.json({
+    success: true,
+    message: 'Password changed. Other devices have been signed out.',
+    ...authViewModel.toAuthResponse(result),
+  });
+});
+
+// Admin-only. The route guard enforces the role; this only validates input.
+const adminResetPassword = asyncHandler(async (req, res) => {
+  const newPassword = requirePassword(req.body.newPassword, 'A new password is required.');
+
+  await authService.adminResetPassword(req.params.userId, newPassword);
+
+  res.json({ success: true, message: 'Password reset. That account has been signed out.' });
+});
+
 const registerDeviceToken = asyncHandler(async (req, res) => {
   // TEMP DIAGNOSTIC LOGS (see FCM_DEBUG task) - no full token/auth header.
   // eslint-disable-next-line no-console
@@ -176,5 +214,7 @@ module.exports = {
   loginWithPassword,
   refresh,
   me,
+  changePassword,
+  adminResetPassword,
   registerDeviceToken,
 };
