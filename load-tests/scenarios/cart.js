@@ -5,7 +5,7 @@ import {
 
 // Scenario C - shopping.
 //
-// Phoenix has no cart API. The Flutter cart feature
+// Feniq has no cart API. The Flutter cart feature
 // (lib/features/cart) holds the basket in client state and submits the whole
 // thing as `items` on POST /orders, so "add to cart", "change quantity" and
 // "remove item" produce no server traffic at all and cannot be load-tested as

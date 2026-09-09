@@ -5,54 +5,53 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:phoenix/core/network/api_client.dart';
-import 'package:phoenix/core/services/app_update_service.dart';
-import 'package:phoenix/core/services/fcm_service.dart';
-import 'package:phoenix/core/services/remote_config_service.dart';
-import 'package:phoenix/core/services/secure_storage_service.dart';
-import 'package:phoenix/core/services/storage_service.dart';
-import 'package:phoenix/features/app_update/presentation/app_update_gate.dart';
-import 'package:phoenix/firebase_options.dart';
-import 'package:phoenix/core/theme/dark_theme.dart';
-import 'package:phoenix/core/theme/light_theme.dart';
-import 'package:phoenix/features/auth/data/repositories/auth_repository_impl.dart';
-import 'package:phoenix/features/auth/presentation/managers/auth_cubit.dart';
-import 'package:phoenix/features/advertisements/data/repositories/advertisements_repository.dart';
-import 'package:phoenix/features/advertisements/data/repositories/advertisements_repository_impl.dart';
-import 'package:phoenix/features/account_history/data/repositories/savings_repository.dart';
-import 'package:phoenix/features/account_history/data/repositories/savings_repository_impl.dart';
-import 'package:phoenix/features/advertisements/presentation/managers/advertisements_cubit.dart';
-import 'package:phoenix/features/banners/data/repositories/banners_repository.dart';
-import 'package:phoenix/features/banners/data/repositories/banners_repository_impl.dart';
-import 'package:phoenix/features/banners/presentation/managers/banners_cubit.dart';
-import 'package:phoenix/features/cart/data/repositories/order_repository.dart';
-import 'package:phoenix/features/cart/data/repositories/order_repository_impl.dart';
-import 'package:phoenix/features/cart/presentation/managers/cart_cubit.dart';
-import 'package:phoenix/features/catalog/data/repositories/catalog_repository.dart';
-import 'package:phoenix/features/catalog/data/repositories/catalog_repository_impl.dart';
-import 'package:phoenix/features/complaints/data/repositories/complaint_repository.dart';
-import 'package:phoenix/features/complaints/data/repositories/complaint_repository_impl.dart';
-import 'package:phoenix/features/debts/data/repositories/debt_repository.dart';
-import 'package:phoenix/features/debts/data/repositories/debt_repository_impl.dart';
-import 'package:phoenix/features/exchange_rate/data/repositories/exchange_rate_repository.dart';
-import 'package:phoenix/features/exchange_rate/data/repositories/exchange_rate_repository_impl.dart';
-import 'package:phoenix/features/exchange_rate/presentation/managers/exchange_rate_cubit.dart';
-import 'package:phoenix/features/notifications/data/repositories/notification_repository.dart';
-import 'package:phoenix/features/offers/data/repositories/offers_repository.dart';
-import 'package:phoenix/features/offers/data/repositories/offers_repository_impl.dart';
-import 'package:phoenix/features/notifications/presentation/managers/notification_cubit.dart';
-import 'package:phoenix/features/returns/data/repositories/return_repository.dart';
-import 'package:phoenix/features/returns/data/repositories/return_repository_impl.dart';
-import 'package:phoenix/features/reviews/data/repositories/review_repository.dart';
-import 'package:phoenix/features/reviews/data/repositories/review_repository_impl.dart';
-import 'package:phoenix/features/settings/presentation/managers/settings_cubit.dart';
-import 'package:phoenix/features/settings/presentation/managers/settings_state.dart';
-import 'package:phoenix/features/warehouse_selection/data/repositories/warehouse_repository.dart';
-import 'package:phoenix/features/warehouse_selection/data/repositories/warehouse_repository_impl.dart';
-import 'package:phoenix/features/warehouse_selection/presentation/managers/warehouse_selection_cubit.dart';
-import 'package:phoenix/generated/app_localizations.dart';
-import 'package:phoenix/routes/app_router.dart';
-import 'package:phoenix/routes/route_paths.dart';
+import 'package:feniq/core/network/api_client.dart';
+import 'package:feniq/core/services/app_update_service.dart';
+import 'package:feniq/core/services/fcm_service.dart';
+import 'package:feniq/core/services/remote_config_service.dart';
+import 'package:feniq/core/services/secure_storage_service.dart';
+import 'package:feniq/core/services/storage_service.dart';
+import 'package:feniq/features/app_update/presentation/app_update_gate.dart';
+import 'package:feniq/firebase_options.dart';
+import 'package:feniq/core/theme/dark_theme.dart';
+import 'package:feniq/core/theme/light_theme.dart';
+import 'package:feniq/features/auth/data/repositories/auth_repository_impl.dart';
+import 'package:feniq/features/auth/presentation/managers/auth_cubit.dart';
+import 'package:feniq/features/advertisements/data/repositories/advertisements_repository.dart';
+import 'package:feniq/features/advertisements/data/repositories/advertisements_repository_impl.dart';
+import 'package:feniq/features/account_history/data/repositories/savings_repository.dart';
+import 'package:feniq/features/account_history/data/repositories/savings_repository_impl.dart';
+import 'package:feniq/features/banners/data/repositories/banners_repository.dart';
+import 'package:feniq/features/banners/data/repositories/banners_repository_impl.dart';
+import 'package:feniq/features/banners/presentation/managers/banners_cubit.dart';
+import 'package:feniq/features/cart/data/repositories/order_repository.dart';
+import 'package:feniq/features/cart/data/repositories/order_repository_impl.dart';
+import 'package:feniq/features/cart/presentation/managers/cart_cubit.dart';
+import 'package:feniq/features/catalog/data/repositories/catalog_repository.dart';
+import 'package:feniq/features/catalog/data/repositories/catalog_repository_impl.dart';
+import 'package:feniq/features/complaints/data/repositories/complaint_repository.dart';
+import 'package:feniq/features/complaints/data/repositories/complaint_repository_impl.dart';
+import 'package:feniq/features/debts/data/repositories/debt_repository.dart';
+import 'package:feniq/features/debts/data/repositories/debt_repository_impl.dart';
+import 'package:feniq/features/exchange_rate/data/repositories/exchange_rate_repository.dart';
+import 'package:feniq/features/exchange_rate/data/repositories/exchange_rate_repository_impl.dart';
+import 'package:feniq/features/exchange_rate/presentation/managers/exchange_rate_cubit.dart';
+import 'package:feniq/features/notifications/data/repositories/notification_repository.dart';
+import 'package:feniq/features/offers/data/repositories/offers_repository.dart';
+import 'package:feniq/features/offers/data/repositories/offers_repository_impl.dart';
+import 'package:feniq/features/notifications/presentation/managers/notification_cubit.dart';
+import 'package:feniq/features/returns/data/repositories/return_repository.dart';
+import 'package:feniq/features/returns/data/repositories/return_repository_impl.dart';
+import 'package:feniq/features/reviews/data/repositories/review_repository.dart';
+import 'package:feniq/features/reviews/data/repositories/review_repository_impl.dart';
+import 'package:feniq/features/settings/presentation/managers/settings_cubit.dart';
+import 'package:feniq/features/settings/presentation/managers/settings_state.dart';
+import 'package:feniq/features/warehouse_selection/data/repositories/warehouse_repository.dart';
+import 'package:feniq/features/warehouse_selection/data/repositories/warehouse_repository_impl.dart';
+import 'package:feniq/features/warehouse_selection/presentation/managers/warehouse_selection_cubit.dart';
+import 'package:feniq/generated/app_localizations.dart';
+import 'package:feniq/routes/app_router.dart';
+import 'package:feniq/routes/route_paths.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -130,7 +129,7 @@ Future<void> main() async {
 }
 
 // The installed app version ("1.0.0"), build metadata dropped. Guarded so a
-// platform-channel failure here can never stop Phoenix from starting - an
+// platform-channel failure here can never stop Feniq from starting - an
 // empty string just means the update checker does nothing.
 Future<String> _currentAppVersion() async {
   try {
@@ -270,15 +269,14 @@ class MyApp extends StatelessWidget {
           BlocProvider(
             create: (context) => ExchangeRateCubit(
               exchangeRateRepository: exchangeRateRepository,
+              // Remembers the last rate so prices still render in SYP when
+              // the app opens offline - see the cubit's own comments.
+              storageService: storageService,
             ),
           ),
           BlocProvider(
             create: (context) =>
                 BannersCubit(bannersRepository: bannersRepository),
-          ),
-          BlocProvider(
-            create: (context) =>
-                AdvertisementsCubit(advertisementsRepository: advertisementsRepository),
           ),
           BlocProvider(
             create: (context) =>

@@ -4,25 +4,25 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:phoenix/core/constants/app_colors.dart';
-import 'package:phoenix/core/constants/app_radius.dart';
-import 'package:phoenix/core/constants/app_sizes.dart';
-import 'package:phoenix/core/constants/image_upload.dart';
-import 'package:phoenix/core/error/error_translator.dart';
-import 'package:phoenix/core/extensions/build_context_extensions.dart';
-import 'package:phoenix/core/widgets/app_dialog.dart';
-import 'package:phoenix/core/widgets/app_loading.dart';
-import 'package:phoenix/core/widgets/app_network_image.dart';
-import 'package:phoenix/core/widgets/app_snackbar.dart';
-import 'package:phoenix/core/widgets/app_text_field.dart';
-import 'package:phoenix/core/widgets/primary_button.dart';
-import 'package:phoenix/features/cart/data/models/order_line_item.dart';
-import 'package:phoenix/features/cart/data/repositories/order_repository.dart';
-import 'package:phoenix/features/returns/data/models/return_model.dart';
-import 'package:phoenix/features/returns/data/repositories/return_repository.dart';
-import 'package:phoenix/features/returns/presentation/managers/request_return_cubit.dart';
-import 'package:phoenix/features/returns/presentation/managers/request_return_state.dart';
-import 'package:phoenix/features/returns/presentation/utils/return_labels.dart';
+import 'package:feniq/core/constants/app_colors.dart';
+import 'package:feniq/core/constants/app_radius.dart';
+import 'package:feniq/core/constants/app_sizes.dart';
+import 'package:feniq/core/constants/image_upload.dart';
+import 'package:feniq/core/error/error_translator.dart';
+import 'package:feniq/core/extensions/build_context_extensions.dart';
+import 'package:feniq/core/widgets/app_dialog.dart';
+import 'package:feniq/core/widgets/app_skeleton.dart';
+import 'package:feniq/core/widgets/app_network_image.dart';
+import 'package:feniq/core/widgets/app_snackbar.dart';
+import 'package:feniq/core/widgets/app_text_field.dart';
+import 'package:feniq/core/widgets/primary_button.dart';
+import 'package:feniq/features/cart/data/models/order_line_item.dart';
+import 'package:feniq/features/cart/data/repositories/order_repository.dart';
+import 'package:feniq/features/returns/data/models/return_model.dart';
+import 'package:feniq/features/returns/data/repositories/return_repository.dart';
+import 'package:feniq/features/returns/presentation/managers/request_return_cubit.dart';
+import 'package:feniq/features/returns/presentation/managers/request_return_state.dart';
+import 'package:feniq/features/returns/presentation/utils/return_labels.dart';
 
 // Section 6.9: one return per order, covering every problem item in it at
 // once - so this sheet is item-picking, not single-item. Reused for both
@@ -205,7 +205,20 @@ class _RequestReturnSheetBodyState extends State<_RequestReturnSheetBody> {
         final cubit = context.read<RequestReturnCubit>();
 
         if (state.status == RequestReturnStatus.loading) {
-          return const SizedBox(height: 200, child: AppLoading());
+          // The sheet's own shape while the order's lines are fetched: the
+          // title, the "pick items" heading, and the item rows under it.
+          return const SkeletonPage(
+            padding: EdgeInsets.all(AppSizes.spacingLarge),
+            children: [
+              SkeletonBar(width: 180, height: 22),
+              SizedBox(height: AppSizes.spacingMedium),
+              SkeletonBar(width: 120, height: 14),
+              SizedBox(height: AppSizes.spacingSmall),
+              SkeletonListCard(),
+              SizedBox(height: AppSizes.spacingSmall),
+              SkeletonListCard(),
+            ],
+          );
         }
 
         if (!_notesInitialized && state.notes.isNotEmpty) {

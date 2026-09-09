@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:phoenix/core/constants/app_colors.dart';
-import 'package:phoenix/core/constants/app_padding.dart';
-import 'package:phoenix/core/constants/app_radius.dart';
-import 'package:phoenix/core/constants/app_sizes.dart';
-import 'package:phoenix/core/error/error_translator.dart';
-import 'package:phoenix/core/extensions/build_context_extensions.dart';
-import 'package:phoenix/core/widgets/app_snackbar.dart';
-import 'package:phoenix/core/widgets/app_text_field.dart';
-import 'package:phoenix/core/widgets/primary_button.dart';
-import 'package:phoenix/features/complaints/data/models/complaint_model.dart';
-import 'package:phoenix/features/complaints/presentation/managers/submit_complaint_cubit.dart';
-import 'package:phoenix/features/complaints/presentation/managers/submit_complaint_state.dart';
+import 'package:feniq/core/constants/app_colors.dart';
+import 'package:feniq/core/constants/app_padding.dart';
+import 'package:feniq/core/constants/app_radius.dart';
+import 'package:feniq/core/constants/app_sizes.dart';
+import 'package:feniq/core/error/error_translator.dart';
+import 'package:feniq/core/extensions/build_context_extensions.dart';
+import 'package:feniq/core/theme/app_text_theme.dart';
+import 'package:feniq/core/widgets/app_snackbar.dart';
+import 'package:feniq/core/widgets/app_text_field.dart';
+import 'package:feniq/core/widgets/primary_button.dart';
+import 'package:feniq/features/complaints/data/models/complaint_model.dart';
+import 'package:feniq/features/complaints/presentation/managers/submit_complaint_cubit.dart';
+import 'package:feniq/features/complaints/presentation/managers/submit_complaint_state.dart';
 
 // Section 17: context-aware, not form-driven. There is no "complaint type"
 // picker and no warehouse dropdown - the screen is opened from Profile
@@ -209,7 +210,7 @@ class _ContextCard extends StatelessWidget {
                 for (final line in lines.where((l) => l.isNotEmpty))
                   Text(
                     line,
-                    style: context.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                    style: context.textTheme.bodyMedium?.copyWith(fontWeight: AppTextTheme.semiBold),
                   ),
               ],
             ),

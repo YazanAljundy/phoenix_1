@@ -1,5 +1,5 @@
 import 'package:image_picker/image_picker.dart';
-import 'package:phoenix/features/cart/data/models/order_line_item.dart';
+import 'package:feniq/features/cart/data/models/order_line_item.dart';
 
 enum RequestReturnStatus { loading, editing, submitting, submitted, error }
 

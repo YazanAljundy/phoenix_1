@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:phoenix/features/cart/data/models/cart_item.dart';
-import 'package:phoenix/features/catalog/data/models/product_model.dart';
+import 'package:feniq/features/cart/data/models/cart_item.dart';
+import 'package:feniq/features/catalog/data/models/product_model.dart';
 
 void main() {
   group('CartItem', () {

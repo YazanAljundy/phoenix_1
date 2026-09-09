@@ -99,7 +99,7 @@ async function assertTransactionSupport() {
   const ok = await supportsTransactions();
   if (!ok) {
     throw new Error(
-      'MongoDB is running as a standalone. Phoenix requires a replica set (single-node is fine) ' +
+      'MongoDB is running as a standalone. Feniq requires a replica set (single-node is fine) ' +
         'so financial operations can be transactional. See backend/docs/LOCAL_SETUP.md.'
     );
   }

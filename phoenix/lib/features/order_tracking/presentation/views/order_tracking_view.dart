@@ -1,38 +1,39 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:phoenix/core/constants/app_colors.dart';
-import 'package:phoenix/core/constants/app_padding.dart';
-import 'package:phoenix/core/constants/app_radius.dart';
-import 'package:phoenix/core/constants/app_sizes.dart';
-import 'package:phoenix/core/error/error_translator.dart';
-import 'package:phoenix/core/error/failure.dart';
-import 'package:phoenix/core/extensions/build_context_extensions.dart';
-import 'package:phoenix/core/utils/currency_formatter.dart';
-import 'package:phoenix/core/utils/date_formatter.dart';
-import 'package:phoenix/core/widgets/app_dialog.dart';
-import 'package:phoenix/core/widgets/app_loading.dart';
-import 'package:phoenix/core/widgets/app_text_field.dart';
-import 'package:phoenix/core/widgets/custom_card.dart';
-import 'package:phoenix/core/widgets/failure_widget.dart';
-import 'package:phoenix/core/widgets/primary_button.dart';
-import 'package:phoenix/core/widgets/whatsapp_button.dart';
-import 'package:phoenix/features/cart/data/models/order_model.dart';
-import 'package:phoenix/features/cart/presentation/utils/order_status_label.dart';
-import 'package:phoenix/features/cart/presentation/widgets/reorder_button.dart';
-import 'package:phoenix/features/complaints/data/models/submit_complaint_args.dart';
-import 'package:phoenix/features/complaints/presentation/utils/complaint_labels.dart';
-import 'package:phoenix/features/order_tracking/presentation/managers/order_tracking_cubit.dart';
-import 'package:phoenix/features/order_tracking/presentation/managers/order_tracking_state.dart';
-import 'package:phoenix/features/order_tracking/presentation/widgets/delivery_seal_section.dart';
-import 'package:phoenix/features/order_tracking/presentation/widgets/order_invoice_section.dart';
-import 'package:phoenix/features/order_tracking/presentation/widgets/order_progress_bar.dart';
-import 'package:phoenix/features/order_tracking/presentation/widgets/status_history_list.dart';
-import 'package:phoenix/features/returns/data/models/return_model.dart';
-import 'package:phoenix/features/returns/data/repositories/return_repository.dart';
-import 'package:phoenix/features/returns/presentation/widgets/request_return_sheet.dart';
-import 'package:phoenix/core/widgets/status_badge.dart';
-import 'package:phoenix/routes/route_names.dart';
+import 'package:feniq/core/constants/app_colors.dart';
+import 'package:feniq/core/constants/app_padding.dart';
+import 'package:feniq/core/constants/app_radius.dart';
+import 'package:feniq/core/constants/app_sizes.dart';
+import 'package:feniq/core/error/error_translator.dart';
+import 'package:feniq/core/error/failure.dart';
+import 'package:feniq/core/extensions/build_context_extensions.dart';
+import 'package:feniq/core/theme/app_text_theme.dart';
+import 'package:feniq/core/utils/currency_formatter.dart';
+import 'package:feniq/core/utils/date_formatter.dart';
+import 'package:feniq/core/widgets/app_dialog.dart';
+import 'package:feniq/core/widgets/app_skeleton.dart';
+import 'package:feniq/core/widgets/app_text_field.dart';
+import 'package:feniq/core/widgets/custom_card.dart';
+import 'package:feniq/core/widgets/failure_widget.dart';
+import 'package:feniq/core/widgets/primary_button.dart';
+import 'package:feniq/core/widgets/status_badge.dart';
+import 'package:feniq/core/widgets/whatsapp_button.dart';
+import 'package:feniq/features/cart/data/models/order_model.dart';
+import 'package:feniq/features/cart/presentation/utils/order_status_label.dart';
+import 'package:feniq/features/cart/presentation/widgets/reorder_button.dart';
+import 'package:feniq/features/complaints/data/models/submit_complaint_args.dart';
+import 'package:feniq/features/complaints/presentation/utils/complaint_labels.dart';
+import 'package:feniq/features/order_tracking/presentation/managers/order_tracking_cubit.dart';
+import 'package:feniq/features/order_tracking/presentation/managers/order_tracking_state.dart';
+import 'package:feniq/features/order_tracking/presentation/widgets/delivery_seal_section.dart';
+import 'package:feniq/features/order_tracking/presentation/widgets/order_invoice_section.dart';
+import 'package:feniq/features/order_tracking/presentation/widgets/order_progress_bar.dart';
+import 'package:feniq/features/order_tracking/presentation/widgets/status_history_list.dart';
+import 'package:feniq/features/returns/data/models/return_model.dart';
+import 'package:feniq/features/returns/data/repositories/return_repository.dart';
+import 'package:feniq/features/returns/presentation/widgets/request_return_sheet.dart';
+import 'package:feniq/routes/route_names.dart';
 
 class OrderTrackingView extends StatefulWidget {
   const OrderTrackingView({super.key});
@@ -220,7 +221,27 @@ class _OrderTrackingViewState extends State<OrderTrackingView> {
 
     if (state.status == OrderTrackingStatus.initial ||
         (state.status == OrderTrackingStatus.loading && state.order == null)) {
-      return const AppLoading();
+      // Progress bar, the current-status highlight, the status history, then
+      // the invoice - the running order of the loaded screen below.
+      return const SkeletonPage(
+        children: [
+          SkeletonCard(children: [SkeletonBar(height: 40)]),
+          SizedBox(height: AppSizes.spacingMedium),
+          SkeletonCard(
+            children: [
+              SkeletonBar(width: 150, height: 16),
+              SizedBox(height: AppSizes.spacingSmall),
+              SkeletonBar(height: 12),
+            ],
+          ),
+          SizedBox(height: AppSizes.spacingXLarge),
+          SkeletonBar(width: 130, height: 16),
+          SizedBox(height: AppSizes.spacingSmall),
+          SkeletonListCard(lines: 2),
+          SizedBox(height: AppSizes.spacingXLarge),
+          SkeletonListCard(lines: 3),
+        ],
+      );
     }
     if (state.status == OrderTrackingStatus.error && state.order == null) {
       return FailureWidget(
@@ -477,7 +498,7 @@ class _ReturnStatusSection extends StatelessWidget {
                   bannerText,
                   style: context.textTheme.bodyMedium?.copyWith(
                     color: color,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: AppTextTheme.semiBold,
                   ),
                 ),
               ),
@@ -663,9 +684,10 @@ class _StarRatingRow extends StatelessWidget {
 // Section: the warehouse edited this order's items (still 'pending' - see
 // order_model.dart's wasModified) - a visible heads-up above the invoice so
 // the pharmacist notices the items/price below aren't what they originally
-// submitted, rather than silently trusting stale mental math. Exact colors
-// per the design (light orange fill + orange border), not the app's
-// semantic error/warning color - there's no warning token in AppColors yet.
+// submitted, rather than silently trusting stale mental math. The design calls
+// for a light orange fill + orange border; that is now AppColors.warningOf /
+// warningSurfaceOf (a warning tone distinct from the red error tone) rather
+// than the hardcoded pair of hexes this used to carry.
 class _ModifiedOrderBanner extends StatelessWidget {
   const _ModifiedOrderBanner({this.modifiedAt});
 
@@ -674,20 +696,20 @@ class _ModifiedOrderBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    const orange = Color(0xFFF57C00);
+    final orange = AppColors.warningOf(context);
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(AppSizes.spacingMedium),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF3E0),
+        color: AppColors.warningSurfaceOf(context),
         borderRadius: AppRadius.large,
         border: Border.all(color: orange),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.warning_amber_rounded, color: orange),
+          Icon(Icons.warning_amber_rounded, color: orange),
           const SizedBox(width: AppSizes.spacingSmall),
           Expanded(
             child: Column(
@@ -695,7 +717,7 @@ class _ModifiedOrderBanner extends StatelessWidget {
               children: [
                 Text(
                   l10n.orderModifiedBannerTitle,
-                  style: context.textTheme.bodyMedium?.copyWith(color: orange, fontWeight: FontWeight.w600),
+                  style: context.textTheme.bodyMedium?.copyWith(color: orange, fontWeight: AppTextTheme.semiBold),
                 ),
                 if (modifiedAt != null) ...[
                   const SizedBox(height: 2),

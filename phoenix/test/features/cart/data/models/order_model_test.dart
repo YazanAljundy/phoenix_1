@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:phoenix/features/cart/data/models/order_model.dart';
+import 'package:feniq/features/cart/data/models/order_model.dart';
 
 // Focused on the optional delivery-seal-photo fields added to the order detail
 // response - they must be backward compatible (absent -> false/null) and drive

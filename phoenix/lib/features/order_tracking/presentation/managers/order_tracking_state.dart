@@ -1,4 +1,4 @@
-import 'package:phoenix/features/cart/data/models/order_model.dart';
+import 'package:feniq/features/cart/data/models/order_model.dart';
 
 enum OrderTrackingStatus { initial, loading, loaded, error }
 

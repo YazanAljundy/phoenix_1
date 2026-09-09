@@ -5,6 +5,7 @@ import { useExchangeRate } from '../context/ExchangeRateContext';
 import { OfferModal } from '../components/OfferModal';
 import { withArFallback } from '../utils/displayName';
 import { OFFER_FILTERS, filterOffers, offerEditSource, reviewCount } from './offersFilters';
+import { WarehouseGroupSubNav } from '../components/WarehouseGroupSubNav';
 
 export function WarehouseOffersPage() {
   const { t } = useTranslation();
@@ -77,6 +78,8 @@ export function WarehouseOffersPage() {
 
   return (
     <div>
+      <WarehouseGroupSubNav />
+
       <div className="wh-page-head">
         <h1>{t('nav.offers')}</h1>
         <button

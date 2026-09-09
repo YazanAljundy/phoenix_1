@@ -1,4 +1,4 @@
-import 'package:phoenix/features/warehouse_selection/data/models/warehouse_profile_model.dart';
+import 'package:feniq/features/warehouse_selection/data/models/warehouse_profile_model.dart';
 
 enum WarehouseProfileStatus { initial, loading, loaded, error }
 

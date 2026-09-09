@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:phoenix/core/widgets/quantity_stepper.dart';
+import 'package:feniq/core/widgets/quantity_stepper.dart';
 
 // A realistic host: the parent owns the quantity and feeds it back into the
 // widget on every change, exactly like CartView / CatalogView do via

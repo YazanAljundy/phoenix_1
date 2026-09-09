@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Starts the Phoenix backend for load testing with the out-of-band probe
+# Starts the Feniq backend for load testing with the out-of-band probe
 # preloaded. The backend source and configuration are untouched; only the
 # probe module (-r) and its own PROBE_* variables are added.
 #

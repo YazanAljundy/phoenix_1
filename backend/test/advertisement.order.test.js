@@ -89,7 +89,7 @@ function submit(extra = {}) {
 }
 
 test.before(async () => {
-  await startMemoryMongo({ dbName: 'phoenix-advertisement-order-test' });
+  await startMemoryMongo({ dbName: 'feniq-advertisement-order-test' });
   await ExchangeRate.create({ _id: 'singleton', usdToSyp: RATE, source: 'manual' });
 
   const [whUser, otherWhUser, phUser] = await User.create([

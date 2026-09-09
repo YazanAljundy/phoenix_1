@@ -1,15 +1,15 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:phoenix/core/constants/storage_keys.dart';
-import 'package:phoenix/core/error/failure.dart';
-import 'package:phoenix/core/services/auth_event_bus.dart';
-import 'package:phoenix/core/services/fcm_service.dart';
-import 'package:phoenix/core/services/secure_storage_service.dart';
-import 'package:phoenix/features/auth/data/models/me_response.dart';
-import 'package:phoenix/features/auth/data/models/user_model.dart';
-import 'package:phoenix/features/auth/data/repositories/auth_repository_impl.dart';
-import 'package:phoenix/features/auth/presentation/managers/auth_cubit.dart';
-import 'package:phoenix/features/auth/presentation/managers/auth_state.dart';
+import 'package:feniq/core/constants/storage_keys.dart';
+import 'package:feniq/core/error/failure.dart';
+import 'package:feniq/core/services/auth_event_bus.dart';
+import 'package:feniq/core/services/fcm_service.dart';
+import 'package:feniq/core/services/secure_storage_service.dart';
+import 'package:feniq/features/auth/data/models/me_response.dart';
+import 'package:feniq/features/auth/data/models/user_model.dart';
+import 'package:feniq/features/auth/data/repositories/auth_repository_impl.dart';
+import 'package:feniq/features/auth/presentation/managers/auth_cubit.dart';
+import 'package:feniq/features/auth/presentation/managers/auth_state.dart';
 
 class MockAuthRepository extends Mock implements AuthRepositoryImpl {}
 

@@ -1,14 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:phoenix/core/constants/app_colors.dart';
-import 'package:phoenix/core/constants/app_radius.dart';
-import 'package:phoenix/core/constants/app_sizes.dart';
-import 'package:phoenix/core/error/error_translator.dart';
-import 'package:phoenix/core/extensions/build_context_extensions.dart';
-import 'package:phoenix/features/auth/presentation/managers/auth_cubit.dart';
-import 'package:phoenix/features/auth/presentation/managers/auth_state.dart';
-import 'package:phoenix/routes/route_names.dart';
+import 'package:feniq/core/constants/app_colors.dart';
+import 'package:feniq/core/widgets/brand_logo.dart';
+import 'package:feniq/features/auth/presentation/managers/auth_cubit.dart';
+import 'package:feniq/features/auth/presentation/managers/auth_state.dart';
+import 'package:feniq/routes/route_names.dart';
+
+// The two halves of the logo's breathing animation, keyed so a test can find
+// them among the router's own page transitions.
+const Key splashLogoFadeKey = ValueKey('splashLogoFade');
+const Key splashLogoScaleKey = ValueKey('splashLogoScale');
 
 class SplashView extends StatefulWidget {
   const SplashView({super.key});
@@ -46,16 +48,23 @@ class _SplashViewState extends State<SplashView> {
       case SessionStatus.active:
         context.goNamed(RouteNames.warehouseSelection);
       case SessionStatus.offline:
+        // The stored token is still present and untouched - the server just
+        // could not be reached to re-validate it on this launch. That is not
+        // a reason to hold the user on a dead-end "no connection" screen:
+        // carry on into the app exactly as for `active`. The warehouse list
+        // (and every other screen that needs the network) already shows its
+        // own error state with a retry, which is where a genuine outage
+        // belongs.
+        context.goNamed(RouteNames.warehouseSelection);
       case SessionStatus.unknown:
-        // Stays on this screen - handled by the builder (offline retry view
-        // or the plain logo while the check is still running).
+        // The check is still running - stay on the logo.
         break;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return BlocConsumer<AuthCubit, AuthState>(
+    return BlocListener<AuthCubit, AuthState>(
       listenWhen: (previous, current) {
         // TEMP DIAGNOSTIC (router-lifecycle) - remove after verifying.
         debugPrint(
@@ -66,109 +75,62 @@ class _SplashViewState extends State<SplashView> {
         return previous.sessionStatus != current.sessionStatus;
       },
       listener: (context, state) => _routeFor(context, state.sessionStatus),
-      buildWhen: (previous, current) =>
-          previous.sessionStatus != current.sessionStatus,
-      builder: (context, state) {
-        if (state.sessionStatus == SessionStatus.offline) {
-          return _SplashOffline(
-            message: translateErrorCode(
-              context.l10n,
-              state.errorCode,
-              state.errorMessage ?? context.l10n.errorNetwork,
-            ),
-            onRetry: () => context.read<AuthCubit>().checkSession(),
-          );
-        }
-        return const _SplashLogo();
-      },
+      child: const _SplashLogo(),
     );
   }
 }
 
-class _SplashLogo extends StatelessWidget {
+class _SplashLogo extends StatefulWidget {
   const _SplashLogo();
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.navyOf(context),
-      body: const Center(
-        child: Image(
-          image: AssetImage('assets/images/feniq_logo.png'),
-          width: 200,
-          fit: BoxFit.contain,
-        ),
-      ),
-    );
-  }
+  State<_SplashLogo> createState() => _SplashLogoState();
 }
 
-// Shown when the stored token could not be validated because the server was
-// unreachable (timeout / no connection / 5xx). The token is still saved -
-// "Retry" just runs the same GET /auth/me again. The user is never dropped
-// onto the Login screen for a connectivity problem.
-class _SplashOffline extends StatelessWidget {
-  const _SplashOffline({required this.message, required this.onRetry});
+class _SplashLogoState extends State<_SplashLogo>
+    with SingleTickerProviderStateMixin {
+  // One breath in, one out - ~1.8s per full cycle. Calm enough to read as
+  // "alive, still working", never as an animation asking to be looked at.
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  )..repeat(reverse: true);
 
-  final String message;
-  final VoidCallback onRetry;
+  late final Animation<double> _curve = CurvedAnimation(
+    parent: _controller,
+    curve: Curves.easeInOut,
+  );
+
+  late final Animation<double> _scale = Tween<double>(
+    begin: 1.0,
+    end: 1.04,
+  ).animate(_curve);
+
+  late final Animation<double> _opacity = Tween<double>(
+    begin: 1.0,
+    end: 0.85,
+  ).animate(_curve);
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final l10n = context.l10n;
-
     return Scaffold(
       backgroundColor: AppColors.navyOf(context),
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(AppSizes.spacingLarge),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 360),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 84,
-                    height: 84,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.12),
-                      borderRadius: AppRadius.large,
-                    ),
-                    child: const Icon(
-                      Icons.wifi_off_rounded,
-                      color: Colors.white,
-                      size: 40,
-                    ),
-                  ),
-                  const SizedBox(height: AppSizes.spacingLarge),
-                  Text(
-                    message,
-                    textAlign: TextAlign.center,
-                    style: context.textTheme.titleMedium?.copyWith(
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: AppSizes.spacingLarge),
-                  SizedBox(
-                    width: double.infinity,
-                    height: AppSizes.buttonHeight,
-                    child: ElevatedButton.icon(
-                      onPressed: onRetry,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: AppColors.navyOf(context),
-                        shape: const RoundedRectangleBorder(
-                          borderRadius: AppRadius.medium,
-                        ),
-                      ),
-                      icon: const Icon(Icons.refresh),
-                      label: Text(l10n.retryButton),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+      body: Center(
+        child: FadeTransition(
+          // Keyed so a test can pick this fade out of the page-transition
+          // fades the router stacks around it.
+          key: splashLogoFadeKey,
+          opacity: _opacity,
+          child: ScaleTransition(
+            key: splashLogoScaleKey,
+            scale: _scale,
+            child: const BrandLogo.onDark(width: 200),
           ),
         ),
       ),

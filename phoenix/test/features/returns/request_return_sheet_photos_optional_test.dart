@@ -3,14 +3,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:phoenix/core/widgets/primary_button.dart';
-import 'package:phoenix/features/cart/data/models/order_line_item.dart';
-import 'package:phoenix/features/cart/data/models/order_model.dart';
-import 'package:phoenix/features/cart/data/repositories/order_repository.dart';
-import 'package:phoenix/features/returns/data/models/return_model.dart';
-import 'package:phoenix/features/returns/data/repositories/return_repository.dart';
-import 'package:phoenix/features/returns/presentation/widgets/request_return_sheet.dart';
-import 'package:phoenix/generated/app_localizations.dart';
+import 'package:feniq/core/widgets/primary_button.dart';
+import 'package:feniq/features/cart/data/models/order_line_item.dart';
+import 'package:feniq/features/cart/data/models/order_model.dart';
+import 'package:feniq/features/cart/data/repositories/order_repository.dart';
+import 'package:feniq/features/returns/data/models/return_model.dart';
+import 'package:feniq/features/returns/data/repositories/return_repository.dart';
+import 'package:feniq/features/returns/presentation/widgets/request_return_sheet.dart';
+import 'package:feniq/generated/app_localizations.dart';
 
 // Section 6.9: the photo is optional. This is the UI half of that rule -
 // request_return_cubit_test.dart already covers the validation logic, this

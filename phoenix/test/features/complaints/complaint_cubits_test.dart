@@ -1,14 +1,14 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:phoenix/core/error/failure.dart';
-import 'package:phoenix/core/models/paginated_result.dart';
-import 'package:phoenix/features/complaints/data/models/complaint_model.dart';
-import 'package:phoenix/features/complaints/data/models/submit_complaint_args.dart';
-import 'package:phoenix/features/complaints/data/repositories/complaint_repository.dart';
-import 'package:phoenix/features/complaints/presentation/managers/my_complaints_cubit.dart';
-import 'package:phoenix/features/complaints/presentation/managers/my_complaints_state.dart';
-import 'package:phoenix/features/complaints/presentation/managers/submit_complaint_cubit.dart';
-import 'package:phoenix/features/complaints/presentation/managers/submit_complaint_state.dart';
+import 'package:feniq/core/error/failure.dart';
+import 'package:feniq/core/models/paginated_result.dart';
+import 'package:feniq/features/complaints/data/models/complaint_model.dart';
+import 'package:feniq/features/complaints/data/models/submit_complaint_args.dart';
+import 'package:feniq/features/complaints/data/repositories/complaint_repository.dart';
+import 'package:feniq/features/complaints/presentation/managers/my_complaints_cubit.dart';
+import 'package:feniq/features/complaints/presentation/managers/my_complaints_state.dart';
+import 'package:feniq/features/complaints/presentation/managers/submit_complaint_cubit.dart';
+import 'package:feniq/features/complaints/presentation/managers/submit_complaint_state.dart';
 
 class MockComplaintRepository extends Mock implements ComplaintRepository {}
 

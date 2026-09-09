@@ -1,5 +1,5 @@
-import 'package:phoenix/core/models/paginated_result.dart';
-import 'package:phoenix/features/complaints/data/models/complaint_model.dart';
+import 'package:feniq/core/models/paginated_result.dart';
+import 'package:feniq/features/complaints/data/models/complaint_model.dart';
 
 // A single complaint being submitted. The client sends CONTEXT only and the
 // backend decides the type:

@@ -1,5 +1,5 @@
-import 'package:phoenix/features/advertisements/data/models/advertisement_model.dart';
-import 'package:phoenix/features/offers/data/models/offer_model.dart';
+import 'package:feniq/features/advertisements/data/models/advertisement_model.dart';
+import 'package:feniq/features/offers/data/models/offer_model.dart';
 
 // Shared builders for the Offers & Ads tests. Both go through the models'
 // own fromJson so the fixtures exercise the same parsing the app does.

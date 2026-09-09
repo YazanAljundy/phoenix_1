@@ -1,6 +1,6 @@
-# Phoenix Load & Stress Test Suite
+# Feniq Load & Stress Test Suite
 
-Full-system load testing for the Phoenix backend: HTTP APIs, Socket.IO realtime,
+Full-system load testing for the Feniq backend: HTTP APIs, Socket.IO realtime,
 return-photo uploads, and catalog-size scaling. Nothing here modifies
 application code — the backend is exercised only through its public API, plus
 one out-of-band instrumentation module loaded with `node -r`.

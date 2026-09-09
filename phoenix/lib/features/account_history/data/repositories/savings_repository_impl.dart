@@ -1,8 +1,8 @@
 import 'package:dio/dio.dart';
-import 'package:phoenix/core/error/failure.dart';
-import 'package:phoenix/core/network/api_client.dart';
-import 'package:phoenix/core/network/endpoints.dart';
-import 'package:phoenix/features/account_history/data/models/savings_summary.dart';
+import 'package:feniq/core/error/failure.dart';
+import 'package:feniq/core/network/api_client.dart';
+import 'package:feniq/core/network/endpoints.dart';
+import 'package:feniq/features/account_history/data/models/savings_summary.dart';
 
 import 'savings_repository.dart';
 

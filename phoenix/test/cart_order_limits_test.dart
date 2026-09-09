@@ -1,6 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:phoenix/features/cart/data/models/cart_item.dart';
-import 'package:phoenix/features/cart/presentation/managers/cart_state.dart';
+import 'package:feniq/features/cart/data/models/cart_item.dart';
+import 'package:feniq/features/cart/presentation/managers/cart_state.dart';
 
 // The cart's own copy of the warehouse order-size limits must gate exactly
 // the same way order.service.js does, against the same subtotal figure.

@@ -54,7 +54,7 @@ async function start() {
 
   server.listen(env.port, () => {
     // eslint-disable-next-line no-console
-    console.log(`Phoenix API listening on port ${env.port} (${env.nodeEnv})`);
+    console.log(`Feniq API listening on port ${env.port} (${env.nodeEnv})`);
   });
 }
 

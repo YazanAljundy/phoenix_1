@@ -49,7 +49,7 @@ const PASSWORD_USER_PHONE = '0910000009';
 const PASSWORD_USER_SECRET = 'correct horse';
 
 test.before(async () => {
-  await startMemoryMongo({ dbName: 'phoenix-leanpath-test' });
+  await startMemoryMongo({ dbName: 'feniq-leanpath-test' });
 
   const legacyUserId = LEGACY_WAREHOUSE_USER_ID;
   const modernUserId = new mongoose.Types.ObjectId();
@@ -106,8 +106,8 @@ test.after(async () => {
 });
 
 test('warehouse list still reports order limits for a document that predates those fields', async () => {
-  const warehouses = await warehouseService.listAvailableWarehouses();
-  const payload = warehouseViewModel.toWarehouseListResponse(warehouses);
+  const result = await warehouseService.listAvailableWarehouses();
+  const payload = warehouseViewModel.toWarehouseListResponse(result);
 
   const legacy = payload.warehouses.find((w) => w.nameEn === 'Legacy Warehouse');
   assert.ok(legacy, 'the legacy warehouse must still be listed');
@@ -122,8 +122,8 @@ test('warehouse list still reports order limits for a document that predates tho
 });
 
 test('warehouse list response keeps exactly its documented key set', async () => {
-  const warehouses = await warehouseService.listAvailableWarehouses();
-  const { warehouses: rows } = warehouseViewModel.toWarehouseListResponse(warehouses);
+  const result = await warehouseService.listAvailableWarehouses();
+  const { warehouses: rows } = warehouseViewModel.toWarehouseListResponse(result);
   assert.deepStrictEqual(
     Object.keys(rows[0]).sort(),
     ['city', 'id', 'logo', 'maxOrderAmountUsd', 'minOrderAmountUsd', 'nameAr', 'nameEn', 'phone'].sort()

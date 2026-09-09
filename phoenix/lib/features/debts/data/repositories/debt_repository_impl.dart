@@ -1,9 +1,9 @@
 import 'package:dio/dio.dart';
-import 'package:phoenix/core/error/failure.dart';
-import 'package:phoenix/core/network/api_client.dart';
-import 'package:phoenix/core/network/endpoints.dart';
-import 'package:phoenix/features/debts/data/models/debt_detail_model.dart';
-import 'package:phoenix/features/debts/data/models/warehouse_debt_model.dart';
+import 'package:feniq/core/error/failure.dart';
+import 'package:feniq/core/network/api_client.dart';
+import 'package:feniq/core/network/endpoints.dart';
+import 'package:feniq/features/debts/data/models/debt_detail_model.dart';
+import 'package:feniq/features/debts/data/models/warehouse_debt_model.dart';
 
 import 'debt_repository.dart';
 

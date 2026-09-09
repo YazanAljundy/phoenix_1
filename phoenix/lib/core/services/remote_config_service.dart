@@ -2,12 +2,12 @@ import 'package:firebase_remote_config/firebase_remote_config.dart';
 
 // Thin wrapper around Firebase Remote Config for the app-update checker.
 //
-// The only three parameters Phoenix reads from Remote Config:
+// The only three parameters Feniq reads from Remote Config:
 //   latest_version  - newest published version, e.g. "1.2.0"
 //   min_version     - oldest version still supported, e.g. "1.1.0"
 //   update_url      - store page to send the user to
 //
-// Every Firebase call here is wrapped so Remote Config can never stop Phoenix
+// Every Firebase call here is wrapped so Remote Config can never stop Feniq
 // from starting: a missing Firebase project, no network, a plugin error - all
 // resolve to "we simply have no update info", which the caller treats as
 // "do nothing".
@@ -50,7 +50,7 @@ class RemoteConfigService {
       await _rc.activate();
       _initialised = true;
     } catch (_) {
-      // Remote Config unavailable - Phoenix continues. `refresh` and the
+      // Remote Config unavailable - Feniq continues. `refresh` and the
       // getters below will just return the compiled-in defaults.
     }
   }

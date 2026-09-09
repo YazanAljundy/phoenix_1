@@ -7,6 +7,7 @@ import { useExchangeRate } from '../context/ExchangeRateContext';
 import { REALTIME_EVENTS, useRealtimeSync } from '../realtime/useRealtimeSync';
 import { formatUsdAsSyp, formatSyp, formatMoneyFromUsd, remainingPaymentAmountFromSyp } from '../utils/currency';
 import { PAYMENT_METHODS, PAYMENT_CURRENCIES as CURRENCIES, newIdempotencyKey } from '../utils/payments';
+import { mayAdvance } from './orderStatusFlow';
 
 function statusKeySuffix(status) {
   return status
@@ -448,6 +449,11 @@ export function WarehouseOrderDetailPage() {
 
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentMessage, setPaymentMessage] = useState(null);
+  // Replaces the dialog that used to acknowledge every status change: the
+  // operator gets told what happened without having to dismiss anything.
+  // An inline line in the action column, not a floating toast - see the
+  // .wh-realtime-pill note in index.css for why this panel avoids those.
+  const [statusMessage, setStatusMessage] = useState(null);
 
   const statusLabel = useCallback((status) => t(`orders.status${statusKeySuffix(status)}`), [t]);
   const reasonText = useCallback(
@@ -458,16 +464,33 @@ export function WarehouseOrderDetailPage() {
     [t],
   );
 
-  const load = useCallback(async () => {
-    setIsLoading(true);
+  // `silent` skips the page-level loading state, leaving the order on screen
+  // while it refreshes. Used only by handleAdvance: now that four of the five
+  // transitions apply without a dialog, an operator clicks through a normal
+  // order quickly, and blanking the whole detail to "Loading..." on each step
+  // (which also wipes the success line it is meant to leave behind) reads as a
+  // stutter rather than as progress. Every other caller keeps the visible
+  // load it has always had.
+  const load = useCallback(async (options) => {
+    // Read defensively rather than destructured: `load` is handed straight to
+    // EditItemsSection as its onSaved prop, so a caller can invoke it with
+    // whatever it likes (a DOM event, null) - and that must degrade to a
+    // normal visible load, never throw.
+    const silent = options?.silent === true;
+    if (!silent) setIsLoading(true);
     setError(null);
     try {
       const data = await api.warehouseOrderDetail(orderId);
       setOrder(data.order);
+      // Returned as well as stored: handleAdvance needs the fresh status to
+      // name it in its success line, and the state setter above won't have
+      // landed by the time it reads it.
+      return data.order;
     } catch (err) {
       setError(err.message);
+      return null;
     } finally {
-      setIsLoading(false);
+      if (!silent) setIsLoading(false);
     }
   }, [orderId]);
 
@@ -506,16 +529,28 @@ export function WarehouseOrderDetailPage() {
   );
 
   const handleAdvance = async () => {
-    if (!window.confirm(t('orderDetail.confirmAdvance', { action: t(ADVANCE_KEYS[order.status]) }))) return;
+    // Only leaving 'preparing' still asks - see orderStatusFlow.js. Every
+    // other step applies on click and reports itself below the button.
+    const proceed = mayAdvance(order.status, {
+      confirm: () =>
+        window.confirm(t('orderDetail.confirmAdvance', { action: t(ADVANCE_KEYS[order.status]) })),
+    });
+    if (!proceed) return;
+
     setIsAdvancing(true);
     setError(null);
+    setStatusMessage(null);
     try {
       await api.advanceOrderStatus(order.id);
       // Re-fetches this order's own detail (status/statusHistory change) -
       // no full page reload. The list page picks up the new status on its
       // own next mount (it always refetches on mount/tab-change), so
       // there's nothing further to push there from here.
-      await load();
+      const updated = await load({ silent: true });
+      // Named from the reloaded order rather than from a local guess at the
+      // next status: the backend owns the progression, and a realtime event
+      // or a second operator could have moved it further in between.
+      if (updated) setStatusMessage(t('orderDetail.statusAdvanced', { status: statusLabel(updated.status) }));
     } catch (err) {
       setError(err.message);
     } finally {
@@ -816,6 +851,7 @@ export function WarehouseOrderDetailPage() {
                   {t('orderDetail.recordPayment')}
                 </button>
               )}
+              {statusMessage && <p className="hint">{statusMessage}</p>}
               {paymentMessage && <p className="hint">{paymentMessage}</p>}
             </div>
           </div>

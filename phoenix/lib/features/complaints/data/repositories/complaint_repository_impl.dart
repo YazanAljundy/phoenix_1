@@ -1,9 +1,9 @@
 import 'package:dio/dio.dart';
-import 'package:phoenix/core/error/failure.dart';
-import 'package:phoenix/core/models/paginated_result.dart';
-import 'package:phoenix/core/network/api_client.dart';
-import 'package:phoenix/core/network/endpoints.dart';
-import 'package:phoenix/features/complaints/data/models/complaint_model.dart';
+import 'package:feniq/core/error/failure.dart';
+import 'package:feniq/core/models/paginated_result.dart';
+import 'package:feniq/core/network/api_client.dart';
+import 'package:feniq/core/network/endpoints.dart';
+import 'package:feniq/features/complaints/data/models/complaint_model.dart';
 
 import 'complaint_repository.dart';
 

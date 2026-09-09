@@ -3,7 +3,7 @@
 // admin edit/delete, cross-warehouse isolation, and the pharmacist-facing
 // consequence (a permanent offer counts as "active" with no end date).
 //
-// Runs against its own database (phoenix-offer-test) and drops it at the end.
+// Runs against its own database (feniq-offer-test) and drops it at the end.
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-offer-tests';
 process.env.NODE_ENV = 'test';
 
@@ -49,7 +49,7 @@ async function seed() {
 }
 
 test.before(async () => {
-  await startMemoryMongo({ dbName: 'phoenix-offer-test' });
+  await startMemoryMongo({ dbName: 'feniq-offer-test' });
   await seed();
 });
 

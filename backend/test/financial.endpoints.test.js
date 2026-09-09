@@ -78,7 +78,7 @@ async function deliver(order) {
 }
 
 test.before(async () => {
-  await startMemoryMongo({ dbName: 'phoenix-endpoints-test' });
+  await startMemoryMongo({ dbName: 'feniq-endpoints-test' });
   await syncIndexes(LedgerEntry, LedgerAccount, Order, Return);
   await ExchangeRate.create({ _id: 'singleton', usdToSyp: RATE, source: 'manual' });
 

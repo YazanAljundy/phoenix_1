@@ -84,7 +84,7 @@ async function seedTradingRelationship() {
 }
 
 test.before(async () => {
-  await startMemoryMongo({ dbName: 'phoenix-fx-test' });
+  await startMemoryMongo({ dbName: 'feniq-fx-test' });
   await syncIndexes(Order, LedgerEntry, LedgerAccount);
 
   const [phUser, whUser] = await User.create([

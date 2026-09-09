@@ -89,7 +89,7 @@ async function setWarehouseDefault(value) {
 }
 
 test.before(async () => {
-  await startMemoryMongo({ dbName: 'phoenix-delivery-seal-test' });
+  await startMemoryMongo({ dbName: 'feniq-delivery-seal-test' });
   await ExchangeRate.create({ _id: 'singleton', usdToSyp: 10000, source: 'manual' });
 
   const [pharmacyUser, warehouseUser] = await User.create([

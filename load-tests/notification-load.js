@@ -19,7 +19,7 @@
  *     device/integration test - which is the correct scope for it anyway,
  *     since delivery is Firebase's to measure, not this backend's.
  *
- * What is measured here is the part Phoenix owns: the cost of the fan-out.
+ * What is measured here is the part Feniq owns: the cost of the fan-out.
  * admin.service.js selects every recipient, then notification.service.js
  * sendToAll does `Promise.all(userIds.map(sendToUser))` with no concurrency
  * limit, and each sendToUser is a User.findById plus a Notification.create.

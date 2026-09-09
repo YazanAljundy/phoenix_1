@@ -1,4 +1,4 @@
-import 'package:phoenix/features/cart/data/models/cart_item.dart';
+import 'package:feniq/features/cart/data/models/cart_item.dart';
 
 class CartState {
   const CartState({
@@ -12,6 +12,7 @@ class CartState {
     this.advertisementItemsSubtotalUsd = 0,
     this.advertisementTotalUsd = 0,
     this.isSubmitting = false,
+    this.pendingIdempotencyKey,
     this.errorMessage,
     this.errorCode,
     this.errorDetails,
@@ -37,6 +38,16 @@ class CartState {
   final num advertisementItemsSubtotalUsd;
   final num advertisementTotalUsd;
   final bool isSubmitting;
+
+  // Money-Flow V2 idempotency. Minted by CartCubit on the FIRST submit
+  // attempt and deliberately kept across failed ones, so a retry reuses the
+  // same key and the server can recognise it (order.service.js). It lives
+  // here rather than as a cubit field so it survives exactly as long as the
+  // cart does: every path that resets the cart to a fresh CartState - a
+  // successful submit, clearCart, removing the last line, switching
+  // warehouse - drops it too, which is precisely when a new order should get
+  // a new key.
+  final String? pendingIdempotencyKey;
 
   // Raw error pieces from the last failed action, kept separate rather than
   // pre-rendered: only the View has a BuildContext/l10n to translate `code`
@@ -93,6 +104,7 @@ class CartState {
     num? advertisementTotalUsd,
     bool clearAdvertisement = false,
     bool? isSubmitting,
+    String? pendingIdempotencyKey,
     String? errorMessage,
     String? errorCode,
     Map<String, dynamic>? errorDetails,
@@ -113,6 +125,7 @@ class CartState {
           ? 0
           : (advertisementTotalUsd ?? this.advertisementTotalUsd),
       isSubmitting: isSubmitting ?? this.isSubmitting,
+      pendingIdempotencyKey: pendingIdempotencyKey ?? this.pendingIdempotencyKey,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       errorCode: clearError ? null : (errorCode ?? this.errorCode),
       errorDetails: clearError ? null : (errorDetails ?? this.errorDetails),

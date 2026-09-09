@@ -1,4 +1,4 @@
-import 'package:phoenix/generated/app_localizations.dart';
+import 'package:feniq/generated/app_localizations.dart';
 
 String returnReasonLabel(AppLocalizations l10n, String reasonType) {
   switch (reasonType) {

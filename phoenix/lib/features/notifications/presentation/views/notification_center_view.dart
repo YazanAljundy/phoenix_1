@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:phoenix/core/constants/app_colors.dart';
-import 'package:phoenix/core/constants/app_padding.dart';
-import 'package:phoenix/core/constants/app_sizes.dart';
-import 'package:phoenix/core/extensions/build_context_extensions.dart';
-import 'package:phoenix/core/utils/date_formatter.dart';
-import 'package:phoenix/core/widgets/custom_card.dart';
-import 'package:phoenix/core/widgets/empty_view.dart';
-import 'package:phoenix/features/notifications/data/models/notification_model.dart';
-import 'package:phoenix/features/notifications/presentation/managers/notification_cubit.dart';
-import 'package:phoenix/features/notifications/presentation/managers/notification_state.dart';
-import 'package:phoenix/routes/route_names.dart';
+import 'package:feniq/core/constants/app_colors.dart';
+import 'package:feniq/core/constants/app_padding.dart';
+import 'package:feniq/core/constants/app_sizes.dart';
+import 'package:feniq/core/extensions/build_context_extensions.dart';
+import 'package:feniq/core/theme/app_text_theme.dart';
+import 'package:feniq/core/utils/date_formatter.dart';
+import 'package:feniq/core/widgets/custom_card.dart';
+import 'package:feniq/core/widgets/empty_view.dart';
+import 'package:feniq/features/notifications/data/models/notification_model.dart';
+import 'package:feniq/features/notifications/presentation/managers/notification_cubit.dart';
+import 'package:feniq/features/notifications/presentation/managers/notification_state.dart';
+import 'package:feniq/routes/route_names.dart';
 
 /// The in-app inbox. Reads the single app-wide [NotificationCubit]; the FCM
 /// layer keeps it filled. Tapping an order notification re-uses the existing
@@ -162,7 +163,7 @@ class _NotificationTile extends StatelessWidget {
                           style: context.textTheme.titleSmall?.copyWith(
                             fontWeight: unread
                                 ? FontWeight.w800
-                                : FontWeight.w600,
+                                : AppTextTheme.semiBold,
                           ),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,

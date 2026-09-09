@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:phoenix/core/utils/app_version.dart';
+import 'package:feniq/core/utils/app_version.dart';
 
 void main() {
   group('AppVersion.parse', () {

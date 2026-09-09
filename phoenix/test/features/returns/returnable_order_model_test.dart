@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:phoenix/features/returns/data/models/returnable_order_model.dart';
+import 'package:feniq/features/returns/data/models/returnable_order_model.dart';
 
 // The server decides eligibility and the hours left; these tests pin the
 // parsing and the one piece of display logic the client owns (isEndingSoon).

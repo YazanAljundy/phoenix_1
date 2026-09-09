@@ -34,7 +34,7 @@ const list = asyncHandler(async (req, res) => {
   const cursor = parseObjectIdCursor(after);
   const { rows, hasMore, nextCursor } = await warehouseProductService.listPaginatedProductsForWarehouse(
     warehouse._id,
-    { limit, after: cursor }
+    { limit, after: cursor, manufacturerAr: req.query.manufacturer }
   );
   res.json({
     success: true,

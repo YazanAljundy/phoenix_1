@@ -1,4 +1,4 @@
-import 'package:phoenix/features/debts/data/models/debt_detail_model.dart';
+import 'package:feniq/features/debts/data/models/debt_detail_model.dart';
 
 enum DebtDetailStatus { initial, loading, loaded, error }
 

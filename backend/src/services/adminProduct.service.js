@@ -99,6 +99,19 @@ async function listPaginatedAllProducts({ search, warehouseId, limit = ADMIN_PRO
   return { rows, hasMore, nextCursor };
 }
 
+// The Dashboard's "products" stat card, and nothing else. It used to call
+// listAllProducts() and read `.length` off it - every product on the
+// platform loaded, hydrated, identity-resolved, locale-sorted and serialised
+// to JSON so one integer could be rendered. countDocuments does it in the
+// database, and the Dashboard re-runs this on every realtime event
+// (useRealtimeSync), so the difference is per-event, not per-page-load.
+//
+// Counts every product, active or not - same set listAllProducts returned,
+// so the number on the card doesn't change meaning with this switch.
+async function countAllProducts() {
+  return Product.countDocuments({});
+}
+
 // Distinct warehouses that currently have at least one product - backs the
 // management page's warehouse filter dropdown. Fetched independently of the
 // paginated rows above (a product's own page won't necessarily include
@@ -143,6 +156,7 @@ async function deactivateProduct(productId) {
 module.exports = {
   listAllProducts,
   listPaginatedAllProducts,
+  countAllProducts,
   listWarehousesWithProducts,
   updateProduct,
   deactivateProduct,

@@ -1,18 +1,17 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:phoenix/core/constants/app_colors.dart';
-import 'package:phoenix/core/constants/app_radius.dart';
-import 'package:phoenix/core/constants/app_sizes.dart';
-import 'package:phoenix/core/extensions/build_context_extensions.dart';
-import 'package:phoenix/core/utils/currency_formatter.dart';
-import 'package:phoenix/core/widgets/app_network_image.dart';
-import 'package:phoenix/core/widgets/custom_card.dart';
-import 'package:phoenix/core/widgets/quantity_stepper.dart';
-import 'package:phoenix/core/widgets/secondary_price_hint.dart';
-import 'package:phoenix/core/widgets/status_badge.dart';
-import 'package:phoenix/features/catalog/data/models/product_model.dart';
-import 'package:phoenix/features/catalog/presentation/widgets/quantity_picker_sheet.dart';
-import 'package:phoenix/features/exchange_rate/presentation/managers/exchange_rate_cubit.dart';
+import 'package:feniq/core/constants/app_colors.dart';
+import 'package:feniq/core/constants/app_radius.dart';
+import 'package:feniq/core/constants/app_sizes.dart';
+import 'package:feniq/core/extensions/build_context_extensions.dart';
+import 'package:feniq/core/utils/currency_formatter.dart';
+import 'package:feniq/core/widgets/app_network_image.dart';
+import 'package:feniq/core/widgets/custom_card.dart';
+import 'package:feniq/core/widgets/quantity_stepper.dart';
+import 'package:feniq/core/widgets/status_badge.dart';
+import 'package:feniq/features/catalog/data/models/product_model.dart';
+import 'package:feniq/features/catalog/presentation/widgets/quantity_picker_sheet.dart';
+import 'package:feniq/features/exchange_rate/presentation/managers/exchange_rate_cubit.dart';
 
 // Two layouts sharing the same data/logic: a grid tile (image on top,
 // details below - the default) and a compact list row, toggled from
@@ -298,66 +297,41 @@ class _PriceDisplay extends StatelessWidget {
     // discounted one. Equal prices -> a single plain number. The card only
     // shows the figures, never why a price is lower.
     //
-    // SYP is the figure the pharmacist reads (formatMoneyFromUsd converts the
-    // stored USD price at the live rate); the exact USD amount rides along as
-    // a small secondary hint.
+    // SYP is the only figure shown - formatMoneyFromUsd converts the stored
+    // USD price at the current rate.
     final usdToSyp = context.watch<ExchangeRateCubit>().state.usdToSyp;
     final hasDiscount = product.discountPriceUsd < product.priceUsd;
-    final discountUsdHint = usdHintFromUsd(product.discountPriceUsd, usdToSyp);
 
     if (!hasDiscount) {
-      return Wrap(
-        crossAxisAlignment: WrapCrossAlignment.center,
-        spacing: AppSizes.spacingXSmall,
-        children: [
-          Text(
-            formatMoneyFromUsd(product.discountPriceUsd, usdToSyp, l10n.currencySuffix),
-            style: context.textTheme.titleSmall?.copyWith(
-              color: AppColors.primaryOf(context),
-              fontSize: 15,
-            ),
-          ),
-          if (discountUsdHint != null) SecondaryPriceHint(text: discountUsdHint),
-        ],
+      return Text(
+        formatMoneyFromUsd(product.discountPriceUsd, usdToSyp, l10n.currencySuffix),
+        style: context.textTheme.titleSmall?.copyWith(
+          color: AppColors.primaryOf(context),
+          fontSize: 15,
+        ),
       );
     }
-
-    final originalUsdHint = usdHintFromUsd(product.priceUsd, usdToSyp);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Wrap(
-          crossAxisAlignment: WrapCrossAlignment.center,
-          spacing: AppSizes.spacingXSmall,
-          children: [
-            Text(
-              formatMoneyFromUsd(product.priceUsd, usdToSyp, l10n.currencySuffix),
-              style: TextStyle(
-                decoration: TextDecoration.lineThrough,
-                color: AppColors.textSecondaryOf(context),
-                fontSize: 11.5,
-              ),
-            ),
-            if (originalUsdHint != null) SecondaryPriceHint(text: originalUsdHint),
-          ],
+        Text(
+          formatMoneyFromUsd(product.priceUsd, usdToSyp, l10n.currencySuffix),
+          style: TextStyle(
+            decoration: TextDecoration.lineThrough,
+            color: AppColors.textSecondaryOf(context),
+            fontSize: 11.5,
+          ),
         ),
         const SizedBox(height: 2),
-        Wrap(
-          crossAxisAlignment: WrapCrossAlignment.center,
-          spacing: AppSizes.spacingXSmall,
-          children: [
-            Text(
-              formatMoneyFromUsd(product.discountPriceUsd, usdToSyp, l10n.currencySuffix),
-              style: TextStyle(
-                color: AppColors.secondary,
-                fontWeight: FontWeight.bold,
-                fontSize: 15,
-              ),
-            ),
-            if (discountUsdHint != null) SecondaryPriceHint(text: discountUsdHint),
-          ],
+        Text(
+          formatMoneyFromUsd(product.discountPriceUsd, usdToSyp, l10n.currencySuffix),
+          style: TextStyle(
+            color: AppColors.secondary,
+            fontWeight: FontWeight.bold,
+            fontSize: 15,
+          ),
         ),
       ],
     );

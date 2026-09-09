@@ -1,6 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:phoenix/core/error/failure.dart';
-import 'package:phoenix/features/banners/data/repositories/banners_repository.dart';
+import 'package:feniq/core/error/failure.dart';
+import 'package:feniq/features/banners/data/repositories/banners_repository.dart';
 
 import 'banners_state.dart';
 

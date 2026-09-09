@@ -32,15 +32,16 @@
     "endAfterStart": "End date must be after the start date.",
     "loadMore": "Load more ({{count}} more)",
     "loadingMore": "Loading...",
-    "allResultsShown": "All results shown"
+    "allResultsShown": "All results shown",
+    "unexpectedError": "Something went wrong. Please try again."
   },
   "app": {
-    "brand": "Phoenix Admin"
+    "brand": "Feniq Admin"
   },
   "nav": {
     "adminTitle": "Admin",
     "warehouseTitleFallback": "Warehouse panel",
-    "brandName": "Phoenix",
+    "brandName": "Feniq",
     "openMenu": "Open menu",
     "dashboard": "Dashboard",
     "accounts": "Accounts",
@@ -62,7 +63,10 @@
     "complaints": "Complaints",
     "settings": "Settings",
     "settlement": "Settlement",
-    "commission": "Commission"
+    "commission": "Commission",
+    "promotions": "Promotions",
+    "financials": "Financials",
+    "feedback": "Feedback"
   },
   "auth": {
     "phoneLabel": "Phone number",
@@ -132,6 +136,7 @@
     "confirmApproveReturn": "Approve this return for order #{{number}}? This creates a new no-extra-charge replacement order and cannot be undone.",
     "promptRejectReturn": "Explain why this return (order #{{number}}) is being rejected - the pharmacist will see this note:",
     "confirmAdvance": "{{action}}?",
+    "statusAdvanced": "Status updated to {{status}}.",
     "editItemsTitle": "Edit items",
     "removeItemButton": "Remove",
     "cannotRemoveLastItem": "Cannot remove the last item",
@@ -469,6 +474,9 @@
     "importConverted": "💱 Converted {{count}} item(s) from Syrian pounds",
     "importConvertedRate": "Exchange rate: 1 USD = {{rate}} SYP",
     "noProductsWarehouse": "No products yet - add your first one.",
+    "companyProductCount": "{{count}} products",
+    "backToCompanies": "Back to companies",
+    "noProductsForCompany": "This company has no products in your catalog.",
     "noProductsAdmin": "No products found.",
     "allWarehouses": "All warehouses",
     "removed": "Removed",
@@ -590,6 +598,9 @@
       "editTitle": "Edit catalog item",
       "nameArLabel": "Medicine name (Arabic)",
       "noCategoryOption": "No category",
+      "confirmRename": "Rename \"{{oldName}}\" to \"{{newName}}\"?\n\nThis medicine is stocked as {{count}} product(s) across warehouses. All of them will show the new name immediately, including in carts that already hold it.",
+      "confirmDisable": "Disable \"{{name}}\"?\n\nIt is stocked as {{count}} product(s) across warehouses. All of them will be removed from their catalogs and pharmacists will no longer be able to order it.",
+      "disabledWithProducts": "Disabled. {{count}} warehouse product(s) were removed along with it.",
       "importResultTitle": "Import result",
       "importSummary": "File: {{fileName}} · {{count}} rows",
       "importResultAdded": "Added",
@@ -653,7 +664,7 @@
     "credited": "Returned",
     "creditedHint": "Credited back to pharmacies",
     "commission": "Platform commission",
-    "commissionHint": "Owed to Phoenix for this period",
+    "commissionHint": "Owed to Feniq for this period",
     "commissionAfterClawback": "{{gross}} less {{clawback}} on returns",
     "net": "You receive",
     "netHint": "Sales less returns and commission",
@@ -674,7 +685,7 @@
     "returns": "Returns",
     "returnsHint": "Credited back on approved returns",
     "owed": "Commission owed",
-    "owedHint": "Due to Phoenix, after returns",
+    "owedHint": "Due to Feniq, after returns",
     "collected": "Collected",
     "outstanding": "Outstanding",
     "collectedSoFar": "{{amount}} collected so far",

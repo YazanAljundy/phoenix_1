@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:phoenix/core/services/app_update_service.dart';
-import 'package:phoenix/core/services/navigation_service.dart';
-import 'package:phoenix/features/app_update/presentation/app_update_dialog.dart';
+import 'package:feniq/core/services/app_update_service.dart';
+import 'package:feniq/core/services/navigation_service.dart';
+import 'package:feniq/features/app_update/presentation/app_update_dialog.dart';
 
 // Runs the update check ONCE per app launch, after the first frame, and shows
 // the right dialog for `optional` / `mandatory`. `none` does nothing at all -

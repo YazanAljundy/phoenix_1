@@ -2,7 +2,7 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Phoenix (Chrome, local backend)",
+      "name": "Feniq (Chrome, local backend)",
       "type": "dart",
       "request": "launch",
       "program": "lib/main.dart",
@@ -10,7 +10,7 @@
       "args": ["--dart-define=API_BASE_URL=http://localhost:5000/api"]
     },
     {
-      "name": "Phoenix (Android emulator, local backend)",
+      "name": "Feniq (Android emulator, local backend)",
       "type": "dart",
       "request": "launch",
       "program": "lib/main.dart",

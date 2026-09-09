@@ -9,7 +9,7 @@ class AppLocalizationsAr extends AppLocalizations {
   AppLocalizationsAr([String locale = 'ar']) : super(locale);
 
   @override
-  String get appName => 'فينيكس';
+  String get appName => 'فينيق';
 
   @override
   String get login => 'تسجيل الدخول';
@@ -285,6 +285,22 @@ class AppLocalizationsAr extends AppLocalizations {
   String get warehouseProfileButtonLabel => 'البروفايل';
 
   @override
+  String get warehousesScopeMyCity => 'مدينتي';
+
+  @override
+  String get warehousesScopeAllCities => 'كل المدن';
+
+  @override
+  String get viewAllCitiesButton => 'عرض كل المدن';
+
+  @override
+  String get noWarehousesInYourCity => 'لا يوجد مستودعات بمدينتك';
+
+  @override
+  String get noWarehousesInYourCitySubtitle =>
+      'جرّب توسيع البحث ليشمل مدناً أخرى.';
+
+  @override
   String get noManufacturersFound =>
       'لا توجد شركات مصنّعة متاحة بهذا المستودع.';
 
@@ -443,6 +459,15 @@ class AppLocalizationsAr extends AppLocalizations {
   String get removeButton => 'إزالة';
 
   @override
+  String get clearCartButton => 'مسح السلة';
+
+  @override
+  String get clearCartTitle => 'مسح السلة؟';
+
+  @override
+  String get clearCartConfirmation => 'هل أنت متأكد من مسح جميع محتويات السلة؟';
+
+  @override
   String get cartConflictTitle => 'بدء سلة جديدة؟';
 
   @override
@@ -597,6 +622,18 @@ class AppLocalizationsAr extends AppLocalizations {
   String errorProductNotFound(String name) {
     return '$name لم يعد متوفراً.';
   }
+
+  @override
+  String get errorPriceChangedGeneric => 'تغيّرت بعض الأسعار في سلتك.';
+
+  @override
+  String errorPriceChanged(String name, String newPrice, String oldPrice) {
+    return '$name أصبح بـ $newPrice (كان $oldPrice).';
+  }
+
+  @override
+  String get priceChangedConfirmHint =>
+      'أرسل الطلب مرة أخرى لتأكيده بالأسعار الجديدة.';
 
   @override
   String get thisItemFallback => 'هذا العنصر';
@@ -1315,7 +1352,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get updateAvailableMessage =>
-      'يتوفر إصدار جديد من Phoenix. قم بالتحديث للحصول على أحدث الميزات والتحسينات.';
+      'يتوفر إصدار جديد من Feniq. قم بالتحديث للحصول على أحدث الميزات والتحسينات.';
 
   @override
   String get updateRequired => 'تحديث إجباري';

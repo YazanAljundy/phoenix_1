@@ -1,11 +1,11 @@
 {
-    "name": "phoenix",
-    "short_name": "phoenix",
+    "name": "FENIQ",
+    "short_name": "FENIQ",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#0E1A2C",
+    "theme_color": "#0E1A2C",
+    "description": "FENIQ - فينيق - طلب الأدوية للصيدليات",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:phoenix/core/utils/cloudinary_image.dart';
+import 'package:feniq/core/utils/cloudinary_image.dart';
 
 void main() {
   // A URL in the exact shape backend/src/services/upload.service.js produces:

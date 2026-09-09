@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
-import 'package:phoenix/core/constants/storage_keys.dart';
-import 'package:phoenix/core/services/auth_event_bus.dart';
-import 'package:phoenix/core/services/secure_storage_service.dart';
+import 'package:feniq/core/constants/storage_keys.dart';
+import 'package:feniq/core/services/auth_event_bus.dart';
+import 'package:feniq/core/services/secure_storage_service.dart';
 
 class AuthInterceptor extends Interceptor {
   AuthInterceptor({required SecureStorageService secureStorage})

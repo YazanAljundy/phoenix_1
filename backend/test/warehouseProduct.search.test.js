@@ -30,7 +30,7 @@ async function search(q, options = {}) {
 }
 
 test.before(async () => {
-  await startMemoryMongo({ dbName: 'phoenix-product-search-test' });
+  await startMemoryMongo({ dbName: 'feniq-product-search-test' });
 
   const [whUser, otherWhUser] = await User.create([
     { name: 'WH', phone: '0942000501', role: 'warehouse', status: 'active' },

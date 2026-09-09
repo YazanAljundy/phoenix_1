@@ -1,4 +1,4 @@
-import 'package:phoenix/generated/app_localizations.dart';
+import 'package:feniq/generated/app_localizations.dart';
 
 // Shared between the status history list, the progress bar labels, and the
 // "my orders" list badge - one switch over orders.status, not three.

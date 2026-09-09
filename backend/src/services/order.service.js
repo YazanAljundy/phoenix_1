@@ -52,7 +52,16 @@ function mergeDuplicateItems(items) {
     if (existing) {
       existing.quantity += item.quantity;
     } else {
-      merged.set(item.productId, { productId: item.productId, quantity: item.quantity });
+      merged.set(item.productId, {
+        productId: item.productId,
+        quantity: item.quantity,
+        // Two lines for the same product came from the same catalog card and
+        // therefore carry the same displayed price, so the first one's is
+        // kept rather than summed. `?? null` covers a caller that sends no
+        // price at all (an older app build, or approveReturn's internal
+        // items) - that line just skips the price check below.
+        displayedUnitPriceUsd: item.displayedUnitPriceUsd ?? null,
+      });
     }
   }
   return Array.from(merged.values());
@@ -334,6 +343,64 @@ async function createOrder({
     getDiscountMapForWarehouse(warehouseId),
   ]);
   const offerByProductId = new Map(offers.map((o) => [o.productId.toString(), o]));
+
+  // Section 7/8 (price half of the same guarantee the availability check
+  // above gives): the cart snapshots a unit price when an item is added and
+  // nothing refreshes it, so a warehouse editing a price in the meantime used
+  // to mean the pharmacist saw one number and was billed another, with no
+  // signal at all. Every line that told us what it was showing is compared
+  // against what it would actually be charged, and the whole order is
+  // rejected if any of them moved - same shape as STOCK_CHECK_FAILED, so the
+  // client renders it through the same per-item path.
+  //
+  // Deliberately NOT a repricing: the server's number still wins, this only
+  // decides whether to charge silently or ask first. Resubmitting with the
+  // refreshed price is what confirms it.
+  //
+  // Skipped for two kinds of line, both of which would report a false
+  // mismatch: an advertisement package line (billed at the plain catalog
+  // price with the package discount applied once at the order level, not per
+  // line - see the pricing map below) and any line that sent no price at all
+  // (an older app build, or approveReturn's internally-built items).
+  const priceProblems = [];
+  const priceFallbackText = [];
+  for (const item of merged) {
+    if (item.displayedUnitPriceUsd === null) continue;
+    if (advertisedQtyByProductId.has(item.productId)) continue;
+
+    const product = productById.get(item.productId);
+    const offer = offerByProductId.get(item.productId);
+    const manufacturerDiscountPercentage =
+      manufacturerDiscountByName.get(product.manufacturerAr) ?? null;
+    const currentPriceUsd = computeDiscountedPriceUsd(
+      product.price,
+      offer?.discountPercentage,
+      manufacturerDiscountPercentage
+    );
+
+    // Half a cent: both sides are already rounded to two decimals by
+    // computeDiscountedPriceUsd, so anything below this is float noise from
+    // the JSON round-trip rather than a real price change.
+    if (Math.abs(currentPriceUsd - item.displayedUnitPriceUsd) > 0.005) {
+      priceProblems.push({
+        code: 'PRICE_CHANGED',
+        productId: item.productId,
+        displayedPriceUsd: item.displayedUnitPriceUsd,
+        currentPriceUsd,
+      });
+      priceFallbackText.push(
+        `${product.nameEn} is now $${currentPriceUsd} (was $${item.displayedUnitPriceUsd}).`
+      );
+    }
+  }
+
+  if (priceProblems.length > 0) {
+    throw ApiError.badRequest(
+      priceFallbackText.join(' '),
+      { problems: priceProblems },
+      'PRICE_CHANGED'
+    );
+  }
 
   let totalPrice = 0;
   // Accumulated natively in USD rather than back-converted from the SYP

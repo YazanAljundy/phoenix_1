@@ -1,8 +1,8 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:phoenix/features/cart/data/models/order_model.dart';
-import 'package:phoenix/features/cart/presentation/utils/order_status_label.dart';
-import 'package:phoenix/generated/app_localizations.dart';
+import 'package:feniq/features/cart/data/models/order_model.dart';
+import 'package:feniq/features/cart/presentation/utils/order_status_label.dart';
+import 'package:feniq/generated/app_localizations.dart';
 
 // The order status flow terminology (user-facing):
 //   pending -> Sent, confirmed -> Waiting for Approval, preparing -> Preparing,

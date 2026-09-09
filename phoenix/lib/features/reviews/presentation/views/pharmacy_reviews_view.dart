@@ -1,18 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:phoenix/core/constants/app_colors.dart';
-import 'package:phoenix/core/constants/app_padding.dart';
-import 'package:phoenix/core/constants/app_sizes.dart';
-import 'package:phoenix/core/error/error_translator.dart';
-import 'package:phoenix/core/extensions/build_context_extensions.dart';
-import 'package:phoenix/core/utils/date_formatter.dart';
-import 'package:phoenix/core/widgets/app_loading.dart';
-import 'package:phoenix/core/widgets/custom_card.dart';
-import 'package:phoenix/core/widgets/empty_view.dart';
-import 'package:phoenix/core/widgets/failure_widget.dart';
-import 'package:phoenix/features/reviews/data/models/review_model.dart';
-import 'package:phoenix/features/reviews/presentation/managers/pharmacy_reviews_cubit.dart';
-import 'package:phoenix/features/reviews/presentation/managers/pharmacy_reviews_state.dart';
+import 'package:feniq/core/constants/app_colors.dart';
+import 'package:feniq/core/constants/app_padding.dart';
+import 'package:feniq/core/constants/app_sizes.dart';
+import 'package:feniq/core/error/error_translator.dart';
+import 'package:feniq/core/extensions/build_context_extensions.dart';
+import 'package:feniq/core/utils/date_formatter.dart';
+import 'package:feniq/core/widgets/app_skeleton.dart';
+import 'package:feniq/core/widgets/custom_card.dart';
+import 'package:feniq/core/widgets/empty_view.dart';
+import 'package:feniq/core/widgets/failure_widget.dart';
+import 'package:feniq/features/reviews/data/models/review_model.dart';
+import 'package:feniq/features/reviews/presentation/managers/pharmacy_reviews_cubit.dart';
+import 'package:feniq/features/reviews/presentation/managers/pharmacy_reviews_state.dart';
 
 // The pharmacist's own ratings/reviews list, opened from the Profile screen's
 // compact Ratings entry. It is only a full-screen home for what ProfileView
@@ -37,7 +37,18 @@ class PharmacyReviewsView extends StatelessWidget {
         builder: (context, state) {
           if (state.status == PharmacyReviewsStatus.loading ||
               state.status == PharmacyReviewsStatus.initial) {
-            return const AppLoading();
+            // The rating summary card, then the review cards under it.
+            return const SkeletonPage(
+              children: [
+                SkeletonCard(children: [SkeletonBar(width: 180, height: 18)]),
+                SizedBox(height: AppSizes.spacingSmall),
+                SkeletonListCard(lines: 2),
+                SizedBox(height: AppSizes.spacingSmall),
+                SkeletonListCard(lines: 2),
+                SizedBox(height: AppSizes.spacingSmall),
+                SkeletonListCard(lines: 2),
+              ],
+            );
           }
           if (state.status == PharmacyReviewsStatus.error && state.reviews.isEmpty) {
             return FailureWidget(

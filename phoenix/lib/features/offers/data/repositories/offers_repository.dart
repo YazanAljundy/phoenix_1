@@ -1,4 +1,4 @@
-import 'package:phoenix/features/offers/data/models/offer_model.dart';
+import 'package:feniq/features/offers/data/models/offer_model.dart';
 
 abstract class OffersRepository {
   /// Every product offer a pharmacy may currently see, across every

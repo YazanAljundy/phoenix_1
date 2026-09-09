@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:phoenix/core/extensions/build_context_extensions.dart';
-import 'package:phoenix/features/cart/presentation/managers/cart_cubit.dart';
-import 'package:phoenix/features/cart/presentation/managers/cart_state.dart';
-import 'package:phoenix/routes/route_names.dart';
+import 'package:feniq/core/extensions/build_context_extensions.dart';
+import 'package:feniq/features/cart/presentation/managers/cart_cubit.dart';
+import 'package:feniq/features/cart/presentation/managers/cart_state.dart';
+import 'package:feniq/routes/route_names.dart';
 
 /// The cart icon + live item-count badge for the AppBar of every screen in
 /// the shopping flow (warehouse selection, warehouse profile, manufacturers,

@@ -3,13 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:phoenix/core/theme/dark_theme.dart';
-import 'package:phoenix/core/widgets/custom_card.dart';
-import 'package:phoenix/features/reviews/data/models/review_model.dart';
-import 'package:phoenix/features/reviews/presentation/managers/pharmacy_reviews_cubit.dart';
-import 'package:phoenix/features/reviews/presentation/managers/pharmacy_reviews_state.dart';
-import 'package:phoenix/features/reviews/presentation/views/pharmacy_reviews_view.dart';
-import 'package:phoenix/generated/app_localizations.dart';
+import 'package:feniq/core/theme/dark_theme.dart';
+import 'package:feniq/core/widgets/custom_card.dart';
+import 'package:feniq/features/reviews/data/models/review_model.dart';
+import 'package:feniq/features/reviews/presentation/managers/pharmacy_reviews_cubit.dart';
+import 'package:feniq/features/reviews/presentation/managers/pharmacy_reviews_state.dart';
+import 'package:feniq/features/reviews/presentation/views/pharmacy_reviews_view.dart';
+import 'package:feniq/generated/app_localizations.dart';
 
 class MockPharmacyReviewsCubit extends MockCubit<PharmacyReviewsState>
     implements PharmacyReviewsCubit {}

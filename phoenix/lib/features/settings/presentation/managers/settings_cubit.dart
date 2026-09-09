@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:phoenix/core/services/storage_service.dart';
+import 'package:feniq/core/services/storage_service.dart';
 
 import 'settings_state.dart';
 

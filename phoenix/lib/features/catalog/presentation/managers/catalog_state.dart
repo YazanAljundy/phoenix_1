@@ -1,5 +1,5 @@
-import 'package:phoenix/features/catalog/data/models/category_model.dart';
-import 'package:phoenix/features/catalog/data/models/product_model.dart';
+import 'package:feniq/features/catalog/data/models/category_model.dart';
+import 'package:feniq/features/catalog/data/models/product_model.dart';
 
 enum CatalogStatus { initial, loading, loaded, error }
 

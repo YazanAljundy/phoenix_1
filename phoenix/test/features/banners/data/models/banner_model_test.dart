@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:phoenix/features/banners/data/models/banner_model.dart';
+import 'package:feniq/features/banners/data/models/banner_model.dart';
 
 void main() {
   group('BannerModel', () {

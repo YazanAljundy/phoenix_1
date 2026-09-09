@@ -1,60 +1,61 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:phoenix/core/utils/validators.dart';
-import 'package:phoenix/features/auth/presentation/utils/login_phone_normalizer.dart';
+import 'package:feniq/core/utils/validators.dart';
+import 'package:feniq/core/widgets/phone_text_field.dart';
 
 void main() {
-  group('normalizeLoginPhone', () {
-    // The four shapes the login field accepts -> the single international
-    // value that must reach loginWithPassword().
+  group('phoneTextFieldFullValue', () {
+    // The field sits behind a fixed "09" box, so the user normally types only
+    // the 8 subscriber digits - but a paste can still arrive in any of the
+    // shapes the old free-text login field accepted. All of them have to
+    // converge on the single international value the backend stores.
     const expectedInternational = '+963912345678';
 
-    test('09XXXXXXXX -> drops leading 0 and adds +963', () {
-      expect(normalizeLoginPhone('0912345678'), expectedInternational);
+    test('the 8 subscriber digits after the "09" box (the typed case)', () {
+      expect(phoneTextFieldFullValue('12345678'), expectedInternational);
     });
 
-    test('9XXXXXXXX -> adds +963', () {
-      expect(normalizeLoginPhone('912345678'), expectedInternational);
+    test('a pasted 9XXXXXXXX keeps its own mobile 9 rather than doubling it', () {
+      expect(phoneTextFieldFullValue('912345678'), expectedInternational);
     });
 
-    test('9639XXXXXXXX -> adds +', () {
-      expect(normalizeLoginPhone('963912345678'), expectedInternational);
+    test('a pasted 09XXXXXXXX drops the redundant local prefix', () {
+      expect(phoneTextFieldFullValue('0912345678'), expectedInternational);
     });
 
-    test('+9639XXXXXXXX -> unchanged', () {
-      expect(normalizeLoginPhone('+963912345678'), expectedInternational);
+    test('a pasted 963XXXXXXXXX drops the redundant country code', () {
+      expect(phoneTextFieldFullValue('963912345678'), expectedInternational);
     });
 
-    group('whitespace is stripped before normalizing', () {
-      test('spaces in a local 09.. number', () {
-        expect(normalizeLoginPhone('09 1234 5678'), expectedInternational);
-      });
-
-      test('spaces in an international +963.. number', () {
-        expect(normalizeLoginPhone('+963 912 345 678'), expectedInternational);
-      });
-
-      test('leading/trailing spaces', () {
-        expect(normalizeLoginPhone('  912345678  '), expectedInternational);
-      });
-
-      test('tabs and other whitespace', () {
-        expect(normalizeLoginPhone('963\t912 345678'), expectedInternational);
-      });
+    test('a pasted +963 number - digitsOnly already stripped the +', () {
+      expect(phoneTextFieldFullValue('+963912345678'), expectedInternational);
     });
 
-    group('the normalized value passes the existing phone validator', () {
+    group('separators inside a pasted number are ignored', () {
       for (final input in const [
-        '0912345678',
+        '12 345 678',
+        '09 1234 5678',
+        '+963 912 345 678',
+        '963-912-345-678',
+      ]) {
+        test('"$input"', () {
+          expect(phoneTextFieldFullValue(input), expectedInternational);
+        });
+      }
+    });
+
+    group('the composed value passes the existing phone validator', () {
+      for (final input in const [
+        '12345678',
         '912345678',
+        '0912345678',
         '963912345678',
         '+963912345678',
         '09 1234 5678',
-        '+963 912 345 678',
       ]) {
         test('"$input" is accepted', () {
           expect(
             Validators.validatePhone(
-              normalizeLoginPhone(input),
+              phoneTextFieldFullValue(input),
               requiredMessage: 'Required',
               invalidMessage: 'Invalid',
             ),
@@ -65,28 +66,58 @@ void main() {
     });
 
     group('malformed input is passed through (validator still rejects it)', () {
-      test('empty string stays empty', () {
-        expect(normalizeLoginPhone(''), '');
-      });
-
-      test('too short number is only whitespace-stripped', () {
-        expect(normalizeLoginPhone('123 456'), '123456');
-      });
-
-      test('non-Syrian international number is untouched', () {
-        expect(normalizeLoginPhone('+14155552671'), '+14155552671');
-      });
-
-      test('validator rejects a passed-through bad number', () {
+      test('an empty field composes to empty, so it reads as "required"', () {
+        expect(phoneTextFieldFullValue(''), '');
         expect(
           Validators.validatePhone(
-            normalizeLoginPhone('123456'),
+            phoneTextFieldFullValue(''),
+            requiredMessage: 'Required',
+            invalidMessage: 'Invalid',
+          ),
+          'Required',
+        );
+      });
+
+      test('a too-short number is rejected, not padded', () {
+        expect(phoneTextFieldFullValue('123'), '+9639123');
+        expect(
+          Validators.validatePhone(
+            phoneTextFieldFullValue('123'),
             requiredMessage: 'Required',
             invalidMessage: 'Invalid',
           ),
           'Invalid',
         );
       });
+
+      test('a too-long number is rejected, not truncated', () {
+        expect(
+          Validators.validatePhone(
+            phoneTextFieldFullValue('1234567890123'),
+            requiredMessage: 'Required',
+            invalidMessage: 'Invalid',
+          ),
+          'Invalid',
+        );
+      });
+    });
+  });
+
+  group('phoneTextFieldSubscriberDigits', () {
+    test('peels every redundant prefix down to the same 8 digits', () {
+      for (final input in const [
+        '12345678',
+        '912345678',
+        '0912345678',
+        '963912345678',
+        '+963912345678',
+      ]) {
+        expect(phoneTextFieldSubscriberDigits(input), '12345678', reason: input);
+      }
+    });
+
+    test('imposes no length limit of its own', () {
+      expect(phoneTextFieldSubscriberDigits('1234567890123'), '1234567890123');
     });
   });
 }

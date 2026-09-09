@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:phoenix/core/widgets/quantity_stepper.dart';
-import 'package:phoenix/features/cart/data/models/cart_item.dart';
-import 'package:phoenix/features/cart/presentation/widgets/cart_item_tile.dart';
-import 'package:phoenix/features/exchange_rate/data/repositories/exchange_rate_repository.dart';
-import 'package:phoenix/features/exchange_rate/presentation/managers/exchange_rate_cubit.dart';
-import 'package:phoenix/generated/app_localizations.dart';
+import 'package:feniq/core/widgets/quantity_stepper.dart';
+import 'package:feniq/features/cart/data/models/cart_item.dart';
+import 'package:feniq/features/cart/presentation/widgets/cart_item_tile.dart';
+import 'package:feniq/features/exchange_rate/data/repositories/exchange_rate_repository.dart';
+import 'package:feniq/features/exchange_rate/presentation/managers/exchange_rate_cubit.dart';
+import 'package:feniq/generated/app_localizations.dart';
 
 class _MockExchangeRateRepository extends Mock implements ExchangeRateRepository {}
 

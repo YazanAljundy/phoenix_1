@@ -33,6 +33,15 @@ const CATALOG_IDENTITY_SELECT = 'nameAr nameEn manufacturerAr manufacturerEn';
 
 const DEFAULT_PRODUCTS_LIMIT = 20;
 
+// How many master-list entries a single search term may resolve to before the
+// $in below stops growing. A one-letter query matches most of the catalog,
+// and the id list was previously unbounded - a short term turned into a
+// collection scan of the master list plus an $in carrying tens of thousands
+// of ObjectIds, on a path the client fires every 400ms as the pharmacist
+// types. Capped rather than errored: a term this broad is a prefix of the
+// real one, and the results are about to be paginated anyway.
+const MAX_MATCHING_CATALOG_IDS = 500;
+
 // Cursor pagination over a filter that can't be fully expressed as a Mongo
 // query: `manufacturer` is matched against each product's *resolved* identity
 // (Section 14 Part 2 - a catalog-linked product's manufacturerAr lives on the
@@ -88,14 +97,23 @@ async function fetchMatchingPage(baseFilter, after, limit, manufacturer) {
 // Section 6.5: search by name and manufacturer, filterable by category.
 // Section 7: an active, admin-approved offer on a product shows two prices
 // (original struck-through + discounted) - merged in here per product.
-// Section 14 Part 2: name/manufacturer search runs in memory, after
-// resolving each product's identity (populated masterProductId or its own
-// legacy fields) - a catalog-linked product no longer carries its own copy
-// of these fields for Mongo to match against directly.
+// Section 14 Part 2: a catalog-linked product no longer carries its own copy
+// of name/manufacturer for Mongo to match against directly, so the search
+// resolves through the master list first (see the branch below). Only the
+// `manufacturer` filter is still applied after resolution, in Node.
 //
-// Cursor pagination (`limit`/`after`) only applies when there's no text
-// search - a name/manufacturer search's result set is small by nature and
-// returned in full, same as before (project owner's call).
+// Cursor pagination (`limit`/`after`) applies to searches too now. It used to
+// skip them, on the assumption that a name/manufacturer search's result set is
+// small by nature - which holds for a whole word and not at all for the
+// one- and two-letter prefixes the client sends on the way to typing one,
+// where "small by nature" meant most of the catalog loaded and sorted in Node
+// on every keystroke.
+//
+// The search results are therefore ordered by `_id` like every other page
+// rather than alphabetically: a stable, unique cursor field is what makes
+// pagination correct, the same trade productCatalog.service.js's listCatalog
+// already made for the admin list. Both branches now run through
+// fetchMatchingPage, so there is one paging code path instead of two.
 async function listWarehouseProducts(
   warehouseId,
   { search, categoryId, manufacturer, limit = DEFAULT_PRODUCTS_LIMIT, after = null } = {}
@@ -113,10 +131,6 @@ async function listWarehouseProducts(
     }
     baseFilter.categoryId = categoryId;
   }
-
-  let products;
-  let hasMore = false;
-  let nextCursor = null;
 
   if (search && search.trim()) {
     const pattern = new RegExp(escapeRegex(search.trim()), 'i');
@@ -141,39 +155,24 @@ async function listWarehouseProducts(
     // There is no hard-delete path for a catalog entry, which is what makes
     // "linked" and "legacy" exhaustive - a dangling masterProductId cannot
     // occur, so nothing falls between the two branches.
-    const matchingCatalogIds = await ProductCatalog.find(
-      { $or: identityMatches(pattern) },
-      '_id'
-    ).lean();
-
-    const searchFilter = {
-      ...baseFilter,
-      $or: [
-        { masterProductId: { $in: matchingCatalogIds.map((entry) => entry._id) } },
-        { masterProductId: null, $or: identityMatches(pattern) },
-      ],
-    };
-
-    products = await Product.find(searchFilter)
-      .select(CATALOG_PRODUCT_SELECT)
-      .populate({ path: 'masterProductId', select: CATALOG_IDENTITY_SELECT })
+    const matchingCatalogIds = await ProductCatalog.find({ $or: identityMatches(pattern) }, '_id')
+      .limit(MAX_MATCHING_CATALOG_IDS)
       .lean();
-    products.forEach(applyResolvedIdentity);
 
-    if (manufacturer) {
-      products = products.filter((p) => p.manufacturerAr === manufacturer);
-    }
-
-    // Sorting stays in Node, on the matched rows only. localeCompare is
-    // locale-aware and MongoDB's default sort is not, so moving it would
-    // change the order results come back in.
-    products.sort((a, b) => (a.nameEn || a.nameAr || '').localeCompare(b.nameEn || b.nameAr || ''));
-  } else {
-    const result = await fetchMatchingPage(baseFilter, after, limit, manufacturer);
-    products = result.page;
-    hasMore = result.hasMore;
-    nextCursor = result.nextCursor;
+    // Merged into the base filter rather than kept as a separate query, so
+    // the search pages through fetchMatchingPage exactly like a browse does.
+    baseFilter.$or = [
+      { masterProductId: { $in: matchingCatalogIds.map((entry) => entry._id) } },
+      { masterProductId: null, $or: identityMatches(pattern) },
+    ];
   }
+
+  const { page: products, hasMore, nextCursor } = await fetchMatchingPage(
+    baseFilter,
+    after,
+    limit,
+    manufacturer
+  );
 
   const now = new Date();
   const [offers, manufacturerDiscountByName] = await Promise.all([

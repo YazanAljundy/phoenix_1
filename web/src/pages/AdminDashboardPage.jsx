@@ -35,17 +35,17 @@ export function AdminDashboardPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const [accountsData, offersData, bannersData, productsData, rateData] = await Promise.all([
+      const [accountsData, offersData, bannersData, productsCountData, rateData] = await Promise.all([
         api.pendingAccounts(),
         api.pendingOffers(),
         api.adminBanners('pending'),
-        api.adminProducts(),
+        api.adminProductsCount(),
         api.adminExchangeRate(),
       ]);
       setAccounts(accountsData.accounts);
       setOffers(offersData.offers);
       setPendingBannersCount(bannersData.banners.length);
-      setProductsCount(productsData.products.length);
+      setProductsCount(productsCountData.count);
       setExchangeRate(rateData.exchangeRate);
     } catch (err) {
       setError(err.message);

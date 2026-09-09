@@ -4,18 +4,18 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:permission_handler/permission_handler.dart';
-import 'package:phoenix/core/constants/app_colors.dart';
-import 'package:phoenix/core/constants/app_radius.dart';
-import 'package:phoenix/core/constants/app_sizes.dart';
-import 'package:phoenix/core/constants/image_upload.dart';
-import 'package:phoenix/core/extensions/build_context_extensions.dart';
-import 'package:phoenix/core/utils/date_formatter.dart';
-import 'package:phoenix/core/widgets/app_dialog.dart';
-import 'package:phoenix/core/widgets/app_network_image.dart';
-import 'package:phoenix/core/widgets/custom_card.dart';
-import 'package:phoenix/core/widgets/primary_button.dart';
-import 'package:phoenix/features/cart/data/models/order_model.dart';
-import 'package:phoenix/features/order_tracking/presentation/managers/order_tracking_cubit.dart';
+import 'package:feniq/core/constants/app_colors.dart';
+import 'package:feniq/core/constants/app_radius.dart';
+import 'package:feniq/core/constants/app_sizes.dart';
+import 'package:feniq/core/constants/image_upload.dart';
+import 'package:feniq/core/extensions/build_context_extensions.dart';
+import 'package:feniq/core/utils/date_formatter.dart';
+import 'package:feniq/core/widgets/app_dialog.dart';
+import 'package:feniq/core/widgets/app_network_image.dart';
+import 'package:feniq/core/widgets/custom_card.dart';
+import 'package:feniq/core/widgets/primary_button.dart';
+import 'package:feniq/features/cart/data/models/order_model.dart';
+import 'package:feniq/features/order_tracking/presentation/managers/order_tracking_cubit.dart';
 
 // Section: optional delivery seal photo. Two states, one card:
 //  * the order still needs the photo -> pick (camera/gallery) + preview +

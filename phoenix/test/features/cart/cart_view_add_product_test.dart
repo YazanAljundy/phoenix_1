@@ -3,18 +3,18 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:phoenix/features/cart/data/models/cart_item.dart';
-import 'package:phoenix/features/cart/data/repositories/order_repository.dart';
-import 'package:phoenix/features/cart/presentation/managers/cart_cubit.dart';
-import 'package:phoenix/features/cart/presentation/views/cart_view.dart';
-import 'package:phoenix/features/catalog/data/models/catalog_route_args.dart';
-import 'package:phoenix/features/catalog/data/models/manufacturers_route_args.dart';
-import 'package:phoenix/features/catalog/data/models/product_model.dart';
-import 'package:phoenix/features/exchange_rate/data/repositories/exchange_rate_repository.dart';
-import 'package:phoenix/features/exchange_rate/presentation/managers/exchange_rate_cubit.dart';
-import 'package:phoenix/features/warehouse_selection/data/repositories/warehouse_repository.dart';
-import 'package:phoenix/generated/app_localizations.dart';
-import 'package:phoenix/routes/route_names.dart';
+import 'package:feniq/features/cart/data/models/cart_item.dart';
+import 'package:feniq/features/cart/data/repositories/order_repository.dart';
+import 'package:feniq/features/cart/presentation/managers/cart_cubit.dart';
+import 'package:feniq/features/cart/presentation/views/cart_view.dart';
+import 'package:feniq/features/catalog/data/models/catalog_route_args.dart';
+import 'package:feniq/features/catalog/data/models/manufacturers_route_args.dart';
+import 'package:feniq/features/catalog/data/models/product_model.dart';
+import 'package:feniq/features/exchange_rate/data/repositories/exchange_rate_repository.dart';
+import 'package:feniq/features/exchange_rate/presentation/managers/exchange_rate_cubit.dart';
+import 'package:feniq/features/warehouse_selection/data/repositories/warehouse_repository.dart';
+import 'package:feniq/generated/app_localizations.dart';
+import 'package:feniq/routes/route_names.dart';
 
 class _MockOrderRepository extends Mock implements OrderRepository {}
 

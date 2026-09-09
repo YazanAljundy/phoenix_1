@@ -1,5 +1,5 @@
-import { NavLink } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { SubNav } from './SubNav';
 
 // The two halves of the Advertisements tab, shared by both panels.
 //
@@ -19,26 +19,20 @@ import { useTranslation } from 'react-i18next';
 // warehouse sidebar shell, 'adm' for the admin top-tab shell. No new design
 // language: these are the same classes WarehouseOrdersPage and AccountsPage
 // already use for their own pill rows.
+//
+// The row itself is SubNav, which this was the original of - on the warehouse
+// side it now sits under a second sub-nav (Advertisements is a child of the
+// Promotions group tab), and both rows are the same widget.
 export function AdvertisementsSubNav({ basePath, variant }) {
   const { t } = useTranslation();
-  const prefix = variant === 'adm' ? 'adm' : 'wh';
-
-  const links = [
-    { to: `${basePath}/general`, label: t('nav.advertisementsGeneral') },
-    { to: `${basePath}/packages`, label: t('nav.advertisementsPackages') },
-  ];
 
   return (
-    <div className={`${prefix}-pills`}>
-      {links.map((link) => (
-        <NavLink
-          key={link.to}
-          to={link.to}
-          className={({ isActive }) => `${prefix}-pill${isActive ? ' active' : ''}`}
-        >
-          {link.label}
-        </NavLink>
-      ))}
-    </div>
+    <SubNav
+      variant={variant}
+      links={[
+        { to: `${basePath}/general`, label: t('nav.advertisementsGeneral') },
+        { to: `${basePath}/packages`, label: t('nav.advertisementsPackages') },
+      ]}
+    />
   );
 }

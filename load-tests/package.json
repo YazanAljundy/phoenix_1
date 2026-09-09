@@ -1,5 +1,5 @@
 {
-  "name": "phoenix-load-tests",
+  "name": "feniq-load-tests",
   "private": true,
   "scripts": {
     "load-test": "node run-progressive.js --tag smoke --levels 10 --hold 30s",

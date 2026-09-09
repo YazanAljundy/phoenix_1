@@ -5,6 +5,7 @@ import { useAuth } from '../auth/AuthContext';
 import { LoadMoreControl } from '../components/LoadMoreControl';
 import { usePaginatedData } from '../hooks/usePaginatedData';
 import { AdvertisementsSubNav } from '../components/AdvertisementsSubNav';
+import { WarehouseGroupSubNav } from '../components/WarehouseGroupSubNav';
 import { withArFallback } from '../utils/displayName';
 import { contactAdminOnWhatsApp } from '../utils/whatsapp';
 
@@ -270,6 +271,9 @@ export function WarehouseBannersPage() {
 
   return (
     <div>
+      {/* Two rows: the Promotions group this page belongs to, then this page's
+          own two halves. Only the lower one carries a divider. */}
+      <WarehouseGroupSubNav />
       <AdvertisementsSubNav basePath="/warehouse/advertisements" variant="wh" />
 
       <div className="wh-page-head">

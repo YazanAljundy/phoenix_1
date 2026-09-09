@@ -27,19 +27,49 @@ function EditCatalogItemModal({ item, categories, onClose, onSaved }) {
       return;
     }
 
+    const changes = {
+      nameAr: nameAr.trim(),
+      unitAr: unitAr.trim() || null,
+      categoryId: categoryId || null,
+    };
+
     setIsSaving(true);
     try {
-      await api.updateCatalogItem(item.id, {
-        nameAr: nameAr.trim(),
-        unitAr: unitAr.trim() || null,
-        categoryId: categoryId || null,
-      });
+      await api.updateCatalogItem(item.id, changes);
       onSaved();
     } catch (err) {
+      // A rename reaches every warehouse stocking this medicine, and every
+      // open cart, because the name is resolved live rather than copied onto
+      // each product. The server refuses the first attempt and sends the
+      // count back, so the admin sees the scale before agreeing to it.
+      if (err.code === 'CATALOG_RENAME_NEEDS_CONFIRMATION') {
+        const count = err.details?.linkedProductCount ?? 0;
+        const confirmed = window.confirm(
+          t('admin.catalog.confirmRename', {
+            count,
+            oldName: err.details?.currentNameAr ?? item.nameAr,
+            newName: err.details?.nextNameAr ?? changes.nameAr,
+          })
+        );
+        if (!confirmed) {
+          setIsSaving(false);
+          return;
+        }
+        try {
+          await api.updateCatalogItem(item.id, changes, { confirmed: true });
+          onSaved();
+        } catch (retryError) {
+          setError(retryError.message);
+        } finally {
+          setIsSaving(false);
+        }
+        return;
+      }
       setError(err.message);
-    } finally {
       setIsSaving(false);
+      return;
     }
+    setIsSaving(false);
   };
 
   return (
@@ -168,6 +198,10 @@ export function AdminCatalogPage() {
   const [search, setSearch] = useState('');
   const [busyId, setBusyId] = useState(null);
   const [actionError, setActionError] = useState(null);
+  // Separate from actionError: disabling an entry that took warehouse
+  // products with it succeeded - the count is a consequence to report, not a
+  // failure.
+  const [actionNotice, setActionNotice] = useState(null);
   const [isImporting, setIsImporting] = useState(false);
   const [importReport, setImportReport] = useState(null);
   const [importFileName, setImportFileName] = useState('');
@@ -241,10 +275,22 @@ export function AdminCatalogPage() {
   const handleToggleActive = async (item) => {
     setBusyId(item.id);
     setActionError(null);
+    setActionNotice(null);
     try {
       if (item.isActive) {
-        await api.deactivateCatalogItem(item.id);
+        // Disabling now removes this medicine from every warehouse stocking
+        // it, not just from this list - the server reports how many products
+        // went with it, and that is worth saying out loud rather than
+        // letting the admin find out later.
+        const result = await api.deactivateCatalogItem(item.id);
+        if (result.deactivatedProductCount > 0) {
+          setActionNotice(
+            t('admin.catalog.disabledWithProducts', { count: result.deactivatedProductCount })
+          );
+        }
       } else {
+        // Re-enabling the entry does NOT bring those products back - there is
+        // no reactivate flow for a product, so each warehouse re-adds its own.
         await api.updateCatalogItem(item.id, { isActive: true });
       }
       reset();
@@ -299,6 +345,7 @@ export function AdminCatalogPage() {
       </form>
 
       {(error || actionError) && <p className="error-text">{error || actionError}</p>}
+      {actionNotice && <p className="hint">{actionNotice}</p>}
 
       {isLoading ? (
         <p className="hint">{t('common.loading')}</p>

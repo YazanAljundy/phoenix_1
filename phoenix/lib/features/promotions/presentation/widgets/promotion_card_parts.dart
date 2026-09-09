@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:phoenix/core/constants/app_colors.dart';
-import 'package:phoenix/core/constants/app_radius.dart';
-import 'package:phoenix/core/constants/app_sizes.dart';
-import 'package:phoenix/core/extensions/build_context_extensions.dart';
-import 'package:phoenix/core/utils/currency_formatter.dart';
-import 'package:phoenix/core/utils/date_formatter.dart';
-import 'package:phoenix/core/widgets/app_network_image.dart';
-import 'package:phoenix/core/widgets/status_badge.dart';
-import 'package:phoenix/features/exchange_rate/presentation/managers/exchange_rate_cubit.dart';
-import 'package:phoenix/features/promotions/data/models/promotion.dart';
+import 'package:feniq/core/constants/app_colors.dart';
+import 'package:feniq/core/constants/app_radius.dart';
+import 'package:feniq/core/constants/app_sizes.dart';
+import 'package:feniq/core/extensions/build_context_extensions.dart';
+import 'package:feniq/core/utils/currency_formatter.dart';
+import 'package:feniq/core/utils/date_formatter.dart';
+import 'package:feniq/core/widgets/app_network_image.dart';
+import 'package:feniq/core/widgets/status_badge.dart';
+import 'package:feniq/features/exchange_rate/presentation/managers/exchange_rate_cubit.dart';
+import 'package:feniq/features/promotions/data/models/promotion.dart';
 
 // The pieces the hero card and the compact list card both draw, so the two
 // stay one visual language rather than two that drift apart.

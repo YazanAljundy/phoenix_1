@@ -1,11 +1,11 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:phoenix/features/cart/data/models/cart_item.dart';
-import 'package:phoenix/features/cart/data/models/order_model.dart';
-import 'package:phoenix/features/cart/data/repositories/order_repository.dart';
-import 'package:phoenix/features/cart/presentation/managers/cart_cubit.dart';
-import 'package:phoenix/features/catalog/data/models/product_model.dart';
-import 'package:phoenix/features/warehouse_selection/data/repositories/warehouse_repository.dart';
+import 'package:feniq/features/cart/data/models/cart_item.dart';
+import 'package:feniq/features/cart/data/models/order_model.dart';
+import 'package:feniq/features/cart/data/repositories/order_repository.dart';
+import 'package:feniq/features/cart/presentation/managers/cart_cubit.dart';
+import 'package:feniq/features/catalog/data/models/product_model.dart';
+import 'package:feniq/features/warehouse_selection/data/repositories/warehouse_repository.dart';
 
 class MockOrderRepository extends Mock implements OrderRepository {}
 
@@ -142,6 +142,7 @@ void main() {
           warehouseId: any(named: 'warehouseId'),
           items: any(named: 'items'),
           notes: any(named: 'notes'),
+          idempotencyKey: any(named: 'idempotencyKey'),
         ),
       ).thenAnswer((_) async => _fakeOrder);
 
@@ -152,6 +153,7 @@ void main() {
           warehouseId: captureAny(named: 'warehouseId'),
           items: captureAny(named: 'items'),
           notes: any(named: 'notes'),
+          idempotencyKey: any(named: 'idempotencyKey'),
         ),
       ).captured;
       expect(captured[0], 'A');
@@ -253,6 +255,67 @@ void main() {
 
       expect(cubit.state.isEmpty, isTrue);
       expect(cubit.state.warehouseId, isNull);
+    });
+  });
+
+  group('Clear cart empties every line at once', () {
+    test('drops all items and resets the cart to its pristine state', () {
+      cubit.addProduct(_product('p1'), warehouseId: 'A', warehouseName: 'Warehouse A', quantity: 2);
+      cubit.addProduct(_product('p2'), warehouseId: 'A', warehouseName: 'Warehouse A', quantity: 3);
+      cubit.updateNotes('leave at the back door');
+      expect(cubit.state.items, hasLength(2));
+
+      cubit.clearCart();
+
+      expect(cubit.state.isEmpty, isTrue);
+      expect(cubit.state.itemCount, 0);
+      // The whole cart goes, not just the lines: the warehouse binding and
+      // the notes go with them, exactly as when the last line is removed.
+      expect(cubit.state.warehouseId, isNull);
+      expect(cubit.state.warehouseName, isNull);
+      expect(cubit.state.notes, isEmpty);
+      expect(cubit.state.subtotalUsd, 0);
+    });
+
+    test('an advertisement package is dropped along with its lines', () {
+      cubit.loadAdvertisement(
+        advertisementId: 'ad1',
+        warehouseId: 'A',
+        warehouseName: 'Warehouse A',
+        items: [CartItem.fromProduct(_product('p1'), quantity: 1)],
+        itemsSubtotalUsd: 10,
+        totalUsd: 8,
+      );
+
+      cubit.clearCart();
+
+      expect(cubit.state.isEmpty, isTrue);
+      expect(cubit.state.advertisementId, isNull);
+      expect(cubit.state.hasAdvertisement, isFalse);
+    });
+
+    test('emits so the UI rebuilds, and is a no-op on an already empty cart', () {
+      expectLater(cubit.stream.map((s) => s.itemCount), emitsInOrder(<int>[1, 0]));
+
+      cubit.addProduct(_product('p1'), warehouseId: 'A', warehouseName: 'A', quantity: 1);
+      cubit.clearCart();
+
+      // Nothing left to clear - no further state is emitted (the assertion
+      // above would see an extra 0 otherwise).
+      cubit.clearCart();
+      expect(cubit.state.isEmpty, isTrue);
+    });
+
+    test('the cart is usable again straight after a clear', () {
+      cubit.addProduct(_product('p1'), warehouseId: 'A', warehouseName: 'Warehouse A', quantity: 1);
+      cubit.clearCart();
+
+      // With the binding gone, ANY warehouse is fair game again - the
+      // one-warehouse rule no longer has a cart to conflict with.
+      expect(cubit.hasConflictingWarehouse('B'), isFalse);
+      cubit.addProduct(_product('p2'), warehouseId: 'B', warehouseName: 'Warehouse B', quantity: 1);
+      expect(cubit.state.warehouseId, 'B');
+      expect(cubit.state.items.map((i) => i.productId).toList(), ['p2']);
     });
   });
 }

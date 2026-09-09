@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:phoenix/core/constants/app_colors.dart';
-import 'package:phoenix/core/constants/app_sizes.dart';
-import 'package:phoenix/core/extensions/build_context_extensions.dart';
-import 'package:phoenix/core/utils/date_formatter.dart';
-import 'package:phoenix/core/widgets/custom_card.dart';
-import 'package:phoenix/core/widgets/status_badge.dart';
-import 'package:phoenix/features/complaints/data/models/complaint_model.dart';
-import 'package:phoenix/features/complaints/presentation/utils/complaint_labels.dart';
+import 'package:feniq/core/constants/app_colors.dart';
+import 'package:feniq/core/constants/app_sizes.dart';
+import 'package:feniq/core/extensions/build_context_extensions.dart';
+import 'package:feniq/core/theme/app_text_theme.dart';
+import 'package:feniq/core/utils/date_formatter.dart';
+import 'package:feniq/core/widgets/custom_card.dart';
+import 'package:feniq/core/widgets/status_badge.dart';
+import 'package:feniq/features/complaints/data/models/complaint_model.dart';
+import 'package:feniq/features/complaints/presentation/utils/complaint_labels.dart';
 
 // One row in "My Complaints" (Section 1). Shows the complaint number, its
 // context (general / a warehouse / an order), the subject, the status pill,
@@ -42,7 +43,7 @@ class ComplaintListTile extends StatelessWidget {
                       l10n.complaintNumberLabel(complaint.complaintNumber.toString()),
                       style: context.textTheme.bodySmall?.copyWith(
                         color: AppColors.textSecondaryOf(context),
-                        fontWeight: FontWeight.w600,
+                        fontWeight: AppTextTheme.semiBold,
                       ),
                     ),
                     const SizedBox(height: AppSizes.spacingXSmall),

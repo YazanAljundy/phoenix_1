@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:phoenix/core/utils/validators.dart';
+import 'package:feniq/core/utils/validators.dart';
 
 void main() {
   group('Validators', () {

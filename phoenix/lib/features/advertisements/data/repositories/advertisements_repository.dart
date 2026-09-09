@@ -1,5 +1,5 @@
-import 'package:phoenix/features/advertisements/data/models/advertisement_cart_preparation.dart';
-import 'package:phoenix/features/advertisements/data/models/advertisement_model.dart';
+import 'package:feniq/features/advertisements/data/models/advertisement_cart_preparation.dart';
+import 'package:feniq/features/advertisements/data/models/advertisement_model.dart';
 
 abstract class AdvertisementsRepository {
   /// Every advertisement package a pharmacy may currently see. The server

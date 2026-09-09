@@ -321,7 +321,7 @@ async function main() {
     : DEFAULT_LEVELS;
   const cooldownSec = Number(arg('cooldown', '20'));
 
-  console.log('Phoenix progressive load test');
+  console.log('Feniq progressive load test');
   console.log('  tag:        ' + TAG);
   console.log('  levels:     ' + levels.join(', '));
   console.log('  client IPs: ' + (flag('no-ip-simulation') ? 'single (control run)' : 'simulated per request'));

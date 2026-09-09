@@ -1,4 +1,4 @@
-# Phoenix — Full-System Load & Stress Test Report
+# Feniq — Full-System Load & Stress Test Report
 
 **Date:** 2026-08-28
 **Target:** local backend (`http://localhost:5000/api`), local MongoDB 7.0.34
@@ -125,7 +125,7 @@ Measured separately, because each is a different kind of number:
 - **Uploads** — `POST /returns` (Cloudinary), at low concurrency by design.
 - **Catalog scaling** — every read endpoint at concurrency 1 against 200 / 1,000 / 5,000-product catalogs.
 
-**Scenario C note:** Phoenix has no cart API. `lib/features/cart` holds the basket in client state and submits it as `items` on `POST /orders`, so "add to cart", "change quantity" and "remove item" generate no server traffic and cannot be load-tested as endpoints. The scenario models what the server actually sees: repeated catalog reads, then one order write. See `LOAD_TEST_GAPS.md`.
+**Scenario C note:** Feniq has no cart API. `lib/features/cart` holds the basket in client state and submits it as `items` on `POST /orders`, so "add to cart", "change quantity" and "remove item" generate no server traffic and cannot be load-tested as endpoints. The scenario models what the server actually sees: repeated catalog reads, then one order write. See `LOAD_TEST_GAPS.md`.
 
 ### Rate limiting
 
@@ -372,7 +372,7 @@ Two findings had to be established before this could even be run, and both matte
 1. **There is no notification read API.** `Notification` documents are written on every order-status change and every broadcast, and `notification.model.js` carries a `{ userId, isRead }` index that only a list query would use — but no route exposes them, and the Flutter `Endpoints` class has no entry for one. The data is currently write-only.
 2. **FCM delivery is out of scope, correctly.** The test asserts that *no* user has a registered device token and refuses to run otherwise, so a load test can never push to a real device. Actual delivery is Firebase's to measure and needs a separate device/integration test.
 
-What Phoenix owns is the fan-out. Broadcasting to **535 recipients**, three runs:
+What Feniq owns is the fan-out. Broadcasting to **535 recipients**, three runs:
 
 | Run | HTTP time | Notifications written | Writes/s | ms per recipient |
 | ---: | ---: | ---: | ---: | ---: |

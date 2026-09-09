@@ -5,7 +5,7 @@
 // what's verified is the actual handshake/room behavior rather than a mock of
 // it. Mongoose models are stubbed through require.cache (see below) because
 // the point here is the socket layer, not the database.
-process.env.MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/phoenix-test';
+process.env.MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/feniq-test';
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-realtime-tests';
 process.env.NODE_ENV = 'test';
 

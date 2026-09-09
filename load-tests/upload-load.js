@@ -6,10 +6,10 @@
  * controller (return.controller.js) verifies each buffer's magic bytes and
  * then streams every photo to Cloudinary BEFORE the return itself is
  * validated, so each request's latency is dominated by a third-party round
- * trip that the Phoenix backend does not control.
+ * trip that the Feniq backend does not control.
  *
  * That is why this is not folded into the 2,000-VU sweep: at that
- * concurrency the test would stop measuring Phoenix and start hammering the
+ * concurrency the test would stop measuring Feniq and start hammering the
  * project's own Cloudinary account, spending real quota against an external
  * provider. What is measured here instead is the per-request cost and how it
  * degrades over a handful of concurrency steps - enough to place Cloudinary

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:phoenix/core/extensions/build_context_extensions.dart';
+import 'package:feniq/core/extensions/build_context_extensions.dart';
 
 class AppDialog {
   const AppDialog._();

@@ -1,4 +1,4 @@
-# Phoenix Load Test — Coverage Gaps
+# Feniq Load Test — Coverage Gaps
 
 What this suite could not measure, and why. Everything else is in
 [`../LOAD_TEST_REPORT.md`](../LOAD_TEST_REPORT.md).
@@ -11,7 +11,7 @@ Nothing listed here was worked around by changing production code.
 
 - **Area:** add to cart, change quantity, remove item
 - **Endpoint:** none exists
-- **Why:** Phoenix has no cart API. `lib/features/cart` holds the basket in
+- **Why:** Feniq has no cart API. `lib/features/cart` holds the basket in
   client state and submits it as `items` on `POST /orders`, so those three
   actions generate no server traffic at all. There is nothing to load-test.
 - **What was tested instead:** the traffic a shopping session actually
@@ -39,7 +39,7 @@ Nothing listed here was worked around by changing production code.
 ## 3. FCM push delivery
 
 - **Area:** actual push delivery to devices
-- **Endpoint:** Firebase, not Phoenix
+- **Endpoint:** Firebase, not Feniq
 - **Why:** `notification.service.js` only calls FCM for users with registered
   device tokens. Delivery latency and throughput past that call belong to
   Firebase and cannot be attributed to this backend. The notification test
@@ -84,7 +84,7 @@ Nothing listed here was worked around by changing production code.
 - **Area:** `POST /returns`, `PUT /returns/:id`
 - **Why:** photos are optional on a return, but the requests that do carry
   them have every photo streamed to Cloudinary by the controller *before* the
-  return is validated. At sweep concurrency this stops being a test of Phoenix
+  return is validated. At sweep concurrency this stops being a test of Feniq
   and becomes a stress test of a third party, spending real quota on the
   project's own Cloudinary account.
 - **What was tested instead:** the return **read** paths at full sweep

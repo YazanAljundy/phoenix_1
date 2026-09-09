@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 const { ApiError } = require('../utils/ApiError');
+const { normalizePhone, isValidPhone } = require('../utils/phone');
 const User = require('../models/user.model');
 const Pharmacy = require('../models/pharmacy.model');
 const Warehouse = require('../models/warehouse.model');
@@ -413,7 +414,27 @@ async function createWarehouseAccount({
   deliveryType,
 }) {
   const cleanOwnerName = requiredString(ownerName, 'Owner name', 'INVALID_OWNER_NAME');
-  const cleanPhone = requiredString(phone, 'Phone', 'INVALID_PHONE');
+  // Deliberately more than the requiredString the fields around it get. This
+  // is the only place that mints a warehouse login, and /auth/login-password
+  // normalizes what it is handed and then matches users.phone *exactly*. A
+  // number stored in any other shape can never be produced by that lookup, so
+  // the account would be unreachable from the moment it was created - the
+  // admin would hand over credentials that simply do not work. Normalizing to
+  // the same form login will look for, and refusing anything login could not
+  // accept, is what keeps that from happening.
+  //
+  // Scope note: this guards *new* writes only. It does not touch, migrate or
+  // re-validate any account already in the database, and no other caller of
+  // normalizePhone changes behaviour - unifying the formats already stored is
+  // a separate migration.
+  const cleanPhone = normalizePhone(requiredString(phone, 'Phone', 'INVALID_PHONE'));
+  if (!isValidPhone(cleanPhone)) {
+    throw ApiError.badRequest(
+      'Please enter a valid phone number.',
+      undefined,
+      'INVALID_PHONE_FORMAT'
+    );
+  }
   const cleanNameAr = requiredString(nameAr, 'Arabic warehouse name', 'INVALID_WAREHOUSE_NAME');
   const cleanCity = requiredString(city, 'City', 'INVALID_CITY');
   const cleanAddress = requiredString(address, 'Address', 'INVALID_ADDRESS');

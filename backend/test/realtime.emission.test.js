@@ -4,7 +4,7 @@
 // Models and the realtime module are stubbed through require.cache before
 // order.service is loaded, so this needs no database and no socket server -
 // it isolates exactly one question: does a failed write stay silent?
-process.env.MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/phoenix-test';
+process.env.MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/feniq-test';
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-realtime-tests';
 process.env.NODE_ENV = 'test';
 

@@ -14,9 +14,15 @@ export function setToken(token) {
 }
 
 export class ApiError extends Error {
-  constructor(message, status) {
+  // `code` and `details` are what the backend's errorHandler.js already sends
+  // alongside every ApiError message - carried through so a caller can react
+  // to a specific rejection (a rename that needs confirming, say) instead of
+  // only being able to show the sentence.
+  constructor(message, status, code = null, details = null) {
     super(message);
     this.status = status;
+    this.code = code;
+    this.details = details;
   }
 }
 
@@ -34,7 +40,12 @@ async function request(path, { method = 'GET', body } = {}) {
   const data = await response.json().catch(() => null);
 
   if (!response.ok) {
-    throw new ApiError(data?.message ?? 'Something went wrong. Please try again.', response.status);
+    throw new ApiError(
+      data?.message ?? 'Something went wrong. Please try again.',
+      response.status,
+      data?.code ?? null,
+      data?.details ?? null
+    );
   }
 
   return data;
@@ -150,12 +161,16 @@ export const api = {
   // product" pickers, which need every product. Pass { limit, after } for
   // the Products management page's own paginated, newest-first view. Pass
   // { available: true } (the order-items editor's "add item" picker) to get
-  // only products the pharmacy could actually receive right now.
-  warehouseProducts: ({ limit, after, available } = {}) => {
+  // only products the pharmacy could actually receive right now. Pass
+  // { manufacturer } (the catalog page, once a company card is opened) to get
+  // that company's products only - an exact match, and applied server-side so
+  // "Load more" pages within the company.
+  warehouseProducts: ({ limit, after, available, manufacturer } = {}) => {
     const params = new URLSearchParams();
     if (limit) params.set('limit', limit);
     if (after) params.set('after', after);
     if (available) params.set('available', 'true');
+    if (manufacturer) params.set('manufacturer', manufacturer);
     const qs = params.toString();
     return request(`/warehouse/products${qs ? `?${qs}` : ''}`);
   },
@@ -251,6 +266,10 @@ export const api = {
     const qs = params.toString();
     return request(`/admin/products${qs ? `?${qs}` : ''}`);
   },
+  // Just the number, for the Dashboard's stat card - it used to call
+  // adminProducts() with no limit and read `.length`, which downloaded every
+  // product on the platform to render one integer.
+  adminProductsCount: () => request('/admin/products/count'),
   adminProductWarehouses: () => request('/admin/products/warehouses'),
   updateAdminProduct: (productId, changes) =>
     request(`/admin/products/${productId}`, { method: 'PATCH', body: changes }),
@@ -296,7 +315,14 @@ export const api = {
   },
   downloadCatalogTemplate: () => requestBlob('/admin/catalog/template'),
   importCatalogExcel: (file) => requestUpload('/admin/catalog/import', file),
-  updateCatalogItem: (id, changes) => request(`/admin/catalog/${id}`, { method: 'PATCH', body: changes }),
+  // `confirmed` re-sends the identical body with ?confirm=true, to go through
+  // with a rename the server first refused because it would restate the
+  // medicine's name across every warehouse stocking it.
+  updateCatalogItem: (id, changes, { confirmed = false } = {}) =>
+    request(`/admin/catalog/${id}${confirmed ? '?confirm=true' : ''}`, {
+      method: 'PATCH',
+      body: changes,
+    }),
   deactivateCatalogItem: (id) => request(`/admin/catalog/${id}`, { method: 'DELETE' }),
   warehouseCatalogSearch: (q) =>
     request(`/warehouse/catalog/search${q ? `?q=${encodeURIComponent(q)}` : ''}`),
@@ -307,7 +333,13 @@ export const api = {
   updateWarehouseDiscount: (id, changes) =>
     request(`/warehouse/discounts/${id}`, { method: 'PATCH', body: changes }),
   deleteWarehouseDiscount: (id) => request(`/warehouse/discounts/${id}`, { method: 'DELETE' }),
-  warehouseManufacturers: () => request('/warehouse/manufacturers'),
+  // No args (the Discounts tab): every company name the warehouse has ever
+  // imported, as plain strings. { inCatalog: true } (the catalog page's
+  // company list): only companies with products in the catalog right now, as
+  // { manufacturerAr, productCount } - see the backend controller for why
+  // browsing needs the second list rather than the registry.
+  warehouseManufacturers: ({ inCatalog } = {}) =>
+    request(`/warehouse/manufacturers${inCatalog ? '?inCatalog=true' : ''}`),
   warehouseBalances: ({ limit, after } = {}) => {
     const params = new URLSearchParams();
     if (limit) params.set('limit', limit);

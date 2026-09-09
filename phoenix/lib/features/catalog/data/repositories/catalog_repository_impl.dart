@@ -1,11 +1,11 @@
 import 'package:dio/dio.dart';
-import 'package:phoenix/core/error/failure.dart';
-import 'package:phoenix/core/models/paginated_result.dart';
-import 'package:phoenix/core/network/api_client.dart';
-import 'package:phoenix/core/network/endpoints.dart';
-import 'package:phoenix/features/catalog/data/models/category_model.dart';
-import 'package:phoenix/features/catalog/data/models/manufacturer_model.dart';
-import 'package:phoenix/features/catalog/data/models/product_model.dart';
+import 'package:feniq/core/error/failure.dart';
+import 'package:feniq/core/models/paginated_result.dart';
+import 'package:feniq/core/network/api_client.dart';
+import 'package:feniq/core/network/endpoints.dart';
+import 'package:feniq/features/catalog/data/models/category_model.dart';
+import 'package:feniq/features/catalog/data/models/manufacturer_model.dart';
+import 'package:feniq/features/catalog/data/models/product_model.dart';
 
 import 'catalog_repository.dart';
 

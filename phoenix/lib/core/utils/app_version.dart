@@ -3,7 +3,7 @@
 // Deliberately NOT a string compare: "1.0.10" is newer than "1.0.9" even
 // though it sorts earlier lexicographically. Each dotted segment is compared
 // as an integer. Build metadata ("+15") and pre-release tags ("-beta.1") are
-// stripped before comparing - Phoenix versions the app as `x.y.z+build` and
+// stripped before comparing - Feniq versions the app as `x.y.z+build` and
 // only the `x.y.z` part is meaningful for "is there a newer release".
 class AppVersion {
   const AppVersion._();

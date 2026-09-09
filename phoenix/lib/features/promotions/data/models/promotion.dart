@@ -1,5 +1,5 @@
-import 'package:phoenix/features/advertisements/data/models/advertisement_model.dart';
-import 'package:phoenix/features/offers/data/models/offer_model.dart';
+import 'package:feniq/features/advertisements/data/models/advertisement_model.dart';
+import 'package:feniq/features/offers/data/models/offer_model.dart';
 
 /// The two things the Offers & Ads tab browses: a product-level [Offer]
 /// discount and a warehouse [Package] (an advertisement).

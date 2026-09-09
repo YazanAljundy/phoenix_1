@@ -1,7 +1,7 @@
 // Return requests - the "photo is optional" rule (Section 6.9), at the
 // service layer.
 //
-// Runs against its own database (phoenix-return-test) and drops it at the
+// Runs against its own database (feniq-return-test) and drops it at the
 // end, same pattern as complaint.test.js / readpath.lean.test.js. The
 // realtime layer is left as-is: emitToWarehouse tolerates a null io (no
 // socket server booted here) and simply no-ops.
@@ -74,7 +74,7 @@ async function makeDeliveredOrder() {
 }
 
 test.before(async () => {
-  await startMemoryMongo({ dbName: 'phoenix-return-test' });
+  await startMemoryMongo({ dbName: 'feniq-return-test' });
 
   const [phUser, whUser] = await User.create([
     { name: 'Pharm', phone: '0940000001', role: 'pharmacy', status: 'active' },

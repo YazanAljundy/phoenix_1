@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:phoenix/core/constants/app_colors.dart';
-import 'package:phoenix/core/constants/app_radius.dart';
-import 'package:phoenix/core/constants/app_sizes.dart';
-import 'package:phoenix/core/extensions/build_context_extensions.dart';
-import 'package:phoenix/core/utils/currency_formatter.dart';
-import 'package:phoenix/features/advertisements/data/models/advertisement_model.dart';
-import 'package:phoenix/features/advertisements/presentation/utils/advertisement_cart_launcher.dart';
-import 'package:phoenix/features/exchange_rate/presentation/managers/exchange_rate_cubit.dart';
+import 'package:feniq/core/constants/app_colors.dart';
+import 'package:feniq/core/constants/app_radius.dart';
+import 'package:feniq/core/constants/app_sizes.dart';
+import 'package:feniq/core/extensions/build_context_extensions.dart';
+import 'package:feniq/core/theme/app_text_theme.dart';
+import 'package:feniq/core/utils/currency_formatter.dart';
+import 'package:feniq/features/advertisements/data/models/advertisement_model.dart';
+import 'package:feniq/features/advertisements/presentation/utils/advertisement_cart_launcher.dart';
+import 'package:feniq/features/exchange_rate/presentation/managers/exchange_rate_cubit.dart';
 
 // One advertised package: its products, each at its advertised price, and the
 // package total the pharmacy actually pays. Tapping it fetches the package
@@ -131,7 +132,7 @@ class _AdvertisementCardState extends State<AdvertisementCard> {
                       if (item.lineTotalUsd != null)
                         Text(
                           money(item.lineTotalUsd!),
-                          style: context.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                          style: context.textTheme.bodyMedium?.copyWith(fontWeight: AppTextTheme.semiBold),
                         ),
                     ],
                   ),

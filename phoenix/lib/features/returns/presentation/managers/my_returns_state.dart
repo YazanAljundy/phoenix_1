@@ -1,5 +1,5 @@
-import 'package:phoenix/features/returns/data/models/return_model.dart';
-import 'package:phoenix/features/returns/data/models/returnable_order_model.dart';
+import 'package:feniq/features/returns/data/models/return_model.dart';
+import 'package:feniq/features/returns/data/models/returnable_order_model.dart';
 
 enum MyReturnsStatus { initial, loading, loaded, error }
 

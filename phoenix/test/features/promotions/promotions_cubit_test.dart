@@ -1,13 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:phoenix/core/error/failure.dart';
-import 'package:phoenix/features/advertisements/data/models/advertisement_model.dart';
-import 'package:phoenix/features/advertisements/data/repositories/advertisements_repository.dart';
-import 'package:phoenix/features/offers/data/models/offer_model.dart';
-import 'package:phoenix/features/offers/data/repositories/offers_repository.dart';
-import 'package:phoenix/features/promotions/data/models/promotion.dart';
-import 'package:phoenix/features/promotions/presentation/managers/promotions_cubit.dart';
-import 'package:phoenix/features/promotions/presentation/managers/promotions_state.dart';
+import 'package:feniq/core/error/failure.dart';
+import 'package:feniq/features/advertisements/data/models/advertisement_model.dart';
+import 'package:feniq/features/advertisements/data/repositories/advertisements_repository.dart';
+import 'package:feniq/features/offers/data/models/offer_model.dart';
+import 'package:feniq/features/offers/data/repositories/offers_repository.dart';
+import 'package:feniq/features/promotions/data/models/promotion.dart';
+import 'package:feniq/features/promotions/presentation/managers/promotions_cubit.dart';
+import 'package:feniq/features/promotions/presentation/managers/promotions_state.dart';
 
 import 'promotions_fixtures.dart';
 

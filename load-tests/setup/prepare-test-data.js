@@ -66,8 +66,8 @@ async function createUsers() {
   for (let index = 0; index < count; index += 1) {
     const phone = phoneFor(index);
     const { response, data } = await request('POST', `${baseUrl}/auth/register`, {
-      name: `Phoenix Load Test ${index + 1}`,
-      pharmacyName: `Phoenix Load Pharmacy ${index + 1}`,
+      name: `Feniq Load Test ${index + 1}`,
+      pharmacyName: `Feniq Load Pharmacy ${index + 1}`,
       phone,
       address: 'Local load-test fixture',
       password,

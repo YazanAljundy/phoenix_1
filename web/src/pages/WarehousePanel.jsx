@@ -1,7 +1,13 @@
 import { useState } from 'react';
-import { Navigate, NavLink, Route, Routes } from 'react-router-dom';
+import { Link, Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../auth/AuthContext';
+import {
+  WAREHOUSE_NAV,
+  WAREHOUSE_NAV_GROUPS,
+  isNavItemActive,
+  navItemTarget,
+} from '../utils/warehouseNav';
 import { LanguageToggle } from '../components/LanguageToggle';
 import { WarehouseOrdersPage } from './WarehouseOrdersPage';
 import { WarehouseOrderDetailPage } from './WarehouseOrderDetailPage';
@@ -19,36 +25,22 @@ import { WarehouseDiscountsPage } from './WarehouseDiscountsPage';
 import { WarehouseDebtsPage } from './WarehouseDebtsPage';
 import { WarehouseSettlementPage } from './WarehouseSettlementPage';
 
-function navLinkClassName({ isActive }) {
-  return `wh-nav-link${isActive ? ' active' : ''}`;
-}
-
 // Section 13b: the warehouse side of the shared React panel. Real routes
 // (not component state) - each tab gets its own bookmarkable/refreshable
-// URL. Shell is a sidebar (Phoenix Design import) rather than the admin
+// URL. Shell is a sidebar (Feniq Design import) rather than the admin
 // panel's top tabs; see index.css's ".warehouse-shell" scope for why this
 // is safe to restyle without touching AdminPanel.jsx's own look.
+//
+// The sidebar is seven tabs, three of which group two or three pages each
+// (Promotions / Financials / Feedback). The grouping is a sidebar affordance
+// only - the grouped pages kept their original flat URLs. See
+// utils/warehouseNav.js for the model and WarehouseGroupSubNav for the second
+// row of pills the grouped pages render.
 export function WarehousePanel() {
   const { t } = useTranslation();
   const { user, warehouse, logout } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-
-  const TABS = [
-    { path: '/warehouse/orders', label: t('nav.orders') },
-    { path: '/warehouse/products', label: t('nav.catalog') },
-    { path: '/warehouse/offers', label: t('nav.offers') },
-    // One tab, two sub-sections (general ads / package ads) - see
-    // AdvertisementsSubNav. They were separate tabs until it turned out both
-    // render as "الإعلانات" in Arabic.
-    { path: '/warehouse/advertisements', label: t('nav.advertisements') },
-    { path: '/warehouse/discounts', label: t('nav.discounts') },
-    { path: '/warehouse/debts', label: t('nav.debts') },
-    { path: '/warehouse/settlement', label: t('nav.settlement') },
-    { path: '/warehouse/returns', label: t('nav.returns') },
-    { path: '/warehouse/reviews', label: t('nav.reviews') },
-    { path: '/warehouse/complaints', label: t('nav.complaints') },
-    { path: '/warehouse/settings', label: t('nav.settings') },
-  ];
+  const { pathname } = useLocation();
 
   // Closing on every route change covers both a tab click and the
   // detail-page "back" buttons/browser back - anything that changes the
@@ -63,16 +55,35 @@ export function WarehousePanel() {
       />
       <aside className={`wh-sidebar${isSidebarOpen ? ' wh-sidebar-open' : ''}`}>
         <div className="wh-sidebar-header">
-          <img className="wh-sidebar-logo" src="/images/feniq_logo.png" alt={t('nav.brandName')} />
+          <img className="wh-sidebar-logo" src="/images/feniq-mark-dark.png" alt={t('nav.brandName')} />
           <div className="wh-sidebar-brand">{t('nav.brandName')}</div>
           <div className="wh-sidebar-subtitle">{t('nav.warehouseTitleFallback')}</div>
         </div>
         <nav className="wh-nav">
-          {TABS.map((tab) => (
-            <NavLink key={tab.path} to={tab.path} className={navLinkClassName} onClick={closeSidebar}>
-              {tab.label}
-            </NavLink>
-          ))}
+          {WAREHOUSE_NAV.map((item) => {
+            // Link, not NavLink, and the active state computed here: a grouped
+            // tab has to light up for ANY of its children, and those children
+            // kept their original flat URLs - they share no path prefix with
+            // each other or with the parent, which is the only thing NavLink
+            // can match on. NavLink would also CLOBBER aria-current, deriving
+            // it from its own isActive and emitting nothing on a grouped tab
+            // that is visibly active - so it would look active without reading
+            // as active. Owning both attributes keeps them in agreement.
+            const isActive = isNavItemActive(pathname, item);
+            return (
+              <Link
+                key={item.id}
+                // Straight to the first child - opening a group is one click and
+                // there is no landing page in between.
+                to={navItemTarget(item)}
+                className={`wh-nav-link${isActive ? ' active' : ''}`}
+                aria-current={isActive ? 'page' : undefined}
+                onClick={closeSidebar}
+              >
+                {t(item.labelKey)}
+              </Link>
+            );
+          })}
         </nav>
       </aside>
 
@@ -120,6 +131,18 @@ export function WarehousePanel() {
               path="/warehouse/banners"
               element={<Navigate to="/warehouse/advertisements/general" replace />}
             />
+            {/* Group URLs. The sidebar links straight at the first child, so
+                these only ever serve a typed or externally-linked URL - but they
+                have to exist, or the catch-all below would silently bounce them
+                to Orders. Generated from the same model the sidebar renders, so
+                a new group cannot forget its redirect. */}
+            {WAREHOUSE_NAV_GROUPS.map((group) => (
+              <Route
+                key={group.id}
+                path={group.aliasPath}
+                element={<Navigate to={navItemTarget(group)} replace />}
+              />
+            ))}
             <Route path="/warehouse/discounts" element={<WarehouseDiscountsPage />} />
             <Route path="/warehouse/debts" element={<WarehouseDebtsPage />} />
             <Route path="/warehouse/settlement" element={<WarehouseSettlementPage />} />

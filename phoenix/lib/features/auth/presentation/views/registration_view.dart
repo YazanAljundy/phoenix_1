@@ -1,21 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:phoenix/core/constants/app_colors.dart';
-import 'package:phoenix/core/constants/app_padding.dart';
-import 'package:phoenix/core/constants/app_radius.dart';
-import 'package:phoenix/core/constants/app_sizes.dart';
-import 'package:phoenix/core/error/error_translator.dart';
-import 'package:phoenix/core/extensions/build_context_extensions.dart';
-import 'package:phoenix/core/utils/validators.dart';
-import 'package:phoenix/core/widgets/app_snackbar.dart';
-import 'package:phoenix/core/widgets/app_text_field.dart';
-import 'package:phoenix/core/widgets/phone_text_field.dart';
-import 'package:phoenix/core/widgets/primary_button.dart';
-import 'package:phoenix/features/auth/presentation/managers/auth_cubit.dart';
-import 'package:phoenix/features/auth/presentation/managers/auth_state.dart';
-import 'package:phoenix/features/auth/presentation/widgets/location_map_field.dart';
-import 'package:phoenix/routes/route_names.dart';
+import 'package:feniq/core/constants/app_colors.dart';
+import 'package:feniq/core/constants/app_padding.dart';
+import 'package:feniq/core/constants/app_radius.dart';
+import 'package:feniq/core/constants/app_sizes.dart';
+import 'package:feniq/core/error/error_translator.dart';
+import 'package:feniq/core/extensions/build_context_extensions.dart';
+import 'package:feniq/core/utils/validators.dart';
+import 'package:feniq/core/widgets/app_snackbar.dart';
+import 'package:feniq/core/widgets/app_text_field.dart';
+import 'package:feniq/core/widgets/brand_logo.dart';
+import 'package:feniq/core/widgets/phone_text_field.dart';
+import 'package:feniq/core/widgets/primary_button.dart';
+import 'package:feniq/features/auth/presentation/managers/auth_cubit.dart';
+import 'package:feniq/features/auth/presentation/managers/auth_state.dart';
+import 'package:feniq/features/auth/presentation/widgets/location_map_field.dart';
+import 'package:feniq/routes/route_names.dart';
 
 class RegistrationView extends StatefulWidget {
   const RegistrationView({super.key});
@@ -304,11 +305,7 @@ class _Header extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Image(
-          image: AssetImage('assets/images/feniq_logo.png'),
-          width: 150,
-          fit: BoxFit.contain,
-        ),
+        const BrandLogo(width: 150),
         const SizedBox(height: AppSizes.spacingMedium),
         Text(l10n.registrationTitle, style: context.textTheme.displaySmall),
         const SizedBox(height: AppSizes.spacingXSmall),

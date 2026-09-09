@@ -18,7 +18,7 @@ const paymentSchema = new Schema(
     // over in. Kept under the original field names so existing reads and the
     // V1 rows keep working unchanged.
     amount: { type: Number, required: true, min: 0 },
-    // SYP is the default currency across Phoenix - a payment recorded without
+    // SYP is the default currency across Feniq - a payment recorded without
     // an explicit currency is a Syrian-pound payment. USD stays fully
     // supported (the warehouse can still pick it on the form).
     currency: { type: String, enum: ['USD', 'SYP'], required: true, default: 'SYP' },

@@ -1,6 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:phoenix/generated/app_localizations.dart';
+import 'package:feniq/generated/app_localizations.dart';
 
 // Every user-facing string the advertisement feature adds must exist in BOTH
 // English and Arabic - nothing hardcoded in a widget.

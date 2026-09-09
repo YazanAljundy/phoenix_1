@@ -80,7 +80,7 @@ async function makeOrder(status) {
 }
 
 test.before(async () => {
-  await startMemoryMongo({ dbName: 'phoenix-order-status-test' });
+  await startMemoryMongo({ dbName: 'feniq-order-status-test' });
 
   const [pharmacyUser, warehouseUser] = await User.create([
     { name: 'Pharm', phone: '0931111111', role: 'pharmacy', status: 'active' },

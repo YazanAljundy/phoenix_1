@@ -1,4 +1,4 @@
-import 'package:phoenix/features/catalog/data/models/manufacturer_model.dart';
+import 'package:feniq/features/catalog/data/models/manufacturer_model.dart';
 
 enum ManufacturersStatus { initial, loading, loaded, error }
 

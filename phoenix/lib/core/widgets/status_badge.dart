@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../constants/app_colors.dart';
 import '../constants/app_radius.dart';
+import '../theme/app_text_theme.dart';
 import '../extensions/build_context_extensions.dart';
 
 /// The four semantic tones a status pill can take (Section 3-d of the
@@ -25,22 +26,20 @@ class StatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = context.isDarkMode;
-    final Color bg;
-    final Color fg;
-    switch (tone) {
-      case StatusBadgeTone.pending:
-        fg = AppColors.primaryOf(context);
-        bg = isDark ? fg.withValues(alpha: 0.18) : const Color(0xFFFFF3E0);
-      case StatusBadgeTone.success:
-        fg = AppColors.secondaryOf(context);
-        bg = isDark ? fg.withValues(alpha: 0.18) : const Color(0xFFE8F5E9);
-      case StatusBadgeTone.danger:
-        fg = AppColors.errorOf(context);
-        bg = isDark ? fg.withValues(alpha: 0.18) : const Color(0xFFFFEBEE);
-      case StatusBadgeTone.info:
-        fg = AppColors.navyOf(context);
-        bg = isDark ? fg.withValues(alpha: 0.18) : const Color(0xFFE8EAF6);
-    }
+    final Color fg = switch (tone) {
+      StatusBadgeTone.pending => AppColors.primaryOf(context),
+      StatusBadgeTone.success => AppColors.secondaryOf(context),
+      StatusBadgeTone.danger => AppColors.errorOf(context),
+      StatusBadgeTone.info => AppColors.navyOf(context),
+    };
+    // Tint the pill from its own foreground rather than from a hand-picked
+    // pastel per tone: those pastels were Material-palette tints of the old
+    // brand colours (the info tint, for one, was an indigo mixed for the old
+    // #1A237E navy) and went subtly wrong the moment the palette moved to
+    // FENIQ. Derived this way the pill can never drift from the theme again.
+    final Color bg = isDark
+        ? fg.withValues(alpha: 0.18)
+        : Color.alphaBlend(fg.withValues(alpha: 0.14), AppColors.surfaceElevatedOf(context));
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -49,7 +48,7 @@ class StatusBadge extends StatelessWidget {
         label,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: context.textTheme.bodySmall?.copyWith(color: fg, fontWeight: FontWeight.w700),
+        style: context.textTheme.bodySmall?.copyWith(color: fg, fontWeight: AppTextTheme.semiBold),
       ),
     );
   }

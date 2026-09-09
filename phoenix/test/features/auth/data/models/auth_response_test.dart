@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:phoenix/features/auth/data/models/auth_response.dart';
-import 'package:phoenix/features/auth/data/models/pharmacy_model.dart';
-import 'package:phoenix/features/auth/data/models/user_model.dart';
+import 'package:feniq/features/auth/data/models/auth_response.dart';
+import 'package:feniq/features/auth/data/models/pharmacy_model.dart';
+import 'package:feniq/features/auth/data/models/user_model.dart';
 
 void main() {
   group('AuthResponse', () {

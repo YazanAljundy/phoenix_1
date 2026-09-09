@@ -1,7 +1,7 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:phoenix/core/error/error_translator.dart';
-import 'package:phoenix/generated/app_localizations.dart';
+import 'package:feniq/core/error/error_translator.dart';
+import 'package:feniq/generated/app_localizations.dart';
 
 // Every user-facing string the reorder / add-product feature adds must exist
 // in both English and Arabic (no hardcoded strings in Dart).

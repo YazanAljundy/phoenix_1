@@ -1,11 +1,11 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:phoenix/core/error/failure.dart';
-import 'package:phoenix/core/network/api_client.dart';
-import 'package:phoenix/core/network/endpoints.dart';
-import 'package:phoenix/features/warehouse_selection/data/models/warehouse_model.dart';
-import 'package:phoenix/features/warehouse_selection/data/repositories/warehouse_repository_impl.dart';
+import 'package:feniq/core/error/failure.dart';
+import 'package:feniq/core/network/api_client.dart';
+import 'package:feniq/core/network/endpoints.dart';
+import 'package:feniq/features/warehouse_selection/data/models/warehouse_model.dart';
+import 'package:feniq/features/warehouse_selection/data/repositories/warehouse_repository_impl.dart';
 
 class MockApiClient extends Mock implements ApiClient {}
 
@@ -46,7 +46,9 @@ void main() {
           ],
         };
 
-        when(() => mockDio.get(any())).thenAnswer(
+        when(
+          () => mockDio.get(any(), queryParameters: any(named: 'queryParameters')),
+        ).thenAnswer(
           (_) async => Response(
             data: responseData,
             statusCode: 200,
@@ -54,14 +56,17 @@ void main() {
           ),
         );
 
-        final warehouses = await warehouseRepository.getWarehouses();
+        final result = await warehouseRepository.getWarehouses(onlyMyCity: false);
+        final warehouses = result.warehouses;
 
         expect(warehouses, isA<List<WarehouseModel>>());
         expect(warehouses.length, equals(2));
         expect(warehouses[0].id, equals('wh1'));
         expect(warehouses[0].nameAr, equals('مستودع دمشق'));
         expect(warehouses[1].id, equals('wh2'));
-        verify(() => mockDio.get(Endpoints.warehouses)).called(1);
+        // The unfiltered scope sends no query param at all - that is both the
+        // endpoint's own default and exactly what an older app build sends.
+        verify(() => mockDio.get(Endpoints.warehouses, queryParameters: null)).called(1);
       });
 
       test('returns empty list when no warehouses', () async {
@@ -75,9 +80,9 @@ void main() {
           ),
         );
 
-        final warehouses = await warehouseRepository.getWarehouses();
+        final result = await warehouseRepository.getWarehouses(onlyMyCity: false);
 
-        expect(warehouses, isEmpty);
+        expect(result.warehouses, isEmpty);
       });
 
       test('throws ServerFailure on API error', () async {
@@ -89,7 +94,7 @@ void main() {
         when(() => mockDio.get(any())).thenThrow(dioError);
 
         expect(
-          () => warehouseRepository.getWarehouses(),
+          () => warehouseRepository.getWarehouses(onlyMyCity: false),
           throwsA(isA<ServerFailure>()),
         );
       });
@@ -108,7 +113,7 @@ void main() {
         when(() => mockDio.get(any())).thenThrow(dioError);
 
         expect(
-          () => warehouseRepository.getWarehouses(),
+          () => warehouseRepository.getWarehouses(onlyMyCity: false),
           throwsA(isA<ServerFailure>()),
         );
       });
@@ -135,9 +140,9 @@ void main() {
           ),
         );
 
-        final warehouses = await warehouseRepository.getWarehouses();
+        final result = await warehouseRepository.getWarehouses(onlyMyCity: false);
 
-        expect(warehouses[0].logo, equals('https://example.com/logo.png'));
+        expect(result.warehouses[0].logo, equals('https://example.com/logo.png'));
       });
     });
 

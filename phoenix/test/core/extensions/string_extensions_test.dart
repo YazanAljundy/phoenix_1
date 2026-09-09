@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:phoenix/core/extensions/string_extensions.dart';
+import 'package:feniq/core/extensions/string_extensions.dart';
 
 void main() {
   group('StringExtensions', () {

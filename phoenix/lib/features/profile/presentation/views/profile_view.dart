@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:phoenix/core/constants/app_colors.dart';
-import 'package:phoenix/core/constants/app_padding.dart';
-import 'package:phoenix/core/constants/app_radius.dart';
-import 'package:phoenix/core/constants/app_sizes.dart';
-import 'package:phoenix/core/extensions/build_context_extensions.dart';
-import 'package:phoenix/core/widgets/app_dialog.dart';
-import 'package:phoenix/core/widgets/custom_card.dart';
-import 'package:phoenix/features/auth/presentation/managers/auth_cubit.dart';
-import 'package:phoenix/features/auth/presentation/managers/auth_state.dart';
-import 'package:phoenix/features/settings/presentation/managers/settings_cubit.dart';
-import 'package:phoenix/features/settings/presentation/managers/settings_state.dart';
-import 'package:phoenix/routes/route_names.dart';
+import 'package:feniq/core/constants/app_colors.dart';
+import 'package:feniq/core/constants/app_padding.dart';
+import 'package:feniq/core/constants/app_radius.dart';
+import 'package:feniq/core/constants/app_sizes.dart';
+import 'package:feniq/core/extensions/build_context_extensions.dart';
+import 'package:feniq/core/theme/app_text_theme.dart';
+import 'package:feniq/core/widgets/app_dialog.dart';
+import 'package:feniq/core/widgets/custom_card.dart';
+import 'package:feniq/features/auth/presentation/managers/auth_cubit.dart';
+import 'package:feniq/features/auth/presentation/managers/auth_state.dart';
+import 'package:feniq/features/settings/presentation/managers/settings_cubit.dart';
+import 'package:feniq/features/settings/presentation/managers/settings_state.dart';
+import 'package:feniq/routes/route_names.dart';
 
 // Section 6.10: name, pharmacy name, phone, language switch, logout - the
 // last screen for the pharmacist. Theme switching rides along too (it was
@@ -389,7 +390,7 @@ class _PersonalInfoCard extends StatelessWidget {
                     rows[i].label,
                     style: context.textTheme.bodySmall?.copyWith(
                       color: AppColors.textSecondaryOf(context),
-                      fontWeight: FontWeight.w600,
+                      fontWeight: AppTextTheme.semiBold,
                     ),
                   ),
                   const SizedBox(height: 3),

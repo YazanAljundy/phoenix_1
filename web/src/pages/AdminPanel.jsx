@@ -21,7 +21,7 @@ function navLinkClassName({ isActive }) {
 }
 
 // Section 13c: the admin side of the shared React panel - same real-routes
-// sidebar shell as the warehouse side (Phoenix Design import), under its own
+// sidebar shell as the warehouse side (Feniq Design import), under its own
 // ".admin-shell" scope in index.css so restyling this can't touch
 // WarehousePanel.jsx's look, same guarantee in reverse.
 export function AdminPanel() {
@@ -60,7 +60,7 @@ export function AdminPanel() {
       />
       <aside className={`adm-sidebar${isSidebarOpen ? ' adm-sidebar-open' : ''}`}>
         <div className="adm-sidebar-header">
-          <img className="adm-sidebar-logo" src="/images/feniq_logo.png" alt={t('nav.brandName')} />
+          <img className="adm-sidebar-logo" src="/images/feniq-mark-dark.png" alt={t('nav.brandName')} />
           <div className="adm-sidebar-brand">{t('nav.brandName')}</div>
           <div className="adm-sidebar-subtitle">{t('nav.adminTitle')}</div>
         </div>

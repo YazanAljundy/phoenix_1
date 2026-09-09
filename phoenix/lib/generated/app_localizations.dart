@@ -101,7 +101,7 @@ abstract class AppLocalizations {
   /// No description provided for @appName.
   ///
   /// In en, this message translates to:
-  /// **'Phoenix'**
+  /// **'Feniq'**
   String get appName;
 
   /// No description provided for @login.
@@ -590,6 +590,36 @@ abstract class AppLocalizations {
   /// **'Profile'**
   String get warehouseProfileButtonLabel;
 
+  /// No description provided for @warehousesScopeMyCity.
+  ///
+  /// In en, this message translates to:
+  /// **'My city'**
+  String get warehousesScopeMyCity;
+
+  /// No description provided for @warehousesScopeAllCities.
+  ///
+  /// In en, this message translates to:
+  /// **'All cities'**
+  String get warehousesScopeAllCities;
+
+  /// No description provided for @viewAllCitiesButton.
+  ///
+  /// In en, this message translates to:
+  /// **'View all cities'**
+  String get viewAllCitiesButton;
+
+  /// No description provided for @noWarehousesInYourCity.
+  ///
+  /// In en, this message translates to:
+  /// **'No warehouses in your city'**
+  String get noWarehousesInYourCity;
+
+  /// No description provided for @noWarehousesInYourCitySubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Try broadening the search to other cities.'**
+  String get noWarehousesInYourCitySubtitle;
+
   /// No description provided for @noManufacturersFound.
   ///
   /// In en, this message translates to:
@@ -829,6 +859,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Remove'**
   String get removeButton;
+
+  /// No description provided for @clearCartButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear cart'**
+  String get clearCartButton;
+
+  /// No description provided for @clearCartTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear cart?'**
+  String get clearCartTitle;
+
+  /// No description provided for @clearCartConfirmation.
+  ///
+  /// In en, this message translates to:
+  /// **'Are you sure you want to clear all the contents of your cart?'**
+  String get clearCartConfirmation;
 
   /// No description provided for @cartConflictTitle.
   ///
@@ -1075,6 +1123,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{name} is no longer available.'**
   String errorProductNotFound(String name);
+
+  /// No description provided for @errorPriceChangedGeneric.
+  ///
+  /// In en, this message translates to:
+  /// **'Some prices in your cart have changed.'**
+  String get errorPriceChangedGeneric;
+
+  /// No description provided for @errorPriceChanged.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is now {newPrice} (was {oldPrice}).'**
+  String errorPriceChanged(String name, String newPrice, String oldPrice);
+
+  /// No description provided for @priceChangedConfirmHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit again to place the order at the new prices.'**
+  String get priceChangedConfirmHint;
 
   /// No description provided for @thisItemFallback.
   ///
@@ -2255,7 +2321,7 @@ abstract class AppLocalizations {
   /// No description provided for @updateAvailableMessage.
   ///
   /// In en, this message translates to:
-  /// **'A new version of Phoenix is available. Update now to get the latest features and improvements.'**
+  /// **'A new version of Feniq is available. Update now to get the latest features and improvements.'**
   String get updateAvailableMessage;
 
   /// No description provided for @updateRequired.
@@ -2267,7 +2333,7 @@ abstract class AppLocalizations {
   /// No description provided for @updateRequiredMessage.
   ///
   /// In en, this message translates to:
-  /// **'Your current version of Phoenix is no longer supported. Please update the application to continue.'**
+  /// **'Your current version of Feniq is no longer supported. Please update the application to continue.'**
   String get updateRequiredMessage;
 
   /// No description provided for @updateNow.

@@ -1,4 +1,4 @@
-# phoenix
+# feniq
 
 A new Flutter project.
 

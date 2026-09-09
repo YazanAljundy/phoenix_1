@@ -4,21 +4,21 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:phoenix/core/theme/dark_theme.dart';
-import 'package:phoenix/features/account_history/presentation/managers/savings_cubit.dart';
-import 'package:phoenix/features/account_history/presentation/managers/savings_state.dart';
-import 'package:phoenix/features/account_history/presentation/views/account_history_view.dart';
-import 'package:phoenix/features/debts/data/models/warehouse_debt_model.dart';
-import 'package:phoenix/features/debts/presentation/managers/debts_cubit.dart';
-import 'package:phoenix/features/debts/presentation/managers/debts_state.dart';
-import 'package:phoenix/features/exchange_rate/presentation/managers/exchange_rate_cubit.dart';
-import 'package:phoenix/features/exchange_rate/presentation/managers/exchange_rate_state.dart';
-import 'package:phoenix/features/returns/data/models/return_model.dart';
-import 'package:phoenix/features/returns/presentation/managers/my_returns_cubit.dart';
-import 'package:phoenix/features/returns/presentation/managers/my_returns_state.dart';
-import 'package:phoenix/generated/app_localizations.dart';
-import 'package:phoenix/features/account_history/data/models/savings_summary.dart';
-import 'package:phoenix/routes/route_names.dart';
+import 'package:feniq/core/theme/dark_theme.dart';
+import 'package:feniq/features/account_history/presentation/managers/savings_cubit.dart';
+import 'package:feniq/features/account_history/presentation/managers/savings_state.dart';
+import 'package:feniq/features/account_history/presentation/views/account_history_view.dart';
+import 'package:feniq/features/debts/data/models/warehouse_debt_model.dart';
+import 'package:feniq/features/debts/presentation/managers/debts_cubit.dart';
+import 'package:feniq/features/debts/presentation/managers/debts_state.dart';
+import 'package:feniq/features/exchange_rate/presentation/managers/exchange_rate_cubit.dart';
+import 'package:feniq/features/exchange_rate/presentation/managers/exchange_rate_state.dart';
+import 'package:feniq/features/returns/data/models/return_model.dart';
+import 'package:feniq/features/returns/presentation/managers/my_returns_cubit.dart';
+import 'package:feniq/features/returns/presentation/managers/my_returns_state.dart';
+import 'package:feniq/generated/app_localizations.dart';
+import 'package:feniq/features/account_history/data/models/savings_summary.dart';
+import 'package:feniq/routes/route_names.dart';
 
 class MockSavingsCubit extends MockCubit<SavingsState> implements SavingsCubit {}
 
@@ -89,7 +89,15 @@ void main() {
     // trigger - so no load() stubbing is needed.
   });
 
-  Future<void> pump(WidgetTester tester, {Locale? locale, ThemeData? theme}) async {
+  // `settle: false` for any test that leaves a card in its loading state: the
+  // amount placeholder is a skeleton that pulses forever, so such a screen
+  // never reaches a settled frame.
+  Future<void> pump(
+    WidgetTester tester, {
+    Locale? locale,
+    ThemeData? theme,
+    bool settle = true,
+  }) async {
     final router = GoRouter(
       initialLocation: '/account-history',
       routes: [
@@ -128,7 +136,11 @@ void main() {
         supportedLocales: AppLocalizations.supportedLocales,
       ),
     );
-    await tester.pumpAndSettle();
+    if (settle) {
+      await tester.pumpAndSettle();
+    } else {
+      await tester.pump();
+    }
   }
 
   testWidgets('Test 2: shows all three cards', (tester) async {
@@ -181,7 +193,7 @@ void main() {
     tester,
   ) async {
     when(() => savings.state).thenReturn(const SavingsState(status: SavingsStatus.loading));
-    await pump(tester);
+    await pump(tester, settle: false);
 
     expect(find.text('150,000 SYP'), findsNothing); // savings not ready
     expect(find.text('300,000 SYP'), findsOneWidget); // debts unaffected

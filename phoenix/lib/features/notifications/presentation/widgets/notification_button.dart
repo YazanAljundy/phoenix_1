@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:phoenix/core/extensions/build_context_extensions.dart';
-import 'package:phoenix/features/notifications/presentation/managers/notification_cubit.dart';
-import 'package:phoenix/features/notifications/presentation/managers/notification_state.dart';
-import 'package:phoenix/routes/route_names.dart';
+import 'package:feniq/core/extensions/build_context_extensions.dart';
+import 'package:feniq/features/notifications/presentation/managers/notification_cubit.dart';
+import 'package:feniq/features/notifications/presentation/managers/notification_state.dart';
+import 'package:feniq/routes/route_names.dart';
 
 /// The bell + unread-count badge for the home AppBar. Deliberately mirrors
 /// [CartButton]: reads the single app-wide [NotificationCubit], only rebuilds

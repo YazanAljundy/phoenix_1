@@ -1,10 +1,10 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:phoenix/core/error/failure.dart';
-import 'package:phoenix/features/advertisements/data/models/advertisement_model.dart';
-import 'package:phoenix/features/advertisements/data/repositories/advertisements_repository.dart';
-import 'package:phoenix/features/offers/data/models/offer_model.dart';
-import 'package:phoenix/features/offers/data/repositories/offers_repository.dart';
-import 'package:phoenix/features/promotions/data/models/promotion.dart';
+import 'package:feniq/core/error/failure.dart';
+import 'package:feniq/features/advertisements/data/models/advertisement_model.dart';
+import 'package:feniq/features/advertisements/data/repositories/advertisements_repository.dart';
+import 'package:feniq/features/offers/data/models/offer_model.dart';
+import 'package:feniq/features/offers/data/repositories/offers_repository.dart';
+import 'package:feniq/features/promotions/data/models/promotion.dart';
 
 import 'promotions_state.dart';
 

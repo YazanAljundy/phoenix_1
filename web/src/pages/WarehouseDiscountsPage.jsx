@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../api/client';
+import { WarehouseGroupSubNav } from '../components/WarehouseGroupSubNav';
 
 // Section 15: a warehouse-set, always-on discount per manufacturer, stacked
 // automatically onto every one of that manufacturer's products in the
@@ -123,6 +124,8 @@ export function WarehouseDiscountsPage() {
 
   return (
     <div>
+      <WarehouseGroupSubNav />
+
       <div className="wh-page-head">
         <h1>{t('nav.discounts')}</h1>
       </div>

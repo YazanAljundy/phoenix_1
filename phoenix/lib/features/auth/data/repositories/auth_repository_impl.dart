@@ -1,9 +1,9 @@
 import 'package:dio/dio.dart';
-import 'package:phoenix/core/error/failure.dart';
-import 'package:phoenix/core/network/api_client.dart';
-import 'package:phoenix/core/network/endpoints.dart';
-import 'package:phoenix/features/auth/data/models/auth_response.dart';
-import 'package:phoenix/features/auth/data/models/me_response.dart';
+import 'package:feniq/core/error/failure.dart';
+import 'package:feniq/core/network/api_client.dart';
+import 'package:feniq/core/network/endpoints.dart';
+import 'package:feniq/features/auth/data/models/auth_response.dart';
+import 'package:feniq/features/auth/data/models/me_response.dart';
 
 import 'auth_repository.dart';
 

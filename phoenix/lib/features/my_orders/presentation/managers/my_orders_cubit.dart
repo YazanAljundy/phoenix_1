@@ -1,6 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:phoenix/core/error/failure.dart';
-import 'package:phoenix/features/cart/data/repositories/order_repository.dart';
+import 'package:feniq/core/error/failure.dart';
+import 'package:feniq/features/cart/data/repositories/order_repository.dart';
 
 import 'my_orders_state.dart';
 

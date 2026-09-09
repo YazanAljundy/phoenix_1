@@ -3,11 +3,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:phoenix/core/widgets/primary_button.dart';
-import 'package:phoenix/features/auth/presentation/managers/auth_cubit.dart';
-import 'package:phoenix/features/auth/presentation/managers/auth_state.dart';
-import 'package:phoenix/features/auth/presentation/views/password_login_view.dart';
-import 'package:phoenix/generated/app_localizations.dart';
+import 'package:feniq/core/widgets/phone_text_field.dart';
+import 'package:feniq/core/widgets/primary_button.dart';
+import 'package:feniq/features/auth/presentation/managers/auth_cubit.dart';
+import 'package:feniq/features/auth/presentation/managers/auth_state.dart';
+import 'package:feniq/features/auth/presentation/views/password_login_view.dart';
+import 'package:feniq/generated/app_localizations.dart';
 
 class MockAuthCubit extends MockCubit<AuthState> implements AuthCubit {}
 
@@ -58,6 +59,17 @@ void main() {
     ).captured.single as String;
     return captured;
   }
+
+  testWidgets('the phone field is prefixed by the fixed, non-editable "09" box', (
+    tester,
+  ) async {
+    await pumpLoginView(tester);
+
+    // Login and registration share PhoneTextField, so the prefix is defined
+    // once - this pins that login is actually wired to it.
+    expect(find.byType(PhoneTextField), findsOneWidget);
+    expect(find.text('09'), findsOneWidget);
+  });
 
   group('PasswordLoginView sends the international phone to loginWithPassword', () {
     const expected = '+963912345678';

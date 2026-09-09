@@ -1,4 +1,4 @@
-import 'package:phoenix/features/reviews/data/models/review_model.dart';
+import 'package:feniq/features/reviews/data/models/review_model.dart';
 
 enum PharmacyReviewsStatus { initial, loading, loaded, error }
 

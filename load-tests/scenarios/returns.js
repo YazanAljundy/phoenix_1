@@ -6,7 +6,7 @@ import { baseUrl, params, record } from '../lib/runtime.js';
 // Read paths only in the main suite. POST /returns is multipart and its
 // (optional) photos are streamed to Cloudinary by the controller before the
 // return is even validated. Under load that is an external-service stress
-// test aimed at a third party's account, not a test of Phoenix - so the
+// test aimed at a third party's account, not a test of Feniq - so the
 // upload path is measured on its own, at low concurrency, by upload-load.js.
 
 export function returnsFlow(token) {

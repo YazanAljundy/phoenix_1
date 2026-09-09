@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:phoenix/core/utils/currency_formatter.dart';
+import 'package:feniq/core/utils/currency_formatter.dart';
 
 void main() {
   group('Currency formatters (SYP-primary)', () {
@@ -17,13 +17,6 @@ void main() {
       test('handles zero and negative amounts', () {
         expect(formatSyp(0, 'ل.س'), equals('0 ل.س'));
         expect(formatSyp(-5000, 'ل.س'), equals('-5,000 ل.س'));
-      });
-    });
-
-    group('formatUsd', () {
-      test('formats with two decimals and a leading dollar sign', () {
-        expect(formatUsd(25), equals('\$25.00'));
-        expect(formatUsd(2.5), equals('\$2.50'));
       });
     });
 
@@ -45,31 +38,15 @@ void main() {
         expect(formatMoneyFromUsd(25, 1000.0, 'ل.س'), equals('25,000 ل.س'));
       });
 
-      test('falls back to the plain USD figure when no rate is loaded', () {
-        expect(formatMoneyFromUsd(25, null, 'ل.س'), equals('\$25.00'));
-      });
-    });
-
-    group('usdHintFromUsd', () {
-      test('renders an approximate dollar hint when a rate is available', () {
-        expect(usdHintFromUsd(25, 1000.0), equals('~\$25.00'));
+      // Never the USD figure - the pharmacist only ever sees SYP or a dash.
+      test('shows the unavailable placeholder when no rate is loaded', () {
+        expect(formatMoneyFromUsd(25, null, 'ل.س'), equals(kMoneyUnavailable));
+        expect(formatMoneyFromUsd(25, 0.0, 'ل.س'), equals(kMoneyUnavailable));
       });
 
-      test('returns null when there is no rate to contrast with', () {
-        expect(usdHintFromUsd(25, null), isNull);
-      });
-    });
-
-    group('formatUsdApprox', () {
-      test('converts a SYP-native amount to an approximate USD hint', () {
-        expect(formatUsdApprox(15000, 5000.0), equals('~\$3.00'));
-        expect(formatUsdApprox(0, 5000.0), equals('~\$0.00'));
-      });
-
-      test('returns null for a missing or non-positive rate', () {
-        expect(formatUsdApprox(15000, null), isNull);
-        expect(formatUsdApprox(15000, 0.0), isNull);
-        expect(formatUsdApprox(15000, -100.0), isNull);
+      test('never emits a dollar sign', () {
+        expect(formatMoneyFromUsd(25, 1000.0, 'ل.س'), isNot(contains('\$')));
+        expect(formatMoneyFromUsd(25, null, 'ل.س'), isNot(contains('\$')));
       });
     });
   });

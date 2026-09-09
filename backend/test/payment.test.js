@@ -88,7 +88,7 @@ async function giveTradingRelationship(pharmacyId, chargeSyp) {
 }
 
 test.before(async () => {
-  await startMemoryMongo({ dbName: 'phoenix-payment-test' });
+  await startMemoryMongo({ dbName: 'feniq-payment-test' });
   await syncIndexes(Payment, LedgerEntry, LedgerAccount);
 
   await ExchangeRate.create({ _id: 'singleton', usdToSyp: 10000, source: 'manual' });

@@ -1,4 +1,4 @@
-import 'package:phoenix/features/complaints/data/models/complaint_model.dart';
+import 'package:feniq/features/complaints/data/models/complaint_model.dart';
 
 // Section 17: the "submit a complaint" screen is context-aware, not
 // form-driven. The screen that opens it passes one of these - the user never

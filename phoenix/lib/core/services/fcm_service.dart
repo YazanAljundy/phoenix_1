@@ -5,12 +5,12 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:go_router/go_router.dart';
-import 'package:phoenix/core/services/logger_service.dart';
-import 'package:phoenix/core/services/navigation_service.dart';
-import 'package:phoenix/features/auth/data/repositories/auth_repository.dart';
-import 'package:phoenix/features/notifications/data/models/notification_model.dart';
-import 'package:phoenix/features/notifications/data/repositories/notification_repository.dart';
-import 'package:phoenix/routes/route_names.dart';
+import 'package:feniq/core/services/logger_service.dart';
+import 'package:feniq/core/services/navigation_service.dart';
+import 'package:feniq/features/auth/data/repositories/auth_repository.dart';
+import 'package:feniq/features/notifications/data/models/notification_model.dart';
+import 'package:feniq/features/notifications/data/repositories/notification_repository.dart';
+import 'package:feniq/routes/route_names.dart';
 
 // Registered as FirebaseMessaging.onBackgroundMessage in main.dart - must be
 // a top-level (or static) function annotated exactly like this, since the
@@ -36,7 +36,7 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 const _androidChannel = AndroidNotificationChannel(
   'phoenix_default_channel',
   'General notifications',
-  description: 'Order updates, offers, and announcements from Phoenix.',
+  description: 'Order updates, offers, and announcements from Feniq.',
   importance: Importance.high,
 );
 

@@ -1,8 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:phoenix/features/notifications/data/models/notification_model.dart';
-import 'package:phoenix/features/notifications/data/repositories/notification_repository.dart';
+import 'package:feniq/features/notifications/data/models/notification_model.dart';
+import 'package:feniq/features/notifications/data/repositories/notification_repository.dart';
 
 import 'notification_state.dart';
 

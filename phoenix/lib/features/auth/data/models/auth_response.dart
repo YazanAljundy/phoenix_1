@@ -1,5 +1,5 @@
-import 'package:phoenix/features/auth/data/models/pharmacy_model.dart';
-import 'package:phoenix/features/auth/data/models/user_model.dart';
+import 'package:feniq/features/auth/data/models/pharmacy_model.dart';
+import 'package:feniq/features/auth/data/models/user_model.dart';
 
 class AuthResponse {
   const AuthResponse({required this.token, required this.user, this.pharmacy});

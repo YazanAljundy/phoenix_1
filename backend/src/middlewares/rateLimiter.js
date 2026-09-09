@@ -36,7 +36,7 @@ const ANONYMOUS_LIMIT = 300; // unchanged from before, and now only /health + /a
 
 // Resolved at most once per request: both keyGenerator and limit need it, and
 // the order express-rate-limit calls them in is not something to depend on.
-const IDENTITY = Symbol('phoenixRateLimitIdentity');
+const IDENTITY = Symbol('feniqRateLimitIdentity');
 
 function resolveUserId(req) {
   const header = req.headers.authorization || '';

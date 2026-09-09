@@ -1,9 +1,9 @@
 import 'package:dio/dio.dart';
-import 'package:phoenix/core/error/failure.dart';
-import 'package:phoenix/core/network/api_client.dart';
-import 'package:phoenix/core/network/endpoints.dart';
-import 'package:phoenix/features/warehouse_selection/data/models/warehouse_model.dart';
-import 'package:phoenix/features/warehouse_selection/data/models/warehouse_profile_model.dart';
+import 'package:feniq/core/error/failure.dart';
+import 'package:feniq/core/network/api_client.dart';
+import 'package:feniq/core/network/endpoints.dart';
+import 'package:feniq/features/warehouse_selection/data/models/warehouse_list_result.dart';
+import 'package:feniq/features/warehouse_selection/data/models/warehouse_profile_model.dart';
 
 import 'warehouse_repository.dart';
 
@@ -13,12 +13,16 @@ class WarehouseRepositoryImpl implements WarehouseRepository {
   final ApiClient _apiClient;
 
   @override
-  Future<List<WarehouseModel>> getWarehouses() async {
+  Future<WarehouseListResult> getWarehouses({required bool onlyMyCity}) async {
     try {
-      final response = await _apiClient.dio.get(Endpoints.warehouses);
-      final data = response.data as Map<String, dynamic>;
-      final warehouses = (data['warehouses'] as List).cast<Map<String, dynamic>>();
-      return warehouses.map(WarehouseModel.fromJson).toList();
+      final response = await _apiClient.dio.get(
+        Endpoints.warehouses,
+        // Sent only when narrowing. The endpoint's own default is the
+        // unfiltered list, so omitting it is both the smaller request and
+        // exactly what an older app build sends.
+        queryParameters: onlyMyCity ? const {'cityScope': 'mine'} : null,
+      );
+      return WarehouseListResult.fromJson(response.data as Map<String, dynamic>);
     } on DioException catch (e) {
       throw ServerFailure.fromDioError(e);
     }

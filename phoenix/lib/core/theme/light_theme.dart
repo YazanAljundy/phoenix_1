@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 import '../constants/app_colors.dart';
 import '../constants/app_padding.dart';
@@ -11,6 +10,11 @@ class LightTheme {
 
   static ThemeData get data => ThemeData(
     useMaterial3: true,
+    // Catch-all: TextTheme below covers the eight roles the app styles
+    // itself, but Material composes plenty of text from its own defaults
+    // (menu entries, tooltips, date pickers). Setting the family here means
+    // none of those silently fall back to the OS's default Arabic face.
+    fontFamily: AppTextTheme.fontFamily,
     // Explicit, not ColorScheme.fromSeed - Section 5's five brand colors are
     // exact values the app is required to use, not a seed for Material 3 to
     // algorithmically approximate into secondary/tertiary/etc.
@@ -33,7 +37,7 @@ class LightTheme {
       shadowColor: Colors.black.withValues(alpha: 0.15),
       surfaceTintColor: Colors.transparent,
       centerTitle: false,
-      titleTextStyle: GoogleFonts.cairo(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+      titleTextStyle: AppTextTheme.style(fontSize: 20, fontWeight: AppTextTheme.bold, color: Colors.white),
     ),
     cardTheme: CardThemeData(
       color: AppColors.lightSurfaceElevated,
@@ -73,10 +77,14 @@ class LightTheme {
       backgroundColor: AppColors.lightSurfaceElevated,
       indicatorColor: AppColors.lightPrimary.withValues(alpha: 0.15),
       indicatorShape: const StadiumBorder(),
+      // 10, not 11: the longest label ("سجل الحسابات" / "Account History")
+      // measures ~78pt at 11 and a fifth of a 360dp phone is only ~72pt, so at
+      // 11 it could not fit the one line the icon alignment depends on. At 10
+      // it lands around 70pt and every label still fits without ellipsis.
       labelTextStyle: WidgetStateProperty.resolveWith(
-        (states) => GoogleFonts.cairo(
-          fontSize: 11,
-          fontWeight: states.contains(WidgetState.selected) ? FontWeight.w700 : FontWeight.w500,
+        (states) => AppTextTheme.style(
+          fontSize: 10,
+          fontWeight: states.contains(WidgetState.selected) ? AppTextTheme.semiBold : AppTextTheme.medium,
           color: states.contains(WidgetState.selected) ? AppColors.lightPrimary : AppColors.lightTextSecondary,
         ),
       ),

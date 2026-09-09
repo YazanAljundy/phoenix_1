@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:phoenix/core/constants/app_colors.dart';
-import 'package:phoenix/core/constants/app_radius.dart';
-import 'package:phoenix/core/constants/app_sizes.dart';
-import 'package:phoenix/core/extensions/build_context_extensions.dart';
-import 'package:phoenix/core/widgets/custom_card.dart';
-import 'package:phoenix/features/catalog/data/models/manufacturer_model.dart';
+import 'package:feniq/core/constants/app_colors.dart';
+import 'package:feniq/core/constants/app_radius.dart';
+import 'package:feniq/core/constants/app_sizes.dart';
+import 'package:feniq/core/extensions/build_context_extensions.dart';
+import 'package:feniq/core/theme/app_text_theme.dart';
+import 'package:feniq/core/widgets/custom_card.dart';
+import 'package:feniq/features/catalog/data/models/manufacturer_model.dart';
 
 // The pharmacist's entry into a warehouse's catalog is now this card, not a
 // medicine directly - tapping one filters the catalog down to this
@@ -60,7 +61,7 @@ class ManufacturerCard extends StatelessWidget {
             textAlign: TextAlign.center,
             style: context.textTheme.bodySmall?.copyWith(
               color: AppColors.secondaryOf(context),
-              fontWeight: FontWeight.w600,
+              fontWeight: AppTextTheme.semiBold,
             ),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,

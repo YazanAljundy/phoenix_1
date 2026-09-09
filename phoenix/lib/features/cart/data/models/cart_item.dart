@@ -1,4 +1,4 @@
-import 'package:phoenix/features/catalog/data/models/product_model.dart';
+import 'package:feniq/features/catalog/data/models/product_model.dart';
 
 // A locally-held line item: what's already in ProductModel, plus the
 // quantity the pharmacist has chosen. Deliberately depends on catalog's

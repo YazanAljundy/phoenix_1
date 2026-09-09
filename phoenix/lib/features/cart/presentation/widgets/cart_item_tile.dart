@@ -1,17 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:phoenix/core/constants/app_colors.dart';
-import 'package:phoenix/core/constants/app_radius.dart';
-import 'package:phoenix/core/constants/app_sizes.dart';
-import 'package:phoenix/core/extensions/build_context_extensions.dart';
-import 'package:phoenix/core/utils/currency_formatter.dart';
-import 'package:phoenix/core/widgets/app_dialog.dart';
-import 'package:phoenix/core/widgets/app_network_image.dart';
-import 'package:phoenix/core/widgets/custom_card.dart';
-import 'package:phoenix/core/widgets/quantity_stepper.dart';
-import 'package:phoenix/core/widgets/secondary_price_hint.dart';
-import 'package:phoenix/features/cart/data/models/cart_item.dart';
-import 'package:phoenix/features/exchange_rate/presentation/managers/exchange_rate_cubit.dart';
+import 'package:feniq/core/constants/app_colors.dart';
+import 'package:feniq/core/constants/app_radius.dart';
+import 'package:feniq/core/constants/app_sizes.dart';
+import 'package:feniq/core/extensions/build_context_extensions.dart';
+import 'package:feniq/core/utils/currency_formatter.dart';
+import 'package:feniq/core/widgets/app_dialog.dart';
+import 'package:feniq/core/widgets/app_network_image.dart';
+import 'package:feniq/core/widgets/custom_card.dart';
+import 'package:feniq/core/widgets/quantity_stepper.dart';
+import 'package:feniq/features/cart/data/models/cart_item.dart';
+import 'package:feniq/features/exchange_rate/presentation/managers/exchange_rate_cubit.dart';
 
 class CartItemTile extends StatelessWidget {
   const CartItemTile({
@@ -47,11 +46,9 @@ class CartItemTile extends StatelessWidget {
     final l10n = context.l10n;
     final isArabic = Localizations.localeOf(context).languageCode == 'ar';
     final name = isArabic ? item.nameAr : (item.nameEn ?? item.nameAr);
+    // Every figure on this tile is SYP, converted from the stored USD price
+    // at the current rate.
     final usdToSyp = context.watch<ExchangeRateCubit>().state.usdToSyp;
-    // The line total is shown in SYP (converted from the stored USD price at
-    // the live rate); the exact USD figure rides along as a secondary hint,
-    // next to the line total further down rather than the per-unit price.
-    final lineTotalUsdHint = usdHintFromUsd(item.lineTotalUsd, usdToSyp);
 
     return CustomCard(
       child: Column(
@@ -141,18 +138,11 @@ class CartItemTile extends StatelessWidget {
               Expanded(
                 child: Align(
                   alignment: AlignmentDirectional.centerEnd,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        formatMoneyFromUsd(item.lineTotalUsd, usdToSyp, l10n.currencySuffix),
-                        style: context.textTheme.titleSmall,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      if (lineTotalUsdHint != null) SecondaryPriceHint(text: lineTotalUsdHint),
-                    ],
+                  child: Text(
+                    formatMoneyFromUsd(item.lineTotalUsd, usdToSyp, l10n.currencySuffix),
+                    style: context.textTheme.titleSmall,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
               ),

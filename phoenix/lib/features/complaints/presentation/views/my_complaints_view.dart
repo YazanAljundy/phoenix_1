@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:phoenix/core/constants/app_colors.dart';
-import 'package:phoenix/core/constants/app_radius.dart';
-import 'package:phoenix/core/constants/app_sizes.dart';
-import 'package:phoenix/core/error/error_translator.dart';
-import 'package:phoenix/core/extensions/build_context_extensions.dart';
-import 'package:phoenix/core/widgets/app_loading.dart';
-import 'package:phoenix/core/widgets/app_snackbar.dart';
-import 'package:phoenix/core/widgets/failure_widget.dart';
-import 'package:phoenix/core/widgets/primary_button.dart';
-import 'package:phoenix/features/complaints/data/models/complaint_model.dart';
-import 'package:phoenix/features/complaints/data/models/submit_complaint_args.dart';
-import 'package:phoenix/features/complaints/presentation/managers/my_complaints_cubit.dart';
-import 'package:phoenix/features/complaints/presentation/managers/my_complaints_state.dart';
-import 'package:phoenix/features/complaints/presentation/widgets/complaint_list_tile.dart';
-import 'package:phoenix/routes/route_names.dart';
+import 'package:feniq/core/constants/app_colors.dart';
+import 'package:feniq/core/constants/app_radius.dart';
+import 'package:feniq/core/constants/app_sizes.dart';
+import 'package:feniq/core/error/error_translator.dart';
+import 'package:feniq/core/extensions/build_context_extensions.dart';
+import 'package:feniq/core/widgets/app_skeleton.dart';
+import 'package:feniq/core/widgets/app_snackbar.dart';
+import 'package:feniq/core/widgets/failure_widget.dart';
+import 'package:feniq/core/widgets/primary_button.dart';
+import 'package:feniq/features/complaints/data/models/complaint_model.dart';
+import 'package:feniq/features/complaints/data/models/submit_complaint_args.dart';
+import 'package:feniq/features/complaints/presentation/managers/my_complaints_cubit.dart';
+import 'package:feniq/features/complaints/presentation/managers/my_complaints_state.dart';
+import 'package:feniq/features/complaints/presentation/widgets/complaint_list_tile.dart';
+import 'package:feniq/routes/route_names.dart';
 
 // Section 1: the pharmacy's "My Complaints" screen - reached from the profile
 // screen. Lists complaints the pharmacy filed, each opening its full detail;
@@ -130,7 +130,7 @@ class _MyComplaintsViewState extends State<MyComplaintsView> {
                 builder: (context, state) {
                   if (state.status == MyComplaintsStatus.initial ||
                       (state.status == MyComplaintsStatus.loading && state.complaints.isEmpty)) {
-                    return const AppLoading();
+                    return const SkeletonCardList(lines: 2);
                   }
                   if (state.status == MyComplaintsStatus.error && state.complaints.isEmpty) {
                     return FailureWidget(
@@ -206,11 +206,12 @@ class _PaginationFooter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (isLoadingMore) {
+      // One more card-shaped placeholder at the tail of the list, so the next
+      // page arrives into the shape it is about to fill rather than under a
+      // spinner.
       return const Padding(
-        padding: EdgeInsets.symmetric(vertical: AppSizes.spacingSmall),
-        child: Center(
-          child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2)),
-        ),
+        padding: EdgeInsets.only(top: AppSizes.spacingSmall),
+        child: SkeletonPulse(child: SkeletonListCard(lines: 2)),
       );
     }
     if (!hasMore) {

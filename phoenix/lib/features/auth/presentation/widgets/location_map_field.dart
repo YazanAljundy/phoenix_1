@@ -5,10 +5,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
-import 'package:phoenix/core/constants/app_colors.dart';
-import 'package:phoenix/core/constants/app_radius.dart';
-import 'package:phoenix/core/constants/app_sizes.dart';
-import 'package:phoenix/core/extensions/build_context_extensions.dart';
+import 'package:feniq/core/constants/app_colors.dart';
+import 'package:feniq/core/constants/app_radius.dart';
+import 'package:feniq/core/constants/app_sizes.dart';
+import 'package:feniq/core/extensions/build_context_extensions.dart';
 
 // Section 6.2 update: the address field is gone - this embedded map is now
 // the only way to set the pharmacy's location, and its resolved address is
@@ -22,7 +22,7 @@ import 'package:phoenix/core/extensions/build_context_extensions.dart';
 // the device's current position isn't available yet.
 const _defaultCenter = LatLng(35.5317, 35.7911);
 
-const _nominatimUserAgent = 'PhoenixPharmacyApp/1.0';
+const _nominatimUserAgent = 'FeniqPharmacyApp/1.0';
 
 Future<bool> ensureLocationPermission() async {
   final serviceEnabled = await Geolocator.isLocationServiceEnabled();
@@ -204,7 +204,7 @@ class _LocationMapFieldState extends State<LocationMapField> {
                   children: [
                     TileLayer(
                       urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                      userAgentPackageName: 'com.phoenix.pharmacy',
+                      userAgentPackageName: 'com.feniq.pharmacy',
                     ),
                   ],
                 ),

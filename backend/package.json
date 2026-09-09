@@ -1,7 +1,7 @@
 {
-  "name": "phoenix-backend",
+  "name": "feniq-backend",
   "version": "1.0.0",
-  "description": "Phoenix Pharmacy B2B platform - Node.js/Express/MongoDB backend",
+  "description": "Feniq Pharmacy B2B platform - Node.js/Express/MongoDB backend",
   "private": true,
   "main": "src/server.js",
   "type": "commonjs",
@@ -14,6 +14,7 @@
     "seed-catalog": "node scripts/seed-catalog.js",
     "migrate-prices-to-usd": "node scripts/migrate-prices-to-usd.js",
     "backfill-warehouse-manufacturers": "node scripts/backfill-warehouse-manufacturers.js",
+    "backfill-catalog-search-keys": "node scripts/backfill-catalog-search-keys.js",
     "migrate-level2-indexes": "node scripts/level2-index-migration.js",
     "check-replica-set": "node scripts/check-replica-set.js",
     "dev-replset": "node scripts/start-dev-replset.js",

@@ -29,8 +29,12 @@ export function LoginPage() {
   return (
     <div className="auth-screen">
       <div className="auth-card">
-        <img className="auth-logo" src="/images/feniq_logo.png" alt={t('app.brand')} />
-        <h1 className="brand">{t('app.brand')}</h1>
+        {/* The lockup carries the wordmark in both scripts, so it stands in
+            for the <h1> that used to repeat the brand name underneath it.
+            Kept as an h1 for the document outline and screen readers. */}
+        <h1 className="brand">
+          <img className="auth-logo" src="/images/feniq-logo-light.png" alt={t('app.brand')} />
+        </h1>
 
         <form onSubmit={handleSubmit}>
           <label htmlFor="phone">{t('auth.phoneLabel')}</label>

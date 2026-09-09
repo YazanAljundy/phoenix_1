@@ -1,13 +1,21 @@
 const mongoose = require('mongoose');
 const { ApiError } = require('../utils/ApiError');
 const User = require('../models/user.model');
+const Pharmacy = require('../models/pharmacy.model');
 const Warehouse = require('../models/warehouse.model');
+const { canonicalCity, citiesMatch } = require('../utils/cityMatch');
 const { listReviewsForWarehouse } = require('./warehouseReview.service');
+
+// How much of the platform the pharmacist is asking to see. 'mine' narrows
+// the list to the pharmacy's own city; 'all' is every available warehouse,
+// which is what the endpoint has always returned.
+const CITY_SCOPE_MINE = 'mine';
+const CITY_SCOPE_ALL = 'all';
 
 // Section 7: a warehouse only appears to pharmacists once its user has been
 // admin-approved (users.status = 'active'), and warehouses.isActive lets an
 // already-approved warehouse be temporarily paused without losing approval.
-async function listAvailableWarehouses() {
+async function listAvailableWarehouses({ cityScope = CITY_SCOPE_ALL, pharmacyUserId = null } = {}) {
   const activeWarehouseUsers = await User.find({ role: 'warehouse', status: 'active' })
     .select('_id')
     .lean();
@@ -18,10 +26,41 @@ async function listAvailableWarehouses() {
   // reads exactly these seven fields plus _id; userId is only the join key
   // used just above, and address/rates/delivery windows/rating counters are
   // the profile screen's concern, not the list.
-  return Warehouse.find({ userId: { $in: userIds }, isActive: true })
+  const warehouses = await Warehouse.find({ userId: { $in: userIds }, isActive: true })
     .select('nameAr nameEn city phone logo minOrderAmountUsd maxOrderAmountUsd')
     .sort({ nameEn: 1 })
     .lean();
+
+  if (cityScope !== CITY_SCOPE_MINE || !pharmacyUserId) {
+    return { warehouses, pharmacyCity: null, cityFilterApplied: false };
+  }
+
+  const pharmacy = await Pharmacy.findOne({ userId: pharmacyUserId }).select('city').lean();
+  const pharmacyCity = pharmacy && pharmacy.city ? pharmacy.city : null;
+
+  // A pharmacy with no usable city can't be filtered on: today its `city` is
+  // a value it never entered and cannot edit (auth.service.js hardcodes it),
+  // so narrowing to an unusable one would empty the screen over data the
+  // pharmacist has no way to fix. Fall back to the full list and say so, and
+  // the app hides the city toggle rather than claiming a filter it didn't get.
+  if (!canonicalCity(pharmacyCity)) {
+    return { warehouses, pharmacyCity, cityFilterApplied: false };
+  }
+
+  // Filtered here in JS rather than in the query above because the comparison
+  // is on a *canonical* form of `city` (see utils/cityMatch.js) that isn't
+  // stored on the document - Mongo can't match 'Latakia' to 'اللاذقية' without
+  // a persisted, indexed key to match on. The find above is the same single
+  // bounded query this endpoint has always run (every active warehouse on the
+  // platform, seven fields, unpaginated), so this costs one pass over a list
+  // that was already being materialized in full. If the warehouse count ever
+  // outgrows that, the fix is to persist a normalized `cityKey` on write and
+  // move this into the query - not to paginate this endpoint.
+  return {
+    warehouses: warehouses.filter((warehouse) => citiesMatch(pharmacyCity, warehouse.city)),
+    pharmacyCity,
+    cityFilterApplied: true,
+  };
 }
 
 // Same availability rule as above, for a single warehouse - used by the
@@ -82,4 +121,10 @@ async function getWarehouseProfile(warehouseId) {
   };
 }
 
-module.exports = { listAvailableWarehouses, isWarehouseAvailable, getWarehouseProfile };
+module.exports = {
+  listAvailableWarehouses,
+  isWarehouseAvailable,
+  getWarehouseProfile,
+  CITY_SCOPE_MINE,
+  CITY_SCOPE_ALL,
+};

@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:phoenix/core/constants/app_colors.dart';
-import 'package:phoenix/core/constants/app_sizes.dart';
-import 'package:phoenix/core/extensions/build_context_extensions.dart';
-import 'package:phoenix/core/utils/currency_formatter.dart';
-import 'package:phoenix/core/widgets/custom_card.dart';
-import 'package:phoenix/core/widgets/secondary_price_hint.dart';
-import 'package:phoenix/features/cart/data/models/order_line_item.dart';
-import 'package:phoenix/features/exchange_rate/presentation/managers/exchange_rate_cubit.dart';
+import 'package:feniq/core/constants/app_colors.dart';
+import 'package:feniq/core/constants/app_sizes.dart';
+import 'package:feniq/core/extensions/build_context_extensions.dart';
+import 'package:feniq/core/theme/app_text_theme.dart';
+import 'package:feniq/core/utils/currency_formatter.dart';
+import 'package:feniq/core/widgets/custom_card.dart';
+import 'package:feniq/features/cart/data/models/order_line_item.dart';
+import 'package:feniq/features/exchange_rate/presentation/managers/exchange_rate_cubit.dart';
 
 // Section 6.8: the digital invoice - full line items plus the same
 // totalPrice -> discountAmount -> finalPrice breakdown computed at order
@@ -71,7 +71,7 @@ class OrderInvoiceSection extends StatelessWidget {
               l10n.totalSavingsLabel(formatMoneyFromUsd(totalSavingsUsd, usdToSyp, l10n.currencySuffix)),
               style: context.textTheme.bodySmall?.copyWith(
                 color: AppColors.secondaryOf(context),
-                fontWeight: FontWeight.w600,
+                fontWeight: AppTextTheme.semiBold,
               ),
             ),
           ],
@@ -140,12 +140,8 @@ class _TotalsRow extends StatelessWidget {
         ? context.textTheme.titleMedium?.copyWith(color: AppColors.primaryOf(context))
         : context.textTheme.bodyMedium;
 
-    // The USD hint only makes sense on the grand total - a per-row
-    // conversion for the subtotal/discount lines above it would be noise,
-    // not useful context.
-    final usdToSyp = emphasized ? context.watch<ExchangeRateCubit>().state.usdToSyp : null;
-    final usdText = emphasized ? formatUsdApprox(amount, usdToSyp) : null;
-
+    // Invoice amounts are SYP-native already (locked in at order time), so
+    // there is nothing to convert here - just group and label them.
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
@@ -155,14 +151,10 @@ class _TotalsRow extends StatelessWidget {
             child: Text(label, style: style, maxLines: 1, overflow: TextOverflow.ellipsis),
           ),
           Flexible(
-            child: Wrap(
-              alignment: WrapAlignment.end,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              spacing: AppSizes.spacingXSmall,
-              children: [
-                Text(formatSyp(amount, l10n.currencySuffix), style: style),
-                if (usdText != null) SecondaryPriceHint(text: usdText),
-              ],
+            child: Text(
+              formatSyp(amount, l10n.currencySuffix),
+              textAlign: TextAlign.end,
+              style: style,
             ),
           ),
         ],

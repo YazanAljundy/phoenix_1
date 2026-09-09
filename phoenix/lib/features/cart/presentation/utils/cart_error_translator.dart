@@ -1,5 +1,5 @@
-import 'package:phoenix/features/cart/data/models/cart_item.dart';
-import 'package:phoenix/generated/app_localizations.dart';
+import 'package:feniq/features/cart/data/models/cart_item.dart';
+import 'package:feniq/generated/app_localizations.dart';
 
 // Renders order.service.js's STOCK_CHECK_FAILED `details.problems` into a
 // localized, human-readable sentence. The server only sends { code,
@@ -29,6 +29,41 @@ String describeStockProblems(
   });
 
   return lines.join(' ');
+}
+
+// Renders order.service.js's PRICE_CHANGED `details.problems`. Same contract
+// as describeStockProblems above - the server sends ids and numbers, the
+// client supplies the localized name it already has. `formatMoney` is passed
+// in rather than imported so this file stays free of BuildContext: the two
+// prices arrive USD-denominated (the catalog's native currency) and the
+// caller converts them at the live rate, exactly as the order-limit
+// rejections do.
+String describePriceProblems(
+  AppLocalizations l10n,
+  bool isArabic,
+  List<Map<String, dynamic>> problems,
+  List<CartItem> cartItems,
+  String Function(num) formatMoney,
+) {
+  final lines = problems.map((problem) {
+    final productId = problem['productId'] as String?;
+    final item = _findItem(cartItems, productId);
+    final name = item != null
+        ? (isArabic ? item.nameAr : (item.nameEn ?? item.nameAr))
+        : l10n.thisItemFallback;
+
+    final newPrice = problem['currentPriceUsd'];
+    final oldPrice = problem['displayedPriceUsd'];
+    if (newPrice is! num || oldPrice is! num) {
+      return l10n.errorPriceChangedGeneric;
+    }
+
+    return l10n.errorPriceChanged(name, formatMoney(newPrice), formatMoney(oldPrice));
+  });
+
+  // The hint matters more than the list here: unlike an unavailable item,
+  // nothing needs removing - resubmitting is what accepts the new price.
+  return '${lines.join(' ')} ${l10n.priceChangedConfirmHint}';
 }
 
 CartItem? _findItem(List<CartItem> items, String? productId) {

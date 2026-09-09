@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:phoenix/core/constants/app_colors.dart';
-import 'package:phoenix/core/constants/app_padding.dart';
-import 'package:phoenix/core/constants/app_radius.dart';
-import 'package:phoenix/core/constants/app_sizes.dart';
-import 'package:phoenix/core/error/error_translator.dart';
-import 'package:phoenix/core/extensions/build_context_extensions.dart';
-import 'package:phoenix/core/utils/date_formatter.dart';
-import 'package:phoenix/core/widgets/app_loading.dart';
-import 'package:phoenix/core/widgets/custom_card.dart';
-import 'package:phoenix/core/widgets/failure_widget.dart';
-import 'package:phoenix/core/widgets/status_badge.dart';
-import 'package:phoenix/features/complaints/data/models/complaint_model.dart';
-import 'package:phoenix/features/complaints/presentation/managers/complaint_detail_cubit.dart';
-import 'package:phoenix/features/complaints/presentation/managers/complaint_detail_state.dart';
-import 'package:phoenix/features/complaints/presentation/utils/complaint_labels.dart';
+import 'package:feniq/core/constants/app_colors.dart';
+import 'package:feniq/core/constants/app_padding.dart';
+import 'package:feniq/core/constants/app_radius.dart';
+import 'package:feniq/core/constants/app_sizes.dart';
+import 'package:feniq/core/error/error_translator.dart';
+import 'package:feniq/core/extensions/build_context_extensions.dart';
+import 'package:feniq/core/utils/date_formatter.dart';
+import 'package:feniq/core/widgets/app_skeleton.dart';
+import 'package:feniq/core/widgets/custom_card.dart';
+import 'package:feniq/core/widgets/failure_widget.dart';
+import 'package:feniq/core/widgets/status_badge.dart';
+import 'package:feniq/features/complaints/data/models/complaint_model.dart';
+import 'package:feniq/features/complaints/presentation/managers/complaint_detail_cubit.dart';
+import 'package:feniq/features/complaints/presentation/managers/complaint_detail_state.dart';
+import 'package:feniq/features/complaints/presentation/utils/complaint_labels.dart';
 
 // Section 1: the full complaint - reached from "My Complaints" or from tapping
 // the "your complaint got a reply" notification. Read-only: the pharmacy never
@@ -36,7 +36,37 @@ class ComplaintDetailView extends StatelessWidget {
         builder: (context, state) {
           if (state.status == ComplaintDetailStatus.initial ||
               (state.status == ComplaintDetailStatus.loading && state.complaint == null)) {
-            return const AppLoading();
+            // Header card, the warehouse block, then the complaint body and
+            // the response under their section headings.
+            return const SkeletonPage(
+              children: [
+                SkeletonListCard(),
+                SizedBox(height: AppSizes.spacingMedium),
+                SkeletonListCard(),
+                SizedBox(height: AppSizes.spacingMedium),
+                SkeletonBar(width: 120, height: 15),
+                SizedBox(height: AppSizes.spacingSmall),
+                SkeletonCard(
+                  children: [
+                    SkeletonBar(height: 12),
+                    SizedBox(height: AppSizes.spacingSmall),
+                    SkeletonBar(height: 12),
+                    SizedBox(height: AppSizes.spacingSmall),
+                    SkeletonBar(width: 180, height: 12),
+                  ],
+                ),
+                SizedBox(height: AppSizes.spacingMedium),
+                SkeletonBar(width: 120, height: 15),
+                SizedBox(height: AppSizes.spacingSmall),
+                SkeletonCard(
+                  children: [
+                    SkeletonBar(height: 12),
+                    SizedBox(height: AppSizes.spacingSmall),
+                    SkeletonBar(width: 200, height: 12),
+                  ],
+                ),
+              ],
+            );
           }
           if (state.status == ComplaintDetailStatus.error && state.complaint == null) {
             return FailureWidget(

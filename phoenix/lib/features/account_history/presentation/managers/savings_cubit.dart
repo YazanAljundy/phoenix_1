@@ -1,6 +1,6 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:phoenix/core/error/failure.dart';
-import 'package:phoenix/features/account_history/data/repositories/savings_repository.dart';
+import 'package:feniq/core/error/failure.dart';
+import 'package:feniq/features/account_history/data/repositories/savings_repository.dart';
 
 import 'savings_state.dart';
 

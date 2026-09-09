@@ -1,13 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:phoenix/features/cart/data/models/order_line_item.dart';
-import 'package:phoenix/features/cart/data/models/order_model.dart';
-import 'package:phoenix/features/cart/data/repositories/order_repository.dart';
-import 'package:phoenix/features/returns/data/models/return_model.dart';
-import 'package:phoenix/features/returns/data/repositories/return_repository.dart';
-import 'package:phoenix/features/returns/presentation/managers/request_return_cubit.dart';
-import 'package:phoenix/features/returns/presentation/managers/request_return_state.dart';
+import 'package:feniq/features/cart/data/models/order_line_item.dart';
+import 'package:feniq/features/cart/data/models/order_model.dart';
+import 'package:feniq/features/cart/data/repositories/order_repository.dart';
+import 'package:feniq/features/returns/data/models/return_model.dart';
+import 'package:feniq/features/returns/data/repositories/return_repository.dart';
+import 'package:feniq/features/returns/presentation/managers/request_return_cubit.dart';
+import 'package:feniq/features/returns/presentation/managers/request_return_state.dart';
 
 class MockReturnRepository extends Mock implements ReturnRepository {}
 

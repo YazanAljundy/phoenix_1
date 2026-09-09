@@ -34,7 +34,23 @@ function validateItems(items) {
     if (!Number.isInteger(quantity) || quantity <= 0) {
       throw ApiError.badRequest('Invalid quantity in cart.', undefined, 'INVALID_QUANTITY');
     }
-    return { productId: item.productId, quantity };
+
+    // The unit price the cart was SHOWING when the pharmacist submitted -
+    // never what the order is billed at (createOrder prices every line from
+    // the catalog itself), only what it compares against so a price that
+    // moved between add-to-cart and checkout is reported rather than
+    // silently charged. Optional: an older app build sends no price at all,
+    // and a line without one simply skips that comparison.
+    let displayedUnitPriceUsd = null;
+    if (item.displayedUnitPriceUsd !== undefined && item.displayedUnitPriceUsd !== null) {
+      const price = Number(item.displayedUnitPriceUsd);
+      if (!Number.isFinite(price) || price < 0) {
+        throw ApiError.badRequest('Invalid price in cart.', undefined, 'INVALID_PRICE');
+      }
+      displayedUnitPriceUsd = price;
+    }
+
+    return { productId: item.productId, quantity, displayedUnitPriceUsd };
   });
 }
 

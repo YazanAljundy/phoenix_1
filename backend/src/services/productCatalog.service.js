@@ -2,6 +2,10 @@ const mongoose = require('mongoose');
 const ExcelJS = require('exceljs');
 const { ApiError } = require('../utils/ApiError');
 const ProductCatalog = require('../models/productCatalog.model');
+// The model, not warehouseProduct.service - this file is required BY the
+// product services (for applyResolvedIdentity), so requiring one back would
+// be a cycle. Models never require services, so this direction is safe.
+const Product = require('../models/product.model');
 const Category = require('../models/category.model');
 const { getRate } = require('./exchangeRate.service');
 
@@ -126,14 +130,51 @@ async function validateCategoryId(categoryId) {
 // name/unit/category only (Section 14 Part 1) - isActive also accepted here
 // so the panel's single toggle button can re-enable via PATCH, symmetric
 // with DELETE for disabling (see deactivateCatalogItem).
-async function updateCatalogItem(id, changes) {
+//
+// `userId` and `confirmed` exist for the rename path only. A catalog entry's
+// name is resolved live wherever a product is read (applyResolvedIdentity),
+// never copied onto the product, so renaming one entry renames that medicine
+// in every warehouse that stocks it and in every open cart, at once. That is
+// the intended design, but it used to happen with no indication of scale -
+// so a rename that would touch any product is refused once, with the count,
+// and only goes through on a second call carrying `confirmed`.
+async function updateCatalogItem(id, changes, { userId = null, confirmed = false } = {}) {
   const item = await findCatalogItemOrThrow(id);
 
   if (changes.nameAr !== undefined) {
     if (typeof changes.nameAr !== 'string' || !changes.nameAr.trim()) {
       throw ApiError.badRequest('Invalid name.', undefined, 'INVALID_PRODUCT_NAME');
     }
-    item.nameAr = changes.nameAr.trim();
+
+    const nextName = changes.nameAr.trim();
+    // Only a real change needs confirming - re-saving the form without
+    // touching the name (to set a category, say) must not demand it.
+    if (nextName !== item.nameAr) {
+      const linkedProductCount = await Product.countDocuments({
+        masterProductId: item._id,
+        isActive: true,
+      });
+
+      if (linkedProductCount > 0 && !confirmed) {
+        throw ApiError.badRequest(
+          `Renaming this medicine changes it for ${linkedProductCount} product(s) across warehouses.`,
+          { linkedProductCount, currentNameAr: item.nameAr, nextNameAr: nextName },
+          'CATALOG_RENAME_NEEDS_CONFIRMATION'
+        );
+      }
+
+      // Who renamed it, from what, and when - the same shape (and the same
+      // reasoning) as a product's own priceHistory: the value is resolved
+      // live everywhere, so without this there is no record anywhere of what
+      // the medicine used to be called.
+      item.nameHistory.push({
+        oldNameAr: item.nameAr,
+        newNameAr: nextName,
+        changedBy: userId,
+        changedAt: new Date(),
+      });
+      item.nameAr = nextName;
+    }
   }
 
   if (changes.unitAr !== undefined) {
@@ -154,15 +195,63 @@ async function updateCatalogItem(id, changes) {
     item.isActive = changes.isActive === true;
   }
 
-  await item.save();
+  try {
+    await item.save();
+  } catch (err) {
+    // The (nameAr, manufacturerAr) unique index - renaming an item onto an
+    // existing name/manufacturer pair. Without this the raw E11000 became a
+    // 500, which errorHandler.js masks in production as "Something went
+    // wrong", leaving the admin with no idea a duplicate is what stopped
+    // them. Same treatment createProduct already gives its own unique index
+    // (warehouseProduct.service.js).
+    if (err.code === 11000) {
+      throw ApiError.conflict(
+        'Another medicine already has this name for this manufacturer.',
+        'CATALOG_ITEM_ALREADY_EXISTS'
+      );
+    }
+    throw err;
+  }
   return item;
 }
 
+// Deactivating a master-list entry now takes every warehouse's product linked
+// to it with it. It used to flip this flag alone, and every read path
+// deliberately ignored it (see product.service.js's search and manufacturer
+// list) - so an admin who "removed" a medicine watched it disappear from the
+// admin catalog while every pharmacist could still find, add and order it
+// from every warehouse that stocked it. The gap between what the panel showed
+// and what the platform did is what makes this the wrong default for a
+// pharmaceutical catalog, where the reason to pull a medicine is usually a
+// recall.
+//
+// The reads stay as they are: they resolve identity through a populated
+// catalog entry regardless of its isActive, which is still correct - a
+// product deactivated below is already excluded by its OWN isActive, which
+// every catalog query filters on. Nothing needs to start checking the
+// catalog's flag at read time.
+//
+// Not reversible in one step, matching adminProduct.service.js's own
+// deactivateProduct: re-enabling the catalog entry (PATCH isActive: true)
+// leaves the products deactivated, since there is no reactivate flow for a
+// product anywhere yet and inventing one silently here would resurrect rows a
+// warehouse may have since replaced.
 async function deactivateCatalogItem(id) {
   const item = await findCatalogItemOrThrow(id);
   item.isActive = false;
   await item.save();
-  return item;
+
+  // Not in a transaction: the dev/local MongoDB is a standalone instance
+  // (same constraint order.service.js documents). The order here is the safe
+  // one either way - the catalog entry is flagged first, so a failure below
+  // leaves products live under a deactivated entry, which is exactly the
+  // previous behaviour rather than a new inconsistency.
+  const result = await Product.updateMany(
+    { masterProductId: item._id, isActive: true },
+    { $set: { isActive: false } }
+  );
+
+  return { item, deactivatedProductCount: result.modifiedCount ?? 0 };
 }
 
 // ---------------------------------------------------------------------------

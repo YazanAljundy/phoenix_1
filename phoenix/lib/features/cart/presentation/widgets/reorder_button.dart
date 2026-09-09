@@ -1,16 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:phoenix/core/constants/app_colors.dart';
-import 'package:phoenix/core/constants/app_radius.dart';
-import 'package:phoenix/core/error/error_translator.dart';
-import 'package:phoenix/core/error/failure.dart';
-import 'package:phoenix/core/extensions/build_context_extensions.dart';
-import 'package:phoenix/core/widgets/app_dialog.dart';
-import 'package:phoenix/features/cart/data/models/reorder_preparation.dart';
-import 'package:phoenix/features/cart/data/repositories/order_repository.dart';
-import 'package:phoenix/features/cart/presentation/managers/cart_cubit.dart';
-import 'package:phoenix/routes/route_names.dart';
+import 'package:feniq/core/constants/app_colors.dart';
+import 'package:feniq/core/constants/app_radius.dart';
+import 'package:feniq/core/error/error_translator.dart';
+import 'package:feniq/core/error/failure.dart';
+import 'package:feniq/core/extensions/build_context_extensions.dart';
+import 'package:feniq/core/widgets/app_dialog.dart';
+import 'package:feniq/features/cart/data/models/reorder_preparation.dart';
+import 'package:feniq/features/cart/data/repositories/order_repository.dart';
+import 'package:feniq/features/cart/presentation/managers/cart_cubit.dart';
+import 'package:feniq/routes/route_names.dart';
 
 // "Reorder" - drops a past delivered order into the existing cart, bound to
 // that order's own warehouse, then opens the Cart screen for the pharmacist to

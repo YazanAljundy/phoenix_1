@@ -1,22 +1,24 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:phoenix/core/constants/app_colors.dart';
-import 'package:phoenix/core/constants/app_radius.dart';
-import 'package:phoenix/core/constants/app_sizes.dart';
-import 'package:phoenix/core/error/error_translator.dart';
-import 'package:phoenix/core/extensions/build_context_extensions.dart';
-import 'package:phoenix/core/utils/currency_formatter.dart';
-import 'package:phoenix/core/utils/date_formatter.dart';
-import 'package:phoenix/core/widgets/app_dialog.dart';
-import 'package:phoenix/core/widgets/app_snackbar.dart';
-import 'package:phoenix/core/widgets/failure_widget.dart';
-import 'package:phoenix/core/widgets/status_badge.dart';
-import 'package:phoenix/features/returns/data/models/return_model.dart';
-import 'package:phoenix/features/returns/data/models/returnable_order_model.dart';
-import 'package:phoenix/features/returns/presentation/managers/my_returns_cubit.dart';
-import 'package:phoenix/features/returns/presentation/managers/my_returns_state.dart';
-import 'package:phoenix/features/returns/presentation/widgets/request_return_sheet.dart';
-import 'package:phoenix/features/returns/presentation/widgets/return_list_tile.dart';
+import 'package:feniq/core/constants/app_colors.dart';
+import 'package:feniq/core/constants/app_radius.dart';
+import 'package:feniq/core/constants/app_sizes.dart';
+import 'package:feniq/core/error/error_translator.dart';
+import 'package:feniq/core/extensions/build_context_extensions.dart';
+import 'package:feniq/core/theme/app_text_theme.dart';
+import 'package:feniq/core/utils/currency_formatter.dart';
+import 'package:feniq/core/utils/date_formatter.dart';
+import 'package:feniq/core/widgets/app_dialog.dart';
+import 'package:feniq/core/widgets/app_skeleton.dart';
+import 'package:feniq/core/widgets/app_snackbar.dart';
+import 'package:feniq/core/widgets/failure_widget.dart';
+import 'package:feniq/core/widgets/status_badge.dart';
+import 'package:feniq/features/returns/data/models/return_model.dart';
+import 'package:feniq/features/returns/data/models/returnable_order_model.dart';
+import 'package:feniq/features/returns/presentation/managers/my_returns_cubit.dart';
+import 'package:feniq/features/returns/presentation/managers/my_returns_state.dart';
+import 'package:feniq/features/returns/presentation/widgets/request_return_sheet.dart';
+import 'package:feniq/features/returns/presentation/widgets/return_list_tile.dart';
 
 // Extra room under the scrolling content so the floating "Request Return"
 // button never sits on top of the last card or a page-level empty/error
@@ -301,7 +303,16 @@ class _MyReturnsViewState extends State<MyReturnsView> with SingleTickerProvider
         builder: (context, state) {
           if (state.status == MyReturnsStatus.initial ||
               (state.status == MyReturnsStatus.loading && state.returns.isEmpty)) {
-            return const _ReturnsLoadingList();
+            return const SkeletonCardList(
+              key: ValueKey('returnsLoadingSkeleton'),
+              lines: 2,
+              padding: EdgeInsets.fromLTRB(
+                AppSizes.spacingMedium,
+                AppSizes.spacingMedium,
+                AppSizes.spacingMedium,
+                _kFabClearance,
+              ),
+            );
           }
           if (state.status == MyReturnsStatus.error && state.returns.isEmpty) {
             return Padding(
@@ -336,7 +347,7 @@ class _MyReturnsViewState extends State<MyReturnsView> with SingleTickerProvider
 }
 
 // The two-tab selector at the top of the page - navy indicator + navy active
-// label on the app's surface, matching the rest of the Phoenix palette in
+// label on the app's surface, matching the rest of the Feniq palette in
 // both light and dark mode. Labels wrap to two lines rather than clip on a
 // narrow phone.
 class _ReturnsTabBar extends StatelessWidget {
@@ -359,7 +370,7 @@ class _ReturnsTabBar extends StatelessWidget {
         indicatorSize: TabBarIndicatorSize.tab,
         dividerColor: AppColors.borderOf(context),
         labelStyle: context.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
-        unselectedLabelStyle: context.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
+        unselectedLabelStyle: context.textTheme.titleSmall?.copyWith(fontWeight: AppTextTheme.semiBold),
         tabs: [
           Tab(
             height: 52,
@@ -394,11 +405,12 @@ class _PaginationFooter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (isLoadingMore) {
+      // One more card-shaped placeholder at the tail of the list, so the next
+      // page arrives into the shape it is about to fill rather than under a
+      // spinner.
       return const Padding(
-        padding: EdgeInsets.symmetric(vertical: AppSizes.spacingSmall),
-        child: Center(
-          child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2)),
-        ),
+        padding: EdgeInsets.only(top: AppSizes.spacingSmall),
+        child: SkeletonPulse(child: SkeletonListCard(lines: 2)),
       );
     }
     if (!hasMore) {
@@ -557,110 +569,6 @@ class _ReturnableEmpty extends StatelessWidget {
           ),
         );
       },
-    );
-  }
-}
-
-// The first-load placeholder - card-shaped pulsing blocks instead of a bare
-// spinner, matching the shape of the returns list that replaces it. Mirrors
-// the My Orders screen's skeleton so the two list pages load the same way.
-class _ReturnsLoadingList extends StatefulWidget {
-  const _ReturnsLoadingList();
-
-  @override
-  State<_ReturnsLoadingList> createState() => _ReturnsLoadingListState();
-}
-
-class _ReturnsLoadingListState extends State<_ReturnsLoadingList>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 900),
-  )..repeat(reverse: true);
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView.separated(
-      key: const ValueKey('returnsLoadingSkeleton'),
-      padding: const EdgeInsets.fromLTRB(
-        AppSizes.spacingMedium,
-        AppSizes.spacingMedium,
-        AppSizes.spacingMedium,
-        _kFabClearance,
-      ),
-      itemCount: 4,
-      separatorBuilder: (context, index) => const SizedBox(height: AppSizes.spacingSmall),
-      itemBuilder: (context, index) => _SkeletonCard(controller: _controller),
-    );
-  }
-}
-
-class _SkeletonCard extends StatelessWidget {
-  const _SkeletonCard({required this.controller});
-
-  final AnimationController controller;
-
-  @override
-  Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: Tween<double>(begin: 0.45, end: 1.0).animate(controller),
-      child: Container(
-        padding: const EdgeInsets.all(AppSizes.spacingMedium),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceElevatedOf(context),
-          borderRadius: AppRadius.large,
-          border: Border.all(color: AppColors.borderOf(context)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                _SkeletonBar(width: 96, height: 12, context: context),
-                const Spacer(),
-                _SkeletonBar(width: 72, height: 22, radius: AppRadius.full, context: context),
-              ],
-            ),
-            const SizedBox(height: AppSizes.spacingMedium),
-            _SkeletonBar(height: 14, context: context),
-            const SizedBox(height: AppSizes.spacingSmall),
-            _SkeletonBar(width: 160, height: 14, context: context),
-            const SizedBox(height: AppSizes.spacingMedium),
-            _SkeletonBar(width: 110, height: 12, context: context),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SkeletonBar extends StatelessWidget {
-  const _SkeletonBar({
-    required this.height,
-    required this.context,
-    this.width,
-    this.radius = AppRadius.small,
-  });
-
-  final double? width;
-  final double height;
-  final BorderRadius radius;
-  // Named `context` so the theme is read from the parent build - this is a
-  // plain data widget, not overriding BuildContext.
-  final BuildContext context;
-
-  @override
-  Widget build(BuildContext _) {
-    return Container(
-      width: width,
-      height: height,
-      decoration: BoxDecoration(color: AppColors.surfaceOf(context), borderRadius: radius),
     );
   }
 }

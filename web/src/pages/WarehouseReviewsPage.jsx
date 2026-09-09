@@ -4,6 +4,7 @@ import { api } from '../api/client';
 import { StarRating } from '../components/StarRating';
 import { LoadMoreControl } from '../components/LoadMoreControl';
 import { usePaginatedData } from '../hooks/usePaginatedData';
+import { WarehouseGroupSubNav } from '../components/WarehouseGroupSubNav';
 
 const PAGE_SIZE = 15;
 
@@ -51,6 +52,8 @@ export function WarehouseReviewsPage() {
 
   return (
     <div>
+      <WarehouseGroupSubNav />
+
       <div className="wh-page-head">
         <h1>{t('nav.reviews')}</h1>
       </div>

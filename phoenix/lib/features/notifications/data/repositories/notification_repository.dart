@@ -4,8 +4,8 @@ import 'dart:convert';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'package:phoenix/core/services/storage_service.dart';
-import 'package:phoenix/features/notifications/data/models/notification_model.dart';
+import 'package:feniq/core/services/storage_service.dart';
+import 'package:feniq/features/notifications/data/models/notification_model.dart';
 
 /// Hard cap on locally-kept notifications. When exceeded the oldest are
 /// dropped (never the unread ones specifically - only "oldest first").

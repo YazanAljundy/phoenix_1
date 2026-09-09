@@ -1,4 +1,4 @@
-import 'package:phoenix/features/account_history/data/models/savings_summary.dart';
+import 'package:feniq/features/account_history/data/models/savings_summary.dart';
 
 abstract class SavingsRepository {
   // The pharmacy's total money saved through app discounts. Read-only - the

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:phoenix/core/constants/app_colors.dart';
-import 'package:phoenix/core/extensions/build_context_extensions.dart';
-import 'package:phoenix/features/legal/presentation/widgets/privacy_policy_body.dart';
+import 'package:feniq/core/constants/app_colors.dart';
+import 'package:feniq/core/extensions/build_context_extensions.dart';
+import 'package:feniq/features/legal/presentation/widgets/privacy_policy_body.dart';
 
 // The in-app privacy policy screen. Reachable from Profile and from the
 // registration screen, and - like every route in AppRouter - without being

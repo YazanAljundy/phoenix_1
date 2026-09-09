@@ -1,19 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:phoenix/core/constants/app_colors.dart';
-import 'package:phoenix/core/constants/app_padding.dart';
-import 'package:phoenix/core/constants/app_sizes.dart';
-import 'package:phoenix/core/error/error_translator.dart';
-import 'package:phoenix/core/extensions/build_context_extensions.dart';
-import 'package:phoenix/core/utils/validators.dart';
-import 'package:phoenix/core/widgets/app_snackbar.dart';
-import 'package:phoenix/core/widgets/app_text_field.dart';
-import 'package:phoenix/core/widgets/primary_button.dart';
-import 'package:phoenix/features/auth/presentation/managers/auth_cubit.dart';
-import 'package:phoenix/features/auth/presentation/managers/auth_state.dart';
-import 'package:phoenix/features/auth/presentation/utils/login_phone_normalizer.dart';
-import 'package:phoenix/routes/route_names.dart';
+import 'package:feniq/core/constants/app_colors.dart';
+import 'package:feniq/core/constants/app_padding.dart';
+import 'package:feniq/core/constants/app_sizes.dart';
+import 'package:feniq/core/error/error_translator.dart';
+import 'package:feniq/core/extensions/build_context_extensions.dart';
+import 'package:feniq/core/utils/validators.dart';
+import 'package:feniq/core/widgets/app_snackbar.dart';
+import 'package:feniq/core/widgets/app_text_field.dart';
+import 'package:feniq/core/widgets/brand_logo.dart';
+import 'package:feniq/core/widgets/phone_text_field.dart';
+import 'package:feniq/core/widgets/primary_button.dart';
+import 'package:feniq/features/auth/presentation/managers/auth_cubit.dart';
+import 'package:feniq/features/auth/presentation/managers/auth_state.dart';
+import 'package:feniq/routes/route_names.dart';
 
 // Section 6-2: the returning-user alternative to the OTP flow - phone +
 // password, no SMS round-trip. Only reachable via the link on
@@ -43,20 +44,12 @@ class _PasswordLoginViewState extends State<PasswordLoginView> {
 
     final cubit = context.read<AuthCubit>();
 
-    // Backend expects the international form (+9639XXXXXXXX); the field
-    // accepts several local shapes, so normalize here - right before the
-    // call - rather than in AuthCubit, keeping this login-only.
-    final originalPhone = _phoneController.text;
-    final normalizedPhone = normalizeLoginPhone(originalPhone);
-
-    // TEMP DIAGNOSTIC LOG (phone-normalization task) - never logs the password.
-    debugPrint(
-      'LOGIN_PHONE_DEBUG: original="$originalPhone" -> normalized="$normalizedPhone" '
-      '-> loginWithPassword(phone: "$normalizedPhone")',
-    );
-
     final verified = await cubit.loginWithPassword(
-      phone: normalizedPhone,
+      // The field only ever holds the subscriber digits after the fixed "09"
+      // box (see PhoneTextField) - this composes the full "+963..." the
+      // backend matches on, same helper the validator below uses so the two
+      // can never drift apart.
+      phone: phoneTextFieldFullValue(_phoneController.text),
       password: _passwordController.text,
     );
     if (!verified || !mounted) return;
@@ -102,13 +95,7 @@ class _PasswordLoginViewState extends State<PasswordLoginView> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  const Center(
-                    child: Image(
-                      image: AssetImage('assets/images/feniq_logo.png'),
-                      width: 150,
-                      fit: BoxFit.contain,
-                    ),
-                  ),
+                  const Center(child: BrandLogo(width: 150)),
                   const SizedBox(height: AppSizes.spacingLarge),
                   Text(
                     l10n.passwordLoginSubtitle,
@@ -117,15 +104,11 @@ class _PasswordLoginViewState extends State<PasswordLoginView> {
                     ),
                   ),
                   const SizedBox(height: AppSizes.spacingLarge),
-                  AppTextField(
+                  PhoneTextField(
                     label: l10n.phoneLabel,
                     controller: _phoneController,
-                    keyboardType: TextInputType.phone,
-                    // Validate the normalized value so every accepted local
-                    // shape (09.., 9.., 963.., +963..) passes the existing
-                    // rule without changing the shared Validators.
                     validator: (value) => Validators.validatePhone(
-                      normalizeLoginPhone(value ?? ''),
+                      phoneTextFieldFullValue(value ?? ''),
                       requiredMessage: l10n.fieldRequired,
                       invalidMessage: l10n.invalidPhoneNumber,
                     ),

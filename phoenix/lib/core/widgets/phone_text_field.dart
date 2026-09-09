@@ -7,16 +7,19 @@ import '../constants/app_radius.dart';
 import '../constants/app_sizes.dart';
 import '../extensions/build_context_extensions.dart';
 
-// A fixed, non-editable "+963" box beside a digits-only field, label above -
+// A fixed, non-editable "09" box beside a digits-only field, label above -
 // same visual language as AppTextField, just for the one field shaped
 // differently everywhere it appears (registration, login).
 //
-// `controller` holds ONLY the local digits the user types (e.g.
-// "955123456"), never the "+963" - callers that need the full
-// backend-expected number (Validators.validatePhone accepts either a
-// "+963" or a leading "0") build it themselves via [phoneTextFieldFullValue],
-// which does the "+963" concatenation in exactly one place so it can't drift
-// between a screen's validator and its submit call.
+// Syrian mobile numbers are 09XXXXXXXX locally, so the box carries the whole
+// "09" the user would otherwise retype on every screen and the field holds
+// only the 8 subscriber digits after it.
+//
+// `controller` therefore holds ONLY those subscriber digits (e.g.
+// "55123456"), never the "09" and never the "+963" - callers that need the
+// full backend-expected number build it themselves via
+// [phoneTextFieldFullValue], which does the prefixing in exactly one place so
+// it can not drift between a screen's validator and its submit call.
 class PhoneTextField extends StatelessWidget {
   const PhoneTextField({
     super.key,
@@ -48,7 +51,7 @@ class PhoneTextField extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Container(
-              constraints: const BoxConstraints(minHeight: AppSizes.inputHeight, minWidth: 66),
+              constraints: const BoxConstraints(minHeight: AppSizes.inputHeight, minWidth: 52),
               alignment: Alignment.center,
               decoration: BoxDecoration(
                 color: AppColors.surfaceElevatedOf(context),
@@ -56,7 +59,7 @@ class PhoneTextField extends StatelessWidget {
                 border: Border.all(color: AppColors.borderOf(context)),
               ),
               child: Text(
-                phoneCountryCode,
+                phoneLocalPrefix,
                 textDirection: TextDirection.ltr,
                 style: context.textTheme.bodyMedium?.copyWith(
                   fontWeight: FontWeight.w700,
@@ -76,7 +79,7 @@ class PhoneTextField extends StatelessWidget {
                 textAlign: TextAlign.right,
                 style: context.textTheme.bodyMedium,
                 decoration: InputDecoration(
-                  hintText: '955 123 456',
+                  hintText: '55 123 456',
                   hintStyle: context.textTheme.bodyMedium?.copyWith(
                     color: AppColors.textSecondaryOf(context).withValues(alpha: 0.7),
                   ),
@@ -115,14 +118,51 @@ class PhoneTextField extends StatelessWidget {
   }
 }
 
+/// The fixed, non-editable prefix rendered beside the field.
+const String phoneLocalPrefix = '09';
+
+/// The international dialling code the backend stores numbers under.
 const String phoneCountryCode = '+963';
 
-// A local digits value (e.g. "955123456" or "0955123456") -> the full
-// value the backend/Validators.validatePhone expects. Strips a leading 0
-// first so a pasted local-format number ("0955123456") doesn't end up
-// double-prefixed ("+9630955123456").
-String phoneTextFieldFullValue(String localDigits) {
-  final digits = localDigits.trim();
-  final withoutLeadingZero = digits.startsWith('0') ? digits.substring(1) : digits;
-  return '$phoneCountryCode$withoutLeadingZero';
+/// The subscriber digits that follow the fixed [phoneLocalPrefix] box.
+///
+/// Normally this is exactly what the user typed, because the box already
+/// supplies the "09". A *pasted* number can still carry a prefix of its own,
+/// though - the field's digitsOnly formatter drops the "+" but not the digits
+/// behind it - so every redundant prefix is peeled off here. Without this a
+/// paste would be double-prefixed ("+963" + "963955123456").
+///
+/// | Field holds     | Subscriber digits |
+/// | --------------- | ----------------- |
+/// | `55123456`      | `55123456`        |
+/// | `955123456`     | `55123456`        |
+/// | `0955123456`    | `55123456`        |
+/// | `963955123456`  | `55123456`        |
+///
+/// Anything that peels down to some other shape is returned as-is, so
+/// [Validators.validatePhone] stays the one thing that rejects it - this
+/// helper never tries to "repair" a malformed number, and deliberately
+/// imposes no length limit of its own.
+String phoneTextFieldSubscriberDigits(String fieldValue) {
+  var digits = fieldValue.replaceAll(RegExp(r'\D'), '');
+
+  if (digits.startsWith('963')) digits = digits.substring(3);
+  if (digits.startsWith('0')) digits = digits.substring(1);
+  // What is left is either the bare 8 subscriber digits (the normal case -
+  // the "09" box supplied the mobile 9) or a whole 9-digit local number that
+  // still carries that 9 of its own.
+  if (digits.length == 9 && digits.startsWith('9')) digits = digits.substring(1);
+
+  return digits;
+}
+
+/// The field's contents -> the full international number the backend stores
+/// and matches on (`+9639XXXXXXXX`).
+///
+/// Empty in, empty out, so an untouched field reports "required" rather than
+/// "invalid" through [Validators.validatePhone].
+String phoneTextFieldFullValue(String fieldValue) {
+  final subscriber = phoneTextFieldSubscriberDigits(fieldValue);
+  if (subscriber.isEmpty) return '';
+  return '${phoneCountryCode}9$subscriber';
 }

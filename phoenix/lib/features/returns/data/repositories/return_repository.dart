@@ -1,7 +1,7 @@
 import 'package:image_picker/image_picker.dart';
-import 'package:phoenix/core/models/paginated_result.dart';
-import 'package:phoenix/features/returns/data/models/return_model.dart';
-import 'package:phoenix/features/returns/data/models/returnable_order_model.dart';
+import 'package:feniq/core/models/paginated_result.dart';
+import 'package:feniq/features/returns/data/models/return_model.dart';
+import 'package:feniq/features/returns/data/models/returnable_order_model.dart';
 
 // A single problem item being submitted as part of a return request - see
 // ReturnItemModel for the server's shape of the same thing once saved.

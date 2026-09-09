@@ -2,13 +2,13 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:phoenix/core/constants/app_colors.dart';
-import 'package:phoenix/core/constants/app_radius.dart';
-import 'package:phoenix/core/constants/app_sizes.dart';
-import 'package:phoenix/core/widgets/app_network_image.dart';
-import 'package:phoenix/features/banners/data/models/banner_model.dart';
-import 'package:phoenix/features/banners/presentation/managers/banners_cubit.dart';
-import 'package:phoenix/features/banners/presentation/managers/banners_state.dart';
+import 'package:feniq/core/constants/app_colors.dart';
+import 'package:feniq/core/constants/app_radius.dart';
+import 'package:feniq/core/constants/app_sizes.dart';
+import 'package:feniq/core/widgets/app_network_image.dart';
+import 'package:feniq/features/banners/data/models/banner_model.dart';
+import 'package:feniq/features/banners/presentation/managers/banners_cubit.dart';
+import 'package:feniq/features/banners/presentation/managers/banners_state.dart';
 
 // Section: sits directly above the warehouse list on WarehouseSelectionView.
 // Entirely self-contained - reads its own BannersCubit and renders nothing

@@ -43,7 +43,7 @@ function writeReport(data) {
     .sort((left, right) => right.p95 - left.p95)
     .slice(0, 10);
   const lines = [
-    '# Phoenix Load Test Result', '',
+    '# Feniq Load Test Result', '',
     '**Generated from the k6 summary. No values are fabricated.**', '',
     `- Profile: ${process.env.TEST_PROFILE || 'smoke'}`,
     `- VUs: ${process.env.VUS || (process.env.TEST_PROFILE === 'load' ? 'up to 2000' : '5')}`,

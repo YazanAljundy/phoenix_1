@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:phoenix/core/constants/app_radius.dart';
-import 'package:phoenix/core/utils/whatsapp_launcher.dart';
+import 'package:feniq/core/constants/app_radius.dart';
+import 'package:feniq/core/utils/whatsapp_launcher.dart';
 
 class WhatsAppButton extends StatelessWidget {
   const WhatsAppButton({super.key, required this.phone, this.size = 40});

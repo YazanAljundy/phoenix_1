@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:phoenix/core/constants/app_colors.dart';
-import 'package:phoenix/core/constants/app_radius.dart';
-import 'package:phoenix/core/constants/app_sizes.dart';
-import 'package:phoenix/core/extensions/build_context_extensions.dart';
-import 'package:phoenix/core/services/app_update_service.dart';
-import 'package:phoenix/core/widgets/primary_button.dart';
+import 'package:feniq/core/constants/app_colors.dart';
+import 'package:feniq/core/constants/app_radius.dart';
+import 'package:feniq/core/constants/app_sizes.dart';
+import 'package:feniq/core/extensions/build_context_extensions.dart';
+import 'package:feniq/core/services/app_update_service.dart';
+import 'package:feniq/core/widgets/primary_button.dart';
 
-// Phoenix-styled update dialogs (requirement sections 6, 7, 12). Uses the
+// Feniq-styled update dialogs (requirement sections 6, 7, 12). Uses the
 // app's colours / Cairo text theme / AppRadius / PrimaryButton so it reads as
-// a native Phoenix dialog, not a generic AlertDialog.
+// a native Feniq dialog, not a generic AlertDialog.
 //
 //   mandatory == true  -> not dismissible, no "Later", back button blocked
 //   mandatory == false -> dismissible, "Update Now" + "Later"

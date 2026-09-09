@@ -1,4 +1,4 @@
-# Phoenix Load Test Report
+# Feniq Load Test Report
 
 This file has moved. The measured report now lives with the suite that produced it:
 

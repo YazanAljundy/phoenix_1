@@ -1,7 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:phoenix/core/error/failure.dart';
-import 'package:phoenix/features/complaints/data/models/complaint_model.dart';
-import 'package:phoenix/features/complaints/data/repositories/complaint_repository.dart';
+import 'package:feniq/core/error/failure.dart';
+import 'package:feniq/features/complaints/data/models/complaint_model.dart';
+import 'package:feniq/features/complaints/data/repositories/complaint_repository.dart';
 
 import 'complaint_detail_state.dart';
 

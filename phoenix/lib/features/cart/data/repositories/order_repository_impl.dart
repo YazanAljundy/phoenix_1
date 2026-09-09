@@ -1,12 +1,12 @@
 import 'package:dio/dio.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:phoenix/core/error/failure.dart';
-import 'package:phoenix/core/models/paginated_result.dart';
-import 'package:phoenix/core/network/api_client.dart';
-import 'package:phoenix/core/network/endpoints.dart';
-import 'package:phoenix/features/cart/data/models/cart_item.dart';
-import 'package:phoenix/features/cart/data/models/order_model.dart';
-import 'package:phoenix/features/cart/data/models/reorder_preparation.dart';
+import 'package:feniq/core/error/failure.dart';
+import 'package:feniq/core/models/paginated_result.dart';
+import 'package:feniq/core/network/api_client.dart';
+import 'package:feniq/core/network/endpoints.dart';
+import 'package:feniq/features/cart/data/models/cart_item.dart';
+import 'package:feniq/features/cart/data/models/order_model.dart';
+import 'package:feniq/features/cart/data/models/reorder_preparation.dart';
 
 import 'order_repository.dart';
 
@@ -21,20 +21,29 @@ class OrderRepositoryImpl implements OrderRepository {
     required List<CartItem> items,
     String? notes,
     String? advertisementId,
+    String? idempotencyKey,
   }) async {
     try {
       final response = await _apiClient.dio.post(
         Endpoints.orders,
         data: {
           'warehouseId': warehouseId,
-          // Deliberately only productId + quantity - no price crosses the
-          // wire, for a package line or a normal one. The server prices
-          // everything from its own catalog.
+          // productId + quantity, plus the unit price the cart actually
+          // showed. The price is NOT what the order is billed at - the server
+          // still prices every line from its own catalog - it is only what
+          // the pharmacist was looking at when they tapped submit, so the
+          // server can reject with PRICE_CHANGED instead of silently charging
+          // a different number (order.service.js).
           'items': items
-              .map((item) => {'productId': item.productId, 'quantity': item.quantity})
+              .map((item) => {
+                    'productId': item.productId,
+                    'quantity': item.quantity,
+                    'displayedUnitPriceUsd': item.discountPriceUsd,
+                  })
               .toList(),
           if (notes != null && notes.isNotEmpty) 'notes': notes,
           if (advertisementId != null) 'advertisementId': advertisementId,
+          if (idempotencyKey != null) 'idempotencyKey': idempotencyKey,
         },
       );
       final data = response.data as Map<String, dynamic>;

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:phoenix/core/constants/app_padding.dart';
-import 'package:phoenix/core/constants/app_radius.dart';
-import 'package:phoenix/core/constants/app_sizes.dart';
-import 'package:phoenix/core/extensions/build_context_extensions.dart';
-import 'package:phoenix/core/widgets/primary_button.dart';
-import 'package:phoenix/core/widgets/quantity_stepper.dart';
+import 'package:feniq/core/constants/app_padding.dart';
+import 'package:feniq/core/constants/app_radius.dart';
+import 'package:feniq/core/constants/app_sizes.dart';
+import 'package:feniq/core/extensions/build_context_extensions.dart';
+import 'package:feniq/core/widgets/primary_button.dart';
+import 'package:feniq/core/widgets/quantity_stepper.dart';
 
 // Shown before a product is actually added to the cart (Section 17) - a
 // quantity chosen up front instead of always starting at 1 and tapping +

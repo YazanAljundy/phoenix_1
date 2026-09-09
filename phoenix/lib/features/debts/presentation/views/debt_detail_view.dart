@@ -1,19 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:phoenix/core/constants/app_colors.dart';
-import 'package:phoenix/core/constants/app_padding.dart';
-import 'package:phoenix/core/constants/app_sizes.dart';
-import 'package:phoenix/core/error/error_translator.dart';
-import 'package:phoenix/core/extensions/build_context_extensions.dart';
-import 'package:phoenix/core/utils/currency_formatter.dart';
-import 'package:phoenix/core/utils/date_formatter.dart';
-import 'package:phoenix/core/widgets/app_loading.dart';
-import 'package:phoenix/core/widgets/custom_card.dart';
-import 'package:phoenix/core/widgets/empty_view.dart';
-import 'package:phoenix/core/widgets/failure_widget.dart';
-import 'package:phoenix/features/debts/data/models/debt_detail_model.dart';
-import 'package:phoenix/features/debts/presentation/managers/debt_detail_cubit.dart';
-import 'package:phoenix/features/debts/presentation/managers/debt_detail_state.dart';
+import 'package:feniq/core/constants/app_colors.dart';
+import 'package:feniq/core/constants/app_padding.dart';
+import 'package:feniq/core/constants/app_sizes.dart';
+import 'package:feniq/core/error/error_translator.dart';
+import 'package:feniq/core/extensions/build_context_extensions.dart';
+import 'package:feniq/core/utils/currency_formatter.dart';
+import 'package:feniq/core/utils/date_formatter.dart';
+import 'package:feniq/core/widgets/app_skeleton.dart';
+import 'package:feniq/core/widgets/custom_card.dart';
+import 'package:feniq/core/widgets/empty_view.dart';
+import 'package:feniq/core/widgets/failure_widget.dart';
+import 'package:feniq/features/debts/data/models/debt_detail_model.dart';
+import 'package:feniq/features/debts/presentation/managers/debt_detail_cubit.dart';
+import 'package:feniq/features/debts/presentation/managers/debt_detail_state.dart';
 
 // Money-Flow V2. The account statement for one warehouse: every financial
 // event in order, with a running balance.
@@ -45,7 +45,29 @@ class DebtDetailView extends StatelessWidget {
         builder: (context, state) {
           if (state.status == DebtDetailStatus.initial ||
               state.status == DebtDetailStatus.loading) {
-            return const AppLoading();
+            // The balance summary card, then the statement rows under their
+            // heading.
+            return const SkeletonPage(
+              children: [
+                SkeletonCard(
+                  children: [
+                    SkeletonBar(width: 140, height: 12),
+                    SizedBox(height: AppSizes.spacingSmall),
+                    SkeletonBar(width: 180, height: 28),
+                    SizedBox(height: AppSizes.spacingMedium),
+                    SkeletonBar(height: 12),
+                  ],
+                ),
+                SizedBox(height: AppSizes.spacingXLarge),
+                SkeletonBar(width: 110, height: 16),
+                SizedBox(height: AppSizes.spacingSmall),
+                SkeletonListCard(),
+                SizedBox(height: AppSizes.spacingSmall),
+                SkeletonListCard(),
+                SizedBox(height: AppSizes.spacingSmall),
+                SkeletonListCard(),
+              ],
+            );
           }
           if (state.status == DebtDetailStatus.error || state.detail == null) {
             return FailureWidget(

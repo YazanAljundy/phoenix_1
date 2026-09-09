@@ -1,21 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:phoenix/core/constants/app_colors.dart';
-import 'package:phoenix/core/constants/app_padding.dart';
-import 'package:phoenix/core/constants/app_radius.dart';
-import 'package:phoenix/core/constants/app_sizes.dart';
-import 'package:phoenix/core/error/error_translator.dart';
-import 'package:phoenix/core/extensions/build_context_extensions.dart';
-import 'package:phoenix/core/utils/currency_formatter.dart';
-import 'package:phoenix/core/widgets/custom_card.dart';
-import 'package:phoenix/features/account_history/presentation/managers/savings_cubit.dart';
-import 'package:phoenix/features/account_history/presentation/managers/savings_state.dart';
-import 'package:phoenix/features/debts/presentation/managers/debts_cubit.dart';
-import 'package:phoenix/features/debts/presentation/managers/debts_state.dart';
-import 'package:phoenix/features/returns/presentation/managers/my_returns_cubit.dart';
-import 'package:phoenix/features/returns/presentation/managers/my_returns_state.dart';
-import 'package:phoenix/routes/route_names.dart';
+import 'package:feniq/core/constants/app_colors.dart';
+import 'package:feniq/core/constants/app_padding.dart';
+import 'package:feniq/core/constants/app_radius.dart';
+import 'package:feniq/core/constants/app_sizes.dart';
+import 'package:feniq/core/error/error_translator.dart';
+import 'package:feniq/core/extensions/build_context_extensions.dart';
+import 'package:feniq/core/theme/app_text_theme.dart';
+import 'package:feniq/core/utils/currency_formatter.dart';
+import 'package:feniq/core/widgets/app_skeleton.dart';
+import 'package:feniq/core/widgets/custom_card.dart';
+import 'package:feniq/features/account_history/presentation/managers/savings_cubit.dart';
+import 'package:feniq/features/account_history/presentation/managers/savings_state.dart';
+import 'package:feniq/features/debts/presentation/managers/debts_cubit.dart';
+import 'package:feniq/features/debts/presentation/managers/debts_state.dart';
+import 'package:feniq/features/returns/presentation/managers/my_returns_cubit.dart';
+import 'package:feniq/features/returns/presentation/managers/my_returns_state.dart';
+import 'package:feniq/routes/route_names.dart';
 
 // The pharmacy's financial home. It owns no business logic of its own: the
 // three cards each read an existing cubit (SavingsCubit / DebtsCubit /
@@ -130,7 +132,7 @@ class _MoneySavedCard extends StatelessWidget {
               // as a different, smaller number.
               // Money-Flow V2: SYP-native and frozen, so this figure no
               // longer drifts every time the exchange rate moves - and it now
-              // includes the package saving and Phoenix's platform discount,
+              // includes the package saving and Feniq's platform discount,
               // which V1 left out entirely.
               return FittedBox(
                 fit: BoxFit.scaleDown,
@@ -150,7 +152,7 @@ class _MoneySavedCard extends StatelessWidget {
             l10n.fromDiscountsLabel,
             style: context.textTheme.bodyMedium?.copyWith(
               color: AppColors.textSecondaryOf(context),
-              fontWeight: FontWeight.w600,
+              fontWeight: AppTextTheme.semiBold,
             ),
           ),
         ],
@@ -327,9 +329,9 @@ class _MiniCard extends StatelessWidget {
   }
 }
 
-// A soft shimmerless placeholder that holds the amount row's height while its
-// cubit loads - matches the profile screen's "small spinner" convention
-// without shifting the layout.
+// Holds the amount row's height while its cubit loads, so the figure lands
+// without shifting the layout. Uses the app-wide skeleton bar, and breathes
+// with it, rather than sitting there as a dead grey block.
 class _AmountPlaceholder extends StatelessWidget {
   const _AmountPlaceholder({required this.height});
 
@@ -339,14 +341,7 @@ class _AmountPlaceholder extends StatelessWidget {
   Widget build(BuildContext context) {
     return Align(
       alignment: AlignmentDirectional.centerStart,
-      child: Container(
-        width: 96,
-        height: height,
-        decoration: BoxDecoration(
-          color: AppColors.surfaceOf(context),
-          borderRadius: AppRadius.small,
-        ),
-      ),
+      child: SkeletonPulse(child: SkeletonBar(width: 96, height: height)),
     );
   }
 }

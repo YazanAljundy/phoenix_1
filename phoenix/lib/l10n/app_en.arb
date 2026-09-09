@@ -1,6 +1,6 @@
 {
   "@@locale": "en",
-  "appName": "Phoenix",
+  "appName": "Feniq",
   "login": "Login",
   "logout": "Logout",
   "email": "Email",
@@ -110,6 +110,11 @@
   "searchWarehouseHint": "Search by warehouse or city",
   "noSearchResultsFound": "No results match your search.",
   "warehouseProfileButtonLabel": "Profile",
+  "warehousesScopeMyCity": "My city",
+  "warehousesScopeAllCities": "All cities",
+  "viewAllCitiesButton": "View all cities",
+  "noWarehousesInYourCity": "No warehouses in your city",
+  "noWarehousesInYourCitySubtitle": "Try broadening the search to other cities.",
   "noManufacturersFound": "No manufacturers available for this warehouse.",
   "manufacturersCountSubtitle": "{count, plural, zero{No manufacturers} one{1 manufacturer} other{{count} manufacturers}}",
   "@manufacturersCountSubtitle": {
@@ -210,6 +215,9 @@
     }
   },
   "removeButton": "Remove",
+  "clearCartButton": "Clear cart",
+  "clearCartTitle": "Clear cart?",
+  "clearCartConfirmation": "Are you sure you want to clear all the contents of your cart?",
   "cartConflictTitle": "Start a new cart?",
   "cartConflictMessage": "Your cart has items from {name}. Adding this item will clear it and start a new order.",
   "@cartConflictMessage": {
@@ -307,6 +315,22 @@
       }
     }
   },
+  "errorPriceChangedGeneric": "Some prices in your cart have changed.",
+  "errorPriceChanged": "{name} is now {newPrice} (was {oldPrice}).",
+  "@errorPriceChanged": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "newPrice": {
+        "type": "String"
+      },
+      "oldPrice": {
+        "type": "String"
+      }
+    }
+  },
+  "priceChangedConfirmHint": "Submit again to place the order at the new prices.",
   "thisItemFallback": "This item",
   "loading": "Loading...",
   "orderTrackingTitle": "Order Tracking",
@@ -708,9 +732,9 @@
   "orderComplaintsSectionTitle": "Complaints about this order",
   "orderComplaintsEmptyPrompt": "Have a problem with this order? You can file a complaint and the administration will review it.",
   "updateAvailable": "New Update Available",
-  "updateAvailableMessage": "A new version of Phoenix is available. Update now to get the latest features and improvements.",
+  "updateAvailableMessage": "A new version of Feniq is available. Update now to get the latest features and improvements.",
   "updateRequired": "Mandatory Update",
-  "updateRequiredMessage": "Your current version of Phoenix is no longer supported. Please update the application to continue.",
+  "updateRequiredMessage": "Your current version of Feniq is no longer supported. Please update the application to continue.",
   "updateNow": "Update Now",
   "later": "Later",
   "updateOpenStoreFailed": "Unable to open Google Play. Please try again.",

@@ -1,14 +1,15 @@
-import 'package:phoenix/core/models/paginated_result.dart';
-import 'package:phoenix/features/catalog/data/models/category_model.dart';
-import 'package:phoenix/features/catalog/data/models/manufacturer_model.dart';
-import 'package:phoenix/features/catalog/data/models/product_model.dart';
+import 'package:feniq/core/models/paginated_result.dart';
+import 'package:feniq/features/catalog/data/models/category_model.dart';
+import 'package:feniq/features/catalog/data/models/manufacturer_model.dart';
+import 'package:feniq/features/catalog/data/models/product_model.dart';
 
 abstract class CatalogRepository {
   Future<List<CategoryModel>> getCategories();
 
   // Cursor pagination: `after` is the previous page's nextCursor, omitted
-  // for the first page. A text `search` returns every match at once (no
-  // pagination) - see product.service.js, results are bounded by nature.
+  // for the first page. A text `search` paginates the same way - it used to
+  // return every match at once, which a one- or two-letter query turns into
+  // most of the catalog (see product.service.js).
   Future<PaginatedResult<ProductModel>> getProducts({
     required String warehouseId,
     String? search,

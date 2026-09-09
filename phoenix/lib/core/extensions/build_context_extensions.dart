@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:phoenix/generated/app_localizations.dart';
+import 'package:feniq/generated/app_localizations.dart';
 
 extension BuildContextExtensions on BuildContext {
   ThemeData get theme => Theme.of(this);

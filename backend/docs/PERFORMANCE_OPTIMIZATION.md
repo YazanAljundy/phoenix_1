@@ -1,4 +1,4 @@
-# Phoenix Backend — Performance Optimization Reference
+# Feniq Backend — Performance Optimization Reference
 
 Central reference for incremental backend performance work. **Read this file
 first** before starting a new optimization task; only open source files when

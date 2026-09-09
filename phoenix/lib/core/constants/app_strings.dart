@@ -1,7 +1,7 @@
 class AppStrings {
   const AppStrings._();
 
-  static const String appName = 'Phoenix';
+  static const String appName = 'Feniq';
   static const String login = 'Login';
   static const String logout = 'Logout';
   static const String email = 'Email';

@@ -1,4 +1,4 @@
-import 'package:phoenix/features/debts/data/models/warehouse_debt_model.dart';
+import 'package:feniq/features/debts/data/models/warehouse_debt_model.dart';
 
 enum DebtsStatus { initial, loading, loaded, error }
 

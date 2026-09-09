@@ -23,7 +23,7 @@ function generateCode() {
 // wired up so far - Section 3 of the spec explicitly leaves the real SMS
 // provider as an open decision pending the project owner's testing.
 async function deliverSms(phone, code) {
-  const message = `Your Phoenix verification code is ${code}. It expires in ${EXPIRY_MINUTES} minutes.`;
+  const message = `Your Feniq verification code is ${code}. It expires in ${EXPIRY_MINUTES} minutes.`;
 
   if (env.sms.provider === 'console') {
     // eslint-disable-next-line no-console

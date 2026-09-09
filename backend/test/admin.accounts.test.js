@@ -14,6 +14,7 @@ const assert = require('node:assert');
 const path = require('node:path');
 const mongoose = require('mongoose');
 const { startMemoryMongo, stopMemoryMongo } = require('./helpers/mongo');
+const { normalizePhone } = require('../src/utils/phone');
 
 const emitted = [];
 
@@ -81,7 +82,7 @@ async function seedWarehouse(key, { name, nameEn, nameAr, city, phone, status })
 }
 
 test.before(async () => {
-  await startMemoryMongo({ dbName: 'phoenix-admin-accounts-test' });
+  await startMemoryMongo({ dbName: 'feniq-admin-accounts-test' });
 
   const admin = await User.create({
     name: 'The Admin',
@@ -401,6 +402,96 @@ test('createWarehouseAccount emits one account.status.updated {warehouse, active
     payload: { userId: user._id.toString(), role: 'warehouse', status: 'active' },
   });
   assert.ok(warehouse._id);
+});
+
+// --- Add Warehouse: the phone has to be one login can actually match ------
+//
+// This path mints a warehouse login, and /auth/login-password normalizes what
+// it is given and then matches users.phone exactly. So a phone the admin form
+// stores in any other shape produces an account nobody can ever log in to.
+// These pin the guard that stops such a record being written in the first
+// place - they say nothing about accounts already in the database.
+
+test('createWarehouseAccount accepts the +963 form the pharmacy app sends', async () => {
+  const { user } = await adminService.createWarehouseAccount({
+    ownerName: 'Intl Owner',
+    phone: '+963945000001',
+    password: 'secret1',
+    nameAr: 'مستودع دولي',
+    nameEn: 'Intl Warehouse',
+    city: 'Damascus',
+    address: 'Intl road',
+  });
+
+  assert.strictEqual(user.phone, '+963945000001');
+  assert.ok(await User.findOne({ phone: '+963945000001' }));
+});
+
+test('createWarehouseAccount stores the phone in the shape login will look for', async () => {
+  // Login normalizes its input before matching, so the separators an admin
+  // types must not survive into storage - otherwise the two never meet.
+  const { user } = await adminService.createWarehouseAccount({
+    ownerName: 'Spaced Owner',
+    phone: ' 094 500-0002 ',
+    password: 'secret1',
+    nameAr: 'مستودع مسافات',
+    nameEn: 'Spaced Warehouse',
+    city: 'Homs',
+    address: 'Spaced road',
+  });
+
+  assert.strictEqual(user.phone, '0945000002');
+  assert.strictEqual(normalizePhone(' 094 500-0002 '), user.phone);
+  assert.ok(await Warehouse.findOne({ userId: user._id }));
+});
+
+for (const [label, phone] of [
+  ['free text', 'not a phone'],
+  ['too short', '09410'],
+  ['too long', '09410000012345'],
+  ['a non-Syrian international number', '+14155552671'],
+  ['a landline, which login cannot match either', '0111234567'],
+  ['digits with no prefix at all', '945000003'],
+]) {
+  test(`createWarehouseAccount rejects ${label} and writes nothing`, async () => {
+    const usersBefore = await User.countDocuments();
+    const warehousesBefore = await Warehouse.countDocuments();
+
+    await assert.rejects(
+      () =>
+        adminService.createWarehouseAccount({
+          ownerName: 'Rejected Owner',
+          phone,
+          password: 'secret1',
+          nameAr: 'مستودع مرفوض',
+          nameEn: 'Rejected Warehouse',
+          city: 'Latakia',
+          address: 'Rejected road',
+        }),
+      withCode('INVALID_PHONE_FORMAT')
+    );
+
+    // The guard runs before the first write, so nothing is left half-created:
+    // no orphan User without its Warehouse, and no record under the raw value.
+    assert.strictEqual(await User.countDocuments(), usersBefore);
+    assert.strictEqual(await Warehouse.countDocuments(), warehousesBefore);
+    assert.strictEqual(await User.findOne({ phone }), null);
+  });
+}
+
+test('a missing phone still reports "required", not a format problem', async () => {
+  await assert.rejects(
+    () =>
+      adminService.createWarehouseAccount({
+        ownerName: 'No Phone Owner',
+        password: 'secret1',
+        nameAr: 'مستودع بلا هاتف',
+        nameEn: 'No Phone Warehouse',
+        city: 'Latakia',
+        address: 'No phone road',
+      }),
+    withCode('INVALID_PHONE')
+  );
 });
 
 // --- Route guard: admin-only, query params never grant access -------------

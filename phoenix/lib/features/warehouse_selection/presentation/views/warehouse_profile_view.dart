@@ -1,26 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:phoenix/core/constants/app_colors.dart';
-import 'package:phoenix/core/constants/app_padding.dart';
-import 'package:phoenix/core/constants/app_radius.dart';
-import 'package:phoenix/core/constants/app_sizes.dart';
-import 'package:phoenix/core/extensions/build_context_extensions.dart';
-import 'package:phoenix/core/utils/date_formatter.dart';
-import 'package:phoenix/core/widgets/app_loading.dart';
-import 'package:phoenix/core/widgets/app_network_image.dart';
-import 'package:phoenix/core/widgets/custom_card.dart';
-import 'package:phoenix/core/error/error_translator.dart';
-import 'package:phoenix/core/widgets/failure_widget.dart';
-import 'package:phoenix/core/widgets/primary_button.dart';
-import 'package:phoenix/core/widgets/whatsapp_button.dart';
-import 'package:phoenix/features/cart/presentation/widgets/cart_button.dart';
-import 'package:phoenix/features/catalog/data/models/manufacturers_route_args.dart';
-import 'package:phoenix/features/complaints/data/models/submit_complaint_args.dart';
-import 'package:phoenix/features/warehouse_selection/data/models/warehouse_profile_model.dart';
-import 'package:phoenix/features/warehouse_selection/presentation/managers/warehouse_profile_cubit.dart';
-import 'package:phoenix/features/warehouse_selection/presentation/managers/warehouse_profile_state.dart';
-import 'package:phoenix/routes/route_names.dart';
+import 'package:feniq/core/constants/app_colors.dart';
+import 'package:feniq/core/constants/app_padding.dart';
+import 'package:feniq/core/constants/app_radius.dart';
+import 'package:feniq/core/constants/app_sizes.dart';
+import 'package:feniq/core/extensions/build_context_extensions.dart';
+import 'package:feniq/core/utils/date_formatter.dart';
+import 'package:feniq/core/widgets/app_skeleton.dart';
+import 'package:feniq/core/widgets/app_network_image.dart';
+import 'package:feniq/core/widgets/custom_card.dart';
+import 'package:feniq/core/error/error_translator.dart';
+import 'package:feniq/core/widgets/failure_widget.dart';
+import 'package:feniq/core/widgets/primary_button.dart';
+import 'package:feniq/core/widgets/whatsapp_button.dart';
+import 'package:feniq/features/cart/presentation/widgets/cart_button.dart';
+import 'package:feniq/features/catalog/data/models/manufacturers_route_args.dart';
+import 'package:feniq/features/complaints/data/models/submit_complaint_args.dart';
+import 'package:feniq/features/warehouse_selection/data/models/warehouse_profile_model.dart';
+import 'package:feniq/features/warehouse_selection/presentation/managers/warehouse_profile_cubit.dart';
+import 'package:feniq/features/warehouse_selection/presentation/managers/warehouse_profile_state.dart';
+import 'package:feniq/routes/route_names.dart';
 
 // Section 17: the pharmacist's read-only "about this warehouse" screen -
 // reached from a separate affordance on WarehouseCard (an info icon, not
@@ -71,7 +71,23 @@ class WarehouseProfileView extends StatelessWidget {
         builder: (context, state) {
           if (state.status == WarehouseProfileStatus.initial ||
               state.status == WarehouseProfileStatus.loading) {
-            return const AppLoading();
+            // Header, then the contact / delivery / reviews cards, then the
+            // two actions at the foot of the page.
+            return const SkeletonPage(
+              children: [
+                SkeletonBar(height: 120, radius: AppRadius.large),
+                SizedBox(height: AppSizes.spacingMedium),
+                SkeletonBar(width: 200, height: 20),
+                SizedBox(height: AppSizes.spacingXLarge),
+                SkeletonListCard(lines: 2),
+                SizedBox(height: AppSizes.spacingMedium),
+                SkeletonListCard(lines: 2),
+                SizedBox(height: AppSizes.spacingMedium),
+                SkeletonListCard(),
+                SizedBox(height: AppSizes.spacingXLarge),
+                SkeletonBar(height: AppSizes.buttonHeight, radius: AppRadius.medium),
+              ],
+            );
           }
           if (state.status == WarehouseProfileStatus.error || state.profile == null) {
             return FailureWidget(

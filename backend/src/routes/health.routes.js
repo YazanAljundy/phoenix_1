@@ -7,7 +7,7 @@ router.get('/', (req, res) => {
   const dbStates = ['disconnected', 'connected', 'connecting', 'disconnecting'];
   res.json({
     success: true,
-    message: 'Phoenix API is running.',
+    message: 'Feniq API is running.',
     db: dbStates[mongoose.connection.readyState] || 'unknown',
     time: new Date().toISOString(),
   });

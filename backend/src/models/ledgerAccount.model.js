@@ -4,7 +4,7 @@ const { Schema, model } = require('mongoose');
 // one warehouse - the container every LedgerEntry is posted into. Replaces
 // pharmacyBalance.model.js, which WAS the balance; this one only caches it.
 //
-// Denominated in SYP: Phoenix bills in SYP and collects SYP cash, so the debt
+// Denominated in SYP: Feniq bills in SYP and collects SYP cash, so the debt
 // is a SYP obligation. `balanceCache.usd` is a reporting projection built from
 // each entry's own frozen amountUsd - never `balanceCache.syp / currentRate`.
 const ledgerAccountSchema = new Schema(

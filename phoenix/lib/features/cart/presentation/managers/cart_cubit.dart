@@ -1,10 +1,11 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:phoenix/core/error/failure.dart';
-import 'package:phoenix/features/cart/data/models/cart_item.dart';
-import 'package:phoenix/features/warehouse_selection/data/repositories/warehouse_repository.dart';
-import 'package:phoenix/features/cart/data/models/order_model.dart';
-import 'package:phoenix/features/cart/data/repositories/order_repository.dart';
-import 'package:phoenix/features/catalog/data/models/product_model.dart';
+import 'package:uuid/uuid.dart';
+import 'package:feniq/core/error/failure.dart';
+import 'package:feniq/features/cart/data/models/cart_item.dart';
+import 'package:feniq/features/warehouse_selection/data/repositories/warehouse_repository.dart';
+import 'package:feniq/features/cart/data/models/order_model.dart';
+import 'package:feniq/features/cart/data/repositories/order_repository.dart';
+import 'package:feniq/features/catalog/data/models/product_model.dart';
 
 import 'cart_state.dart';
 
@@ -22,6 +23,7 @@ class CartCubit extends Cubit<CartState> {
 
   final OrderRepository _orderRepository;
   final WarehouseRepository _warehouseRepository;
+  final Uuid _uuid = const Uuid();
 
   // The warehouse's own order-size limits (backend: warehouse.model.js).
   // Fetched once per warehouse, when the cart first points at it, so the
@@ -196,6 +198,17 @@ class CartCubit extends Cubit<CartState> {
     emit(state.copyWith(items: updated, clearAdvertisement: brokePackage));
   }
 
+  // "Clear the cart": drops every line at once. Resets to a pristine
+  // CartState rather than just emptying `items` - exactly what removeItem
+  // already does when the last line goes - so the warehouse binding, the
+  // notes, any advertisement package and the loaded order limits all go with
+  // it. Nothing is sent to the server: the cart only exists on the client
+  // until submitOrder.
+  void clearCart() {
+    if (state.isEmpty) return;
+    emit(const CartState());
+  }
+
   void updateNotes(String notes) => emit(state.copyWith(notes: notes));
 
   // Client-side availability snapshots (taken when items were added) can go
@@ -214,7 +227,18 @@ class CartCubit extends Cubit<CartState> {
       return null;
     }
 
-    emit(state.copyWith(isSubmitting: true, clearError: true));
+    // Money-Flow V2 idempotency: minted on the FIRST attempt only and kept in
+    // the state, so every retry of this same cart carries the same key and
+    // the server returns the order the first attempt created instead of
+    // placing a second one. Generating it inside the request below would give
+    // each retry a fresh key and defeat the whole mechanism. It's cleared
+    // with the cart itself, on success or on any reset to a bare CartState.
+    final idempotencyKey = state.pendingIdempotencyKey ?? _uuid.v4();
+    emit(state.copyWith(
+      isSubmitting: true,
+      pendingIdempotencyKey: idempotencyKey,
+      clearError: true,
+    ));
     try {
       final order = await _orderRepository.submitOrder(
         warehouseId: state.warehouseId!,
@@ -224,6 +248,7 @@ class CartCubit extends Cubit<CartState> {
         // false the moment one of its products is removed, which is also when
         // the server would reject it.
         advertisementId: state.hasAdvertisement ? state.advertisementId : null,
+        idempotencyKey: idempotencyKey,
       );
       emit(const CartState());
       return order;

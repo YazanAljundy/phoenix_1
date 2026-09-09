@@ -1,9 +1,9 @@
 import 'package:url_launcher/url_launcher.dart';
 
-import 'package:phoenix/core/services/logger_service.dart';
-import 'package:phoenix/core/services/remote_config_service.dart';
-import 'package:phoenix/core/services/storage_service.dart';
-import 'package:phoenix/core/utils/app_version.dart';
+import 'package:feniq/core/services/logger_service.dart';
+import 'package:feniq/core/services/remote_config_service.dart';
+import 'package:feniq/core/services/storage_service.dart';
+import 'package:feniq/core/utils/app_version.dart';
 
 enum AppUpdateStatus { none, optional, mandatory }
 

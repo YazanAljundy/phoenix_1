@@ -25,7 +25,7 @@ let replSet = null;
 
 // The download is slow the first time; node:test's default timeout is
 // generous but the boot itself can still take a few seconds on a cold cache.
-async function startMemoryMongo({ dbName = 'phoenix-test' } = {}) {
+async function startMemoryMongo({ dbName = 'feniq-test' } = {}) {
   if (replSet) return mongoose.connection;
 
   // Required lazily so a test file that never calls this pays nothing for it,

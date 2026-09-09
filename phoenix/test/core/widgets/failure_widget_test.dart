@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:phoenix/core/theme/dark_theme.dart';
-import 'package:phoenix/core/theme/light_theme.dart';
-import 'package:phoenix/core/widgets/failure_widget.dart';
-import 'package:phoenix/generated/app_localizations.dart';
+import 'package:feniq/core/theme/dark_theme.dart';
+import 'package:feniq/core/theme/light_theme.dart';
+import 'package:feniq/core/widgets/failure_widget.dart';
+import 'package:feniq/generated/app_localizations.dart';
 
 Widget _host({
   required Widget child,

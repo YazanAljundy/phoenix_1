@@ -66,7 +66,7 @@ const MINUTE = 60 * 1000;
 const DAY = 24 * 60 * MINUTE;
 
 test.before(async () => {
-  await startMemoryMongo({ dbName: 'phoenix-order-edit-test' });
+  await startMemoryMongo({ dbName: 'feniq-order-edit-test' });
 
   const [pharmacyUser, whUser] = await User.create([
     { name: 'Ph', phone: '0932000201', role: 'pharmacy', status: 'active' },

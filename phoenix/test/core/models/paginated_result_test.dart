@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:phoenix/core/models/paginated_result.dart';
+import 'package:feniq/core/models/paginated_result.dart';
 
 void main() {
   group('PaginatedResult', () {

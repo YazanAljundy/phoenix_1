@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:phoenix/core/constants/app_colors.dart';
-import 'package:phoenix/core/constants/app_padding.dart';
-import 'package:phoenix/core/extensions/build_context_extensions.dart';
-import 'package:phoenix/features/debts/presentation/managers/debts_cubit.dart';
-import 'package:phoenix/features/debts/presentation/widgets/debts_overview.dart';
+import 'package:feniq/core/constants/app_colors.dart';
+import 'package:feniq/core/constants/app_padding.dart';
+import 'package:feniq/core/extensions/build_context_extensions.dart';
+import 'package:feniq/features/debts/presentation/managers/debts_cubit.dart';
+import 'package:feniq/features/debts/presentation/widgets/debts_overview.dart';
 
 // The pharmacist's standalone debts page, opened from the Account History
 // screen's Debts card. It is only a shell around DebtsOverview - the same

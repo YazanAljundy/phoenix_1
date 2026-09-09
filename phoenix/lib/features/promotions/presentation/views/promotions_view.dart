@@ -1,24 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:phoenix/core/constants/app_colors.dart';
-import 'package:phoenix/core/constants/app_sizes.dart';
-import 'package:phoenix/core/error/error_translator.dart';
-import 'package:phoenix/core/extensions/build_context_extensions.dart';
-import 'package:phoenix/core/widgets/app_loading.dart';
-import 'package:phoenix/core/widgets/empty_view.dart';
-import 'package:phoenix/core/widgets/failure_widget.dart';
-import 'package:phoenix/features/advertisements/presentation/utils/advertisement_cart_launcher.dart';
-import 'package:phoenix/features/cart/presentation/widgets/cart_button.dart';
-import 'package:phoenix/features/catalog/data/models/manufacturers_route_args.dart';
-import 'package:phoenix/features/notifications/presentation/widgets/notification_button.dart';
-import 'package:phoenix/features/promotions/data/models/promotion.dart';
-import 'package:phoenix/features/promotions/presentation/managers/promotions_cubit.dart';
-import 'package:phoenix/features/promotions/presentation/managers/promotions_state.dart';
-import 'package:phoenix/features/promotions/presentation/widgets/promotion_filter_bar.dart';
-import 'package:phoenix/features/promotions/presentation/widgets/promotion_hero_card.dart';
-import 'package:phoenix/features/promotions/presentation/widgets/promotions_hero_carousel.dart';
-import 'package:phoenix/routes/route_names.dart';
+import 'package:feniq/core/constants/app_colors.dart';
+import 'package:feniq/core/constants/app_radius.dart';
+import 'package:feniq/core/constants/app_sizes.dart';
+import 'package:feniq/core/error/error_translator.dart';
+import 'package:feniq/core/extensions/build_context_extensions.dart';
+import 'package:feniq/core/widgets/app_skeleton.dart';
+import 'package:feniq/core/widgets/empty_view.dart';
+import 'package:feniq/core/widgets/failure_widget.dart';
+import 'package:feniq/features/advertisements/presentation/utils/advertisement_cart_launcher.dart';
+import 'package:feniq/features/cart/presentation/widgets/cart_button.dart';
+import 'package:feniq/features/catalog/data/models/manufacturers_route_args.dart';
+import 'package:feniq/features/notifications/presentation/widgets/notification_button.dart';
+import 'package:feniq/features/promotions/data/models/promotion.dart';
+import 'package:feniq/features/promotions/presentation/managers/promotions_cubit.dart';
+import 'package:feniq/features/promotions/presentation/managers/promotions_state.dart';
+import 'package:feniq/features/promotions/presentation/widgets/promotion_filter_bar.dart';
+import 'package:feniq/features/promotions/presentation/widgets/promotion_hero_card.dart';
+import 'package:feniq/features/promotions/presentation/widgets/promotions_hero_carousel.dart';
+import 'package:feniq/routes/route_names.dart';
 
 /// The Offers & Ads tab: the one place a pharmacist browses everything being
 /// promoted right now - product offers and warehouse packages together.
@@ -110,7 +111,27 @@ class _PromotionsViewState extends State<PromotionsView> {
           switch (state.status) {
             case PromotionsStatus.initial:
             case PromotionsStatus.loading:
-              return const AppLoading();
+              // Filter bar, hero carousel, section title, then the list -
+              // the running order of the loaded screen below.
+              return const SkeletonPage(
+                padding: EdgeInsets.fromLTRB(
+                  AppSizes.spacingMedium,
+                  AppSizes.spacingMedium,
+                  AppSizes.spacingMedium,
+                  AppSizes.spacingLarge,
+                ),
+                children: [
+                  SkeletonBar(height: 36, radius: AppRadius.full),
+                  SizedBox(height: AppSizes.spacingMedium),
+                  SkeletonBar(height: 168, radius: AppRadius.large),
+                  SizedBox(height: AppSizes.spacingLarge),
+                  SkeletonBar(width: 140, height: 16),
+                  SizedBox(height: AppSizes.spacingMedium),
+                  SkeletonListCard(lines: 2),
+                  SizedBox(height: AppSizes.spacingMedium),
+                  SkeletonListCard(lines: 2),
+                ],
+              );
             case PromotionsStatus.error:
               return FailureWidget(
                 message: translateErrorCode(

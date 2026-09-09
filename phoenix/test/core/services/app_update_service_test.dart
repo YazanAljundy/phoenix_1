@@ -1,9 +1,9 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:phoenix/core/services/app_update_service.dart';
-import 'package:phoenix/core/services/remote_config_service.dart';
-import 'package:phoenix/core/services/storage_service.dart';
+import 'package:feniq/core/services/app_update_service.dart';
+import 'package:feniq/core/services/remote_config_service.dart';
+import 'package:feniq/core/services/storage_service.dart';
 
 class MockRemoteConfigService extends Mock implements RemoteConfigService {}
 
@@ -18,7 +18,7 @@ void main() {
     storage = StorageService(await SharedPreferences.getInstance());
     rc = MockRemoteConfigService();
     when(() => rc.refresh()).thenAnswer((_) async {});
-    when(() => rc.updateUrl).thenReturn('https://play.google.com/store/apps/details?id=phoenix');
+    when(() => rc.updateUrl).thenReturn('https://play.google.com/store/apps/details?id=feniq');
   });
 
   AppUpdateService build({

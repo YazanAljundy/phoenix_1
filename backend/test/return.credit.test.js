@@ -117,7 +117,7 @@ function makeReturn(order, items, picks) {
 }
 
 test.before(async () => {
-  await startMemoryMongo({ dbName: 'phoenix-return-credit-test' });
+  await startMemoryMongo({ dbName: 'feniq-return-credit-test' });
   await syncIndexes(LedgerEntry, LedgerAccount, Return);
   await ExchangeRate.create({ _id: 'singleton', usdToSyp: RATE, source: 'manual' });
 

@@ -4,14 +4,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:phoenix/features/debts/data/models/warehouse_debt_model.dart';
-import 'package:phoenix/features/debts/presentation/managers/debts_cubit.dart';
-import 'package:phoenix/features/debts/presentation/managers/debts_state.dart';
-import 'package:phoenix/features/debts/presentation/views/my_debts_view.dart';
-import 'package:phoenix/features/exchange_rate/presentation/managers/exchange_rate_cubit.dart';
-import 'package:phoenix/features/exchange_rate/presentation/managers/exchange_rate_state.dart';
-import 'package:phoenix/generated/app_localizations.dart';
-import 'package:phoenix/routes/route_names.dart';
+import 'package:feniq/features/debts/data/models/warehouse_debt_model.dart';
+import 'package:feniq/features/debts/presentation/managers/debts_cubit.dart';
+import 'package:feniq/features/debts/presentation/managers/debts_state.dart';
+import 'package:feniq/features/debts/presentation/views/my_debts_view.dart';
+import 'package:feniq/features/exchange_rate/presentation/managers/exchange_rate_cubit.dart';
+import 'package:feniq/features/exchange_rate/presentation/managers/exchange_rate_state.dart';
+import 'package:feniq/generated/app_localizations.dart';
+import 'package:feniq/routes/route_names.dart';
 
 class MockDebtsCubit extends MockCubit<DebtsState> implements DebtsCubit {}
 

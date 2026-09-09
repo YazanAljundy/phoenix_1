@@ -24,8 +24,17 @@ function serializeWarehouse(warehouse) {
   };
 }
 
-function toWarehouseListResponse(warehouses) {
-  return { warehouses: warehouses.map(serializeWarehouse) };
+// `cityFilterApplied` is what the server actually did, which is not always
+// what the client asked for - a pharmacy whose own city is unusable gets the
+// full list back (warehouse.service.js). The app reads this flag rather than
+// its own request to decide whether to show the "my city / all cities"
+// toggle, so it can never claim a narrowing that didn't happen.
+function toWarehouseListResponse({ warehouses, pharmacyCity, cityFilterApplied }) {
+  return {
+    warehouses: warehouses.map(serializeWarehouse),
+    cityFilterApplied: Boolean(cityFilterApplied),
+    pharmacyCity: pharmacyCity || null,
+  };
 }
 
 // Fallback shown whenever the reviewer's name can't be resolved (record

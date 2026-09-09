@@ -1,20 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:phoenix/core/constants/app_colors.dart';
-import 'package:phoenix/core/constants/app_padding.dart';
-import 'package:phoenix/core/constants/app_sizes.dart';
-import 'package:phoenix/core/extensions/build_context_extensions.dart';
-import 'package:phoenix/core/widgets/app_loading.dart';
-import 'package:phoenix/core/widgets/empty_view.dart';
-import 'package:phoenix/core/error/error_translator.dart';
-import 'package:phoenix/core/widgets/failure_widget.dart';
-import 'package:phoenix/features/cart/presentation/widgets/cart_button.dart';
-import 'package:phoenix/features/catalog/data/models/catalog_route_args.dart';
-import 'package:phoenix/features/catalog/presentation/managers/manufacturers_cubit.dart';
-import 'package:phoenix/features/catalog/presentation/managers/manufacturers_state.dart';
-import 'package:phoenix/features/catalog/presentation/widgets/manufacturer_card.dart';
-import 'package:phoenix/routes/route_names.dart';
+import 'package:feniq/core/constants/app_colors.dart';
+import 'package:feniq/core/constants/app_padding.dart';
+import 'package:feniq/core/constants/app_radius.dart';
+import 'package:feniq/core/constants/app_sizes.dart';
+import 'package:feniq/core/extensions/build_context_extensions.dart';
+import 'package:feniq/core/widgets/app_skeleton.dart';
+import 'package:feniq/core/widgets/empty_view.dart';
+import 'package:feniq/core/error/error_translator.dart';
+import 'package:feniq/core/widgets/failure_widget.dart';
+import 'package:feniq/features/cart/presentation/widgets/cart_button.dart';
+import 'package:feniq/features/catalog/data/models/catalog_route_args.dart';
+import 'package:feniq/features/catalog/presentation/managers/manufacturers_cubit.dart';
+import 'package:feniq/features/catalog/presentation/managers/manufacturers_state.dart';
+import 'package:feniq/features/catalog/presentation/widgets/manufacturer_card.dart';
+import 'package:feniq/routes/route_names.dart';
 
 // New step between warehouse selection and the catalog (Section 16):
 // warehouse -> manufacturers -> medicines, replacing the old warehouse ->
@@ -96,7 +97,13 @@ class _ManufacturersViewState extends State<ManufacturersView> {
           switch (state.status) {
             case ManufacturersStatus.initial:
             case ManufacturersStatus.loading:
-              return const AppLoading();
+              // Same grid metrics as the loaded state below, so the cells
+              // land exactly where the manufacturer cards will.
+              return SkeletonGrid(
+                maxCrossAxisExtent: 160,
+                mainAxisExtent: 198,
+                itemBuilder: (context, index) => const _ManufacturerSkeletonCell(),
+              );
             case ManufacturersStatus.error:
               return FailureWidget(
                 message: translateErrorCode(l10n, state.errorCode, state.errorMessage ?? l10n.errorState),
@@ -134,6 +141,26 @@ class _ManufacturersViewState extends State<ManufacturersView> {
           }
         },
       ),
+    );
+  }
+}
+
+// One manufacturer placeholder: the logo plate, the (two-line) name, and the
+// company-discount line under it.
+class _ManufacturerSkeletonCell extends StatelessWidget {
+  const _ManufacturerSkeletonCell();
+
+  @override
+  Widget build(BuildContext context) {
+    return const SkeletonCard(
+      mainAxisSize: MainAxisSize.max,
+      children: [
+        SkeletonBar(height: 80, radius: AppRadius.medium),
+        SizedBox(height: AppSizes.spacingSmall),
+        SkeletonBar(height: 12),
+        SizedBox(height: AppSizes.spacingXSmall),
+        SkeletonBar(width: 78, height: 12),
+      ],
     );
   }
 }

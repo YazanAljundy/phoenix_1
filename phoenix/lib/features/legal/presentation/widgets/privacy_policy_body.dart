@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:phoenix/core/constants/app_colors.dart';
-import 'package:phoenix/core/constants/app_padding.dart';
-import 'package:phoenix/core/constants/app_sizes.dart';
-import 'package:phoenix/core/extensions/build_context_extensions.dart';
-import 'package:phoenix/core/widgets/custom_card.dart';
-import 'package:phoenix/features/legal/data/privacy_policy_content.dart';
+import 'package:feniq/core/constants/app_colors.dart';
+import 'package:feniq/core/constants/app_padding.dart';
+import 'package:feniq/core/constants/app_sizes.dart';
+import 'package:feniq/core/extensions/build_context_extensions.dart';
+import 'package:feniq/core/widgets/custom_card.dart';
+import 'package:feniq/features/legal/data/privacy_policy_content.dart';
 
 // Renders the privacy-policy text from PrivacyPolicyContent. Pure
 // presentation - it holds none of the wording itself, so the policy can be

@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:phoenix/features/auth/data/models/pharmacy_model.dart';
-import 'package:phoenix/features/auth/data/models/user_model.dart';
-import 'package:phoenix/features/auth/presentation/managers/auth_state.dart';
+import 'package:feniq/features/auth/data/models/pharmacy_model.dart';
+import 'package:feniq/features/auth/data/models/user_model.dart';
+import 'package:feniq/features/auth/presentation/managers/auth_state.dart';
 
 void main() {
   group('AuthState', () {

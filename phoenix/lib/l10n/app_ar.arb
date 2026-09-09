@@ -1,6 +1,6 @@
 {
   "@@locale": "ar",
-  "appName": "فينيكس",
+  "appName": "فينيق",
   "login": "تسجيل الدخول",
   "logout": "تسجيل الخروج",
   "email": "البريد الإلكتروني",
@@ -110,6 +110,11 @@
   "searchWarehouseHint": "ابحث عن مستودع أو مدينة",
   "noSearchResultsFound": "ما في نتائج مطابقة لبحثك.",
   "warehouseProfileButtonLabel": "البروفايل",
+  "warehousesScopeMyCity": "مدينتي",
+  "warehousesScopeAllCities": "كل المدن",
+  "viewAllCitiesButton": "عرض كل المدن",
+  "noWarehousesInYourCity": "لا يوجد مستودعات بمدينتك",
+  "noWarehousesInYourCitySubtitle": "جرّب توسيع البحث ليشمل مدناً أخرى.",
   "noManufacturersFound": "لا توجد شركات مصنّعة متاحة بهذا المستودع.",
   "manufacturersCountSubtitle": "{count, plural, zero{لا توجد شركات مصنّعة} one{شركة مصنّعة واحدة} two{شركتان مصنّعتان} few{{count} شركات مصنّعة} many{{count} شركة مصنّعة} other{{count} شركة مصنّعة}}",
   "@manufacturersCountSubtitle": {
@@ -209,6 +214,9 @@
     }
   },
   "removeButton": "إزالة",
+  "clearCartButton": "مسح السلة",
+  "clearCartTitle": "مسح السلة؟",
+  "clearCartConfirmation": "هل أنت متأكد من مسح جميع محتويات السلة؟",
   "cartConflictTitle": "بدء سلة جديدة؟",
   "cartConflictMessage": "سلتك تحتوي على عناصر من {name}. إضافة هذا العنصر ستفرغ السلة وتبدأ طلباً جديداً.",
   "@cartConflictMessage": {
@@ -306,6 +314,22 @@
       }
     }
   },
+  "errorPriceChangedGeneric": "تغيّرت بعض الأسعار في سلتك.",
+  "errorPriceChanged": "{name} أصبح بـ {newPrice} (كان {oldPrice}).",
+  "@errorPriceChanged": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "newPrice": {
+        "type": "String"
+      },
+      "oldPrice": {
+        "type": "String"
+      }
+    }
+  },
+  "priceChangedConfirmHint": "أرسل الطلب مرة أخرى لتأكيده بالأسعار الجديدة.",
   "thisItemFallback": "هذا العنصر",
   "loading": "جارِ التحميل...",
   "orderTrackingTitle": "تتبع الطلب",
@@ -624,7 +648,7 @@
   "orderComplaintsSectionTitle": "الشكاوى المتعلقة بهذا الطلب",
   "orderComplaintsEmptyPrompt": "لديك مشكلة بهذا الطلب؟ يمكنك تقديم شكوى وستراجعها الإدارة.",
   "updateAvailable": "يتوفر تحديث جديد",
-  "updateAvailableMessage": "يتوفر إصدار جديد من Phoenix. قم بالتحديث للحصول على أحدث الميزات والتحسينات.",
+  "updateAvailableMessage": "يتوفر إصدار جديد من Feniq. قم بالتحديث للحصول على أحدث الميزات والتحسينات.",
   "updateRequired": "تحديث إجباري",
   "updateRequiredMessage": "إصدار التطبيق الحالي لم يعد مدعوماً. يرجى تحديث التطبيق للمتابعة.",
   "updateNow": "تحديث الآن",

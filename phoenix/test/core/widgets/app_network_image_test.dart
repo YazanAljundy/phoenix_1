@@ -1,7 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:phoenix/core/widgets/app_network_image.dart';
+import 'package:feniq/core/widgets/app_network_image.dart';
 
 Widget _host(Widget child) =>
     MaterialApp(home: Scaffold(body: Center(child: child)));

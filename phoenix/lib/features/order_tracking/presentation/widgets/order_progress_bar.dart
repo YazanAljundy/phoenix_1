@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:phoenix/core/constants/app_colors.dart';
-import 'package:phoenix/core/extensions/build_context_extensions.dart';
+import 'package:feniq/core/constants/app_colors.dart';
+import 'package:feniq/core/extensions/build_context_extensions.dart';
 
 // Section 6.7: a horizontal progress bar across five stages, with an
 // animated icon marking the current one - 'cancelled' never reaches this

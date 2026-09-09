@@ -1,4 +1,4 @@
-import 'package:phoenix/features/account_history/data/models/savings_summary.dart';
+import 'package:feniq/features/account_history/data/models/savings_summary.dart';
 
 enum SavingsStatus { initial, loading, loaded, error }
 

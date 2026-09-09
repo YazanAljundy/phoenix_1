@@ -3,6 +3,7 @@ const { ApiError } = require('../utils/ApiError');
 const Product = require('../models/product.model');
 const Category = require('../models/category.model');
 const ProductCatalog = require('../models/productCatalog.model');
+const { searchKey } = require('../models/productCatalog.model');
 const {
   applyResolvedIdentity,
   loadAndParseUpload,
@@ -11,6 +12,22 @@ const {
 const { registerManufacturers } = require('./warehouseManufacturer.service');
 
 const WAREHOUSE_PRODUCTS_DEFAULT_LIMIT = 20;
+
+// The list responses drop priceHistory (warehouseProduct.viewmodel.js), so
+// there is no reason for the array to leave the database on these paths at
+// all - an exclusion rather than an inclusion list, since it's the one field
+// being removed and every other one is either serialised or part of the
+// filter. findOwnedProductOrThrow deliberately does NOT use this: the update
+// path has to read the array to append to it.
+const LIST_PRODUCT_SELECT = '-priceHistory';
+
+// How many price changes a product keeps. The array used to grow without
+// limit, one entry per edit and one per re-import, and was serialised in full
+// by every list response - a warehouse re-importing its price list weekly
+// accumulated hundreds of entries per product. The most recent ones are the
+// only ones anything actually shows, so older entries are dropped as new ones
+// arrive ($slice on the $push).
+const PRICE_HISTORY_LIMIT = 50;
 
 // Section 14 Part 2: name/manufacturer no longer come from the warehouse -
 // they're resolved from the linked catalog entry (masterProductId),
@@ -85,10 +102,25 @@ async function listProductsForWarehouse(warehouseId, { availableOnly = false } =
     filter.isAvailable = true;
   }
   const products = await Product.find(filter)
+    .select(LIST_PRODUCT_SELECT)
     .populate({ path: 'masterProductId', select: 'nameAr nameEn manufacturerAr manufacturerEn' });
   products.forEach(applyResolvedIdentity);
   products.sort((a, b) => (a.nameEn || a.nameAr || '').localeCompare(b.nameEn || b.nameAr || ''));
   return products;
+}
+
+// An EXACT manufacturer match, as the catalog page's company drill-down needs
+// it - not the fuzzy name-or-manufacturer regex searchPaginatedProductsForWarehouse
+// does. A product's manufacturer lives on its linked catalog entry
+// (masterProductId) for everything created since Section 14 Part 2 and on the
+// row itself for legacy products, so the clause has to cover both places -
+// the same two-step as the search below, minus the regex.
+async function manufacturerMatchClauses(manufacturerAr) {
+  const catalogIds = await ProductCatalog.distinct('_id', { manufacturerAr });
+  return [
+    { masterProductId: null, manufacturerAr },
+    { masterProductId: { $in: catalogIds } },
+  ];
 }
 
 // The Products management page (unlike the callers of the unpaginated
@@ -96,16 +128,27 @@ async function listProductsForWarehouse(warehouseId, { availableOnly = false } =
 // which need every product, alphabetically) wants newest-first with "Load
 // more". An ObjectId's embedded timestamp makes `_id` descending equivalent
 // to `createdAt` descending, so no compound cursor is needed.
+//
+// `manufacturerAr` narrows the page to one company (the catalog page opens on
+// a company list and drills into it). Applied here rather than in React so
+// "Load more" keeps paging through that company's products only - a
+// client-side filter would page through the whole catalog and show a near-
+// empty page whenever the next 20 rows happened to be other companies'.
 async function listPaginatedProductsForWarehouse(
   warehouseId,
-  { limit = WAREHOUSE_PRODUCTS_DEFAULT_LIMIT, after = null } = {}
+  { limit = WAREHOUSE_PRODUCTS_DEFAULT_LIMIT, after = null, manufacturerAr = null } = {}
 ) {
   const filter = { warehouseId, isActive: true };
+  const manufacturer = typeof manufacturerAr === 'string' ? manufacturerAr.trim() : '';
+  if (manufacturer) {
+    filter.$or = await manufacturerMatchClauses(manufacturer);
+  }
   if (after !== null) {
     filter._id = { $lt: after };
   }
 
   const rows = await Product.find(filter)
+    .select(LIST_PRODUCT_SELECT)
     .sort({ _id: -1 })
     .limit(limit + 1)
     .populate({ path: 'masterProductId', select: 'nameAr nameEn manufacturerAr manufacturerEn' });
@@ -160,6 +203,7 @@ async function searchPaginatedProductsForWarehouse(
   }
 
   const rows = await Product.find(filter)
+    .select(LIST_PRODUCT_SELECT)
     .sort({ _id: -1 })
     .limit(limit + 1)
     .populate({ path: 'masterProductId', select: 'nameAr nameEn manufacturerAr manufacturerEn' });
@@ -277,6 +321,12 @@ async function applyProductUpdate(product, userId, changes) {
         changedBy: userId,
         changedAt: new Date(),
       });
+      // Same cap the import path applies via $slice - kept here in JS because
+      // this path goes through .save() on a hydrated document rather than a
+      // bulkWrite. Oldest entries go first; the tail is what anything reads.
+      if (product.priceHistory.length > PRICE_HISTORY_LIMIT) {
+        product.priceHistory = product.priceHistory.slice(-PRICE_HISTORY_LIMIT);
+      }
       product.price = changes.priceUsd;
       product.lastPriceUpdate = new Date();
     }
@@ -324,55 +374,159 @@ async function importProductsFromExcel(warehouseId, userId, file) {
   let added = 0;
   let updated = 0;
 
-  for (const candidate of candidates) {
-    // Matched on both name and manufacturer (not name alone) - the central
-    // catalog allows the same drug name under different manufacturers
-    // (Section 14 Part 1's own upsert key), so name-only would risk linking
-    // to the wrong one.
-    const catalogItem = await ProductCatalog.findOne({
-      nameAr: new RegExp(`^${escapeRegex(candidate.nameAr)}$`, 'i'),
-      manufacturerAr: new RegExp(`^${escapeRegex(candidate.manufacturerAr)}$`, 'i'),
-      isActive: true,
-    });
+  if (candidates.length === 0) {
+    return { added, updated, errors, exchangeRateUsed, convertedFromSyp };
+  }
 
-    if (!catalogItem) {
+  // Two bounded queries for the whole file instead of two per row. Each row
+  // used to run a case-insensitive RegExp findOne against ProductCatalog -
+  // which cannot use its index, so every row scanned the entire master list -
+  // plus its own Product findOne and save. On a 2,000-row file against a
+  // large catalog that is the single most expensive request in the app, and
+  // it blocks the event loop for the whole import.
+  //
+  // Matched on both name and manufacturer (not name alone) - the central
+  // catalog allows the same drug name under different manufacturers (Section
+  // 14 Part 1's own upsert key), so name-only would risk linking to the
+  // wrong one. The normalized keys (productCatalog.model.js) make that pair
+  // an indexed equality match rather than a scan, and carry the same
+  // case/whitespace tolerance the RegExp had.
+  const keyedCandidates = candidates.map((candidate) => ({
+    ...candidate,
+    nameKey: searchKey(candidate.nameAr),
+    manufacturerKey: searchKey(candidate.manufacturerAr),
+  }));
+
+  const catalogItems = await ProductCatalog.find({
+    nameKey: { $in: [...new Set(keyedCandidates.map((c) => c.nameKey))] },
+    manufacturerKey: { $in: [...new Set(keyedCandidates.map((c) => c.manufacturerKey))] },
+    isActive: true,
+  })
+    .select('_id nameKey manufacturerKey')
+    .lean();
+
+  // The two $in clauses above match the cross-product of names and
+  // manufacturers, so a row is only really matched once the exact pair is
+  // found here.
+  const catalogByPair = new Map(
+    catalogItems.map((item) => [`${item.nameKey} ${item.manufacturerKey}`, item._id])
+  );
+
+  const matched = [];
+  for (const candidate of keyedCandidates) {
+    const catalogId = catalogByPair.get(`${candidate.nameKey} ${candidate.manufacturerKey}`);
+    if (!catalogId) {
       errors.push({ row: candidate.rowNumber, reason: 'Medicine not found in the central catalog.' });
       continue;
     }
+    matched.push({ candidate, catalogId });
+  }
 
-    try {
-      const existing = await Product.findOne({ warehouseId, masterProductId: catalogItem._id });
-      if (existing) {
-        if (candidate.priceUsd !== existing.price) {
-          existing.priceHistory.push({
-            oldPrice: existing.price,
-            newPrice: candidate.priceUsd,
-            changedBy: userId,
-            changedAt: new Date(),
-          });
-          existing.price = candidate.priceUsd;
-          existing.lastPriceUpdate = new Date();
-        }
-        await existing.save();
-        updated += 1;
-      } else {
-        // categoryId/unitAr/unitEn are left null (Section 14 Part 2's schema
-        // note on product.model.js) - the import format carries no columns
-        // for them, same reasoning as the catalog's own import.
-        await Product.create({
-          warehouseId,
-          masterProductId: catalogItem._id,
-          price: candidate.priceUsd,
-          manuallyDisabled: false,
-          isAvailable: true,
-          lastPriceUpdate: new Date(),
-        });
-        added += 1;
+  if (matched.length === 0) {
+    return { added, updated, errors, exchangeRateUsed, convertedFromSyp };
+  }
+
+  // Only price + priceHistory are read off an existing product, so the rest
+  // of the document never needs to leave the database or become a Mongoose
+  // document - the writes below are built by hand rather than via .save().
+  const existingProducts = await Product.find({
+    warehouseId,
+    masterProductId: { $in: matched.map((m) => m.catalogId) },
+  })
+    .select('masterProductId price')
+    .lean();
+  const existingByCatalogId = new Map(
+    existingProducts.map((product) => [String(product.masterProductId), product])
+  );
+
+  const now = new Date();
+  const operations = [];
+  const rowsByOperationIndex = [];
+
+  for (const { candidate, catalogId } of matched) {
+    const existing = existingByCatalogId.get(String(catalogId));
+
+    if (existing) {
+      // A price that didn't move writes no history entry and no
+      // lastPriceUpdate, exactly as the per-row save did - re-importing an
+      // unchanged file must not fill priceHistory with no-op entries.
+      const set = {};
+      const push = {};
+      if (candidate.priceUsd !== existing.price) {
+        set.price = candidate.priceUsd;
+        set.lastPriceUpdate = now;
+        push.priceHistory = {
+          // H5: the array is capped as it grows rather than left unbounded -
+          // it is read back in full by the single-product response.
+          $each: [
+            {
+              oldPrice: existing.price,
+              newPrice: candidate.priceUsd,
+              changedBy: userId,
+              changedAt: now,
+            },
+          ],
+          $slice: -PRICE_HISTORY_LIMIT,
+        };
       }
-    } catch (err) {
-      errors.push({ row: candidate.rowNumber, reason: 'Failed to save this row.' });
+
+      operations.push({
+        updateOne: {
+          filter: { _id: existing._id },
+          update: {
+            ...(Object.keys(set).length > 0 ? { $set: set } : {}),
+            ...(Object.keys(push).length > 0 ? { $push: push } : {}),
+          },
+        },
+      });
+      rowsByOperationIndex.push({ row: candidate.rowNumber, kind: 'updated' });
+    } else {
+      // categoryId/unitAr/unitEn are left null (Section 14 Part 2's schema
+      // note on product.model.js) - the import format carries no columns
+      // for them, same reasoning as the catalog's own import.
+      operations.push({
+        insertOne: {
+          document: {
+            warehouseId,
+            masterProductId: catalogId,
+            price: candidate.priceUsd,
+            manuallyDisabled: false,
+            isAvailable: true,
+            isActive: true,
+            lastPriceUpdate: now,
+            priceHistory: [],
+            createdAt: now,
+            updatedAt: now,
+          },
+        },
+      });
+      rowsByOperationIndex.push({ row: candidate.rowNumber, kind: 'added' });
     }
   }
+
+  // ordered:false so one bad row (a duplicate racing another import of the
+  // same file, say) doesn't abandon every row after it - the per-row loop
+  // this replaces had that property too, via its own try/catch.
+  let writeErrorIndexes = new Set();
+  try {
+    await Product.bulkWrite(operations, { ordered: false });
+  } catch (err) {
+    if (!err.writeErrors) throw err;
+    writeErrorIndexes = new Set(err.writeErrors.map((writeError) => writeError.index));
+    for (const writeError of err.writeErrors) {
+      const source = rowsByOperationIndex[writeError.index];
+      errors.push({
+        row: source ? source.row : null,
+        reason: 'Failed to save this row.',
+      });
+    }
+  }
+
+  rowsByOperationIndex.forEach((source, index) => {
+    if (writeErrorIndexes.has(index)) return;
+    if (source.kind === 'added') added += 1;
+    else updated += 1;
+  });
 
   return { added, updated, errors, exchangeRateUsed, convertedFromSyp };
 }

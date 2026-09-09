@@ -1,13 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:phoenix/features/advertisements/data/models/advertisement_cart_preparation.dart';
-import 'package:phoenix/features/advertisements/data/models/advertisement_model.dart';
-import 'package:phoenix/features/cart/data/models/cart_item.dart';
-import 'package:phoenix/features/cart/data/models/order_model.dart';
-import 'package:phoenix/features/cart/data/repositories/order_repository.dart';
-import 'package:phoenix/features/cart/presentation/managers/cart_cubit.dart';
-import 'package:phoenix/features/catalog/data/models/product_model.dart';
-import 'package:phoenix/features/warehouse_selection/data/repositories/warehouse_repository.dart';
+import 'package:feniq/features/advertisements/data/models/advertisement_cart_preparation.dart';
+import 'package:feniq/features/advertisements/data/models/advertisement_model.dart';
+import 'package:feniq/features/cart/data/models/cart_item.dart';
+import 'package:feniq/features/cart/data/models/order_model.dart';
+import 'package:feniq/features/cart/data/repositories/order_repository.dart';
+import 'package:feniq/features/cart/presentation/managers/cart_cubit.dart';
+import 'package:feniq/features/catalog/data/models/product_model.dart';
+import 'package:feniq/features/warehouse_selection/data/repositories/warehouse_repository.dart';
 
 class MockOrderRepository extends Mock implements OrderRepository {}
 
@@ -267,6 +267,7 @@ void main() {
           items: any(named: 'items'),
           notes: any(named: 'notes'),
           advertisementId: any(named: 'advertisementId'),
+          idempotencyKey: any(named: 'idempotencyKey'),
         ),
       ).thenAnswer((_) async => _fakeOrder);
 
@@ -279,6 +280,7 @@ void main() {
           items: any(named: 'items'),
           notes: any(named: 'notes'),
           advertisementId: captureAny(named: 'advertisementId'),
+          idempotencyKey: any(named: 'idempotencyKey'),
         ),
       ).captured;
       expect(captured[0], 'A');
@@ -292,6 +294,7 @@ void main() {
           items: any(named: 'items'),
           notes: any(named: 'notes'),
           advertisementId: any(named: 'advertisementId'),
+          idempotencyKey: any(named: 'idempotencyKey'),
         ),
       ).thenAnswer((_) async => _fakeOrder);
 
@@ -305,6 +308,7 @@ void main() {
           items: any(named: 'items'),
           notes: any(named: 'notes'),
           advertisementId: captureAny(named: 'advertisementId'),
+          idempotencyKey: any(named: 'idempotencyKey'),
         ),
       ).captured;
       expect(captured.single, isNull);

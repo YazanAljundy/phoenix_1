@@ -1,4 +1,4 @@
-import 'package:phoenix/features/notifications/data/models/notification_model.dart';
+import 'package:feniq/features/notifications/data/models/notification_model.dart';
 
 class NotificationState {
   const NotificationState({

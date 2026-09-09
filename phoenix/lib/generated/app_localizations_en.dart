@@ -9,7 +9,7 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
-  String get appName => 'Phoenix';
+  String get appName => 'Feniq';
 
   @override
   String get login => 'Login';
@@ -284,6 +284,22 @@ class AppLocalizationsEn extends AppLocalizations {
   String get warehouseProfileButtonLabel => 'Profile';
 
   @override
+  String get warehousesScopeMyCity => 'My city';
+
+  @override
+  String get warehousesScopeAllCities => 'All cities';
+
+  @override
+  String get viewAllCitiesButton => 'View all cities';
+
+  @override
+  String get noWarehousesInYourCity => 'No warehouses in your city';
+
+  @override
+  String get noWarehousesInYourCitySubtitle =>
+      'Try broadening the search to other cities.';
+
+  @override
   String get noManufacturersFound =>
       'No manufacturers available for this warehouse.';
 
@@ -439,6 +455,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get removeButton => 'Remove';
 
   @override
+  String get clearCartButton => 'Clear cart';
+
+  @override
+  String get clearCartTitle => 'Clear cart?';
+
+  @override
+  String get clearCartConfirmation =>
+      'Are you sure you want to clear all the contents of your cart?';
+
+  @override
   String get cartConflictTitle => 'Start a new cart?';
 
   @override
@@ -592,6 +618,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String errorProductNotFound(String name) {
     return '$name is no longer available.';
   }
+
+  @override
+  String get errorPriceChangedGeneric =>
+      'Some prices in your cart have changed.';
+
+  @override
+  String errorPriceChanged(String name, String newPrice, String oldPrice) {
+    return '$name is now $newPrice (was $oldPrice).';
+  }
+
+  @override
+  String get priceChangedConfirmHint =>
+      'Submit again to place the order at the new prices.';
 
   @override
   String get thisItemFallback => 'This item';
@@ -1311,14 +1350,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get updateAvailableMessage =>
-      'A new version of Phoenix is available. Update now to get the latest features and improvements.';
+      'A new version of Feniq is available. Update now to get the latest features and improvements.';
 
   @override
   String get updateRequired => 'Mandatory Update';
 
   @override
   String get updateRequiredMessage =>
-      'Your current version of Phoenix is no longer supported. Please update the application to continue.';
+      'Your current version of Feniq is no longer supported. Please update the application to continue.';
 
   @override
   String get updateNow => 'Update Now';

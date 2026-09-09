@@ -4,15 +4,15 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:phoenix/core/theme/dark_theme.dart';
-import 'package:phoenix/features/auth/presentation/managers/auth_cubit.dart';
-import 'package:phoenix/features/auth/presentation/managers/auth_state.dart';
-import 'package:phoenix/features/debts/presentation/widgets/debts_overview.dart';
-import 'package:phoenix/features/profile/presentation/views/profile_view.dart';
-import 'package:phoenix/features/settings/presentation/managers/settings_cubit.dart';
-import 'package:phoenix/features/settings/presentation/managers/settings_state.dart';
-import 'package:phoenix/generated/app_localizations.dart';
-import 'package:phoenix/routes/route_names.dart';
+import 'package:feniq/core/theme/dark_theme.dart';
+import 'package:feniq/features/auth/presentation/managers/auth_cubit.dart';
+import 'package:feniq/features/auth/presentation/managers/auth_state.dart';
+import 'package:feniq/features/debts/presentation/widgets/debts_overview.dart';
+import 'package:feniq/features/profile/presentation/views/profile_view.dart';
+import 'package:feniq/features/settings/presentation/managers/settings_cubit.dart';
+import 'package:feniq/features/settings/presentation/managers/settings_state.dart';
+import 'package:feniq/generated/app_localizations.dart';
+import 'package:feniq/routes/route_names.dart';
 
 class MockAuthCubit extends MockCubit<AuthState> implements AuthCubit {}
 

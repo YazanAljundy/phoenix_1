@@ -4,17 +4,17 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:phoenix/features/cart/data/repositories/order_repository.dart';
-import 'package:phoenix/features/cart/presentation/managers/cart_cubit.dart';
-import 'package:phoenix/features/cart/presentation/widgets/cart_button.dart';
-import 'package:phoenix/features/catalog/data/models/product_model.dart';
-import 'package:phoenix/features/my_orders/presentation/managers/my_orders_cubit.dart';
-import 'package:phoenix/features/my_orders/presentation/managers/my_orders_state.dart';
-import 'package:phoenix/features/my_orders/presentation/views/my_orders_view.dart';
-import 'package:phoenix/features/warehouse_selection/data/repositories/warehouse_repository.dart';
-import 'package:phoenix/generated/app_localizations.dart';
-import 'package:phoenix/routes/route_names.dart';
-import 'package:phoenix/routes/route_paths.dart';
+import 'package:feniq/features/cart/data/repositories/order_repository.dart';
+import 'package:feniq/features/cart/presentation/managers/cart_cubit.dart';
+import 'package:feniq/features/cart/presentation/widgets/cart_button.dart';
+import 'package:feniq/features/catalog/data/models/product_model.dart';
+import 'package:feniq/features/my_orders/presentation/managers/my_orders_cubit.dart';
+import 'package:feniq/features/my_orders/presentation/managers/my_orders_state.dart';
+import 'package:feniq/features/my_orders/presentation/views/my_orders_view.dart';
+import 'package:feniq/features/warehouse_selection/data/repositories/warehouse_repository.dart';
+import 'package:feniq/generated/app_localizations.dart';
+import 'package:feniq/routes/route_names.dart';
+import 'package:feniq/routes/route_paths.dart';
 
 class MockMyOrdersCubit extends MockCubit<MyOrdersState> implements MyOrdersCubit {}
 

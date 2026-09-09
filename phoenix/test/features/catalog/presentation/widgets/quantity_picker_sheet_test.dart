@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:phoenix/features/catalog/presentation/widgets/quantity_picker_sheet.dart';
-import 'package:phoenix/generated/app_localizations.dart';
+import 'package:feniq/features/catalog/presentation/widgets/quantity_picker_sheet.dart';
+import 'package:feniq/generated/app_localizations.dart';
 
 void main() {
   Future<int?> openAndReturn(

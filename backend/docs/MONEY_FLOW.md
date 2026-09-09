@@ -1,6 +1,6 @@
 # Money-Flow V2
 
-How money works in Phoenix: what is stored, what is derived, and which rules
+How money works in Feniq: what is stored, what is derived, and which rules
 are load-bearing. Read this before changing anything that touches a balance.
 
 The short version: **an immutable ledger is the source of truth, every monetary

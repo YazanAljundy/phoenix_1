@@ -8,7 +8,7 @@
 // the same rows, in the same order. That is what makes this a behaviour-
 // preservation test rather than a re-specification.
 //
-// Runs against its own database (phoenix-catalog-test) and drops it at the
+// Runs against its own database (feniq-catalog-test) and drops it at the
 // end, so it never touches the development data.
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-catalog-tests';
 process.env.NODE_ENV = 'test';
@@ -78,6 +78,24 @@ function fingerprint(rows) {
       product.manufacturerEn,
     ].join('|');
   });
+}
+
+// Order-insensitive variant, for the search comparisons only.
+//
+// The oracle above sorts alphabetically by name, which is what the search
+// branch used to do. Search results are now ordered by `_id` like every other
+// listing, because they are cursor-paginated: an unpaginated search returned
+// every match at once, and a one- or two-letter query - which is every query
+// on the way to typing a real one - meant most of the catalog loaded and
+// sorted in Node on each keystroke. Cursor pagination needs a stable, unique
+// sort key, the same trade productCatalog.service.js's listCatalog already
+// documents for the admin list.
+//
+// So the oracle still pins down WHICH rows a search returns - the part that
+// encodes the identity-resolution rules this file exists to protect - and no
+// longer pins down their order.
+function sortedFingerprint(rows) {
+  return fingerprint(rows).sort();
 }
 
 // ---------------------------------------------------------------------------
@@ -169,7 +187,7 @@ async function seed() {
 }
 
 test.before(async () => {
-  await startMemoryMongo({ dbName: 'phoenix-catalog-test' });
+  await startMemoryMongo({ dbName: 'feniq-catalog-test' });
   await seed();
 });
 
@@ -203,10 +221,16 @@ for (const term of SEARCH_TERMS) {
   if (!term.trim()) continue;
   test(`search "${term}" returns exactly what the original algorithm returned`, async () => {
     const expected = await originalSearch(WAREHOUSE_ID, { search: term });
-    const { items } = await productService.listWarehouseProducts(WAREHOUSE_ID, { search: term });
+    // limit high enough that the whole result set lands on one page - this
+    // test is about which rows match, not about paging (see the pagination
+    // tests below for that).
+    const { items } = await productService.listWarehouseProducts(WAREHOUSE_ID, {
+      search: term,
+      limit: 100,
+    });
     assert.deepStrictEqual(
-      fingerprint(items),
-      fingerprint(expected),
+      sortedFingerprint(items),
+      sortedFingerprint(expected),
       `search "${term}" diverged from the original implementation`
     );
   });
@@ -263,18 +287,22 @@ test('search is isolated to the requested warehouse', async () => {
 test('search combined with a manufacturer filter matches the original', async () => {
   const expected = await originalSearch(WAREHOUSE_ID, { search: 'a', manufacturer: 'قديم' });
   const { items } = await productService.listWarehouseProducts(WAREHOUSE_ID, {
-    search: 'a', manufacturer: 'قديم',
+    search: 'a', manufacturer: 'قديم', limit: 100,
   });
-  assert.deepStrictEqual(fingerprint(items), fingerprint(expected));
+  assert.deepStrictEqual(sortedFingerprint(items), sortedFingerprint(expected));
   assert.ok(items.length > 0, 'fixture should produce at least one row for this combination');
 });
 
 test('search response keeps its shape: items carry product, offer and discount', async () => {
-  const { items, hasMore, nextCursor } = await productService.listWarehouseProducts(
+  const { items, hasMore } = await productService.listWarehouseProducts(
     WAREHOUSE_ID, { search: 'Panadol' }
   );
-  assert.strictEqual(hasMore, false, 'search is unpaginated and must keep saying so');
-  assert.strictEqual(nextCursor, null);
+  // A single match still fits one page, so there is nothing more to fetch.
+  // `nextCursor` is no longer asserted null here: search is cursor-paginated
+  // now, so the service reports the last row's id like every other listing
+  // and the controller is what nulls it out when hasMore is false
+  // (utils/pagination.js's paginationMeta).
+  assert.strictEqual(hasMore, false);
   assert.ok('product' in items[0]);
   assert.ok('offer' in items[0]);
   assert.ok('manufacturerDiscountPercentage' in items[0]);

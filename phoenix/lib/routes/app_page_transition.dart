@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:phoenix/core/constants/app_duration.dart';
+import 'package:feniq/core/constants/app_duration.dart';
 
 // Fade + a light slide-in from the right (Section 2-a of the visual-polish
 // pass, matching the app's default Arabic/RTL reading direction) - replaces

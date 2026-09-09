@@ -1,5 +1,5 @@
-import 'package:phoenix/core/widgets/status_badge.dart';
-import 'package:phoenix/generated/app_localizations.dart';
+import 'package:feniq/core/widgets/status_badge.dart';
+import 'package:feniq/generated/app_localizations.dart';
 
 // Section 13/14: the four complaint states, each with a localized label and a
 // visual tone. The status -> tone mapping is domain knowledge that belongs

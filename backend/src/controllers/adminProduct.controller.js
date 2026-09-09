@@ -31,6 +31,15 @@ const list = asyncHandler(async (req, res) => {
   });
 });
 
+// Backs the Dashboard's products stat card. Deliberately its own endpoint
+// rather than a `total` on the paginated list: the Dashboard doesn't want a
+// page of products at all, and a total there would make every page of the
+// management page's list pay for a count it never shows.
+const count = asyncHandler(async (req, res) => {
+  const total = await adminProductService.countAllProducts();
+  res.json({ success: true, count: total });
+});
+
 // Backs the management page's warehouse filter dropdown - independent of
 // pagination, see listWarehousesWithProducts's own comment.
 const listWarehouses = asyncHandler(async (req, res) => {
@@ -52,4 +61,4 @@ const deactivate = asyncHandler(async (req, res) => {
   res.json({ success: true, message: 'Product removed.' });
 });
 
-module.exports = { list, listWarehouses, update, deactivate };
+module.exports = { list, count, listWarehouses, update, deactivate };

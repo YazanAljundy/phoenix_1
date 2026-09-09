@@ -1,12 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:phoenix/core/error/failure.dart';
-import 'package:phoenix/features/cart/data/models/order_model.dart';
-import 'package:phoenix/features/cart/data/repositories/order_repository.dart';
-import 'package:phoenix/features/order_tracking/presentation/managers/order_tracking_cubit.dart';
-import 'package:phoenix/features/reviews/data/repositories/review_repository.dart';
-import 'package:phoenix/features/warehouse_selection/data/repositories/warehouse_repository.dart';
+import 'package:feniq/core/error/failure.dart';
+import 'package:feniq/features/cart/data/models/order_model.dart';
+import 'package:feniq/features/cart/data/repositories/order_repository.dart';
+import 'package:feniq/features/order_tracking/presentation/managers/order_tracking_cubit.dart';
+import 'package:feniq/features/reviews/data/repositories/review_repository.dart';
+import 'package:feniq/features/warehouse_selection/data/models/warehouse_list_result.dart';
+import 'package:feniq/features/warehouse_selection/data/repositories/warehouse_repository.dart';
 
 class MockOrderRepository extends Mock implements OrderRepository {}
 
@@ -40,7 +41,9 @@ void main() {
     orderRepo = MockOrderRepository();
     reviewRepo = MockReviewRepository();
     warehouseRepo = MockWarehouseRepository();
-    when(() => warehouseRepo.getWarehouses()).thenAnswer((_) async => []);
+    when(() => warehouseRepo.getWarehouses(onlyMyCity: any(named: 'onlyMyCity'))).thenAnswer(
+      (_) async => const WarehouseListResult(warehouses: [], cityFilterApplied: false),
+    );
   });
 
   OrderTrackingCubit build() => OrderTrackingCubit(

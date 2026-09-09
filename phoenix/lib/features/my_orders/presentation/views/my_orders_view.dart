@@ -1,19 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:phoenix/core/constants/app_colors.dart';
-import 'package:phoenix/core/constants/app_padding.dart';
-import 'package:phoenix/core/constants/app_radius.dart';
-import 'package:phoenix/core/constants/app_sizes.dart';
-import 'package:phoenix/core/error/error_translator.dart';
-import 'package:phoenix/core/extensions/build_context_extensions.dart';
-import 'package:phoenix/core/widgets/app_snackbar.dart';
-import 'package:phoenix/core/widgets/failure_widget.dart';
-import 'package:phoenix/features/cart/presentation/widgets/cart_button.dart';
-import 'package:phoenix/features/my_orders/presentation/managers/my_orders_cubit.dart';
-import 'package:phoenix/features/my_orders/presentation/managers/my_orders_state.dart';
-import 'package:phoenix/features/my_orders/presentation/widgets/order_list_tile.dart';
-import 'package:phoenix/routes/route_names.dart';
+import 'package:feniq/core/constants/app_colors.dart';
+import 'package:feniq/core/constants/app_padding.dart';
+import 'package:feniq/core/constants/app_radius.dart';
+import 'package:feniq/core/constants/app_sizes.dart';
+import 'package:feniq/core/error/error_translator.dart';
+import 'package:feniq/core/extensions/build_context_extensions.dart';
+import 'package:feniq/core/widgets/app_skeleton.dart';
+import 'package:feniq/core/widgets/app_snackbar.dart';
+import 'package:feniq/core/widgets/failure_widget.dart';
+import 'package:feniq/features/cart/presentation/widgets/cart_button.dart';
+import 'package:feniq/features/my_orders/presentation/managers/my_orders_cubit.dart';
+import 'package:feniq/features/my_orders/presentation/managers/my_orders_state.dart';
+import 'package:feniq/features/my_orders/presentation/widgets/order_list_tile.dart';
+import 'package:feniq/routes/route_names.dart';
 
 class MyOrdersView extends StatefulWidget {
   const MyOrdersView({super.key});
@@ -96,7 +97,7 @@ class _MyOrdersViewState extends State<MyOrdersView> {
         builder: (context, state) {
           if (state.status == MyOrdersStatus.initial ||
               (state.status == MyOrdersStatus.loading && state.orders.isEmpty)) {
-            return const _OrdersSkeletonList();
+            return const SkeletonCardList();
           }
           if (state.status == MyOrdersStatus.error && state.orders.isEmpty) {
             return FailureWidget(
@@ -150,11 +151,12 @@ class _PaginationFooter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (isLoadingMore) {
+      // One more card-shaped placeholder at the tail of the list, so the next
+      // page arrives into the shape it is about to fill rather than under a
+      // spinner.
       return const Padding(
-        padding: EdgeInsets.symmetric(vertical: AppSizes.spacingSmall),
-        child: Center(
-          child: SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2)),
-        ),
+        padding: EdgeInsets.only(top: AppSizes.spacingSmall),
+        child: SkeletonPulse(child: SkeletonListCard()),
       );
     }
     if (!hasMore) {
@@ -220,98 +222,6 @@ class _RefreshButtonState extends State<_RefreshButton> with SingleTickerProvide
           icon: RotationTransition(turns: _controller, child: const Icon(Icons.refresh)),
         );
       },
-    );
-  }
-}
-
-class _OrdersSkeletonList extends StatefulWidget {
-  const _OrdersSkeletonList();
-
-  @override
-  State<_OrdersSkeletonList> createState() => _OrdersSkeletonListState();
-}
-
-class _OrdersSkeletonListState extends State<_OrdersSkeletonList> with SingleTickerProviderStateMixin {
-  late final AnimationController _controller = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 900),
-  )..repeat(reverse: true);
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView.separated(
-      padding: AppPadding.screen,
-      itemCount: 4,
-      separatorBuilder: (context, index) => const SizedBox(height: AppSizes.spacingSmall),
-      itemBuilder: (context, index) => _SkeletonCard(controller: _controller),
-    );
-  }
-}
-
-class _SkeletonCard extends StatelessWidget {
-  const _SkeletonCard({required this.controller});
-
-  final AnimationController controller;
-
-  @override
-  Widget build(BuildContext context) {
-    return FadeTransition(
-      opacity: Tween(begin: 0.5, end: 1.0).animate(controller),
-      child: Container(
-        padding: const EdgeInsets.all(AppSizes.spacingMedium),
-        decoration: BoxDecoration(
-          color: AppColors.surfaceElevatedOf(context),
-          borderRadius: AppRadius.large,
-          border: Border.all(color: AppColors.borderOf(context)),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                _SkeletonBox(width: 90, height: 14, context: context),
-                const Spacer(),
-                _SkeletonBox(width: 64, height: 22, radius: AppRadius.full, context: context),
-              ],
-            ),
-            const SizedBox(height: AppSizes.spacingSmall),
-            _SkeletonBox(width: 140, height: 12, context: context),
-            const SizedBox(height: AppSizes.spacingMedium),
-            _SkeletonBox(width: 70, height: 18, context: context),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _SkeletonBox extends StatelessWidget {
-  const _SkeletonBox({
-    required this.width,
-    required this.height,
-    required this.context,
-    this.radius = AppRadius.small,
-  });
-
-  final double width;
-  final double height;
-  final BorderRadius radius;
-  // Named `context` to read the theme at construction time from the parent
-  // build - this is a plain data widget, not overriding BuildContext.
-  final BuildContext context;
-
-  @override
-  Widget build(BuildContext _) {
-    return Container(
-      width: width,
-      height: height,
-      decoration: BoxDecoration(color: AppColors.surfaceOf(context), borderRadius: radius),
     );
   }
 }

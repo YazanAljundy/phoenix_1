@@ -27,7 +27,7 @@ const { captureFxSnapshot } = require('./exchangeRate.service');
 // nothing else to keep in step afterwards.
 
 const CURRENCIES = ['USD', 'SYP'];
-// SYP is Phoenix's default currency - a request that omits `currency`
+// SYP is Feniq's default currency - a request that omits `currency`
 // entirely records a Syrian-pound payment. An explicitly wrong value (e.g.
 // 'EUR') is still rejected.
 const DEFAULT_CURRENCY = 'SYP';

@@ -1,12 +1,14 @@
-import 'package:phoenix/features/auth/data/models/pharmacy_model.dart';
-import 'package:phoenix/features/auth/data/models/user_model.dart';
+import 'package:feniq/features/auth/data/models/pharmacy_model.dart';
+import 'package:feniq/features/auth/data/models/user_model.dart';
 
 // Drives routing decisions (splash -> registration / approval-pending / home).
 //
 // `offline` is distinct from `unauthenticated`: a stored token is still
 // present and untouched, but the server could not be reached to validate it
-// on startup. The splash screen shows a "no connection / retry" state for
-// this instead of logging the user out. See AuthCubit.checkSession.
+// on startup. The user is never logged out for this - the splash screen
+// carries on into the app exactly as it does for `active`, and the screens
+// that actually need the network surface their own retry. See
+// AuthCubit.checkSession and SplashView._routeFor.
 enum SessionStatus { unknown, unauthenticated, offline, pendingApproval, blocked, active }
 
 class AuthState {

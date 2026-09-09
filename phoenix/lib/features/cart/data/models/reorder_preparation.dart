@@ -1,5 +1,5 @@
-import 'package:phoenix/features/cart/data/models/cart_item.dart';
-import 'package:phoenix/features/catalog/data/models/product_model.dart';
+import 'package:feniq/features/cart/data/models/cart_item.dart';
+import 'package:feniq/features/catalog/data/models/product_model.dart';
 
 // A line from the original order whose product the warehouse no longer sells
 // (deleted, deactivated, or moved warehouse). Reported so the pharmacist can

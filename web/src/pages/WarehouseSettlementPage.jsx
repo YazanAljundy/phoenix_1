@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../api/client';
 import { formatSyp } from '../utils/currency';
+import { WarehouseGroupSubNav } from '../components/WarehouseGroupSubNav';
 
 // Money-Flow V2. What the warehouse sold in a period, what came back, what the
 // platform is owed, and what the warehouse keeps.
@@ -65,6 +66,8 @@ export function WarehouseSettlementPage() {
 
   return (
     <div>
+      <WarehouseGroupSubNav />
+
       <div className="wh-page-head">
         <h1>{t('nav.settlement')}</h1>
       </div>

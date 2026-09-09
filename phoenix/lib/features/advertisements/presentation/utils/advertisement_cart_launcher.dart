@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:phoenix/core/error/error_translator.dart';
-import 'package:phoenix/core/error/failure.dart';
-import 'package:phoenix/core/extensions/build_context_extensions.dart';
-import 'package:phoenix/core/widgets/app_dialog.dart';
-import 'package:phoenix/features/advertisements/data/models/advertisement_cart_preparation.dart';
-import 'package:phoenix/features/advertisements/data/repositories/advertisements_repository.dart';
-import 'package:phoenix/features/cart/presentation/managers/cart_cubit.dart';
-import 'package:phoenix/routes/route_names.dart';
+import 'package:feniq/core/error/error_translator.dart';
+import 'package:feniq/core/error/failure.dart';
+import 'package:feniq/core/extensions/build_context_extensions.dart';
+import 'package:feniq/core/widgets/app_dialog.dart';
+import 'package:feniq/features/advertisements/data/models/advertisement_cart_preparation.dart';
+import 'package:feniq/features/advertisements/data/repositories/advertisements_repository.dart';
+import 'package:feniq/features/cart/presentation/managers/cart_cubit.dart';
+import 'package:feniq/routes/route_names.dart';
 
 // The one path from "a pharmacist tapped an advertised package" to the cart
 // screen, wherever the package was tapped - the warehouse screen's

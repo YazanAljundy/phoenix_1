@@ -85,7 +85,7 @@ const ids = {
 const DELIVERED_AT = new Date(Date.now() - 60 * 60 * 1000);
 
 test.before(async () => {
-  await startMemoryMongo({ dbName: 'phoenix-projection-test' });
+  await startMemoryMongo({ dbName: 'feniq-projection-test' });
 
   await User.create([
     { _id: ids.pharmUser, name: 'Pharm Owner', phone: '0930000001', role: 'pharmacy', status: 'active' },
@@ -395,8 +395,8 @@ test('warehouse profile response keeps its full field set', async () => {
 });
 
 test('available-warehouses list response keeps exactly its documented keys', async () => {
-  const warehouses = await warehouseService.listAvailableWarehouses();
-  const { warehouses: rows } = warehouseViewModel.toWarehouseListResponse(warehouses);
+  const result = await warehouseService.listAvailableWarehouses();
+  const { warehouses: rows } = warehouseViewModel.toWarehouseListResponse(result);
   assert.strictEqual(rows.length, 1);
   assert.deepStrictEqual(
     Object.keys(rows[0]).sort(),

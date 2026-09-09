@@ -1,5 +1,5 @@
-import 'package:phoenix/core/error/failure.dart';
-import 'package:phoenix/generated/app_localizations.dart';
+import 'package:feniq/core/error/failure.dart';
+import 'package:feniq/generated/app_localizations.dart';
 
 // Maps an error `code` - either a backend domain code (see
 // backend/src/utils/ApiError.js) or one of [FailureCode] for a transport

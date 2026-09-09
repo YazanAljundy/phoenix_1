@@ -1,4 +1,4 @@
-import 'package:phoenix/features/promotions/data/models/promotion.dart';
+import 'package:feniq/features/promotions/data/models/promotion.dart';
 
 enum PromotionsStatus { initial, loading, loaded, error }
 

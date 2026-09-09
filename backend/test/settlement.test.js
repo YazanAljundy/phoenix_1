@@ -103,7 +103,7 @@ async function creditFully(order, item) {
 }
 
 test.before(async () => {
-  await startMemoryMongo({ dbName: 'phoenix-settlement-test' });
+  await startMemoryMongo({ dbName: 'feniq-settlement-test' });
   await syncIndexes(LedgerEntry, LedgerAccount, Return, Order);
   await ExchangeRate.create({ _id: 'singleton', usdToSyp: RATE, source: 'manual' });
 

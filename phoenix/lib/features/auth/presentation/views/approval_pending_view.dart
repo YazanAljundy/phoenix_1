@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:phoenix/core/constants/app_colors.dart';
-import 'package:phoenix/core/constants/app_padding.dart';
-import 'package:phoenix/core/constants/app_radius.dart';
-import 'package:phoenix/core/constants/app_sizes.dart';
-import 'package:phoenix/core/extensions/build_context_extensions.dart';
-import 'package:phoenix/core/widgets/app_dialog.dart';
-import 'package:phoenix/core/widgets/primary_button.dart';
-import 'package:phoenix/core/widgets/secondary_button.dart';
-import 'package:phoenix/features/auth/presentation/managers/auth_cubit.dart';
-import 'package:phoenix/features/auth/presentation/managers/auth_state.dart';
-import 'package:phoenix/routes/route_names.dart';
+import 'package:feniq/core/constants/app_colors.dart';
+import 'package:feniq/core/constants/app_padding.dart';
+import 'package:feniq/core/constants/app_radius.dart';
+import 'package:feniq/core/constants/app_sizes.dart';
+import 'package:feniq/core/extensions/build_context_extensions.dart';
+import 'package:feniq/core/theme/app_text_theme.dart';
+import 'package:feniq/core/widgets/app_dialog.dart';
+import 'package:feniq/core/widgets/brand_logo.dart';
+import 'package:feniq/core/widgets/primary_button.dart';
+import 'package:feniq/core/widgets/secondary_button.dart';
+import 'package:feniq/features/auth/presentation/managers/auth_cubit.dart';
+import 'package:feniq/features/auth/presentation/managers/auth_state.dart';
+import 'package:feniq/routes/route_names.dart';
 
 class ApprovalPendingView extends StatefulWidget {
   const ApprovalPendingView({super.key});
@@ -107,6 +109,15 @@ class _ApprovalPendingViewState extends State<ApprovalPendingView>
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
+                            // Splash routes a pending or blocked account
+                            // straight here, so for those pharmacists this is
+                            // the screen every launch lands on - and it was
+                            // the only stop in the auth flow (splash ->
+                            // registration -> login -> here) carrying no mark
+                            // at all. Themed rather than .onDark: the ground
+                            // is the ordinary scaffold surface, not navy.
+                            const Center(child: BrandLogo(width: 140)),
+                            const SizedBox(height: AppSizes.spacingLarge),
                             Center(
                               child: _StatusBadge(isBlocked: isBlocked, pulseController: _pulseController),
                             ),
@@ -261,7 +272,7 @@ class _ChecklistRow extends StatelessWidget {
         Expanded(
           child: Text(
             label,
-            style: context.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+            style: context.textTheme.bodyMedium?.copyWith(fontWeight: AppTextTheme.semiBold),
           ),
         ),
       ],

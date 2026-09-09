@@ -1,4 +1,4 @@
-import 'package:phoenix/features/complaints/data/models/complaint_model.dart';
+import 'package:feniq/features/complaints/data/models/complaint_model.dart';
 
 enum SubmitComplaintStatus { ready, submitting, submitted, submitError }
 

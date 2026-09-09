@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:phoenix/core/constants/app_colors.dart';
-import 'package:phoenix/core/constants/app_radius.dart';
-import 'package:phoenix/core/extensions/build_context_extensions.dart';
+import 'package:feniq/core/constants/app_colors.dart';
+import 'package:feniq/core/constants/app_radius.dart';
+import 'package:feniq/core/extensions/build_context_extensions.dart';
 
 // `[ − ] [ n ] [ + ]` where the middle is a real number field you can type
 // into, flanked by step buttons - so a big quantity is one keystroke, not 99

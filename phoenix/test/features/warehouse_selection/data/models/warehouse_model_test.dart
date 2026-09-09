@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:phoenix/features/warehouse_selection/data/models/warehouse_model.dart';
+import 'package:feniq/features/warehouse_selection/data/models/warehouse_model.dart';
 
 void main() {
   group('WarehouseModel', () {

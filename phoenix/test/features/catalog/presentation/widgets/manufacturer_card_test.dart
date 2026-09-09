@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:phoenix/features/catalog/data/models/manufacturer_model.dart';
-import 'package:phoenix/features/catalog/presentation/widgets/manufacturer_card.dart';
-import 'package:phoenix/generated/app_localizations.dart';
+import 'package:feniq/features/catalog/data/models/manufacturer_model.dart';
+import 'package:feniq/features/catalog/presentation/widgets/manufacturer_card.dart';
+import 'package:feniq/generated/app_localizations.dart';
 
 void main() {
   Future<void> pumpCard(

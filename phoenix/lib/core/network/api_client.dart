@@ -1,7 +1,7 @@
 import 'package:dio/dio.dart';
-import 'package:phoenix/config/app_config.dart';
-import 'package:phoenix/core/network/interceptors/auth_interceptor.dart';
-import 'package:phoenix/core/services/secure_storage_service.dart';
+import 'package:feniq/config/app_config.dart';
+import 'package:feniq/core/network/interceptors/auth_interceptor.dart';
+import 'package:feniq/core/services/secure_storage_service.dart';
 
 class ApiClient {
   ApiClient({required SecureStorageService secureStorage})

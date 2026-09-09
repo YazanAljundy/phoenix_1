@@ -32,7 +32,11 @@ export function productFormFromProduct(product, usdToSyp) {
     nameEn: product.nameEn,
     manufacturerAr: product.manufacturerAr,
     manufacturerEn: product.manufacturerEn,
-    categoryId: product.categoryId,
+    // `?? ''` for the same reason unitAr has it: an Excel-imported product
+    // carries neither (the import format has no category/unit columns, see
+    // warehouseProduct.service.js's importProductsFromExcel), and the
+    // required-field check below calls .trim() on this value.
+    categoryId: product.categoryId ?? '',
     unitAr: product.unitAr ?? '',
     unitEn: product.unitEn ?? '',
     // The SYP field is left blank when the rate hasn't loaded - the warehouse
@@ -156,10 +160,24 @@ export function ProductFormModal({ mode, initialForm, categories, usdToSyp, onCl
     }));
   };
 
+  // The whole body runs inside one try/catch, not just the network call: a
+  // throw anywhere in the validation/conversion above it (a null field
+  // reaching .trim(), say) used to escape the handler entirely, leaving the
+  // modal open with no error shown and no save - indistinguishable from a
+  // dead button. Anything unexpected now surfaces as a message.
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError(null);
 
+    try {
+      await submitForm();
+    } catch (err) {
+      setError(err?.message || t('common.unexpectedError'));
+      setIsSaving(false);
+    }
+  };
+
+  const submitForm = async () => {
     if (mode === 'create' && !form.masterProductId) {
       setError(t('productForm.selectMedicineRequired'));
       return;

@@ -1,22 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:phoenix/core/constants/app_colors.dart';
-import 'package:phoenix/core/constants/app_padding.dart';
-import 'package:phoenix/core/constants/app_radius.dart';
-import 'package:phoenix/core/constants/app_sizes.dart';
-import 'package:phoenix/core/error/error_translator.dart';
-import 'package:phoenix/core/extensions/build_context_extensions.dart';
-import 'package:phoenix/core/widgets/app_dialog.dart';
-import 'package:phoenix/core/widgets/app_loading.dart';
-import 'package:phoenix/core/widgets/app_snackbar.dart';
-import 'package:phoenix/core/widgets/empty_view.dart';
-import 'package:phoenix/core/widgets/failure_widget.dart';
-import 'package:phoenix/features/cart/presentation/managers/cart_cubit.dart';
-import 'package:phoenix/features/cart/presentation/widgets/cart_button.dart';
-import 'package:phoenix/features/catalog/data/models/product_model.dart';
-import 'package:phoenix/features/catalog/presentation/managers/catalog_cubit.dart';
-import 'package:phoenix/features/catalog/presentation/managers/catalog_state.dart';
-import 'package:phoenix/features/catalog/presentation/widgets/product_card.dart';
+import 'package:feniq/core/constants/app_colors.dart';
+import 'package:feniq/core/constants/app_padding.dart';
+import 'package:feniq/core/constants/app_radius.dart';
+import 'package:feniq/core/constants/app_sizes.dart';
+import 'package:feniq/core/error/error_translator.dart';
+import 'package:feniq/core/extensions/build_context_extensions.dart';
+import 'package:feniq/core/widgets/app_dialog.dart';
+import 'package:feniq/core/widgets/app_skeleton.dart';
+import 'package:feniq/core/widgets/app_snackbar.dart';
+import 'package:feniq/core/widgets/empty_view.dart';
+import 'package:feniq/core/widgets/failure_widget.dart';
+import 'package:feniq/features/cart/presentation/managers/cart_cubit.dart';
+import 'package:feniq/features/cart/presentation/widgets/cart_button.dart';
+import 'package:feniq/features/catalog/data/models/product_model.dart';
+import 'package:feniq/features/catalog/presentation/managers/catalog_cubit.dart';
+import 'package:feniq/features/catalog/presentation/managers/catalog_state.dart';
+import 'package:feniq/features/catalog/presentation/widgets/product_card.dart';
 
 class CatalogView extends StatefulWidget {
   const CatalogView({
@@ -245,7 +245,7 @@ class _CatalogViewState extends State<CatalogView> {
         },
         builder: (context, state) {
           if (state.status == CatalogStatus.initial) {
-            return const AppLoading();
+            return _ProductsSkeleton(isGrid: _isGrid);
           }
           if (state.status == CatalogStatus.error && state.products.isEmpty) {
             return FailureWidget(
@@ -254,7 +254,7 @@ class _CatalogViewState extends State<CatalogView> {
             );
           }
           if (state.status == CatalogStatus.loading) {
-            return const AppLoading();
+            return _ProductsSkeleton(isGrid: _isGrid);
           }
           if (state.products.isEmpty) {
             return EmptyView(message: l10n.noProductsFound, icon: Icons.inventory_2_outlined);
@@ -318,7 +318,7 @@ class _CatalogViewState extends State<CatalogView> {
                         ),
                       ),
               ),
-              SliverToBoxAdapter(child: _PaginationFooter(state: state)),
+              SliverToBoxAdapter(child: _PaginationFooter(state: state, isGrid: _isGrid)),
             ],
           );
         },
@@ -327,23 +327,103 @@ class _CatalogViewState extends State<CatalogView> {
   }
 }
 
+// The catalog's loading placeholder. A product is image-above-text in grid
+// mode and thumbnail-beside-text in list mode, so neither shape reuses the
+// standard SkeletonListCard - each mirrors the ProductCard it stands in for,
+// down to the grid metrics of the real SliverGrid.
+class _ProductsSkeleton extends StatelessWidget {
+  const _ProductsSkeleton({required this.isGrid, this.itemCount});
+
+  final bool isGrid;
+  final int? itemCount;
+
+  @override
+  Widget build(BuildContext context) {
+    if (isGrid) {
+      return SkeletonGrid(
+        itemCount: itemCount ?? 6,
+        maxCrossAxisExtent: 170,
+        mainAxisExtent: 316,
+        itemBuilder: (context, index) => const _ProductGridCellSkeleton(),
+      );
+    }
+    return SkeletonList(
+      itemCount: itemCount ?? 6,
+      itemBuilder: (context, index) => const _ProductRowSkeleton(),
+    );
+  }
+}
+
+class _ProductGridCellSkeleton extends StatelessWidget {
+  const _ProductGridCellSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return const SkeletonCard(
+      padding: EdgeInsets.all(AppSizes.spacingSmall),
+      mainAxisSize: MainAxisSize.max,
+      children: [
+        SkeletonBar(height: 132),
+        SizedBox(height: AppSizes.spacingSmall),
+        SkeletonBar(height: 12),
+        SizedBox(height: AppSizes.spacingXSmall),
+        SkeletonBar(width: 80, height: 10),
+        SizedBox(height: AppSizes.spacingSmall),
+        SkeletonBar(width: 96, height: 16),
+        Spacer(),
+        SkeletonBar(height: 36),
+      ],
+    );
+  }
+}
+
+class _ProductRowSkeleton extends StatelessWidget {
+  const _ProductRowSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return const SkeletonCard(
+      children: [
+        Row(
+          children: [
+            SkeletonBar(width: 56, height: 56),
+            SizedBox(width: AppSizes.spacingMedium),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SkeletonBar(height: 12),
+                  SizedBox(height: AppSizes.spacingXSmall),
+                  SkeletonBar(width: 90, height: 10),
+                  SizedBox(height: AppSizes.spacingSmall),
+                  SkeletonBar(width: 70, height: 14),
+                ],
+              ),
+            ),
+            SizedBox(width: AppSizes.spacingSmall),
+            SkeletonBar(width: 40, height: 40, radius: AppRadius.full),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
 class _PaginationFooter extends StatelessWidget {
-  const _PaginationFooter({required this.state});
+  const _PaginationFooter({required this.state, required this.isGrid});
 
   final CatalogState state;
+  final bool isGrid;
 
   @override
   Widget build(BuildContext context) {
     if (state.isLoadingMore) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: AppSizes.spacingMedium),
-        child: Center(
-          child: SizedBox(
-            width: 22,
-            height: 22,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          ),
-        ),
+      // The next page arrives into the shape it is about to fill - one more
+      // row, or one more grid line - rather than under a spinner.
+      return Padding(
+        padding: const EdgeInsets.only(bottom: AppSizes.spacingMedium),
+        child: _ProductsSkeleton(isGrid: isGrid, itemCount: isGrid ? 2 : 1),
       );
     }
     if (!state.hasMore) {

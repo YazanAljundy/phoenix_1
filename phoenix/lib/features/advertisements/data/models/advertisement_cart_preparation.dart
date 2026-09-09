@@ -1,6 +1,6 @@
-import 'package:phoenix/features/cart/data/models/cart_item.dart';
-import 'package:phoenix/features/cart/data/models/reorder_preparation.dart';
-import 'package:phoenix/features/catalog/data/models/product_model.dart';
+import 'package:feniq/features/cart/data/models/cart_item.dart';
+import 'package:feniq/features/cart/data/models/reorder_preparation.dart';
+import 'package:feniq/features/catalog/data/models/product_model.dart';
 
 /// The server's response to GET /advertisements/:id/cart - everything the
 /// existing cart needs to be populated from an advertisement package.

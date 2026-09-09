@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Phoenix</string>
+	<string>Feniq</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -13,7 +13,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>phoenix</string>
+	<string>feniq</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -46,10 +46,10 @@
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>NSLocationWhenInUseUsageDescription</key>
-	<string>Phoenix uses your location only when you tap "Pick my location" during registration, to help pinpoint your pharmacy on the map.</string>
+	<string>Feniq uses your location only when you tap "Pick my location" during registration, to help pinpoint your pharmacy on the map.</string>
 	<key>NSCameraUsageDescription</key>
-	<string>Phoenix uses the camera only when you tap "Take a photo" to attach a picture to a return request.</string>
+	<string>Feniq uses the camera only when you tap "Take a photo" to attach a picture to a return request.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
-	<string>Phoenix accesses your photos only when you choose one to attach to a return request.</string>
+	<string>Feniq accesses your photos only when you choose one to attach to a return request.</string>
 </dict>
 </plist>

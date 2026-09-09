@@ -1,18 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:phoenix/core/constants/app_colors.dart';
-import 'package:phoenix/core/constants/app_radius.dart';
-import 'package:phoenix/core/constants/app_sizes.dart';
-import 'package:phoenix/core/error/error_translator.dart';
-import 'package:phoenix/core/extensions/build_context_extensions.dart';
-import 'package:phoenix/core/utils/currency_formatter.dart';
-import 'package:phoenix/core/widgets/custom_card.dart';
-import 'package:phoenix/core/widgets/failure_widget.dart';
-import 'package:phoenix/features/debts/data/models/warehouse_debt_model.dart';
-import 'package:phoenix/features/debts/presentation/managers/debts_cubit.dart';
-import 'package:phoenix/features/debts/presentation/managers/debts_state.dart';
-import 'package:phoenix/routes/route_names.dart';
+import 'package:feniq/core/constants/app_colors.dart';
+import 'package:feniq/core/constants/app_radius.dart';
+import 'package:feniq/core/constants/app_sizes.dart';
+import 'package:feniq/core/error/error_translator.dart';
+import 'package:feniq/core/extensions/build_context_extensions.dart';
+import 'package:feniq/core/utils/currency_formatter.dart';
+import 'package:feniq/core/widgets/custom_card.dart';
+import 'package:feniq/core/widgets/app_skeleton.dart';
+import 'package:feniq/core/widgets/failure_widget.dart';
+import 'package:feniq/features/debts/data/models/warehouse_debt_model.dart';
+import 'package:feniq/features/debts/presentation/managers/debts_cubit.dart';
+import 'package:feniq/features/debts/presentation/managers/debts_state.dart';
+import 'package:feniq/routes/route_names.dart';
 
 // Section 16: the pharmacist's "my debts" list - one row per warehouse they
 // owe, plus a total. Extracted verbatim from ProfileView so the Account
@@ -31,9 +32,22 @@ class DebtsOverview extends StatelessWidget {
       builder: (context, debtsState) {
         if (debtsState.status == DebtsStatus.loading ||
             debtsState.status == DebtsStatus.initial) {
-          return const SizedBox(
-            height: 24,
-            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+          // Holds the shape of the debt rows and the total line below them,
+          // so this block does not jump when the figures land.
+          return const SkeletonPulse(
+            child: SkeletonCard(
+              padding: EdgeInsets.symmetric(
+                horizontal: AppSizes.spacingMedium,
+                vertical: AppSizes.spacingMedium,
+              ),
+              children: [
+                SkeletonBar(height: 12),
+                SizedBox(height: AppSizes.spacingMedium),
+                SkeletonBar(width: 180, height: 12),
+                SizedBox(height: AppSizes.spacingLarge),
+                SkeletonBar(width: 120, height: 18),
+              ],
+            ),
           );
         }
         // A failed load must not masquerade as "no debts yet".

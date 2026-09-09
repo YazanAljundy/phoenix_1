@@ -32,7 +32,8 @@
     "endAfterStart": "يجب أن يكون تاريخ النهاية بعد تاريخ البداية.",
     "loadMore": "تحميل المزيد ({{count}} إضافي)",
     "loadingMore": "جاري التحميل...",
-    "allResultsShown": "تم عرض كل النتائج"
+    "allResultsShown": "تم عرض كل النتائج",
+    "unexpectedError": "حدث خطأ غير متوقع. حاول مرة أخرى."
   },
   "app": {
     "brand": "فينيق - لوحة الإدارة"
@@ -62,7 +63,10 @@
     "complaints": "الشكاوى",
     "settings": "الإعدادات",
     "settlement": "التسوية",
-    "commission": "العمولات"
+    "commission": "العمولات",
+    "promotions": "الترويج",
+    "financials": "الحسابات المالية",
+    "feedback": "الملاحظات"
   },
   "auth": {
     "phoneLabel": "رقم الهاتف",
@@ -98,7 +102,7 @@
     "advancePending": "تأكيد الطلب",
     "advanceConfirmed": "بدء التحضير",
     "advancePreparing": "بدء التوصيل",
-    "advanceOutForDelivery": "تحديد كمُسلَّم",
+    "advanceOutForDelivery": "تم التسليم",
     "updating": "جارٍ التحديث...",
     "noOrders": "لا توجد طلبات هنا حالياً.",
     "youRatedPharmacy": "لقد قيّمت هذه الصيدلية.",
@@ -140,6 +144,7 @@
     "confirmApproveReturn": "هل توافق على مرتجع الطلب رقم {{number}}؟ هذا الإجراء ينشئ طلب استبدال جديد بدون رسوم إضافية ولا يمكن التراجع عنه.",
     "promptRejectReturn": "اشرح سبب رفض هذا المرتجع (الطلب رقم {{number}}) - سيرى الصيدلاني هذه الملاحظة:",
     "confirmAdvance": "{{action}}؟",
+    "statusAdvanced": "تم تحديث الحالة إلى {{status}}.",
     "editItemsTitle": "تعديل الأصناف",
     "removeItemButton": "حذف",
     "cannotRemoveLastItem": "لا يمكن حذف الصنف الأخير",
@@ -481,6 +486,9 @@
     "importConverted": "💱 تم تحويل {{count}} صنف من الليرة السورية",
     "importConvertedRate": "بسعر صرف: 1$ = {{rate}} ل.س",
     "noProductsWarehouse": "لا توجد منتجات بعد - أضف أول منتج لك.",
+    "companyProductCount": "{{count}} منتج",
+    "backToCompanies": "رجوع إلى الشركات",
+    "noProductsForCompany": "لا توجد منتجات لهذه الشركة في كتالوجك.",
     "noProductsAdmin": "لا توجد منتجات.",
     "allWarehouses": "كل المستودعات",
     "removed": "محذوف",
@@ -601,6 +609,9 @@
       "enable": "تفعيل",
       "editTitle": "تعديل عنصر الكتالوج",
       "nameArLabel": "اسم الدواء (عربي)",
+      "confirmRename": "تغيير اسم \"{{oldName}}\" إلى \"{{newName}}\"؟\n\nهذا الدواء مخزَّن كـ {{count}} منتج عبر المستودعات. سيظهر الاسم الجديد فيها كلها فوراً، بما في ذلك السلات التي تحتويه الآن.",
+      "confirmDisable": "تعطيل \"{{name}}\"؟\n\nهو مخزَّن كـ {{count}} منتج عبر المستودعات. سيُزال من كتالوجاتها كلها ولن يعود بإمكان الصيادلة طلبه.",
+      "disabledWithProducts": "تم التعطيل. أُزيل معه {{count}} منتج من المستودعات.",
       "noCategoryOption": "بدون تصنيف",
       "importResultTitle": "نتيجة الاستيراد",
       "importSummary": "الملف: {{fileName}} · {{count}} سطراً",
@@ -686,7 +697,7 @@
     "returns": "المرتجعات",
     "returnsHint": "ما تمت إعادته كرصيد عند قبول المرتجع",
     "owed": "العمولة المستحقة",
-    "owedHint": "مستحقة لـ Phoenix بعد خصم المرتجعات",
+    "owedHint": "مستحقة لـ Feniq بعد خصم المرتجعات",
     "collected": "المحصّل",
     "outstanding": "المتبقّي",
     "collectedSoFar": "تم تحصيل {{amount}} حتى الآن",

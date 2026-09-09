@@ -3,15 +3,15 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:phoenix/core/constants/storage_keys.dart';
-import 'package:phoenix/core/error/failure.dart';
-import 'package:phoenix/core/services/auth_event_bus.dart';
-import 'package:phoenix/core/services/fcm_service.dart';
-import 'package:phoenix/core/services/navigation_service.dart';
-import 'package:phoenix/core/services/secure_storage_service.dart';
-import 'package:phoenix/features/auth/data/models/user_model.dart';
-import 'package:phoenix/features/auth/data/repositories/auth_repository_impl.dart';
-import 'package:phoenix/routes/route_names.dart';
+import 'package:feniq/core/constants/storage_keys.dart';
+import 'package:feniq/core/error/failure.dart';
+import 'package:feniq/core/services/auth_event_bus.dart';
+import 'package:feniq/core/services/fcm_service.dart';
+import 'package:feniq/core/services/navigation_service.dart';
+import 'package:feniq/core/services/secure_storage_service.dart';
+import 'package:feniq/features/auth/data/models/user_model.dart';
+import 'package:feniq/features/auth/data/repositories/auth_repository_impl.dart';
+import 'package:feniq/routes/route_names.dart';
 
 import 'auth_state.dart';
 
@@ -69,7 +69,8 @@ class AuthCubit extends Cubit<AuthState> {
   //   200                          -> active / pendingApproval / blocked
   //   401 / 403                    -> clear token -> unauthenticated -> Login
   //   timeout / offline / 5xx      -> KEEP token
-  //                                   startup  -> SessionStatus.offline (retry UI)
+  //                                   startup  -> SessionStatus.offline (splash
+  //                                               proceeds into the app anyway)
   //                                   resume   -> no state change (stay signed in)
   Future<void> checkSession({bool isResume = false}) async {
     if (_sessionCheckInFlight) {

@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:phoenix/features/cart/data/models/reorder_preparation.dart';
+import 'package:feniq/features/cart/data/models/reorder_preparation.dart';
 
 // The reorder payload is the catalog-browse product shape + a quantity, so it
 // parses through ProductModel/CartItem exactly like the "Add" button does -

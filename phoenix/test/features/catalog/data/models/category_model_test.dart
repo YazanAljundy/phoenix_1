@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:phoenix/features/catalog/data/models/category_model.dart';
+import 'package:feniq/features/catalog/data/models/category_model.dart';
 
 void main() {
   group('CategoryModel', () {

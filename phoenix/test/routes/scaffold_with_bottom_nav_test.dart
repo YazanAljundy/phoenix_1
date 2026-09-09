@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:phoenix/generated/app_localizations.dart';
-import 'package:phoenix/routes/scaffold_with_bottom_nav.dart';
+import 'package:feniq/generated/app_localizations.dart';
+import 'package:feniq/routes/scaffold_with_bottom_nav.dart';
 
 // The Returns tab was renamed to "Account History" (and localized), and an
 // Offers & Ads tab was added second. This exercises the real

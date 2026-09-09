@@ -6,6 +6,7 @@ import { LoadMoreControl } from '../components/LoadMoreControl';
 import { usePaginatedData } from '../hooks/usePaginatedData';
 import { REALTIME_EVENTS, useRealtimeSync } from '../realtime/useRealtimeSync';
 import { withArFallback } from '../utils/displayName';
+import { WarehouseGroupSubNav } from '../components/WarehouseGroupSubNav';
 
 const PAGE_SIZE = 15;
 
@@ -50,6 +51,8 @@ export function WarehouseComplaintsPage() {
 
   return (
     <div>
+      <WarehouseGroupSubNav />
+
       <div className="wh-page-head">
         <h1>{t('nav.complaints')}</h1>
       </div>

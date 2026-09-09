@@ -6,6 +6,7 @@ import { usePaginatedData } from '../hooks/usePaginatedData';
 import { useExchangeRate } from '../context/ExchangeRateContext';
 import { formatSyp, formatUsd, remainingPaymentAmountFromSyp } from '../utils/currency';
 import { PAYMENT_METHODS, PAYMENT_CURRENCIES as CURRENCIES, newIdempotencyKey } from '../utils/payments';
+import { WarehouseGroupSubNav } from '../components/WarehouseGroupSubNav';
 
 const PAGE_SIZE = 20;
 
@@ -618,6 +619,11 @@ export function WarehouseDebtsPage() {
 
   return (
     <div>
+      {/* List only - the pharmacy statement above early-returns without it, the
+          same way every other detail screen in the panel drops the sub-nav in
+          favour of its own Back control. */}
+      <WarehouseGroupSubNav />
+
       <div className="wh-page-head">
         <h1>{t('nav.debts')}</h1>
       </div>

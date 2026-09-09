@@ -4,11 +4,11 @@ import 'dart:developer' as developer;
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:phoenix/core/error/failure.dart';
-import 'package:phoenix/features/cart/data/models/order_model.dart';
-import 'package:phoenix/features/cart/data/repositories/order_repository.dart';
-import 'package:phoenix/features/reviews/data/repositories/review_repository.dart';
-import 'package:phoenix/features/warehouse_selection/data/repositories/warehouse_repository.dart';
+import 'package:feniq/core/error/failure.dart';
+import 'package:feniq/features/cart/data/models/order_model.dart';
+import 'package:feniq/features/cart/data/repositories/order_repository.dart';
+import 'package:feniq/features/reviews/data/repositories/review_repository.dart';
+import 'package:feniq/features/warehouse_selection/data/repositories/warehouse_repository.dart';
 
 import 'order_tracking_state.dart';
 
@@ -87,8 +87,12 @@ class OrderTrackingCubit extends Cubit<OrderTrackingState> {
   Future<void> _loadWarehousePhone(String? warehouseId) async {
     if (warehouseId == null) return;
     try {
-      final warehouses = await _warehouseRepository.getWarehouses();
-      for (final warehouse in warehouses) {
+      // onlyMyCity: false deliberately. This is an id lookup, not a browse -
+      // the order being tracked may well have been placed with a warehouse in
+      // another city (the warehouses screen lets a pharmacy widen to all of
+      // them), and narrowing here would silently drop its phone number.
+      final result = await _warehouseRepository.getWarehouses(onlyMyCity: false);
+      for (final warehouse in result.warehouses) {
         if (warehouse.id == warehouseId) {
           if (!isClosed) emit(state.copyWith(warehousePhone: warehouse.phone));
           return;

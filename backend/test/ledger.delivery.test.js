@@ -70,7 +70,7 @@ async function accountFor() {
 }
 
 test.before(async () => {
-  await startMemoryMongo({ dbName: 'phoenix-delivery-ledger-test' });
+  await startMemoryMongo({ dbName: 'feniq-delivery-ledger-test' });
   await syncIndexes(LedgerEntry, LedgerAccount, Order);
 
   const [phUser, whUser] = await User.create([

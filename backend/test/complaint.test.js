@@ -1,6 +1,6 @@
 // Complaint system - Section 16's required coverage, at the service layer.
 //
-// Runs against its own database (phoenix-complaint-test) and drops it at the
+// Runs against its own database (feniq-complaint-test) and drops it at the
 // end, same pattern as readpath.lean.test.js / notification.fanout.test.js.
 // The realtime layer is left as-is: emitToWarehouse/emitToAdmins tolerate a
 // null io (no socket server booted here) and simply no-op.
@@ -37,7 +37,7 @@ function withCode(expected) {
 }
 
 test.before(async () => {
-  await startMemoryMongo({ dbName: 'phoenix-complaint-test' });
+  await startMemoryMongo({ dbName: 'feniq-complaint-test' });
 
   const [phUserA, phUserB, whUserA, whUserB, adminUser] = await User.create([
     { name: 'Pharm A', phone: '0930000001', role: 'pharmacy', status: 'active' },

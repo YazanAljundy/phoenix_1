@@ -1,5 +1,5 @@
-import 'package:phoenix/features/auth/data/models/auth_response.dart';
-import 'package:phoenix/features/auth/data/models/me_response.dart';
+import 'package:feniq/features/auth/data/models/auth_response.dart';
+import 'package:feniq/features/auth/data/models/me_response.dart';
 
 abstract class AuthRepository {
   // TODO(re-enable-otp): unused by the current flow - kept for a future

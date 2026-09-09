@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:phoenix/core/constants/app_colors.dart';
-import 'package:phoenix/core/constants/app_sizes.dart';
-import 'package:phoenix/core/extensions/build_context_extensions.dart';
-import 'package:phoenix/core/utils/date_formatter.dart';
-import 'package:phoenix/core/widgets/custom_card.dart';
-import 'package:phoenix/features/cart/data/models/order_status_history_entry.dart';
-import 'package:phoenix/features/cart/presentation/utils/order_status_label.dart';
+import 'package:feniq/core/constants/app_colors.dart';
+import 'package:feniq/core/constants/app_sizes.dart';
+import 'package:feniq/core/extensions/build_context_extensions.dart';
+import 'package:feniq/core/utils/date_formatter.dart';
+import 'package:feniq/core/widgets/custom_card.dart';
+import 'package:feniq/features/cart/data/models/order_status_history_entry.dart';
+import 'package:feniq/features/cart/presentation/utils/order_status_label.dart';
 
 // Section 6.7: "built on the order_status_history table (every status
 // change has a recorded time - necessary for accurate tracking display)" -
