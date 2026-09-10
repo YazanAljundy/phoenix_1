@@ -8,7 +8,6 @@ const Offer = require('../models/offer.model');
 const Warehouse = require('../models/warehouse.model');
 const Review = require('../models/review.model');
 const Return = require('../models/return.model');
-const Advertisement = require('../models/advertisement.model');
 const orderLedger = require('./orderLedger.service');
 const ledgerService = require('./ledger.service');
 const { runInTransaction } = require('../utils/transaction');
@@ -16,7 +15,6 @@ const notificationService = require('./notification.service');
 const {
   stackedDiscountSyp,
   advertisementDiscountSyp,
-  advertisementPackageBreak,
   rollUpOrderMoney,
 } = require('./order.service');
 const { getRate } = require('./exchangeRate.service');
@@ -80,7 +78,7 @@ async function listOrdersForWarehouse(
   const [items, pharmacies, reviews] = await Promise.all([
     // serializeOrderItem (list variant) reads everything but savingsUsd.
     OrderItem.find({ orderId: { $in: orderIds } })
-      .select('orderId productId productNameAr productNameEn manufacturerAr manufacturerEn quantity unitPrice discountPrice'),
+      .select('orderId productId productNameAr productNameEn manufacturerAr manufacturerEn quantity unitPrice discountPrice packageGroupId'),
     // serializePharmacy (auth.viewmodel) field set.
     Pharmacy.find({ _id: { $in: pharmacyIds } })
       .select('nameAr nameEn ownerName address city phone verificationPhoto'),
@@ -259,7 +257,7 @@ async function getOrderDetailForWarehouse(orderId, warehouseId) {
   // toWarehouseOrderDetailResponse reads exactly these order fields.
   const order = await Order.findOne({ _id: orderId, warehouseId })
     .select(
-      'orderNumber status totalPrice discountAmount commissionAmount advertisementId advertisementDiscountAmount finalPrice notes cancelReason createdAt statusHistory pharmacyId requiresDeliverySealPhoto deliverySealPhoto deliverySealConfirmedAt'
+      'orderNumber status totalPrice discountAmount commissionAmount advertisementId advertisementDiscountAmount orderPackageGroups finalPrice notes cancelReason createdAt statusHistory pharmacyId requiresDeliverySealPhoto deliverySealPhoto deliverySealConfirmedAt'
     );
   if (!order) {
     throw ApiError.notFound('Order not found.', 'ORDER_NOT_FOUND');
@@ -268,7 +266,7 @@ async function getOrderDetailForWarehouse(orderId, warehouseId) {
   const [items, pharmacy, returnRequest] = await Promise.all([
     // Detail item shape adds lineTotal (discountPrice*quantity) and savingsUsd.
     OrderItem.find({ orderId: order._id })
-      .select('productId productNameAr productNameEn manufacturerAr manufacturerEn quantity unitPrice discountPrice savingsUsd'),
+      .select('productId productNameAr productNameEn manufacturerAr manufacturerEn quantity unitPrice discountPrice savingsUsd packageGroupId'),
     Pharmacy.findById(order.pharmacyId)
       .select('nameAr nameEn ownerName address city phone verificationPhoto'),
     Return.findOne({ orderId: order._id }).select('_id'),
@@ -279,10 +277,32 @@ async function getOrderDetailForWarehouse(orderId, warehouseId) {
 
 const ORDER_ITEMS_EDITED_NOTE = 'تم تعديل أصناف الطلب من قبل المستودع';
 
-function validateEditPayload({ addItems, removeItems, updateItems } = {}) {
+function validateEditPayload({
+  addItems,
+  removeItems,
+  updateItems,
+  updatePackages,
+  removePackages,
+} = {}) {
   const add = Array.isArray(addItems) ? addItems : [];
   const remove = Array.isArray(removeItems) ? removeItems : [];
   const update = Array.isArray(updateItems) ? updateItems : [];
+  const packageUpdates = Array.isArray(updatePackages) ? updatePackages : [];
+  const packageRemovals = Array.isArray(removePackages) ? removePackages : [];
+
+  for (const entry of packageUpdates) {
+    if (!entry || typeof entry.groupId !== 'string' || !mongoose.Types.ObjectId.isValid(entry.groupId)) {
+      throw ApiError.notFound('That package is not on this order.', 'PACKAGE_GROUP_NOT_FOUND');
+    }
+    if (!Number.isInteger(entry.copies) || entry.copies < 1) {
+      throw ApiError.badRequest('Invalid package quantity.', undefined, 'INVALID_PACKAGE_COPIES');
+    }
+  }
+  for (const groupId of packageRemovals) {
+    if (typeof groupId !== 'string' || !mongoose.Types.ObjectId.isValid(groupId)) {
+      throw ApiError.notFound('That package is not on this order.', 'PACKAGE_GROUP_NOT_FOUND');
+    }
+  }
 
   for (const item of add) {
     if (!item || typeof item.productId !== 'string' || !mongoose.Types.ObjectId.isValid(item.productId)) {
@@ -305,7 +325,7 @@ function validateEditPayload({ addItems, removeItems, updateItems } = {}) {
       throw ApiError.badRequest('Quantity must be at least 1.', undefined, 'INVALID_QUANTITY');
     }
   }
-  return { add, remove, update };
+  return { add, remove, update, packageUpdates, packageRemovals };
 }
 
 // Section: the warehouse correcting an order before it's confirmed - add a
@@ -329,7 +349,13 @@ async function updateOrderItems(orderId, warehouseId, userId, payload) {
     );
   }
 
-  const { add: addItems, remove: removeIds, update: updateItems } = validateEditPayload(payload);
+  const {
+    add: addItems,
+    remove: removeIds,
+    update: updateItems,
+    packageUpdates,
+    packageRemovals,
+  } = validateEditPayload(payload);
 
   const currentItems = await OrderItem.find({ orderId: order._id });
   const currentById = new Map(currentItems.map((item) => [item._id.toString(), item]));
@@ -345,9 +371,49 @@ async function updateOrderItems(orderId, warehouseId, userId, payload) {
     }
   }
 
+  // Section: package lines are LOCKED. A package was bought as a unit at an
+  // agreed price, so its individual products are not the warehouse's to
+  // change - editing one would either short the pharmacy on what it paid for
+  // or hand it extra units inside a fixed price. The whole group's `copies`,
+  // or dropping the group entirely, are the only moves.
+  //
+  // Enforced HERE, at the service, and not merely hidden in the panel: the
+  // API is what has to hold, whatever a client sends.
+  const lockedEdit = [...removeIds, ...updateItems.map((item) => item.orderItemId)].find(
+    (id) => currentById.get(id)?.packageGroupId != null
+  );
+  if (lockedEdit) {
+    throw ApiError.badRequest(
+      'Items inside a package cannot be edited individually.',
+      { orderItemId: lockedEdit },
+      'PACKAGE_ITEMS_LOCKED'
+    );
+  }
+
+  const groupById = new Map(
+    (order.orderPackageGroups ?? []).map((group) => [group._id.toString(), group])
+  );
+  for (const { groupId } of packageUpdates) {
+    if (!groupById.has(groupId)) {
+      throw ApiError.notFound('That package is not on this order.', 'PACKAGE_GROUP_NOT_FOUND');
+    }
+  }
+  for (const groupId of packageRemovals) {
+    if (!groupById.has(groupId)) {
+      throw ApiError.notFound('That package is not on this order.', 'PACKAGE_GROUP_NOT_FOUND');
+    }
+  }
+  const removedGroupIds = new Set(packageRemovals);
+
   const removeIdSet = new Set(removeIds);
-  const remainingCount = currentItems.length - removeIdSet.size + addItems.length;
-  if (removeIdSet.size > 0 && remainingCount <= 0) {
+  // Dropping a group takes its lines with it, so they count towards "will
+  // anything be left".
+  const droppedPackageLines = currentItems.filter(
+    (item) => item.packageGroupId && removedGroupIds.has(item.packageGroupId.toString())
+  ).length;
+  const remainingCount =
+    currentItems.length - removeIdSet.size - droppedPackageLines + addItems.length;
+  if ((removeIdSet.size > 0 || removedGroupIds.size > 0) && remainingCount <= 0) {
     throw ApiError.badRequest('An order must always have at least one item.', undefined, 'CANNOT_REMOVE_LAST_ITEM');
   }
 
@@ -360,7 +426,10 @@ async function updateOrderItems(orderId, warehouseId, userId, payload) {
   const hasQuantityChange = updateItems.some(
     ({ orderItemId, quantity }) => currentById.get(orderItemId).quantity !== quantity
   );
-  if (addItems.length === 0 && removeIdSet.size === 0 && !hasQuantityChange) {
+  const hasPackageChange =
+    removedGroupIds.size > 0 ||
+    packageUpdates.some(({ groupId, copies }) => groupById.get(groupId).copies !== copies);
+  if (addItems.length === 0 && removeIdSet.size === 0 && !hasQuantityChange && !hasPackageChange) {
     const [pharmacy, returnRequest] = await Promise.all([
       // userId: this function also pushes the pharmacist a notification below.
       Pharmacy.findById(order.pharmacyId)
@@ -385,7 +454,57 @@ async function updateOrderItems(orderId, warehouseId, userId, payload) {
   if (removeIdSet.size > 0) {
     await OrderItem.deleteMany({ _id: { $in: [...removeIdSet] } });
   }
-  const survivingItems = currentItems.filter((item) => !removeIdSet.has(item._id.toString()));
+
+  // Section: package groups. A dropped group takes its lines with it; a group
+  // whose `copies` changed has every one of its lines restated at
+  // snapshotQuantity x copies. Nothing here reads the live Advertisement or
+  // the live exchange rate - the group's own snapshot is the whole input, so
+  // a package edited, expired or deleted since the order was placed reprices
+  // to exactly what the pharmacy agreed to.
+  const copiesByGroupId = new Map(packageUpdates.map(({ groupId, copies }) => [groupId, copies]));
+  const restatedPackageItems = [];
+  for (const group of order.orderPackageGroups ?? []) {
+    const groupId = group._id.toString();
+    if (removedGroupIds.has(groupId)) continue;
+
+    const copies = copiesByGroupId.get(groupId);
+    if (copies === undefined || copies === group.copies) continue;
+
+    const unitsByProductId = new Map(
+      group.advertisementSnapshot.items.map((item) => [item.productId.toString(), item.quantity])
+    );
+    for (const line of currentItems) {
+      if (line.packageGroupId?.toString() !== groupId) continue;
+      const perCopy = unitsByProductId.get(line.productId.toString());
+      // A line whose product is no longer in the snapshot cannot happen (the
+      // snapshot is what created it), but leaving it untouched is the safe
+      // reading if it ever did.
+      if (perCopy === undefined) continue;
+      line.quantity = perCopy * copies;
+      restatedPackageItems.push(line);
+    }
+
+    group.copies = copies;
+    group.totalPriceUsd =
+      Math.round(group.advertisementSnapshot.totalPriceUsd * copies * 100) / 100;
+  }
+  await Promise.all(restatedPackageItems.map((item) => item.save()));
+
+  if (removedGroupIds.size > 0) {
+    await OrderItem.deleteMany({
+      orderId: order._id,
+      packageGroupId: { $in: [...removedGroupIds] },
+    });
+    order.orderPackageGroups = (order.orderPackageGroups ?? []).filter(
+      (group) => !removedGroupIds.has(group._id.toString())
+    );
+  }
+
+  const survivingItems = currentItems.filter(
+    (item) =>
+      !removeIdSet.has(item._id.toString()) &&
+      !(item.packageGroupId && removedGroupIds.has(item.packageGroupId.toString()))
+  );
 
   // New lines get the exact same snapshot pricing as a normal order line
   // (order.service.js's createOrder): today's USD-to-SYP rate, with any
@@ -473,78 +592,39 @@ async function updateOrderItems(orderId, warehouseId, userId, payload) {
   // discount: the discount is taken on what the pharmacy would otherwise pay,
   // and the commission on what it finally does. See rollUpOrderMoney.
 
-  // An edit can break the advertisement package it was ordered as - the
-  // warehouse may have removed one of the advertised products. Re-validate
-  // rather than carry the discount blindly: the pharmacy must not keep a
-  // package price for goods it is no longer receiving, and equally must not
-  // lose it just because an unrelated line changed.
+  // Section: package groups reprice from their OWN frozen snapshots. The live
+  // Advertisement is deliberately never read here - it may have been retitled,
+  // repriced, expired or deleted since, and none of that may reach an order
+  // the pharmacy has already placed. Neither is the live exchange rate: the
+  // snapshot carries the rate the order was priced through, so a copies change
+  // after the lira moves still lands on the agreed package price.
+  //
+  // Package lines are locked, so their prices are exactly what createOrder
+  // wrote; the only thing an edit can change is how many copies they cover.
   let advertisementDiscountAmount = 0;
-  if (order.advertisementId) {
-    const quantityByProductId = new Map(
-      allItems.map((item) => [item.productId.toString(), item.quantity])
-    );
-    const advertisement = await Advertisement.findById(order.advertisementId);
-    const stillHolds =
-      advertisement && advertisementPackageBreak(advertisement, quantityByProductId) === null;
-
-    if (stillHolds) {
-      const rate = await getRate();
-      if (!rate) {
-        throw ApiError.badRequest(
-          'Exchange rate is not available yet - items cannot be priced.',
-          undefined,
-          'EXCHANGE_RATE_UNAVAILABLE'
-        );
-      }
-      // Sum(order line unit price x ADVERTISED quantity) for the package's
-      // products - taken from the order's OWN advertised line prices (not a
-      // fresh catalog fetch), so it stays consistent with the totalPrice
-      // summed above and finalPrice lands exactly on the package total. The
-      // package holds, so every advertised product has a surviving line at
-      // >= its advertised quantity.
-      const advertisedQtyById = new Map(
-        advertisement.items.map((i) => [i.productId.toString(), i.quantity])
-      );
-      // The package covers `advertisedQty` UNITS of each product - counted
-      // once per product, not once per order line.
-      //
-      // updateOrderItems appends a new OrderItem row rather than merging into
-      // an existing one, so adding a unit of a product the package already
-      // covers leaves two lines for it. Weighting each of those lines by the
-      // advertised quantity (which is what this did) counted the package
-      // benefit twice, inflating the discount until the extra unit came out
-      // free. Consuming the advertised quantity ACROSS a product's lines
-      // charges the extras at their normal price, which is the same rule
-      // createOrder applies (it merges duplicates before pricing).
-      const linesByProductId = new Map();
-      for (const line of allItems) {
-        const key = line.productId.toString();
-        if (!linesByProductId.has(key)) linesByProductId.set(key, []);
-        linesByProductId.get(key).push(line);
-      }
-
-      let advertisedSypSubtotal = 0;
-      for (const [productId, advertisedQty] of advertisedQtyById) {
-        let remaining = advertisedQty;
-        for (const line of linesByProductId.get(productId) ?? []) {
-          if (remaining <= 0) break;
-          const covered = Math.min(remaining, line.quantity);
-          advertisedSypSubtotal += line.discountPrice * covered;
-          remaining -= covered;
-        }
-      }
-      advertisementDiscountAmount = advertisementDiscountSyp(
-        advertisedSypSubtotal,
-        advertisement.totalPriceUsd,
-        rate.usdToSyp
-      );
-    } else {
-      // The package no longer applies. The order stays valid and simply
-      // reprices as a normal one; the 'modified' history entry below records
-      // that something changed.
-      order.advertisementId = null;
-    }
+  const linesByGroupId = new Map();
+  for (const line of allItems) {
+    if (!line.packageGroupId) continue;
+    const key = line.packageGroupId.toString();
+    if (!linesByGroupId.has(key)) linesByGroupId.set(key, []);
+    linesByGroupId.get(key).push(line);
   }
+  for (const group of order.orderPackageGroups ?? []) {
+    const groupLinesSyp = (linesByGroupId.get(group._id.toString()) ?? []).reduce(
+      (sum, line) => sum + line.discountPrice * line.quantity,
+      0
+    );
+    advertisementDiscountAmount += advertisementDiscountSyp(
+      groupLinesSyp,
+      group.advertisementSnapshot.totalPriceUsd * group.copies,
+      group.advertisementSnapshot.usdToSyp
+    );
+  }
+  // Keep both mirrors pointing at groups that still exist - a dropped package
+  // must not leave its id behind on the order.
+  const liveGroups = order.orderPackageGroups ?? [];
+  order.advertisementId = liveGroups.length > 0 ? liveGroups[0].advertisementId : null;
+  order.advertisementIds = liveGroups.map((group) => group.advertisementId);
 
   const { discountAmount, commissionAmount, finalPrice } = rollUpOrderMoney({
     subtotalSyp: totalPrice,

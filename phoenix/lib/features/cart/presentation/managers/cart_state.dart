@@ -8,9 +8,6 @@ class CartState {
     this.maxOrderAmountUsd,
     this.items = const [],
     this.notes = '',
-    this.advertisementId,
-    this.advertisementItemsSubtotalUsd = 0,
-    this.advertisementTotalUsd = 0,
     this.isSubmitting = false,
     this.pendingIdempotencyKey,
     this.errorMessage,
@@ -28,15 +25,6 @@ class CartState {
   final num? maxOrderAmountUsd;
   final List<CartItem> items;
   final String notes;
-  // Section: advertisement packages. Set when the cart was loaded from one
-  // (CartCubit.loadAdvertisement). Only the ID is ever sent at checkout - the
-  // two totals below are for DISPLAY, so the pharmacist can see the package
-  // price before submitting. order.service.js re-reads the package from
-  // MongoDB and recomputes every figure, so a stale or tampered value here can
-  // change what is shown but never what is charged.
-  final String? advertisementId;
-  final num advertisementItemsSubtotalUsd;
-  final num advertisementTotalUsd;
   final bool isSubmitting;
 
   // Money-Flow V2 idempotency. Minted by CartCubit on the FIRST submit
@@ -59,26 +47,20 @@ class CartState {
 
   num get subtotalUsd => items.fold<num>(0, (sum, item) => sum + item.lineTotalUsd);
 
-  /// True while the package still holds: the cart is bound to an advertisement
-  /// AND every one of its products is still present. Removing one drops the
-  /// package (see CartCubit.removeItem) - the backend enforces the same rule
-  /// at checkout (ADVERTISEMENT_ITEM_MISSING), so the two can't disagree.
-  bool get hasAdvertisement => advertisementId != null && items.any((item) => item.isAdvertised);
+  /// The packages in the cart, as their own lines. Used by the repository to
+  /// split the checkout payload, and by the summary to name them.
+  List<CartItem> get packageLines => items.where((item) => item.isPackage).toList();
 
-  /// What the package saves against the sum of its own advertised lines,
-  /// applied once regardless of quantity. Clamped at zero - a package priced
-  /// above its lines is allowed by the backend but is never a surcharge.
-  num get advertisementDiscountUsd {
-    if (!hasAdvertisement) return 0;
-    final saving = advertisementItemsSubtotalUsd - advertisementTotalUsd;
-    return saving > 0 ? saving : 0;
-  }
+  bool get hasPackage => packageLines.isNotEmpty;
 
-  /// What the pharmacist actually pays: the lines, less the package discount.
+  /// What the pharmacist pays before the platform discount. A package line is
+  /// already priced at its package price, so this is simply the subtotal -
+  /// there is no separate package discount to subtract any more.
+  ///
   /// The platform discount (warehouse.discountRate) is deliberately NOT
   /// modelled here - it never has been on this screen, and the server applies
   /// it on top at order time.
-  num get payableUsd => subtotalUsd - advertisementDiscountUsd;
+  num get payableUsd => subtotalUsd;
 
   // The limits are checked against the subtotal - the same figure the
   // backend compares (order.service.js), so this gate and the server's can
@@ -88,7 +70,12 @@ class CartState {
   num get amountToReachMinimum => isBelowMinimum ? minOrderAmountUsd - subtotalUsd : 0;
   num get amountOverMaximum => isAboveMaximum ? subtotalUsd - maxOrderAmountUsd! : 0;
   bool get canSubmit => !isEmpty && !isBelowMinimum && !isAboveMaximum;
-  int get itemCount => items.fold<int>(0, (sum, item) => sum + item.quantity);
+  /// The cart badge: how many LINES the cart holds, products and packages
+  /// alike - a package counts once however many products are inside it, and
+  /// however many copies of it were taken. Deliberately not the sum of the
+  /// quantities: the badge answers "how many things are in my cart", and a
+  /// package is one thing.
+  int get itemCount => items.length;
   bool get isEmpty => items.isEmpty;
 
   CartState copyWith({
@@ -99,10 +86,6 @@ class CartState {
     bool clearMaxOrderAmount = false,
     List<CartItem>? items,
     String? notes,
-    String? advertisementId,
-    num? advertisementItemsSubtotalUsd,
-    num? advertisementTotalUsd,
-    bool clearAdvertisement = false,
     bool? isSubmitting,
     String? pendingIdempotencyKey,
     String? errorMessage,
@@ -117,13 +100,6 @@ class CartState {
       maxOrderAmountUsd: clearMaxOrderAmount ? null : (maxOrderAmountUsd ?? this.maxOrderAmountUsd),
       items: items ?? this.items,
       notes: notes ?? this.notes,
-      advertisementId: clearAdvertisement ? null : (advertisementId ?? this.advertisementId),
-      advertisementItemsSubtotalUsd: clearAdvertisement
-          ? 0
-          : (advertisementItemsSubtotalUsd ?? this.advertisementItemsSubtotalUsd),
-      advertisementTotalUsd: clearAdvertisement
-          ? 0
-          : (advertisementTotalUsd ?? this.advertisementTotalUsd),
       isSubmitting: isSubmitting ?? this.isSubmitting,
       pendingIdempotencyKey: pendingIdempotencyKey ?? this.pendingIdempotencyKey,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),

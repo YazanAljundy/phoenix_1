@@ -3,6 +3,16 @@ const { Schema, model } = require('mongoose');
 const orderItemSchema = new Schema(
   {
     orderId: { type: Schema.Types.ObjectId, ref: 'Order', required: true },
+    // Set when this line is part of a package bought as a unit - it is the
+    // _id of the matching entry in Order.orderPackageGroups. A line with this
+    // set is LOCKED: warehouseOrder.service.js's updateOrderItems refuses to
+    // change, remove or duplicate it (PACKAGE_ITEMS_LOCKED), because its
+    // quantity and price are dictated by the package's frozen snapshot, not by
+    // this row. The whole group's `copies` is the only thing still editable.
+    //
+    // null on every ordinary line, which is how every pre-existing order
+    // already reads - the lock is opt-in per line.
+    packageGroupId: { type: Schema.Types.ObjectId, default: null },
     productId: { type: Schema.Types.ObjectId, ref: 'Product', required: true },
     // Snapshotted at order time, so an old invoice stays correct even if the
     // product is later renamed, re-priced, or deleted. English variants are

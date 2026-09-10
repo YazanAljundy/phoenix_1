@@ -14,6 +14,60 @@ const statusHistoryEntrySchema = new Schema(
   { _id: false }
 );
 
+// One product line of a package, exactly as the Advertisement listed it at
+// order time: the quantity here is for ONE copy of the package, so the units
+// actually ordered are `quantity x group.copies`.
+const orderPackageItemSchema = new Schema(
+  {
+    productId: { type: Schema.Types.ObjectId, ref: 'Product', required: true },
+    quantity: { type: Number, required: true, min: 1 },
+  },
+  { _id: false }
+);
+
+// The package's terms, frozen at order time. This is the whole point of the
+// package group: once an order exists, NOTHING about how it is priced may be
+// re-read from the live Advertisement. The warehouse remains free to edit or
+// withdraw the advertisement itself - orders already placed against it keep
+// the terms the pharmacy actually agreed to.
+//
+// `usdToSyp` is the order's own fx.rate, copied here so a `copies` change
+// months later converts the package total at the SAME rate the order's lines
+// were priced through, instead of mixing today's rate into a frozen invoice.
+const orderPackageSnapshotSchema = new Schema(
+  {
+    // Kept so the warehouse's order screen can name the package without
+    // reaching for the live Advertisement (which may since have been retitled
+    // or deleted outright).
+    titleAr: { type: String, default: null },
+    titleEn: { type: String, default: null },
+    // The price of ONE copy of the package, in USD - the figure the pharmacy
+    // agreed to. `group.totalPriceUsd` below is this x copies.
+    totalPriceUsd: { type: Number, required: true, min: 0 },
+    items: { type: [orderPackageItemSchema], required: true },
+    usdToSyp: { type: Number, required: true },
+  },
+  { _id: false }
+);
+
+// A package bought as a unit. Its `_id` is what every OrderItem belonging to
+// it carries as `packageGroupId` (orderItem.model.js), which is how the edit
+// path tells a locked package line from an ordinary one.
+//
+// An order can hold several of these (two different packages, or the same
+// package is one group with copies > 1 - never two groups for one
+// advertisement), alongside ordinary product lines.
+const orderPackageGroupSchema = new Schema({
+  advertisementId: { type: Schema.Types.ObjectId, ref: 'Advertisement', required: true },
+  advertisementSnapshot: { type: orderPackageSnapshotSchema, required: true },
+  // How many whole copies of the package. The only field on a placed order's
+  // package the warehouse may still change.
+  copies: { type: Number, required: true, min: 1, default: 1 },
+  // advertisementSnapshot.totalPriceUsd x copies - stored rather than derived
+  // so a report never has to multiply it back out.
+  totalPriceUsd: { type: Number, required: true, min: 0 },
+});
+
 const orderSchema = new Schema(
   {
     // Sequential, generated via the counters collection - see counter.model.js.
@@ -55,13 +109,36 @@ const orderSchema = new Schema(
     // fx.rate above. Reports sum THIS rather than dividing finalPrice by
     // whatever the rate happens to be when the report runs.
     finalAmountUsd: { type: Number, default: null },
-    // Set when this order came from a warehouse advertisement package
-    // (advertisement.model.js). The package total is the authoritative price
-    // for the advertised lines, so the difference between the sum of their
-    // advertised prices and that total is booked here, in SYP like every other
-    // money field on this model. null/0 on a normal order, which is exactly how
-    // every pre-existing order already behaves - no migration needed.
+    // The packages bought on this order, each frozen at its agreed terms. An
+    // order with none of them is an ordinary order and behaves exactly as it
+    // always has.
+    orderPackageGroups: { type: [orderPackageGroupSchema], default: [] },
+    // Legacy, kept for orders placed before orderPackageGroups existed and for
+    // the reports that already read it. The migration
+    // (scripts/migrate-order-package-groups.js) backfills the group array from
+    // these two, and createOrder still sets advertisementId to the FIRST
+    // group's advertisement so nothing downstream that filters on it breaks.
+    //
+    // APPROXIMATE MIRROR OF THE FIRST GROUP ONLY. Safe as a boolean ("did this
+    // order involve a package?") and as a filter; NEVER safe for a figure
+    // attributed to a particular package, because an order can carry several
+    // and this names one of them. Anything that needs to attribute money reads
+    // `orderPackageGroups` (each entry has its own advertisementId and its own
+    // frozen snapshot), or `advertisementIds` below for the plain list.
     advertisementId: { type: Schema.Types.ObjectId, ref: 'Advertisement', default: null },
+    // Every package on this order, in `orderPackageGroups` order. Kept in step
+    // with that array by createOrder and by the warehouse edit path, so a
+    // report can filter on "orders involving package X" without unwinding the
+    // group array. Empty on an order with no packages.
+    advertisementIds: {
+      type: [{ type: Schema.Types.ObjectId, ref: 'Advertisement' }],
+      default: [],
+    },
+    // The total package saving on this order, in SYP: the gap between the
+    // package lines' catalog prices and the package totals, summed over every
+    // group. Every money report (ledger, settlement, invoice, savings) reads
+    // THIS rather than the groups, so their arithmetic is untouched by the
+    // group array above.
     advertisementDiscountAmount: { type: Number, default: 0 },
     notes: { type: String, default: null },
     // Opt-in proof-of-delivery, decided PER ORDER. Seeded at creation from the

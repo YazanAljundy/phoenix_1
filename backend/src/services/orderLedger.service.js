@@ -25,7 +25,15 @@ async function nextInvoiceNumber(session) {
 // The frozen pricing breakdown copied onto the charge entry, so a statement or
 // an invoice can render the line without re-reading the order, and a dispute
 // years later sees exactly the figures that were charged.
+//
+// `advertisementDiscountSyp` is the saving from EVERY package on the order
+// added together, so the record of which packages produced it has to name them
+// all. Reading the single `Order.advertisementId` named only the first, which
+// on a two-package order attributed the combined saving to a package that
+// accounted for part of it. The groups are the authoritative per-package
+// record, so they are what this reads.
 function chargeMetadata(order) {
+  const groups = order.orderPackageGroups ?? [];
   return {
     orderNumber: order.orderNumber,
     invoiceNumber: order.invoiceNumber,
@@ -34,7 +42,31 @@ function chargeMetadata(order) {
     advertisementDiscountSyp: order.advertisementDiscountAmount ?? 0,
     commissionSyp: order.commissionAmount,
     finalAmountSyp: order.finalPrice,
+    // Kept for the statements and disputes that already read it. Approximate:
+    // the first package only - see the note on order.model.js.
     advertisementId: order.advertisementId ?? null,
+    // Every package on the order. Falls back to the legacy single id for an
+    // order placed before groups existed and not yet migrated, so a charge
+    // posted on one of those still names its package.
+    advertisementIds:
+      groups.length > 0
+        ? groups.map((group) => group.advertisementId)
+        : order.advertisementId
+          ? [order.advertisementId]
+          : [],
+    // What each package contributed, frozen at its agreed terms - the per-
+    // package breakdown a dispute actually needs. Empty on an order with no
+    // packages, and on a legacy order that has no groups to break down.
+    packages: groups.map((group) => ({
+      advertisementId: group.advertisementId,
+      copies: group.copies,
+      totalPriceUsd: group.totalPriceUsd,
+      totalPriceSyp: Math.round(
+        (group.advertisementSnapshot?.totalPriceUsd ?? 0) *
+          group.copies *
+          (group.advertisementSnapshot?.usdToSyp ?? 0)
+      ),
+    })),
   };
 }
 

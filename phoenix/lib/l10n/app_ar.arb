@@ -269,6 +269,8 @@
       }
     }
   },
+  "packageBadge": "باقة",
+  "packageCopiesLabel": "نسخة من الباقة",
   "advertisementDiscountLabel": "حسم الباقة",
   "advertisementTotalToPay": "المبلغ المطلوب",
   "advertisementAddToCartButton": "أضف الباقة للسلة",

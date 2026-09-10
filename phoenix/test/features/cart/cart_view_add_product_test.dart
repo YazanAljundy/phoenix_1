@@ -141,22 +141,28 @@ void main() {
     expect(find.text('manufacturers-screen'), findsOneWidget);
   });
 
-  testWidgets('a package cart shows the discount and the payable total', (tester) async {
-    cartCubit.loadAdvertisement(
-      advertisementId: 'ad1',
+  testWidgets('a package cart shows the package as one line', (tester) async {
+    cartCubit.addPackage(
+      CartItem.fromPackage(
+        packageId: 'ad1',
+        titleAr: 'باقة',
+        titleEn: 'Winter Package',
+        warehouseName: 'Warehouse A',
+        pricePerCopyUsd: 15,
+        copies: 1,
+        contents: const [
+          CartPackageContent(productId: 'p1', nameAr: 'د1', nameEn: 'Product p1', quantityPerCopy: 2),
+        ],
+      ),
       warehouseId: 'A',
       warehouseName: 'Warehouse A',
-      items: [
-        CartItem.fromProduct(_product('p1'), quantity: 1, advertisementId: 'ad1'),
-        CartItem.fromProduct(_product('p2'), quantity: 1, advertisementId: 'ad1'),
-      ],
-      itemsSubtotalUsd: 20,
-      totalUsd: 15,
     );
     await pumpCart(tester);
 
-    expect(find.text('Package discount'), findsOneWidget);
-    expect(find.text('Total to pay'), findsOneWidget);
+    // One line, labelled as a package, showing what it delivers.
+    expect(find.text('Winter Package'), findsOneWidget);
+    expect(find.text('Package'), findsOneWidget);
+    expect(find.text('Product p1 x2'), findsOneWidget);
     // Add Product still works on a package cart.
     expect(find.text('Add product'), findsOneWidget);
   });

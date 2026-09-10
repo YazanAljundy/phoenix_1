@@ -20,9 +20,15 @@ class OrderRepositoryImpl implements OrderRepository {
     required String warehouseId,
     required List<CartItem> items,
     String? notes,
-    String? advertisementId,
     String? idempotencyKey,
   }) async {
+    // The cart holds product lines and package lines in one list; the API
+    // takes them as two. A package crosses the wire as nothing but its id and
+    // a copy count - no price, no contents - and the server builds the real
+    // order lines from its own record of the package (order.service.js).
+    final productLines = items.where((item) => !item.isPackage);
+    final packageLines = items.where((item) => item.isPackage);
+
     try {
       final response = await _apiClient.dio.post(
         Endpoints.orders,
@@ -34,15 +40,21 @@ class OrderRepositoryImpl implements OrderRepository {
           // the pharmacist was looking at when they tapped submit, so the
           // server can reject with PRICE_CHANGED instead of silently charging
           // a different number (order.service.js).
-          'items': items
+          'items': productLines
               .map((item) => {
                     'productId': item.productId,
                     'quantity': item.quantity,
                     'displayedUnitPriceUsd': item.discountPriceUsd,
                   })
               .toList(),
+          // `quantity` on a package line IS the number of copies.
+          'packages': packageLines
+              .map((item) => {
+                    'advertisementId': item.packageId,
+                    'copies': item.quantity,
+                  })
+              .toList(),
           if (notes != null && notes.isNotEmpty) 'notes': notes,
-          if (advertisementId != null) 'advertisementId': advertisementId,
           if (idempotencyKey != null) 'idempotencyKey': idempotencyKey,
         },
       );

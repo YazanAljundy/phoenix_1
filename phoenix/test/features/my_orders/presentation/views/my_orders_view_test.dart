@@ -97,13 +97,15 @@ void main() {
       expect(find.text('0'), findsNothing);
     });
 
-    testWidgets('the badge shows the current item count', (tester) async {
+    testWidgets('the badge counts the lines in the cart', (tester) async {
       cartCubit.addProduct(_product('p1'), warehouseId: 'A', warehouseName: 'Warehouse A', quantity: 2);
       cartCubit.addProduct(_product('p2'), warehouseId: 'A', warehouseName: 'Warehouse A', quantity: 1);
 
       await pumpMyOrders(tester);
 
-      expect(find.text('3'), findsOneWidget);
+      // Two lines - the badge answers "how many things are in my cart", not
+      // how many units, so a package counts once too.
+      expect(find.text('2'), findsOneWidget);
     });
 
     testWidgets('tapping it navigates to the existing cart route', (tester) async {
@@ -129,17 +131,18 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('2'), findsOneWidget);
 
+      // A quantity change leaves the badge alone: still two lines.
       cartCubit.updateQuantity('p1', 5);
       await tester.pumpAndSettle();
-      expect(find.text('6'), findsOneWidget);
+      expect(find.text('2'), findsOneWidget);
 
       cartCubit.removeItem('p2');
       await tester.pumpAndSettle();
-      expect(find.text('5'), findsOneWidget);
+      expect(find.text('1'), findsOneWidget);
 
       cartCubit.removeItem('p1');
       await tester.pumpAndSettle();
-      expect(find.text('5'), findsNothing);
+      expect(find.text('1'), findsNothing);
       expect(find.text('0'), findsNothing); // empty cart hides the badge
     });
   });

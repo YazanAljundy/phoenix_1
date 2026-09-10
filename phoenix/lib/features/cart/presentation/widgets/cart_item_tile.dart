@@ -63,11 +63,25 @@ class CartItemTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      name,
-                      style: context.textTheme.titleSmall,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // A package is a single line whose quantity is a copy
+                        // count, so it is labelled - otherwise "2" on a
+                        // package would read as two products.
+                        if (item.isPackage) ...[
+                          const _PackageBadge(),
+                          const SizedBox(width: AppSizes.spacingXSmall),
+                        ],
+                        Expanded(
+                          child: Text(
+                            name,
+                            style: context.textTheme.titleSmall,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -111,6 +125,24 @@ class CartItemTile extends StatelessWidget {
                           fontSize: 13,
                         ),
                       ),
+                    // What the package actually delivers, at the current copy
+                    // count - so "x2 copies" is never an abstraction the
+                    // pharmacist has to do the arithmetic on.
+                    if (item.isPackage && item.packageContents.isNotEmpty) ...[
+                      const SizedBox(height: AppSizes.spacingXSmall),
+                      for (final content in item.packageContents)
+                        Padding(
+                          padding: const EdgeInsetsDirectional.only(top: 2),
+                          child: Text(
+                            '${content.name(isArabic)} x${content.quantityPerCopy * item.quantity}',
+                            style: context.textTheme.bodySmall?.copyWith(
+                              color: AppColors.textSecondaryOf(context),
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                    ],
                   ],
                 ),
               ),
@@ -135,6 +167,19 @@ class CartItemTile extends StatelessWidget {
                 onChanged: onQuantityChanged,
                 onBelowMin: () => _confirmRemoval(context),
               ),
+              if (item.isPackage) ...[
+                const SizedBox(width: AppSizes.spacingXSmall),
+                Flexible(
+                  child: Text(
+                    l10n.packageCopiesLabel,
+                    style: context.textTheme.bodySmall?.copyWith(
+                      color: AppColors.textSecondaryOf(context),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
               Expanded(
                 child: Align(
                   alignment: AlignmentDirectional.centerEnd,
@@ -171,6 +216,30 @@ class _ItemImage extends StatelessWidget {
       fit: BoxFit.cover,
       borderRadius: AppRadius.small,
       fallbackIcon: Icons.medication_outlined,
+    );
+  }
+}
+
+// Marks a cart line as a whole package rather than a single product. Uses the
+// app's secondary colour, the same one the catalog uses for an offer badge.
+class _PackageBadge extends StatelessWidget {
+  const _PackageBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: AppColors.secondaryOf(context).withValues(alpha: 0.12),
+        borderRadius: AppRadius.small,
+      ),
+      child: Text(
+        context.l10n.packageBadge,
+        style: context.textTheme.labelSmall?.copyWith(
+          color: AppColors.secondaryOf(context),
+          fontWeight: FontWeight.bold,
+        ),
+      ),
     );
   }
 }

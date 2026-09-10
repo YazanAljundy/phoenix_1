@@ -3677,3 +3677,77 @@ a.adm-pill {
 /* The order-detail summary gains the platform's cut and the resulting net. */
 .wh-summary-commission { color: #A5331E; }
 .wh-summary-net { color: #2F6B3D; }
+
+/* Section: packages on a warehouse order (WarehouseOrderDetailPage).
+   A package was bought as a unit at an agreed price, so it is shown as its
+   own block rather than as loose rows: the products inside it are read-only
+   (the API refuses a per-line edit with PACKAGE_ITEMS_LOCKED), and the only
+   controls are the copy count and removing the whole thing. */
+.wh-package-card {
+  border: 1px solid var(--wh-border);
+  border-inline-start: 3px solid var(--wh-orange);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin-bottom: 12px;
+  background: var(--wh-bg);
+}
+
+.wh-package-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.wh-package-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: var(--font-weight-subheading);
+  color: var(--wh-text);
+}
+
+.wh-package-badge {
+  display: inline-block;
+  padding: 1px 7px;
+  margin-inline-end: 6px;
+  border-radius: 999px;
+  background: var(--wh-orange);
+  color: var(--wh-white);
+  font-size: 0.72rem;
+  font-weight: var(--font-weight-subheading);
+  vertical-align: middle;
+}
+
+.wh-package-price {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-weight: var(--font-weight-subheading);
+}
+
+.wh-package-locked {
+  font-size: 0.72rem;
+  font-weight: 400;
+  color: var(--wh-text-muted);
+}
+
+.wh-package-controls {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.wh-package-items {
+  margin: 10px 0 0;
+  padding-inline-start: 18px;
+  color: var(--wh-text-secondary);
+  font-size: 0.85rem;
+}
+
+.wh-package-items li {
+  margin-bottom: 2px;
+}

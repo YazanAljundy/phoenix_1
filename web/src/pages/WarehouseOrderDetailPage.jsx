@@ -185,23 +185,35 @@ function EditItemsSection({ order, onSaved }) {
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
   const [message, setMessage] = useState(null);
+  // The only two package edits there are: how many copies, and dropping one
+  // outright. Keyed by package-group id.
+  const [packageCopies, setPackageCopies] = useState({});
+  const [removedGroupIds, setRemovedGroupIds] = useState(new Set());
 
   // Redraws the working draft from the server's own item list - runs on
   // mount and again after every successful save (the parent re-fetches and
   // hands down a fresh `order`), so the draft never lingers stale.
   useEffect(() => {
     setItems(
-      order.items.map((item) => ({
-        id: item.id,
-        productNameAr: item.productNameAr,
-        productNameEn: item.productNameEn,
-        quantity: item.quantity,
-      }))
+      order.items
+        // Package lines never enter the draft: they are locked server-side
+        // (PACKAGE_ITEMS_LOCKED) because their quantity is dictated by the
+        // package's frozen snapshot, not by this row. They are shown, read
+        // only, on the package cards below.
+        .filter((item) => !item.packageGroupId)
+        .map((item) => ({
+          id: item.id,
+          productNameAr: item.productNameAr,
+          productNameEn: item.productNameEn,
+          quantity: item.quantity,
+        }))
     );
     setRemovedIds(new Set());
     setNewItems([]);
+    setPackageCopies({});
+    setRemovedGroupIds(new Set());
     setError(null);
-  }, [order.items]);
+  }, [order.items, order.packageGroups]);
 
   useEffect(() => {
     api
@@ -213,7 +225,27 @@ function EditItemsSection({ order, onSaved }) {
       });
   }, []);
 
-  const remainingCount = items.filter((item) => !removedIds.has(item.id)).length + newItems.length;
+  const packageGroups = order.packageGroups ?? [];
+  const liveGroups = packageGroups.filter((group) => !removedGroupIds.has(group.id));
+  const copiesOf = (group) => packageCopies[group.id] ?? group.copies;
+
+  // Lines still on the order after this draft: the surviving loose lines, the
+  // added ones, and every line the surviving packages bring with them.
+  const remainingPackageLines = order.items.filter(
+    (item) => item.packageGroupId && !removedGroupIds.has(item.packageGroupId)
+  ).length;
+  const remainingCount =
+    items.filter((item) => !removedIds.has(item.id)).length + newItems.length + remainingPackageLines;
+
+  const handleCopiesChange = (groupId, value) => {
+    const copies = Math.max(1, Math.trunc(Number(value)) || 1);
+    setPackageCopies((prev) => ({ ...prev, [groupId]: copies }));
+  };
+
+  const handleRemoveGroup = (groupId) => {
+    if (!window.confirm(t('orderDetail.confirmRemovePackage'))) return;
+    setRemovedGroupIds((prev) => new Set(prev).add(groupId));
+  };
 
   const handleQuantityChange = (id, value) => {
     const quantity = Math.max(1, Math.trunc(Number(value)) || 1);
@@ -261,10 +293,27 @@ function EditItemsSection({ order, onSaved }) {
       .filter((item) => !removedIds.has(item.id) && originalQuantityById.get(item.id) !== item.quantity)
       .map((item) => ({ orderItemId: item.id, quantity: item.quantity }));
     const addItems = newItems.map((item) => ({ productId: item.productId, quantity: item.quantity }));
-    return { addItems, removeItems: [...removedIds], updateItems };
-  }, [items, removedIds, newItems, order.items]);
+    // Only a package whose copies actually moved is sent, same rule the loose
+    // lines follow - an untouched card never ends up in the request.
+    const updatePackages = (order.packageGroups ?? [])
+      .filter((group) => !removedGroupIds.has(group.id))
+      .filter((group) => (packageCopies[group.id] ?? group.copies) !== group.copies)
+      .map((group) => ({ groupId: group.id, copies: packageCopies[group.id] }));
+    return {
+      addItems,
+      removeItems: [...removedIds],
+      updateItems,
+      updatePackages,
+      removePackages: [...removedGroupIds],
+    };
+  }, [items, removedIds, newItems, order.items, order.packageGroups, packageCopies, removedGroupIds]);
 
-  const hasChanges = diff.addItems.length > 0 || diff.removeItems.length > 0 || diff.updateItems.length > 0;
+  const hasChanges =
+    diff.addItems.length > 0 ||
+    diff.removeItems.length > 0 ||
+    diff.updateItems.length > 0 ||
+    diff.updatePackages.length > 0 ||
+    diff.removePackages.length > 0;
 
   const handleSave = async () => {
     // Belt and suspenders - the Save button is already disabled with
@@ -290,6 +339,71 @@ function EditItemsSection({ order, onSaved }) {
   return (
     <div className="wh-detail-card">
       <h2 className="wh-detail-card-title">{t('orderDetail.editItemsTitle')}</h2>
+
+      {/* Section: packages. A package was bought as a unit at an agreed price,
+          so its products are not this warehouse's to change - the API refuses
+          a per-line edit outright (PACKAGE_ITEMS_LOCKED) and this panel offers
+          only what it will accept: how many copies, or dropping it entirely.
+          The products are listed underneath, read only, so the picker still
+          knows exactly what to put in the box. */}
+      {liveGroups.map((group) => (
+        <div key={group.id} className="wh-package-card">
+          <div className="wh-package-head">
+            <span className="wh-package-title">
+              <span className="wh-package-badge">{t('orderDetail.packageBadge')}</span>
+              {withArFallback(group.titleEn, group.titleAr)}
+            </span>
+            <span className="wh-num wh-package-price">
+              {formatSyp(group.totalPriceSyp)}
+              <span className="wh-package-locked">{t('orderDetail.packagePriceLocked')}</span>
+            </span>
+          </div>
+
+          <div className="wh-package-controls">
+            <label>
+              {t('orderDetail.packageCopies')}
+              <input
+                type="number"
+                min="1"
+                value={copiesOf(group)}
+                onChange={(e) => handleCopiesChange(group.id, e.target.value)}
+                style={{ width: 70, marginInlineStart: 8 }}
+              />
+            </label>
+            <button
+              type="button"
+              className="btn-reject"
+              disabled={remainingCount - group.items.length < 1}
+              title={
+                remainingCount - group.items.length < 1
+                  ? t('orderDetail.cannotRemoveLastItem')
+                  : undefined
+              }
+              onClick={() => handleRemoveGroup(group.id)}
+            >
+              {t('orderDetail.removePackageButton')}
+            </button>
+          </div>
+
+          <ul className="wh-package-items">
+            {group.items.map((item) => {
+              const line = order.items.find(
+                (row) => row.packageGroupId === group.id && row.productId === item.productId
+              );
+              return (
+                <li key={item.productId}>
+                  {line ? withArFallback(line.productNameEn, line.productNameAr) : item.productId}
+                  <span className="wh-num">
+                    {' x'}
+                    {item.quantityPerCopy * copiesOf(group)}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ))}
+
       <div className="table-scroll">
         <table className="wh-table wh-table-compact">
           <thead>
@@ -686,6 +800,12 @@ export function WarehouseOrderDetailPage() {
                       <tr key={item.id}>
                         <td>
                           <div className="product-name">
+                            {/* Says which lines came in as part of a package,
+                                so the picking list reads the same way the
+                                edit panel above groups them. */}
+                            {item.packageGroupId && (
+                              <span className="wh-package-badge">{t('orderDetail.packageBadge')}</span>
+                            )}
                             {withArFallback(item.productNameEn, item.productNameAr)}
                           </div>
                           {item.savingsUsd > 0 && (

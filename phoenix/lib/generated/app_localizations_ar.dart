@@ -539,6 +539,12 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String get packageBadge => 'باقة';
+
+  @override
+  String get packageCopiesLabel => 'نسخة من الباقة';
+
+  @override
   String get advertisementDiscountLabel => 'حسم الباقة';
 
   @override

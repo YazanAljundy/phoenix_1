@@ -248,19 +248,27 @@ test('ordering MORE than the advertised quantity bills the extras at catalog pri
   assert.strictEqual(order.finalPrice, 300 * RATE);
 });
 
-test('ordering FEWER than the advertised quantity breaks the package', async () => {
+// A package is bought as a unit now: the server supplies its lines from the
+// package itself, so a client that sends fewer units than it advertises cannot
+// buy a partial package - it gets the whole one, at the package price.
+test('a cart short of the advertised quantity still buys the whole package', async () => {
   const advertisement = await makeQtyAdvertisement();
-  await assert.rejects(
-    () =>
-      submitQty(
-        [
-          { productId: ids.productA.toString(), quantity: 4 }, // one short
-          { productId: ids.productB.toString(), quantity: 2 },
-        ],
-        advertisement._id.toString()
-      ),
-    (err) => err.code === 'ADVERTISEMENT_ITEM_MISSING'
+  const order = await submitQty(
+    [
+      { productId: ids.productA.toString(), quantity: 4 }, // one short
+      { productId: ids.productB.toString(), quantity: 2 },
+    ],
+    advertisement._id.toString()
   );
+
+  assert.strictEqual(order.orderPackageGroups.length, 1);
+  assert.strictEqual(order.totalPrice, 200 * RATE, 'the full 5xA + 2xB the package holds');
+  assert.strictEqual(order.finalPrice, 150 * RATE, 'the package price, not a prorated one');
+
+  const lines = await OrderItem.find({ orderId: order._id }).lean();
+  const lineA = lines.find((l) => String(l.productId) === String(ids.productA));
+  assert.strictEqual(lineA.quantity, 5);
+  assert.strictEqual(lines.every((l) => l.packageGroupId), true, 'every line is the package');
 });
 
 test('the cart payload and the active list carry each line quantity + weighted total', async () => {
@@ -423,16 +431,18 @@ test('an advertisement from another warehouse is rejected', async () => {
   assert.strictEqual(await Order.countDocuments({}), 0);
 });
 
-test('an incomplete package is rejected', async () => {
+// There is no such thing as an incomplete package any more: the client names
+// the package, and the server decides what is in it.
+test('naming a package always buys all of it, whatever the cart held', async () => {
   const advertisement = await makeAdvertisement();
-  await assert.rejects(
-    () =>
-      submit({
-        advertisementId: advertisement._id.toString(),
-        items: [{ productId: ids.productA.toString(), quantity: 1 }],
-      }),
-    (err) => err.code === 'ADVERTISEMENT_ITEM_MISSING'
-  );
+  const order = await submit({
+    advertisementId: advertisement._id.toString(),
+    items: [{ productId: ids.productA.toString(), quantity: 1 }],
+  });
+
+  const lines = await OrderItem.find({ orderId: order._id }).lean();
+  assert.strictEqual(lines.length, 3, 'all three package products');
+  assert.strictEqual(order.finalPrice, 40 * RATE, 'the package price');
 });
 
 test('an unavailable or deactivated package product blocks the order', async () => {
@@ -441,13 +451,13 @@ test('an unavailable or deactivated package product blocks the order', async () 
   await Product.updateOne({ _id: ids.productB }, { isAvailable: false });
   await assert.rejects(
     () => submit({ advertisementId: advertisement._id.toString() }),
-    (err) => err.code === 'STOCK_CHECK_FAILED'
+    (err) => err.code === 'ADVERTISEMENT_PRODUCT_UNAVAILABLE'
   );
 
   await Product.updateOne({ _id: ids.productB }, { isAvailable: true, isActive: false });
   await assert.rejects(
     () => submit({ advertisementId: advertisement._id.toString() }),
-    (err) => err.code === 'STOCK_CHECK_FAILED'
+    (err) => err.code === 'ADVERTISEMENT_PRODUCT_UNAVAILABLE'
   );
 
   assert.strictEqual(await Order.countDocuments({}), 0);
@@ -527,23 +537,45 @@ test('a warehouse edit that keeps the package intact preserves the discount', as
   assert.strictEqual(reread.finalPrice, 45 * RATE);
 });
 
-test('a warehouse edit that breaks the package drops the discount and reprices', async () => {
+// The warehouse can no longer pull one product out of a package - that is
+// what used to silently strip the discount and re-bill the pharmacy at the
+// catalog sum. Dropping the WHOLE package is the only way, and it is explicit.
+test('a warehouse edit cannot pull one product out of a package', async () => {
   const advertisement = await makeAdvertisement();
   const order = await submit({ advertisementId: advertisement._id.toString() });
   const productCItem = (await OrderItem.find({ orderId: order._id })).find(
     (i) => String(i.productId) === String(ids.productC)
   );
 
+  await assert.rejects(
+    () => warehouseOrderService.updateOrderItems(order._id.toString(), ids.warehouse, ids.whUser, {
+      removeItems: [productCItem._id.toString()],
+    }),
+    (err) => err.code === 'PACKAGE_ITEMS_LOCKED'
+  );
+
+  const reread = await Order.findById(order._id);
+  assert.strictEqual(reread.advertisementDiscountAmount, 27 * RATE, 'untouched');
+  assert.strictEqual(reread.finalPrice, 40 * RATE, 'still the package price');
+});
+
+test('dropping the whole package reprices the order without it', async () => {
+  const advertisement = await makeAdvertisement();
+  const order = await submit({ advertisementId: advertisement._id.toString() });
   await warehouseOrderService.updateOrderItems(order._id.toString(), ids.warehouse, ids.whUser, {
-    removeItems: [productCItem._id.toString()],
+    addItems: [{ productId: ids.productA.toString(), quantity: 1 }],
+  });
+
+  const withGroups = await Order.findById(order._id);
+  await warehouseOrderService.updateOrderItems(order._id.toString(), ids.warehouse, ids.whUser, {
+    removePackages: [withGroups.orderPackageGroups[0]._id.toString()],
   });
 
   const reread = await Order.findById(order._id);
   assert.strictEqual(reread.advertisementId, null);
   assert.strictEqual(reread.advertisementDiscountAmount, 0);
-  assert.strictEqual(reread.totalPrice, 55 * RATE); // 30 + 25 catalog prices
-  assert.strictEqual(reread.finalPrice, 55 * RATE);
-  assert.strictEqual(reread.commissionAmount, 0, 'commissionRate is 0 in this fixture');
+  assert.strictEqual(reread.totalPrice, 30 * RATE, 'only the loose $30 line');
+  assert.strictEqual(reread.finalPrice, 30 * RATE);
 });
 
 // --- Reorder / returns ----------------------------------------------------

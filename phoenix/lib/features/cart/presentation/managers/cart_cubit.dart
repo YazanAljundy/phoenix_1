@@ -127,75 +127,83 @@ class CartCubit extends Cubit<CartState> {
     _loadWarehouseLimits(warehouseId);
   }
 
-  // "Open an advertisement": replaces the whole cart with a package's
-  // contents, bound to that package's own warehouse (which comes from the
-  // trusted server payload, never client input) - the same shape and the same
-  // one-warehouse-per-cart invariant as loadReorder above. The caller
-  // (AdvertisementCard) resolves any "you already have a cart" confirmation
-  // first, exactly as ReorderButton does.
+  // "Add a package to the cart": a package behaves exactly like a product -
+  // ONE line, whose quantity is the number of copies. Adding the same package
+  // again bumps that line's copies rather than creating a second one, which is
+  // the same rule addProduct applies to a repeated product.
   //
-  // `items` are already priced by the server at the advertised prices. The two
-  // totals are display-only: submitOrder sends nothing but the advertisement's
-  // id, and order.service.js re-reads the package and recomputes every figure.
-  void loadAdvertisement({
-    required String advertisementId,
+  // The products inside the package are never separate lines: the server
+  // builds the real order lines from the package itself at checkout, so the
+  // cart only ever names it and says how many.
+  void addPackage(
+    CartItem packageLine, {
     required String warehouseId,
     required String warehouseName,
-    required List<CartItem> items,
-    required num itemsSubtotalUsd,
-    required num totalUsd,
+  }) {
+    if (hasConflictingWarehouse(warehouseId)) return;
+
+    final existingIndex = state.items.indexWhere(
+      (item) => item.isPackage && item.packageId == packageLine.packageId,
+    );
+    final List<CartItem> updated;
+    if (existingIndex >= 0) {
+      final existing = state.items[existingIndex];
+      updated = List.of(state.items)
+        ..[existingIndex] = existing.copyWith(
+          quantity: existing.quantity + packageLine.quantity,
+        );
+    } else {
+      updated = [...state.items, packageLine];
+    }
+
+    final warehouseChanged = state.warehouseId != warehouseId;
+    emit(
+      state.copyWith(
+        warehouseId: warehouseId,
+        warehouseName: warehouseName,
+        items: updated,
+        clearError: true,
+      ),
+    );
+    if (warehouseChanged) _loadWarehouseLimits(warehouseId);
+  }
+
+  /// Replaces the whole cart with a single package, for the "your cart holds
+  /// another warehouse's items" path - the same shape replaceWithProduct has.
+  void replaceWithPackage(
+    CartItem packageLine, {
+    required String warehouseId,
+    required String warehouseName,
   }) {
     emit(
       CartState(
         warehouseId: warehouseId,
         warehouseName: warehouseName,
-        items: List.of(items),
-        advertisementId: advertisementId,
-        advertisementItemsSubtotalUsd: itemsSubtotalUsd,
-        advertisementTotalUsd: totalUsd,
+        items: [packageLine],
       ),
     );
     _loadWarehouseLimits(warehouseId);
   }
 
-  void updateQuantity(String productId, int quantity) {
+  // Works the same for a product line and a package line: for a package the
+  // number IS the copy count. There is no "breaking a package" any more - its
+  // contents are not cart lines, so nothing can be taken out of one.
+  void updateQuantity(String lineKey, int quantity) {
     final clamped = quantity < 1 ? 1 : quantity;
     final updated = state.items.map((item) {
-      if (item.productId != productId) return item;
+      if (item.lineKey != lineKey) return item;
       return item.copyWith(quantity: clamped);
     }).toList();
-
-    // A package line dropped BELOW its advertised quantity breaks the package
-    // - the pharmacy would be short of what the package price covers, and the
-    // backend rejects it at checkout (ADVERTISEMENT_ITEM_MISSING). Above the
-    // advertised quantity nothing breaks: the discount is applied once and the
-    // extra units add at the catalog price.
-    final target = state.items.firstWhere(
-      (item) => item.productId == productId,
-      orElse: () => updated.first,
-    );
-    final breaksPackage = target.isAdvertised &&
-        state.hasAdvertisement &&
-        clamped < (target.advertisementQuantity ?? 1);
-
-    emit(state.copyWith(items: updated, clearAdvertisement: breaksPackage));
+    emit(state.copyWith(items: updated));
   }
 
-  void removeItem(String productId) {
-    final removed = state.items.where((item) => item.productId == productId).toList();
-    final updated = state.items.where((item) => item.productId != productId).toList();
+  void removeItem(String lineKey) {
+    final updated = state.items.where((item) => item.lineKey != lineKey).toList();
     if (updated.isEmpty) {
       emit(const CartState());
       return;
     }
-
-    // A package is all-or-nothing: dropping one of its products means the
-    // package price no longer applies, and everything reprices normally. The
-    // backend enforces the identical rule at checkout
-    // (ADVERTISEMENT_ITEM_MISSING), so the cart can never show a package
-    // price the server would refuse to honour.
-    final brokePackage = removed.any((item) => item.isAdvertised);
-    emit(state.copyWith(items: updated, clearAdvertisement: brokePackage));
+    emit(state.copyWith(items: updated));
   }
 
   // "Clear the cart": drops every line at once. Resets to a pristine
@@ -244,10 +252,9 @@ class CartCubit extends Cubit<CartState> {
         warehouseId: state.warehouseId!,
         items: state.items,
         notes: state.notes.trim().isEmpty ? null : state.notes.trim(),
-        // Only sent while the package still holds - hasAdvertisement goes
-        // false the moment one of its products is removed, which is also when
-        // the server would reject it.
-        advertisementId: state.hasAdvertisement ? state.advertisementId : null,
+        // The repository splits `items` into loose product lines and packages:
+        // a package crosses the wire as { advertisementId, copies } and
+        // nothing else, and the server prices it from its own record.
         idempotencyKey: idempotencyKey,
       );
       emit(const CartState());

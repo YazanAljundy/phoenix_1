@@ -11,7 +11,38 @@ function serializeOrderItem(item) {
     quantity: item.quantity,
     unitPrice: item.unitPrice,
     discountPrice: item.discountPrice,
+    // Which package this line belongs to, or null for an ordinary line. The
+    // panel groups the lines by it and hides the per-line edit controls on
+    // the ones that have it.
+    packageGroupId: item.packageGroupId ?? null,
   };
+}
+
+// Prices cross the boundary in SYP here, like every other money field on the
+// warehouse order shape: `totalPriceSyp` is the frozen package total for all
+// copies, converted through the snapshot's OWN rate rather than today's, so
+// the panel shows what the pharmacy actually owes for it.
+function serializePackageGroups(order) {
+  return (order.orderPackageGroups ?? []).map((group) => ({
+    id: group._id,
+    advertisementId: group.advertisementId,
+    titleAr: group.advertisementSnapshot?.titleAr ?? null,
+    titleEn: group.advertisementSnapshot?.titleEn ?? null,
+    copies: group.copies,
+    // Per copy, and for all copies - both in USD, as stored.
+    unitPriceUsd: group.advertisementSnapshot?.totalPriceUsd ?? 0,
+    totalPriceUsd: group.totalPriceUsd,
+    totalPriceSyp: Math.round(
+      (group.advertisementSnapshot?.totalPriceUsd ?? 0) *
+        group.copies *
+        (group.advertisementSnapshot?.usdToSyp ?? 0)
+    ),
+    // What one copy contains - the panel shows units as quantity x copies.
+    items: (group.advertisementSnapshot?.items ?? []).map((item) => ({
+      productId: item.productId,
+      quantityPerCopy: item.quantity,
+    })),
+  }));
 }
 
 // Section 13b: the warehouse needs the full item list (to know what to
@@ -52,6 +83,11 @@ function toWarehouseOrderDetailResponse({ order, items, pharmacy, hasReturn }) {
       // order.model.js. null/0 on a normal order.
       advertisementId: order.advertisementId ?? null,
       advertisementDiscountAmount: order.advertisementDiscountAmount ?? 0,
+      // The packages on this order, each with the terms frozen at purchase.
+      // The panel renders one card per group and marks its product lines
+      // read-only - the API refuses to edit them either
+      // (PACKAGE_ITEMS_LOCKED), so the two agree.
+      packageGroups: serializePackageGroups(order),
       finalPrice: order.finalPrice,
       // Money-Flow V2: what the WAREHOUSE actually keeps on this order, once
       // the platform's commission comes off what the pharmacy pays. V1 stored

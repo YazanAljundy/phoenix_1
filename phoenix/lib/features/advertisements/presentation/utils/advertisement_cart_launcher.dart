@@ -104,35 +104,36 @@ Future<void> launchAdvertisementCart(BuildContext context, String advertisementI
     return;
   }
 
-  // One-warehouse-per-cart: a cart that already holds items is replaced,
-  // never merged. Cross-warehouse reuses the project's existing conflict
-  // copy - the same rule and the same wording as every other entry point.
-  if (cartCubit.state.items.isNotEmpty) {
-    final crossWarehouse = cartCubit.state.warehouseId != preparation.warehouseId;
+  // A package is now an ordinary cart line, so it simply joins the cart the
+  // way a product does - no replacing, and adding the same package again just
+  // bumps its copies. Only the one-warehouse-per-cart rule still needs a
+  // decision from the pharmacist, and it reuses the project's existing
+  // cross-warehouse conflict copy.
+  final line = preparation.toCartLine(isArabic: isArabic);
+  final warehouseName = isArabic
+      ? preparation.warehouseNameAr
+      : (preparation.warehouseNameEn ?? preparation.warehouseNameAr);
+
+  if (cartCubit.hasConflictingWarehouse(preparation.warehouseId)) {
     final confirmed = await _confirm(
       context,
-      title: crossWarehouse ? l10n.cartConflictTitle : l10n.advertisementReplaceCartTitle,
-      content: crossWarehouse
-          ? l10n.cartConflictMessage(cartCubit.state.warehouseName ?? '')
-          : l10n.advertisementReplaceCartMessage,
-      actionLabel: crossWarehouse
-          ? l10n.cartConflictConfirmButton
-          : l10n.advertisementReplaceCartConfirm,
+      title: l10n.cartConflictTitle,
+      content: l10n.cartConflictMessage(cartCubit.state.warehouseName ?? ''),
+      actionLabel: l10n.cartConflictConfirmButton,
     );
-    if (!confirmed) return;
+    if (!confirmed || !context.mounted) return;
+    cartCubit.replaceWithPackage(
+      line,
+      warehouseId: preparation.warehouseId,
+      warehouseName: warehouseName,
+    );
+  } else {
+    cartCubit.addPackage(
+      line,
+      warehouseId: preparation.warehouseId,
+      warehouseName: warehouseName,
+    );
   }
 
-  if (!context.mounted) return;
-
-  cartCubit.loadAdvertisement(
-    advertisementId: preparation.advertisementId,
-    warehouseId: preparation.warehouseId,
-    warehouseName: isArabic
-        ? preparation.warehouseNameAr
-        : (preparation.warehouseNameEn ?? preparation.warehouseNameAr),
-    items: preparation.items,
-    itemsSubtotalUsd: preparation.itemsTotalUsd,
-    totalUsd: preparation.totalPriceUsd,
-  );
   context.pushNamed(RouteNames.cart);
 }

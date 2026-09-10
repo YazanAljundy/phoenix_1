@@ -93,44 +93,51 @@ void main() {
 
   tearDown(() => cubit.close());
 
-  void loadPackage({String warehouseId = 'A', num totalPriceUsd = 60}) {
+  // A package goes into the cart as ONE line whose quantity is the number of
+  // copies, priced at the package total. Its products are not cart lines.
+  void addPackage({String warehouseId = 'A', num totalPriceUsd = 60, int copies = 1}) {
     final preparation = AdvertisementCartPreparation.fromJson(
       _cartJson(warehouseId: warehouseId, totalPriceUsd: totalPriceUsd),
     );
-    cubit.loadAdvertisement(
-      advertisementId: preparation.advertisementId,
+    cubit.addPackage(
+      preparation.toCartLine(isArabic: false, copies: copies),
       warehouseId: preparation.warehouseId,
       warehouseName: preparation.warehouseNameEn ?? preparation.warehouseNameAr,
-      items: preparation.items,
-      itemsSubtotalUsd: preparation.itemsTotalUsd,
-      totalUsd: preparation.totalPriceUsd,
     );
   }
 
   group('parsing the server cart payload', () {
-    test('lines are priced at the catalog price and marked as a package', () {
+    test('the payload becomes package contents, not cart lines', () {
       final preparation = AdvertisementCartPreparation.fromJson(_cartJson());
 
-      expect(preparation.items.length, 3);
-      // The catalog price is both the line price and the "unit" price.
-      expect(preparation.items.map((i) => i.discountPriceUsd).toList(), [30, 25, 12]);
-      expect(preparation.items.map((i) => i.unitPriceUsd).toList(), [30, 25, 12]);
-      // The cart line quantity and the advertised minimum both come from the
-      // payload's per-item quantity.
-      expect(preparation.items.map((i) => i.quantity).toList(), [2, 1, 1]);
-      expect(preparation.items.map((i) => i.advertisementQuantity).toList(), [2, 1, 1]);
-      expect(preparation.items.every((i) => i.advertisementId == 'ad1'), isTrue);
-      expect(preparation.items.every((i) => i.isAdvertised), isTrue);
+      expect(preparation.contents.length, 3);
+      expect(preparation.contents.map((c) => c.quantityPerCopy).toList(), [2, 1, 1]);
+      expect(preparation.contents.map((c) => c.productId).toList(), ['p1', 'p2', 'p3']);
       expect(preparation.totalPriceUsd, 60);
       expect(preparation.itemsTotalUsd, 97);
       expect(preparation.isComplete, isTrue);
+    });
+
+    test('the cart line is the package itself, priced at the package total', () {
+      final line = AdvertisementCartPreparation.fromJson(_cartJson())
+          .toCartLine(isArabic: false);
+
+      expect(line.isPackage, isTrue);
+      expect(line.packageId, 'ad1');
+      expect(line.lineKey, 'ad1');
+      expect(line.discountPriceUsd, 60, reason: 'one copy of the package');
+      expect(line.quantity, 1, reason: 'quantity is a copy count');
+      expect(line.lineTotalUsd, 60);
+      expect(line.packageContents.length, 3);
+      // A package has no struck-through "was" price - its price IS the offer.
+      expect(line.hasOffer, isFalse);
     });
 
     test('a package missing one of its products is not complete', () {
       final preparation = AdvertisementCartPreparation.fromJson(
         _cartJson(
           unavailableItems: [
-            {'productId': 'p9', 'productNameAr': 'دواء ناقص', 'productNameEn': 'Gone', 'quantity': 1},
+            {'productId': 'p9', 'productNameAr': 'x', 'productNameEn': 'Gone', 'quantity': 1},
           ],
         ),
       );
@@ -150,192 +157,186 @@ void main() {
     });
   });
 
-  group('advertisement into the cart', () {
-    test('an empty cart takes the package directly, bound to its warehouse', () {
+  group('a package in the cart', () {
+    test('is a single line, bound to its warehouse', () {
       expect(cubit.state.isEmpty, isTrue);
 
-      loadPackage();
+      addPackage();
 
-      expect(cubit.state.items.length, 3);
+      expect(cubit.state.items.length, 1);
       expect(cubit.state.warehouseId, 'A');
-      expect(cubit.state.advertisementId, 'ad1');
-      expect(cubit.state.hasAdvertisement, isTrue);
+      expect(cubit.state.items.single.packageId, 'ad1');
+      expect(cubit.state.hasPackage, isTrue);
     });
 
-    test('the package total is charged, not the quantity-weighted catalog sum', () {
-      loadPackage();
+    test('the cart badge counts it once, whatever it contains', () {
+      addPackage();
+      expect(cubit.state.itemCount, 1);
 
-      expect(cubit.state.subtotalUsd, 97); // 2x30 + 25 + 12
-      expect(cubit.state.advertisementDiscountUsd, 37); // 97 - 60
+      // Three copies of a three-product package is still ONE thing in the cart.
+      cubit.updateQuantity('ad1', 3);
+      expect(cubit.state.itemCount, 1);
+
+      cubit.addProduct(_product('extra'), warehouseId: 'A', warehouseName: 'Warehouse A', quantity: 7);
+      expect(cubit.state.itemCount, 2, reason: 'one package line + one product line');
+    });
+
+    test('the package price is what is charged, not the catalog sum', () {
+      addPackage();
+
+      expect(cubit.state.subtotalUsd, 60);
       expect(cubit.state.payableUsd, 60);
     });
 
-    test('a package priced above its lines never becomes a surcharge', () {
-      loadPackage(totalPriceUsd: 200);
+    test('adding the same package again bumps its copies, not a second line', () {
+      addPackage();
+      addPackage();
 
-      expect(cubit.state.advertisementDiscountUsd, 0);
-      expect(cubit.state.payableUsd, cubit.state.subtotalUsd);
+      expect(cubit.state.items.length, 1);
+      expect(cubit.state.items.single.quantity, 2);
+      expect(cubit.state.subtotalUsd, 120);
     });
 
-    test('loading a package replaces a cart from another warehouse entirely', () {
-      cubit.addProduct(_product('other'), warehouseId: 'B', warehouseName: 'Warehouse B', quantity: 1);
-      expect(cubit.state.warehouseId, 'B');
+    test('two different packages are two lines', () {
+      addPackage();
+      final other = AdvertisementCartPreparation.fromJson(
+        _cartJson(advertisementId: 'ad2', totalPriceUsd: 15),
+      );
+      cubit.addPackage(
+        other.toCartLine(isArabic: false),
+        warehouseId: 'A',
+        warehouseName: 'Warehouse A',
+      );
 
-      loadPackage();
-
-      // One warehouse per cart: never merged.
-      expect(cubit.state.warehouseId, 'A');
-      expect(cubit.state.items.length, 3);
-      expect(cubit.state.items.any((i) => i.productId == 'other'), isFalse);
+      expect(cubit.state.items.length, 2);
+      expect(cubit.state.itemCount, 2);
+      expect(cubit.state.subtotalUsd, 75);
     });
 
     test('hasConflictingWarehouse still reports a cross-warehouse package cart', () {
-      loadPackage();
+      addPackage();
 
       expect(cubit.hasConflictingWarehouse('B'), isTrue);
       expect(cubit.hasConflictingWarehouse('A'), isFalse);
     });
+
+    test('replaceWithPackage clears a cart from another warehouse', () {
+      cubit.addProduct(_product('other'), warehouseId: 'B', warehouseName: 'Warehouse B', quantity: 1);
+      final preparation = AdvertisementCartPreparation.fromJson(_cartJson());
+
+      cubit.replaceWithPackage(
+        preparation.toCartLine(isArabic: false),
+        warehouseId: 'A',
+        warehouseName: 'Warehouse A',
+      );
+
+      expect(cubit.state.warehouseId, 'A');
+      expect(cubit.state.items.length, 1);
+      expect(cubit.state.items.single.packageId, 'ad1');
+    });
   });
 
-  group('editing a package cart', () {
-    test('raising a package line above its advertised quantity keeps the package', () {
-      loadPackage();
+  group('changing how many copies', () {
+    test('the stepper drives the copy count and the line total', () {
+      addPackage();
 
-      cubit.updateQuantity('p1', 4); // advertised is 2
+      cubit.updateQuantity('ad1', 3);
 
-      expect(cubit.state.hasAdvertisement, isTrue);
-      // 4x30 + 25 + 12 = 157, and the discount is still exactly one $37.
-      expect(cubit.state.subtotalUsd, 157);
-      expect(cubit.state.advertisementDiscountUsd, 37);
-      expect(cubit.state.payableUsd, 120); // 60 package + 2 extra p1 at $30
+      expect(cubit.state.items.single.quantity, 3);
+      expect(cubit.state.items.single.lineTotalUsd, 180);
+      expect(cubit.state.payableUsd, 180);
     });
 
-    test('dropping a package line BELOW its advertised quantity breaks the package', () {
-      loadPackage();
+    test('the contents scale with the copies for display', () {
+      addPackage(copies: 2);
 
-      cubit.updateQuantity('p1', 1); // advertised is 2
-
-      expect(cubit.state.hasAdvertisement, isFalse);
-      expect(cubit.state.advertisementId, isNull);
-      expect(cubit.state.advertisementDiscountUsd, 0);
-      expect(cubit.state.subtotalUsd, 67); // 30 + 25 + 12 at qty 1 each
-      expect(cubit.state.payableUsd, 67);
+      final line = cubit.state.items.single;
+      // p1 is 2 per copy, so 2 copies deliver 4.
+      expect(line.packageContents.first.quantityPerCopy * line.quantity, 4);
     });
 
-    test('removing an advertised product ends the package price', () {
-      loadPackage();
-
-      cubit.removeItem('p3');
-
-      expect(cubit.state.hasAdvertisement, isFalse);
-      expect(cubit.state.advertisementId, isNull);
-      expect(cubit.state.advertisementDiscountUsd, 0);
-      expect(cubit.state.subtotalUsd, 85); // 2x30 + 25
-      expect(cubit.state.payableUsd, 85);
-    });
-
-    test('adding a normal product keeps the package intact', () {
-      loadPackage();
-
+    test('a package alongside products keeps both priced independently', () {
+      addPackage();
       cubit.addProduct(_product('extra'), warehouseId: 'A', warehouseName: 'Warehouse A', quantity: 2);
 
-      expect(cubit.state.hasAdvertisement, isTrue);
-      expect(cubit.state.advertisementId, 'ad1');
-      expect(cubit.state.subtotalUsd, 117); // 97 catalog + 2 x $10 normal
-      expect(cubit.state.advertisementDiscountUsd, 37);
+      expect(cubit.state.items.length, 2);
+      expect(cubit.state.subtotalUsd, 80, reason: '60 package + 2 x 10');
       expect(cubit.state.payableUsd, 80);
-      expect(cubit.state.items.firstWhere((i) => i.productId == 'extra').isAdvertised, isFalse);
     });
 
-    test('removing a non-advertised extra leaves the package alone', () {
-      loadPackage();
+    test('removing the package leaves the rest of the cart alone', () {
+      addPackage();
       cubit.addProduct(_product('extra'), warehouseId: 'A', warehouseName: 'Warehouse A', quantity: 1);
 
-      cubit.removeItem('extra');
+      cubit.removeItem('ad1');
 
-      expect(cubit.state.hasAdvertisement, isTrue);
-      expect(cubit.state.advertisementDiscountUsd, 37);
-      expect(cubit.state.payableUsd, 60);
+      expect(cubit.state.hasPackage, isFalse);
+      expect(cubit.state.items.single.productId, 'extra');
+      expect(cubit.state.subtotalUsd, 10);
+    });
+
+    test('removing the last line resets the cart completely', () {
+      addPackage();
+      cubit.removeItem('ad1');
+
+      expect(cubit.state.isEmpty, isTrue);
+      expect(cubit.state.warehouseId, isNull);
     });
   });
 
   group('checkout', () {
-    test('submitOrder sends the advertisement id and no prices', () async {
+    void stubSubmit() {
       when(
         () => orderRepo.submitOrder(
           warehouseId: any(named: 'warehouseId'),
           items: any(named: 'items'),
           notes: any(named: 'notes'),
-          advertisementId: any(named: 'advertisementId'),
           idempotencyKey: any(named: 'idempotencyKey'),
         ),
       ).thenAnswer((_) async => _fakeOrder);
+    }
 
-      loadPackage();
+    List<CartItem> capturedItems() => verify(
+          () => orderRepo.submitOrder(
+            warehouseId: any(named: 'warehouseId'),
+            items: captureAny(named: 'items'),
+            notes: any(named: 'notes'),
+            idempotencyKey: any(named: 'idempotencyKey'),
+          ),
+        ).captured.single as List<CartItem>;
+
+    test('the package crosses as a line the repository can split out', () async {
+      stubSubmit();
+      addPackage(copies: 2);
       await cubit.submitOrder();
 
-      final captured = verify(
-        () => orderRepo.submitOrder(
-          warehouseId: captureAny(named: 'warehouseId'),
-          items: any(named: 'items'),
-          notes: any(named: 'notes'),
-          advertisementId: captureAny(named: 'advertisementId'),
-          idempotencyKey: any(named: 'idempotencyKey'),
-        ),
-      ).captured;
-      expect(captured[0], 'A');
-      expect(captured[1], 'ad1');
+      final items = capturedItems();
+      expect(items.length, 1);
+      expect(items.single.isPackage, isTrue);
+      expect(items.single.packageId, 'ad1');
+      expect(items.single.quantity, 2, reason: 'copies');
     });
 
-    test('a broken package submits with no advertisement id at all', () async {
-      when(
-        () => orderRepo.submitOrder(
-          warehouseId: any(named: 'warehouseId'),
-          items: any(named: 'items'),
-          notes: any(named: 'notes'),
-          advertisementId: any(named: 'advertisementId'),
-          idempotencyKey: any(named: 'idempotencyKey'),
-        ),
-      ).thenAnswer((_) async => _fakeOrder);
-
-      loadPackage();
-      cubit.removeItem('p3');
+    test('a mixed cart carries both kinds of line', () async {
+      stubSubmit();
+      addPackage();
+      cubit.addProduct(_product('extra'), warehouseId: 'A', warehouseName: 'Warehouse A', quantity: 3);
       await cubit.submitOrder();
 
-      final captured = verify(
-        () => orderRepo.submitOrder(
-          warehouseId: any(named: 'warehouseId'),
-          items: any(named: 'items'),
-          notes: any(named: 'notes'),
-          advertisementId: captureAny(named: 'advertisementId'),
-          idempotencyKey: any(named: 'idempotencyKey'),
-        ),
-      ).captured;
-      expect(captured.single, isNull);
+      final items = capturedItems();
+      expect(items.where((i) => i.isPackage).length, 1);
+      expect(items.where((i) => !i.isPackage).length, 1);
     });
   });
 
   group('a normal cart is completely unaffected', () {
-    test('no advertisement means no discount and payable == subtotal', () {
+    test('no package means payable == subtotal', () {
       cubit.addProduct(_product('p1'), warehouseId: 'A', warehouseName: 'Warehouse A', quantity: 2);
 
-      expect(cubit.state.hasAdvertisement, isFalse);
-      expect(cubit.state.advertisementId, isNull);
-      expect(cubit.state.advertisementDiscountUsd, 0);
+      expect(cubit.state.hasPackage, isFalse);
       expect(cubit.state.subtotalUsd, 20);
       expect(cubit.state.payableUsd, 20);
-      expect(cubit.state.items.single.isAdvertised, isFalse);
-    });
-
-    test('removing the last item resets the cart completely', () {
-      loadPackage();
-      cubit.removeItem('p1');
-      cubit.removeItem('p2');
-      cubit.removeItem('p3');
-
-      expect(cubit.state.isEmpty, isTrue);
-      expect(cubit.state.warehouseId, isNull);
-      expect(cubit.state.advertisementId, isNull);
+      expect(cubit.state.items.single.isPackage, isFalse);
     });
   });
 

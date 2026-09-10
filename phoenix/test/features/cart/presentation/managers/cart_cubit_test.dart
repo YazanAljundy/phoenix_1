@@ -66,7 +66,8 @@ void main() {
       expect(cubit.state.warehouseId, 'A');
       expect(cubit.state.warehouseName, 'Warehouse A');
       expect(cubit.state.items.single.productId, 'p1');
-      expect(cubit.state.itemCount, 2);
+      expect(cubit.state.items.single.quantity, 2);
+      expect(cubit.state.itemCount, 1, reason: 'one line, whatever its quantity');
     });
 
     test('Test 2: a second product from the same warehouse is added normally', () {
@@ -75,7 +76,7 @@ void main() {
 
       expect(cubit.state.warehouseId, 'A');
       expect(cubit.state.items.map((i) => i.productId).toList(), ['p1', 'p2']);
-      expect(cubit.state.itemCount, 4);
+      expect(cubit.state.itemCount, 2, reason: 'two lines');
     });
 
     test(
@@ -108,7 +109,7 @@ void main() {
 
       expect(cubit.state.warehouseId, 'A');
       expect(cubit.state.items, same(itemsBefore));
-      expect(cubit.state.itemCount, 3);
+      expect(cubit.state.itemCount, 2, reason: 'two lines');
     });
 
     test('Test 5: "Clear Cart & Add" - replaceWithProduct rebinds the cart to Warehouse B', () {
@@ -125,7 +126,8 @@ void main() {
       expect(cubit.state.warehouseId, 'B');
       expect(cubit.state.warehouseName, 'Warehouse B');
       expect(cubit.state.items.single.productId, 'p3');
-      expect(cubit.state.itemCount, 5);
+      expect(cubit.state.items.single.quantity, 5);
+      expect(cubit.state.itemCount, 1);
       expect(cubit.hasConflictingWarehouse('B'), isFalse);
       // ...and now a product from B can be added on top.
       cubit.addProduct(_product('p4'), warehouseId: 'B', warehouseName: 'Warehouse B', quantity: 1);
@@ -172,11 +174,13 @@ void main() {
       cubit.addProduct(_product('p2'), warehouseId: 'A', warehouseName: 'A', quantity: 1);
       expect(cubit.state.itemCount, 2);
 
+      // Raising a line's quantity does NOT move the badge: it still counts
+      // lines, and there are still two things in the cart.
       cubit.updateQuantity('p1', 4);
-      expect(cubit.state.itemCount, 5);
+      expect(cubit.state.itemCount, 2);
 
       cubit.removeItem('p2');
-      expect(cubit.state.itemCount, 4);
+      expect(cubit.state.itemCount, 1);
 
       cubit.removeItem('p1');
       expect(cubit.state.itemCount, 0);
@@ -185,8 +189,11 @@ void main() {
     });
 
     test('emits a new state on each mutation (drives BlocBuilder rebuilds)', () {
+      // Watched on the total units rather than the badge: the badge counts
+      // lines now, so a quantity change would not move it and the point here
+      // is that every mutation emits.
       expectLater(
-        cubit.stream.map((s) => s.itemCount),
+        cubit.stream.map((s) => s.items.fold<int>(0, (sum, i) => sum + i.quantity)),
         emitsInOrder(<int>[1, 3, 2, 0]),
       );
 
@@ -210,7 +217,7 @@ void main() {
       expect(cubit.state.warehouseName, 'Warehouse A');
       expect(cubit.state.items.map((i) => i.productId).toList(), ['p1', 'p2']);
       expect(cubit.state.items.map((i) => i.quantity).toList(), [3, 1]);
-      expect(cubit.state.itemCount, 4);
+      expect(cubit.state.itemCount, 2, reason: 'two lines');
     });
 
     test('loadReorder replaces whatever was in the cart (no silent merge)', () {
@@ -277,21 +284,24 @@ void main() {
       expect(cubit.state.subtotalUsd, 0);
     });
 
-    test('an advertisement package is dropped along with its lines', () {
-      cubit.loadAdvertisement(
-        advertisementId: 'ad1',
+    test('a package line is dropped with the rest of the cart', () {
+      cubit.addPackage(
+        CartItem.fromPackage(
+          packageId: 'ad1',
+          titleAr: 'b',
+          warehouseName: 'Warehouse A',
+          pricePerCopyUsd: 8,
+          copies: 1,
+          contents: const [],
+        ),
         warehouseId: 'A',
         warehouseName: 'Warehouse A',
-        items: [CartItem.fromProduct(_product('p1'), quantity: 1)],
-        itemsSubtotalUsd: 10,
-        totalUsd: 8,
       );
 
       cubit.clearCart();
 
       expect(cubit.state.isEmpty, isTrue);
-      expect(cubit.state.advertisementId, isNull);
-      expect(cubit.state.hasAdvertisement, isFalse);
+      expect(cubit.state.hasPackage, isFalse);
     });
 
     test('emits so the UI rebuilds, and is a no-op on an already empty cart', () {

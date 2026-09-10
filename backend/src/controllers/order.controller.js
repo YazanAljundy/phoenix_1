@@ -21,8 +21,12 @@ async function loadPharmacyOrThrow(userId) {
   return pharmacy;
 }
 
+// `items` are the LOOSE lines only. A cart holding nothing but packages sends
+// none, so an empty array is valid here and createOrder makes the final call
+// on whether the whole cart is empty (it can see the packages too).
 function validateItems(items) {
-  if (!Array.isArray(items) || items.length === 0) {
+  if (items === undefined || items === null) return [];
+  if (!Array.isArray(items)) {
     throw ApiError.badRequest('Your cart is empty.', undefined, 'CART_EMPTY');
   }
 
@@ -54,6 +58,31 @@ function validateItems(items) {
   });
 }
 
+// The packages the cart holds, each as { advertisementId, copies }. Shape
+// only - createOrder is what decides whether each package is live, belongs to
+// this warehouse and can still be ordered.
+function validatePackages(packages) {
+  if (packages === undefined || packages === null) return [];
+  if (!Array.isArray(packages)) {
+    throw ApiError.badRequest('Invalid advertisement.', undefined, 'INVALID_ADVERTISEMENT');
+  }
+
+  return packages.map((entry) => {
+    if (
+      !entry ||
+      typeof entry.advertisementId !== 'string' ||
+      !mongoose.Types.ObjectId.isValid(entry.advertisementId)
+    ) {
+      throw ApiError.badRequest('Invalid advertisement.', undefined, 'INVALID_ADVERTISEMENT');
+    }
+    const copies = entry.copies === undefined || entry.copies === null ? 1 : Number(entry.copies);
+    if (!Number.isInteger(copies) || copies < 1) {
+      throw ApiError.badRequest('Invalid package quantity.', undefined, 'INVALID_PACKAGE_COPIES');
+    }
+    return { advertisementId: entry.advertisementId, copies };
+  });
+}
+
 // Money-Flow V2. `idempotencyKey` is a client-generated UUID: a retried
 // submission with the same key returns the order the first attempt created
 // instead of placing a second one. Optional for now so an older app build
@@ -75,15 +104,20 @@ const create = asyncHandler(async (req, res) => {
   }
   const items = validateItems(req.body.items);
 
-  // An advertisement is identified by id and nothing else. Any price, total or
-  // discount in the body is ignored outright - createOrder re-reads the
-  // package from MongoDB and computes every figure itself, so a client cannot
-  // name its own discount.
+  // A package is identified by id and a copy count, and nothing else. Any
+  // price, total or discount in the body is ignored outright - createOrder
+  // re-reads the package from MongoDB and computes every figure itself, so a
+  // client cannot name its own discount.
+  //
+  // `advertisementId` is the pre-packages shape (one package, one copy) and is
+  // still accepted so an older app build keeps working; createOrder folds it
+  // into the same list.
   if (advertisementId !== undefined && advertisementId !== null) {
     if (typeof advertisementId !== 'string' || !mongoose.Types.ObjectId.isValid(advertisementId)) {
       throw ApiError.badRequest('Invalid advertisement.', undefined, 'INVALID_ADVERTISEMENT');
     }
   }
+  const packages = validatePackages(req.body.packages);
 
   // pharmacyId comes from the authenticated user's own profile, never from
   // the request body - a pharmacist can only ever order as themselves.
@@ -95,6 +129,7 @@ const create = asyncHandler(async (req, res) => {
     warehouseId,
     items,
     advertisementId: advertisementId || null,
+    packages,
     notes: typeof notes === 'string' && notes.trim() ? notes.trim() : null,
     idempotencyKey,
   });
