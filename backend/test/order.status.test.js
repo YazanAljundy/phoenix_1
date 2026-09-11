@@ -19,7 +19,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const path = require('node:path');
 const mongoose = require('mongoose');
-const { startMemoryMongo, stopMemoryMongo } = require('./helpers/mongo');
+const { startMemoryMongo, stopMemoryMongo, syncIndexes } = require('./helpers/mongo');
 
 const emitted = [];
 const notifications = [];
@@ -50,6 +50,8 @@ const User = require('../src/models/user.model');
 const Pharmacy = require('../src/models/pharmacy.model');
 const Warehouse = require('../src/models/warehouse.model');
 const Order = require('../src/models/order.model');
+const LedgerEntry = require('../src/models/ledgerEntry.model');
+const LedgerAccount = require('../src/models/ledgerAccount.model');
 
 const orderService = require('../src/services/order.service');
 const warehouseOrderService = require('../src/services/warehouseOrder.service');
@@ -81,6 +83,13 @@ async function makeOrder(status) {
 
 test.before(async () => {
   await startMemoryMongo({ dbName: 'feniq-order-status-test' });
+  // Built up front, like every other test file whose orders reach 'delivered'
+  // (ledger.delivery.test.js et al.). The final advance posts the charge inside
+  // a transaction, and on a fresh database Mongoose's lazy background index
+  // builds can conflict with that first transactional write. Under full-suite
+  // load the conflicts outlasted runInTransaction's retry budget and surfaced
+  // as an intermittent TRANSACTION_CONTENTION on the delivery step.
+  await syncIndexes(Order, LedgerEntry, LedgerAccount);
 
   const [pharmacyUser, warehouseUser] = await User.create([
     { name: 'Pharm', phone: '0931111111', role: 'pharmacy', status: 'active' },
