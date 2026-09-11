@@ -132,8 +132,8 @@ class WarehouseProfileView extends StatelessWidget {
                               icon: const Icon(Icons.support_agent_outlined, size: 18),
                               label: Text(l10n.submitComplaintOnWarehouseCta),
                               style: OutlinedButton.styleFrom(
-                                foregroundColor: AppColors.navyOf(context),
-                                side: BorderSide(color: AppColors.navyOf(context)),
+                                foregroundColor: AppColors.textOf(context),
+                                side: BorderSide(color: AppColors.textOf(context)),
                                 shape: const RoundedRectangleBorder(borderRadius: AppRadius.medium),
                                 padding: const EdgeInsets.symmetric(vertical: 14),
                               ),
@@ -177,7 +177,7 @@ class _ProfileHeader extends StatelessWidget {
                 alignment: Alignment.center,
                 child: Icon(
                   Icons.local_shipping_outlined,
-                  color: AppColors.navyOf(context),
+                  color: AppColors.textOf(context),
                   size: AppSizes.iconSizeLarge,
                 ),
               ),

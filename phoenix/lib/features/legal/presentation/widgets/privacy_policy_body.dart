@@ -61,7 +61,7 @@ class _Section extends StatelessWidget {
           Text(
             section.title,
             style: context.textTheme.titleMedium?.copyWith(
-              color: AppColors.navyOf(context),
+              color: AppColors.textOf(context),
             ),
           ),
           const SizedBox(height: AppSizes.spacingSmall),

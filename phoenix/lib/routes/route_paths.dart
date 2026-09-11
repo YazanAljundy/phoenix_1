@@ -9,6 +9,7 @@ class RoutePaths {
   static const String warehouseSelection = '/warehouse-selection';
   static const String promotions = '/offers-and-ads';
   static const String warehouseProfile = '/warehouses/:warehouseId/profile';
+  static const String warehouseOffers = '/warehouses/:warehouseId/offers';
   static const String manufacturers = '/manufacturers/:warehouseId';
   static const String catalog = '/catalog/:warehouseId';
   static const String cart = '/cart';

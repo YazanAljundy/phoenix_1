@@ -123,7 +123,7 @@ class _SectionHeader extends StatelessWidget {
           width: 3,
           height: 15,
           decoration: BoxDecoration(
-            color: AppColors.navyOf(context),
+            color: AppColors.textOf(context),
             borderRadius: BorderRadius.circular(2),
           ),
         ),
@@ -236,7 +236,7 @@ class _WarehouseCard extends StatelessWidget {
           const SizedBox(height: AppSizes.spacingXSmall),
           Row(
             children: [
-              Icon(Icons.storefront_rounded, size: 18, color: AppColors.navyOf(context)),
+              Icon(Icons.storefront_rounded, size: 18, color: AppColors.textOf(context)),
               const SizedBox(width: AppSizes.spacingSmall),
               Expanded(
                 child: Text(

@@ -1553,4 +1553,17 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get offerPermanent => 'Ongoing';
+
+  @override
+  String get addToCartFullButton => 'Add to cart';
+
+  @override
+  String get warehouseOffersTitle => 'Warehouse offers';
+
+  @override
+  String get warehouseOffersNoWarehouseTitle => 'No warehouse selected';
+
+  @override
+  String get warehouseOffersNoWarehouseMessage =>
+      'Offers are shown for the warehouse you are ordering from. Choose a warehouse and add a product to your cart first.';
 }

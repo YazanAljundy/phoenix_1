@@ -228,7 +228,12 @@ class _CartViewState extends State<CartView> {
             children: [
               Expanded(
                 child: SingleChildScrollView(
-                  padding: AppPadding.screen,
+                  padding: const EdgeInsets.fromLTRB(
+                    AppSizes.spacingMedium,
+                    AppSizes.spacingMedium,
+                    AppSizes.spacingMedium,
+                    AppSizes.spacingLarge,
+                  ),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -242,7 +247,7 @@ class _CartViewState extends State<CartView> {
                               context.read<CartCubit>().updateQuantity(item.lineKey, quantity),
                           onRemove: () => context.read<CartCubit>().removeItem(item.lineKey),
                         ),
-                        const SizedBox(height: AppSizes.spacingSmall),
+                        const SizedBox(height: AppSizes.spacingMedium),
                       ],
                       const SizedBox(height: AppSizes.spacingXSmall),
                       // Section 5: add more products to this cart. Scoped to
@@ -260,28 +265,28 @@ class _CartViewState extends State<CartView> {
                                     warehouseName: state.warehouseName ?? '',
                                   ),
                                 ),
-                        icon: const Icon(Icons.add, size: 18),
+                        icon: const Icon(Icons.add, size: 20),
                         label: Text(l10n.addProductButton),
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.navyOf(context),
-                          side: BorderSide(color: AppColors.navyOf(context)),
-                          shape: const RoundedRectangleBorder(borderRadius: AppRadius.small),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          foregroundColor: AppColors.textOf(context),
+                          side: BorderSide(color: AppColors.textOf(context)),
+                          shape: const RoundedRectangleBorder(borderRadius: AppRadius.medium),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
                       ),
-                      const SizedBox(height: AppSizes.spacingSmall),
+                      const SizedBox(height: AppSizes.spacingSmall + AppSizes.spacingXSmall),
                       // Only ever rendered with a non-empty cart: the empty
                       // cart takes the _EmptyCart branch above, so there is
                       // nothing to clear when this is not on screen.
                       OutlinedButton.icon(
                         onPressed: _confirmClearCart,
-                        icon: const Icon(Icons.delete_outline, size: 18),
+                        icon: const Icon(Icons.delete_outline, size: 20),
                         label: Text(l10n.clearCartButton),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.errorOf(context),
                           side: BorderSide(color: AppColors.errorOf(context)),
-                          shape: const RoundedRectangleBorder(borderRadius: AppRadius.small),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: const RoundedRectangleBorder(borderRadius: AppRadius.medium),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
                       ),
                       const SizedBox(height: AppSizes.spacingMedium),
@@ -296,11 +301,26 @@ class _CartViewState extends State<CartView> {
                   ),
                 ),
               ),
+              // The order summary sits on its own raised sheet, so the total
+              // and the submit button read as one block, apart from the lines
+              // scrolling above them.
               Container(
-                padding: AppPadding.screen,
+                padding: const EdgeInsets.fromLTRB(
+                  AppSizes.spacingMedium + AppSizes.spacingXSmall,
+                  AppSizes.spacingMedium + AppSizes.spacingXSmall,
+                  AppSizes.spacingMedium + AppSizes.spacingXSmall,
+                  AppSizes.spacingMedium,
+                ),
                 decoration: BoxDecoration(
-                  color: AppColors.backgroundOf(context),
-                  border: Border(top: BorderSide(color: AppColors.borderOf(context))),
+                  color: AppColors.surfaceElevatedOf(context),
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: context.isDarkMode ? 0.3 : 0.08),
+                      blurRadius: 16,
+                      offset: const Offset(0, -4),
+                    ),
+                  ],
                 ),
                 child: SafeArea(
                   top: false,
@@ -383,7 +403,7 @@ class _CartViewState extends State<CartView> {
                           ),
                         ),
                       ],
-                      const SizedBox(height: AppSizes.spacingSmall),
+                      const SizedBox(height: AppSizes.spacingMedium),
                       PrimaryButton(
                         label: l10n.submitOrderButton,
                         isLoading: state.isSubmitting,

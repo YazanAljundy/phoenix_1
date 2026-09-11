@@ -8,7 +8,8 @@ import '../extensions/build_context_extensions.dart';
 /// The four semantic tones a status pill can take (Section 3-d of the
 /// visual-polish pass) - `pending` (orange), `success` (green, e.g.
 /// delivered/approved), `danger` (red, e.g. cancelled/rejected/unavailable),
-/// `info` (navy, e.g. confirmed/preparing/out for delivery).
+/// `info` (navy by day, silver at night - AppColors.textOf, since navyOf
+/// vanishes on a dark card; e.g. confirmed/preparing/out for delivery).
 enum StatusBadgeTone { pending, success, danger, info }
 
 /// One shared visual for every status/availability pill in the app - light
@@ -30,7 +31,7 @@ class StatusBadge extends StatelessWidget {
       StatusBadgeTone.pending => AppColors.primaryOf(context),
       StatusBadgeTone.success => AppColors.secondaryOf(context),
       StatusBadgeTone.danger => AppColors.errorOf(context),
-      StatusBadgeTone.info => AppColors.navyOf(context),
+      StatusBadgeTone.info => AppColors.textOf(context),
     };
     // Tint the pill from its own foreground rather than from a hand-picked
     // pastel per tone: those pastels were Material-palette tints of the old

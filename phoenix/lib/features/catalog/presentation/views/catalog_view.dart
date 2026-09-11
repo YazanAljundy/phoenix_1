@@ -402,7 +402,7 @@ class _ProductRowSkeleton extends StatelessWidget {
               ),
             ),
             SizedBox(width: AppSizes.spacingSmall),
-            SkeletonBar(width: 40, height: 40, radius: AppRadius.full),
+            SkeletonBar(width: 104, height: 40),
           ],
         ),
       ],

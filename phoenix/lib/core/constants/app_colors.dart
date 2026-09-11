@@ -118,6 +118,10 @@ class AppColors {
       ? darkSecondary
       : lightSecondary;
 
+  /// A surface colour - brand app bars, the splash ground - always with white
+  /// on top. Never a foreground: at night it is the card fill itself, so text,
+  /// icons or borders drawn in it vanish. Use [textOf] for those; it is the
+  /// same navy by day.
   static Color navyOf(BuildContext context) =>
       Theme.of(context).brightness == Brightness.dark ? darkNavy : lightNavy;
 

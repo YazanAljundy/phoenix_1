@@ -6,10 +6,12 @@ import 'package:feniq/core/constants/app_radius.dart';
 import 'package:feniq/core/constants/app_sizes.dart';
 import 'package:feniq/core/error/error_translator.dart';
 import 'package:feniq/core/extensions/build_context_extensions.dart';
+import 'package:feniq/core/widgets/app_dialog.dart';
 import 'package:feniq/core/widgets/app_skeleton.dart';
 import 'package:feniq/core/widgets/empty_view.dart';
 import 'package:feniq/core/widgets/failure_widget.dart';
 import 'package:feniq/features/advertisements/presentation/utils/advertisement_cart_launcher.dart';
+import 'package:feniq/features/cart/presentation/managers/cart_cubit.dart';
 import 'package:feniq/features/cart/presentation/widgets/cart_button.dart';
 import 'package:feniq/features/catalog/data/models/manufacturers_route_args.dart';
 import 'package:feniq/features/notifications/presentation/widgets/notification_button.dart';
@@ -70,6 +72,35 @@ class _PromotionsViewState extends State<PromotionsView> {
         await launchAdvertisementCart(context, advertisement.id);
         if (mounted) setState(() => _openingPackage = false);
     }
+  }
+
+  // The Offers chip does not narrow this all-warehouses list in place: it
+  // opens the offers of the one warehouse the pharmacist is ordering from.
+  // That is the warehouse the cart is bound to - every order belongs to
+  // exactly one warehouse (CartCubit). With nothing in the cart there is no
+  // such warehouse, so rather than guess one, the pharmacist is sent to choose
+  // it through the same "Browse products" way out the empty cart offers.
+  void _openWarehouseOffers() {
+    final l10n = context.l10n;
+    final cart = context.read<CartCubit>().state;
+    final warehouseId = cart.warehouseId;
+
+    if (warehouseId == null) {
+      AppDialog.show(
+        context: context,
+        title: l10n.warehouseOffersNoWarehouseTitle,
+        content: l10n.warehouseOffersNoWarehouseMessage,
+        actionLabel: l10n.browseCatalogButton,
+        onAction: () => context.goNamed(RouteNames.warehouseSelection),
+      );
+      return;
+    }
+
+    context.pushNamed(
+      RouteNames.warehouseOffers,
+      pathParameters: {'warehouseId': warehouseId},
+      extra: cart.warehouseName ?? '',
+    );
   }
 
   @override
@@ -142,7 +173,11 @@ class _PromotionsViewState extends State<PromotionsView> {
                 onRetry: () => context.read<PromotionsCubit>().load(),
               );
             case PromotionsStatus.loaded:
-              return _LoadedBody(state: state, onPromotionTap: _handleTap);
+              return _LoadedBody(
+                state: state,
+                onPromotionTap: _handleTap,
+                onOffersTap: _openWarehouseOffers,
+              );
           }
         },
       ),
@@ -151,10 +186,15 @@ class _PromotionsViewState extends State<PromotionsView> {
 }
 
 class _LoadedBody extends StatelessWidget {
-  const _LoadedBody({required this.state, required this.onPromotionTap});
+  const _LoadedBody({
+    required this.state,
+    required this.onPromotionTap,
+    required this.onOffersTap,
+  });
 
   final PromotionsState state;
   final ValueChanged<Promotion> onPromotionTap;
+  final VoidCallback onOffersTap;
 
   @override
   Widget build(BuildContext context) {
@@ -193,7 +233,16 @@ class _LoadedBody extends StatelessWidget {
                 kindFilter: state.kindFilter,
                 warehouseFilter: state.warehouseFilter,
                 warehouses: state.warehouses,
-                onKindChanged: cubit.filterByKind,
+                // "Offers" is a way into the current warehouse's offers
+                // (PromotionsView._openWarehouseOffers), not a filter; "All"
+                // and "Packages" still filter this list as before.
+                onKindChanged: (kind) {
+                  if (kind == PromotionKind.offer) {
+                    onOffersTap();
+                  } else {
+                    cubit.filterByKind(kind);
+                  }
+                },
                 onWarehouseChanged: cubit.filterByWarehouse,
               ),
             ),

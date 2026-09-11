@@ -174,7 +174,7 @@ class ProfileView extends StatelessWidget {
                     onTap: () => context.pushNamed(RouteNames.privacyPolicy),
                     child: Row(
                       children: [
-                        Icon(Icons.privacy_tip_outlined, size: 22, color: AppColors.navyOf(context)),
+                        Icon(Icons.privacy_tip_outlined, size: 22, color: AppColors.textOf(context)),
                         const SizedBox(width: AppSizes.spacingMedium),
                         Expanded(
                           child: Text(l10n.privacyPolicy, style: context.textTheme.titleSmall),
@@ -239,7 +239,7 @@ class _SectionHeader extends StatelessWidget {
           width: 3,
           height: 15,
           decoration: BoxDecoration(
-            color: AppColors.navyOf(context),
+            color: AppColors.textOf(context),
             borderRadius: BorderRadius.circular(2),
           ),
         ),
@@ -274,7 +274,7 @@ class _IdentityHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final primary = AppColors.primaryOf(context);
-    final navy = AppColors.navyOf(context);
+    final ink = AppColors.textOf(context);
 
     return CustomCard(
       padding: const EdgeInsets.all(AppSizes.spacingLarge),
@@ -309,19 +309,19 @@ class _IdentityHeader extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                     decoration: BoxDecoration(
-                      color: navy.withValues(alpha: 0.10),
+                      color: ink.withValues(alpha: 0.10),
                       borderRadius: AppRadius.badge,
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.local_pharmacy_outlined, size: 13, color: navy),
+                        Icon(Icons.local_pharmacy_outlined, size: 13, color: ink),
                         const SizedBox(width: AppSizes.spacingXSmall),
                         Flexible(
                           child: Text(
                             pharmacyName!,
                             style: context.textTheme.bodySmall?.copyWith(
-                              color: navy,
+                              color: ink,
                               fontWeight: FontWeight.w700,
                             ),
                             maxLines: 1,
@@ -427,7 +427,7 @@ class _ProfileNavCard extends StatelessWidget {
       onTap: onTap,
       child: Row(
         children: [
-          Icon(icon, size: 22, color: AppColors.navyOf(context)),
+          Icon(icon, size: 22, color: AppColors.textOf(context)),
           const SizedBox(width: AppSizes.spacingMedium),
           Expanded(
             child: Column(
@@ -476,7 +476,7 @@ class _SettingsCard extends StatelessWidget {
     return CustomCard(
       child: Row(
         children: [
-          Icon(icon, size: 22, color: AppColors.navyOf(context)),
+          Icon(icon, size: 22, color: AppColors.textOf(context)),
           const SizedBox(width: AppSizes.spacingMedium),
           Expanded(
             child: Column(
@@ -542,6 +542,11 @@ class _SegmentButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Navy by day. At night navy is barely apart from the control's own fill,
+    // so the selection takes the brand orange instead - white label either
+    // way, as on PrimaryButton.
+    final selectedFill = context.isDarkMode ? AppColors.primaryOf(context) : AppColors.navyOf(context);
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(9),
@@ -550,7 +555,7 @@ class _SegmentButton extends StatelessWidget {
         alignment: Alignment.center,
         padding: const EdgeInsets.symmetric(horizontal: AppSizes.spacingSmall),
         decoration: BoxDecoration(
-          color: selected ? AppColors.navyOf(context) : Colors.transparent,
+          color: selected ? selectedFill : Colors.transparent,
           borderRadius: BorderRadius.circular(9),
         ),
         child: Text(

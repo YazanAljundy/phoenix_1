@@ -1558,4 +1558,17 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get offerPermanent => 'عرض دائم';
+
+  @override
+  String get addToCartFullButton => 'إضافة إلى السلة';
+
+  @override
+  String get warehouseOffersTitle => 'عروض المستودع';
+
+  @override
+  String get warehouseOffersNoWarehouseTitle => 'لم يتم تحديد مستودع';
+
+  @override
+  String get warehouseOffersNoWarehouseMessage =>
+      'تُعرض هنا عروض المستودع الذي تطلب منه. اختر مستودعاً وأضف منتجاً إلى السلة أولاً.';
 }

@@ -719,5 +719,9 @@
   "promotionsError": "تعذّر تحميل العروض.",
   "offerDiscountPercent": "خصم {percent}٪",
   "offerEndsOn": "حتى {date}",
-  "offerPermanent": "عرض دائم"
+  "offerPermanent": "عرض دائم",
+  "addToCartFullButton": "إضافة إلى السلة",
+  "warehouseOffersTitle": "عروض المستودع",
+  "warehouseOffersNoWarehouseTitle": "لم يتم تحديد مستودع",
+  "warehouseOffersNoWarehouseMessage": "تُعرض هنا عروض المستودع الذي تطلب منه. اختر مستودعاً وأضف منتجاً إلى السلة أولاً."
 }

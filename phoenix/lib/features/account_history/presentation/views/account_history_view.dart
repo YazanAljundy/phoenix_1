@@ -251,7 +251,7 @@ class _ReturnsCard extends StatelessWidget {
             child: Text(
               l10n.returnsRequestsShort(state.returns.length),
               style: context.textTheme.titleMedium?.copyWith(
-                color: AppColors.navyOf(context),
+                color: AppColors.textOf(context),
                 fontWeight: FontWeight.w800,
               ),
             ),
@@ -286,7 +286,7 @@ class _MiniCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(icon, size: 20, color: AppColors.navyOf(context)),
+              Icon(icon, size: 20, color: AppColors.textOf(context)),
               const SizedBox(width: AppSizes.spacingSmall),
               Expanded(
                 child: Text(

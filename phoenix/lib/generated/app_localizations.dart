@@ -2665,6 +2665,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Ongoing'**
   String get offerPermanent;
+
+  /// The add button on a catalog list row, which used to be a bare + icon. The grid tile and the quantity sheet keep the shorter addToCartButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to cart'**
+  String get addToCartFullButton;
+
+  /// Title of the screen the Offers chip on the Offers & Ads tab opens: the offers of the warehouse the pharmacist is ordering from (the one the cart is bound to).
+  ///
+  /// In en, this message translates to:
+  /// **'Warehouse offers'**
+  String get warehouseOffersTitle;
+
+  /// No description provided for @warehouseOffersNoWarehouseTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No warehouse selected'**
+  String get warehouseOffersNoWarehouseTitle;
+
+  /// No description provided for @warehouseOffersNoWarehouseMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Offers are shown for the warehouse you are ordering from. Choose a warehouse and add a product to your cart first.'**
+  String get warehouseOffersNoWarehouseMessage;
 }
 
 class _AppLocalizationsDelegate

@@ -848,5 +848,15 @@
       }
     }
   },
-  "offerPermanent": "Ongoing"
+  "offerPermanent": "Ongoing",
+  "addToCartFullButton": "Add to cart",
+  "@addToCartFullButton": {
+    "description": "The add button on a catalog list row, which used to be a bare + icon. The grid tile and the quantity sheet keep the shorter addToCartButton."
+  },
+  "warehouseOffersTitle": "Warehouse offers",
+  "@warehouseOffersTitle": {
+    "description": "Title of the screen the Offers chip on the Offers & Ads tab opens: the offers of the warehouse the pharmacist is ordering from (the one the cart is bound to)."
+  },
+  "warehouseOffersNoWarehouseTitle": "No warehouse selected",
+  "warehouseOffersNoWarehouseMessage": "Offers are shown for the warehouse you are ordering from. Choose a warehouse and add a product to your cart first."
 }
