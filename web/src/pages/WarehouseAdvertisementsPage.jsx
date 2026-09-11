@@ -5,7 +5,7 @@ import { useAuth } from '../auth/AuthContext';
 import { useExchangeRate } from '../context/ExchangeRateContext';
 import { formatMoneyFromUsd } from '../utils/currency';
 import { AdvertisementsSubNav } from '../components/AdvertisementsSubNav';
-import { AdvertisementModal } from '../components/AdvertisementModal';
+import { AdvertisementFormModal } from '../components/AdvertisementFormModal';
 import { WarehouseGroupSubNav } from '../components/WarehouseGroupSubNav';
 import { REALTIME_EVENTS, useRealtimeSync } from '../realtime/useRealtimeSync';
 import { withArFallback } from '../utils/displayName';
@@ -298,7 +298,7 @@ export function WarehouseAdvertisementsPage() {
       )}
 
       {editing && (
-        <AdvertisementModal
+        <AdvertisementFormModal
           advertisement={editing === 'new' ? null : editing}
           usdToSyp={usdToSyp}
           onClose={() => setEditing(null)}

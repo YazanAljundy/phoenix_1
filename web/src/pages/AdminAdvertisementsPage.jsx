@@ -7,7 +7,7 @@ import { useExchangeRate } from '../context/ExchangeRateContext';
 import { REALTIME_EVENTS, useRealtimeSync } from '../realtime/useRealtimeSync';
 import { formatMoneyFromUsd } from '../utils/currency';
 import { AdvertisementsSubNav } from '../components/AdvertisementsSubNav';
-import { AdvertisementModal } from '../components/AdvertisementModal';
+import { AdvertisementFormModal } from '../components/AdvertisementFormModal';
 import { withArFallback } from '../utils/displayName';
 
 const PAGE_SIZE = 20;
@@ -341,7 +341,7 @@ export function AdminAdvertisementsPage() {
       )}
 
       {editingAdvertisement && (
-        <AdvertisementModal
+        <AdvertisementFormModal
           advertisement={editingAdvertisement}
           usdToSyp={usdToSyp}
           canAddProducts={false}
