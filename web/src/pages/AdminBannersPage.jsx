@@ -125,6 +125,18 @@ function useBannerStatusLabel() {
   };
 }
 
+const STATUS_FILTERS = ['all', 'pending', 'approved', 'rejected'];
+
+function useStatusFilterLabel() {
+  const { t } = useTranslation();
+  return (status) => {
+    if (status === 'all') return t('banners.admin.filterAll');
+    if (status === 'approved') return t('banners.statusApproved');
+    if (status === 'rejected') return t('banners.statusRejected');
+    return t('banners.statusPending');
+  };
+}
+
 function EditBannerModal({ banner, onClose, onSaved }) {
   const { t } = useTranslation();
   const [title, setTitle] = useState(banner.title);
@@ -200,6 +212,8 @@ function EditBannerModal({ banner, onClose, onSaved }) {
 export function AdminBannersPage() {
   const { t } = useTranslation();
   const bannerStatusLabel = useBannerStatusLabel();
+  const statusFilterLabel = useStatusFilterLabel();
+  const [statusFilter, setStatusFilter] = useState('all');
   const [products, setProducts] = useState([]);
   const [busyId, setBusyId] = useState(null);
   const [actionError, setActionError] = useState(null);
@@ -211,12 +225,12 @@ export function AdminBannersPage() {
 
   const fetchPage = useCallback(
     (cursor) =>
-      api.adminBanners('all', { limit: PAGE_SIZE, after: cursor }).then((data) => ({
+      api.adminBanners(statusFilter, { limit: PAGE_SIZE, after: cursor }).then((data) => ({
         rows: data.banners,
         hasMore: data.pagination.hasMore,
         nextCursor: data.pagination.nextCursor,
       })),
-    []
+    [statusFilter]
   );
 
   const { data: banners, isLoading, isLoadingMore, hasMore, error, loadMore, reset } =
@@ -225,7 +239,7 @@ export function AdminBannersPage() {
   useEffect(() => {
     reset();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [statusFilter]);
 
   // Realtime: same moderation-queue reasoning as offers - a warehouse's banner
   // stays unpublished until an admin decides, and a second admin shouldn't be
@@ -296,6 +310,19 @@ export function AdminBannersPage() {
 
       <div className="adm-page-head">
         <h1>{t('nav.advertisements')}</h1>
+      </div>
+
+      <div className="adm-pills">
+        {STATUS_FILTERS.map((filter) => (
+          <button
+            key={filter}
+            type="button"
+            className={`adm-pill${statusFilter === filter ? ' active' : ''}`}
+            onClick={() => setStatusFilter(filter)}
+          >
+            {statusFilterLabel(filter)}
+          </button>
+        ))}
       </div>
 
       {(error || actionError) && <p className="error-text">{error || actionError}</p>}
