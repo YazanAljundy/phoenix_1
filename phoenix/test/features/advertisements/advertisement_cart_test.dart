@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:feniq/core/error/failure.dart';
 import 'package:feniq/features/advertisements/data/models/advertisement_cart_preparation.dart';
 import 'package:feniq/features/advertisements/data/models/advertisement_model.dart';
 import 'package:feniq/features/cart/data/models/cart_item.dart';
@@ -326,6 +327,99 @@ void main() {
       final items = capturedItems();
       expect(items.where((i) => i.isPackage).length, 1);
       expect(items.where((i) => !i.isPackage).length, 1);
+    });
+  });
+
+  group('a package that is no longer available', () {
+    void stubCheckoutFailure(ServerFailure failure) {
+      when(
+        () => orderRepo.submitOrder(
+          warehouseId: any(named: 'warehouseId'),
+          items: any(named: 'items'),
+          notes: any(named: 'notes'),
+          idempotencyKey: any(named: 'idempotencyKey'),
+        ),
+      ).thenThrow(failure);
+    }
+
+    test('the server flag is parsed, and a missing flag means available', () {
+      expect(AdvertisementCartPreparation.fromJson(_cartJson()).isAvailable, isTrue);
+
+      final paused = AdvertisementCartPreparation.fromJson({..._cartJson(), 'isAvailable': false});
+      expect(paused.isAvailable, isFalse);
+      expect(paused.toCartLine(isArabic: false).isAvailable, isFalse);
+    });
+
+    test('a PACKAGE_UNAVAILABLE refusal flags exactly the refused package line', () async {
+      addPackage();
+      cubit.addProduct(_product('loose'), warehouseId: 'A', warehouseName: 'Warehouse A', quantity: 1);
+      stubCheckoutFailure(
+        ServerFailure(
+          'This package is no longer available.',
+          code: 'PACKAGE_UNAVAILABLE',
+          details: {
+            'advertisementIds': ['ad1'],
+          },
+        ),
+      );
+
+      final order = await cubit.submitOrder();
+
+      expect(order, isNull);
+      expect(cubit.state.errorCode, 'PACKAGE_UNAVAILABLE');
+      expect(cubit.state.isSubmitting, isFalse);
+      expect(cubit.state.items.length, 2, reason: 'nothing is dropped without the pharmacist choosing to');
+      expect(cubit.state.items.firstWhere((item) => item.isPackage).isAvailable, isFalse);
+      expect(cubit.state.items.firstWhere((item) => !item.isPackage).isAvailable, isTrue);
+    });
+
+    test('any other checkout failure flags nothing', () async {
+      addPackage();
+      stubCheckoutFailure(ServerFailure('Out of stock.', code: 'STOCK_CHECK_FAILED'));
+
+      await cubit.submitOrder();
+
+      expect(cubit.state.items.single.isAvailable, isTrue);
+    });
+
+    test('removing unavailable packages keeps the rest of the cart', () {
+      addPackage();
+      cubit.addProduct(_product('loose'), warehouseId: 'A', warehouseName: 'Warehouse A', quantity: 1);
+      cubit.markPackagesUnavailable(['ad1']);
+
+      cubit.removeUnavailablePackages();
+
+      expect(cubit.state.items.map((item) => item.lineKey).toList(), ['loose']);
+      expect(cubit.state.warehouseId, 'A');
+    });
+
+    test('removing the only, unavailable package resets the cart', () {
+      addPackage();
+      cubit.markPackagesUnavailable(['ad1']);
+
+      cubit.removeUnavailablePackages();
+
+      expect(cubit.state.isEmpty, isTrue);
+      expect(cubit.state.warehouseId, isNull);
+    });
+
+    test('the flag survives a change of copies', () {
+      addPackage();
+      cubit.markPackagesUnavailable(['ad1']);
+
+      cubit.updateQuantity('ad1', 3);
+
+      expect(cubit.state.items.single.isAvailable, isFalse);
+      expect(cubit.state.items.single.quantity, 3);
+    });
+
+    test('flagging a package that is not in the cart changes nothing', () {
+      addPackage();
+      final before = cubit.state;
+
+      cubit.markPackagesUnavailable(['someone-else']);
+
+      expect(identical(cubit.state, before), isTrue);
     });
   });
 

@@ -36,6 +36,7 @@ stubModule('realtime/index.js', {
     BANNER_STATUS_UPDATED: 'banner.status.updated',
     ADVERTISEMENT_PENDING: 'advertisement.pending',
     ADVERTISEMENT_STATUS_UPDATED: 'advertisement.status.updated',
+    ADVERTISEMENT_AVAILABILITY_UPDATED: 'advertisement.availability.updated',
   },
 });
 
@@ -99,7 +100,7 @@ function buildBanner() {
   };
 }
 
-function buildAdvertisement(status = 'pending') {
+function buildAdvertisement(status = 'pending', isAvailable = true) {
   return {
     _id: ADVERTISEMENT_ID,
     warehouseId: WAREHOUSE_ID,
@@ -108,6 +109,7 @@ function buildAdvertisement(status = 'pending') {
     items: [{ productId: PRODUCT_ID }],
     totalPriceUsd: 5,
     status,
+    isAvailable,
     rejectionNote: null,
     approvedBy: null,
     approvedAt: null,
@@ -413,6 +415,140 @@ test('a failed approval write emits nothing', async () => {
   await assert.rejects(
     () => adminAdvertisementService.approveAdvertisement(ADVERTISEMENT_ID.toString(), ADMIN_ID),
     /mongo write failed/
+  );
+  assert.deepStrictEqual(emitted, []);
+});
+
+// --- Advertisement availability --------------------------------------------
+//
+// advertisement.availability.updated is the one advertisement event with TWO
+// kinds of destination: the admin room on every change, plus the room of the
+// ONE warehouse that owns the package when an admin makes the change. These
+// pin that targeting at the service boundary. That a warehouse-room emit then
+// reaches only that warehouse's sockets, for any event, is realtime.test.js's
+// job ("a client cannot join another warehouse room by asking for it").
+
+const OTHER_WAREHOUSE_ID = new mongoose.Types.ObjectId();
+
+const AVAILABILITY_EVENT = 'advertisement.availability.updated';
+const warehouseRoomsIn = (records) =>
+  records.filter((record) => record.room.startsWith('warehouse:')).map((record) => record.room);
+
+test('an admin pausing a package emits to admins and to that package\'s own warehouse, nowhere else', async () => {
+  advertisementModelStub.findById = async () => buildAdvertisement('approved', true);
+
+  await adminAdvertisementService.setAdvertisementAvailability(ADVERTISEMENT_ID.toString(), false);
+
+  assert.strictEqual(emitted.length, 2, 'exactly one admin emit and one warehouse emit');
+  assert.ok(emitted.every((record) => record.event === AVAILABILITY_EVENT));
+  assert.deepStrictEqual(emitted.map((record) => record.room).sort(), ['admin', `warehouse:${WAREHOUSE_ID}`]);
+  for (const record of emitted) {
+    assert.strictEqual(record.payload.advertisementId, ADVERTISEMENT_ID.toString());
+    assert.strictEqual(record.payload.warehouseId, WAREHOUSE_ID.toString());
+    assert.strictEqual(record.payload.isAvailable, false);
+  }
+});
+
+test('an admin re-enabling a package reaches the same two rooms, with isAvailable:true', async () => {
+  advertisementModelStub.findById = async () => buildAdvertisement('approved', false);
+
+  await adminAdvertisementService.setAdvertisementAvailability(ADVERTISEMENT_ID.toString(), true);
+
+  assert.deepStrictEqual(emitted.map((record) => record.room).sort(), ['admin', `warehouse:${WAREHOUSE_ID}`]);
+  assert.ok(emitted.every((record) => record.payload.isAvailable === true));
+});
+
+test('the warehouse room is the one stored on the package - never a fixed or shared target', async () => {
+  // Same service call, a package owned by a DIFFERENT warehouse: the emit must
+  // follow the package's own warehouseId, not reach WAREHOUSE_ID.
+  advertisementModelStub.findById = async () => ({
+    ...buildAdvertisement('approved', true),
+    warehouseId: OTHER_WAREHOUSE_ID,
+  });
+
+  await adminAdvertisementService.setAdvertisementAvailability(ADVERTISEMENT_ID.toString(), false);
+
+  assert.deepStrictEqual(warehouseRoomsIn(emitted), [`warehouse:${OTHER_WAREHOUSE_ID}`]);
+  assert.ok(
+    !emitted.some((record) => record.room === `warehouse:${WAREHOUSE_ID}`),
+    'a warehouse that does not own the package must not be told about it'
+  );
+  assert.ok(emitted.some((record) => record.room === 'admin'), 'admins are told whichever warehouse it is');
+});
+
+test('a warehouse pausing its own package emits to admins only', async () => {
+  advertisementModelStub.findOne = async () => buildAdvertisement('approved', true);
+
+  await warehouseAdvertisementService.updateAdvertisementAvailability(
+    ADVERTISEMENT_ID.toString(),
+    WAREHOUSE_ID,
+    false
+  );
+
+  assert.strictEqual(emitted.length, 1);
+  assert.strictEqual(emitted[0].room, 'admin', 'the admins are the ones who have to act on it');
+  assert.strictEqual(emitted[0].event, AVAILABILITY_EVENT);
+  assert.strictEqual(emitted[0].payload.warehouseId, WAREHOUSE_ID.toString());
+  assert.strictEqual(emitted[0].payload.isAvailable, false);
+  assert.deepStrictEqual(warehouseRoomsIn(emitted), [], 'no warehouse room, its own included');
+});
+
+test('setting a package to the state it is already in emits nothing', async () => {
+  advertisementModelStub.findById = async () => buildAdvertisement('approved', false);
+  await adminAdvertisementService.setAdvertisementAvailability(ADVERTISEMENT_ID.toString(), false);
+
+  advertisementModelStub.findOne = async () => buildAdvertisement('approved', false);
+  await warehouseAdvertisementService.updateAdvertisementAvailability(
+    ADVERTISEMENT_ID.toString(),
+    WAREHOUSE_ID,
+    false
+  );
+
+  assert.deepStrictEqual(emitted, []);
+});
+
+test('a warehouse trying to re-enable, or an invalid value, emits nothing', async () => {
+  advertisementModelStub.findOne = async () => buildAdvertisement('approved', false);
+
+  await assert.rejects(() =>
+    warehouseAdvertisementService.updateAdvertisementAvailability(ADVERTISEMENT_ID.toString(), WAREHOUSE_ID, true)
+  );
+  await assert.rejects(() =>
+    adminAdvertisementService.setAdvertisementAvailability(ADVERTISEMENT_ID.toString(), 'false')
+  );
+  assert.deepStrictEqual(emitted, [], 'a refused change is not an event');
+});
+
+test('a failed availability write emits nothing, on either side', async () => {
+  advertisementSaveBehavior = async () => {
+    throw new Error('mongo write failed');
+  };
+
+  await assert.rejects(
+    () => adminAdvertisementService.setAdvertisementAvailability(ADVERTISEMENT_ID.toString(), false),
+    /mongo write failed/
+  );
+  await assert.rejects(
+    () =>
+      warehouseAdvertisementService.updateAdvertisementAvailability(
+        ADVERTISEMENT_ID.toString(),
+        WAREHOUSE_ID,
+        false
+      ),
+    /mongo write failed/
+  );
+  assert.deepStrictEqual(emitted, []);
+});
+
+test('an unknown package emits nothing, on either side', async () => {
+  advertisementModelStub.findById = async () => null;
+  advertisementModelStub.findOne = async () => null;
+
+  await assert.rejects(() =>
+    adminAdvertisementService.setAdvertisementAvailability(ADVERTISEMENT_ID.toString(), false)
+  );
+  await assert.rejects(() =>
+    warehouseAdvertisementService.updateAdvertisementAvailability(ADVERTISEMENT_ID.toString(), WAREHOUSE_ID, false)
   );
   assert.deepStrictEqual(emitted, []);
 });

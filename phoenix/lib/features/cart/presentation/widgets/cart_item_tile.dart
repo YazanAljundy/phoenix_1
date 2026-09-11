@@ -54,6 +54,10 @@ class CartItemTile extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (item.isPackage && !item.isAvailable) ...[
+            const _UnavailablePackageBanner(),
+            const SizedBox(height: AppSizes.spacingSmall),
+          ],
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -239,6 +243,46 @@ class _PackageBadge extends StatelessWidget {
           color: AppColors.secondaryOf(context),
           fontWeight: FontWeight.bold,
         ),
+      ),
+    );
+  }
+}
+
+// On a package line the server has reported as no longer available (paused by
+// its warehouse or an admin). A standing warning, not a blocker: the line keeps
+// its quantity and remove controls, and checkout is left to the server, which
+// refuses the package with the same message this states.
+class _UnavailablePackageBanner extends StatelessWidget {
+  const _UnavailablePackageBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    final color = AppColors.errorOf(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSizes.spacingSmall,
+        vertical: AppSizes.spacingXSmall,
+      ),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: AppRadius.small,
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.error_outline, size: 18, color: color),
+          const SizedBox(width: AppSizes.spacingXSmall),
+          Expanded(
+            child: Text(
+              context.l10n.packageUnavailableBanner,
+              style: context.textTheme.bodySmall?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

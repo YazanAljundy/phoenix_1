@@ -9,5 +9,6 @@ router.use(authenticate, authorize('admin'));
 router.get('/', controller.listPending);
 router.post('/:id/approve', controller.approve);
 router.post('/:id/reject', controller.reject);
+router.patch('/:id/availability', controller.updateAvailability);
 
 module.exports = router;

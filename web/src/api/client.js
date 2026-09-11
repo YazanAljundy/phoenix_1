@@ -212,10 +212,19 @@ export const api = {
     request(`/warehouse/advertisements/${advertisementId}`, { method: 'PATCH', body: data }),
   deleteWarehouseAdvertisement: (advertisementId) =>
     request(`/warehouse/advertisements/${advertisementId}`, { method: 'DELETE' }),
+  // Pause only. The backend refuses `isAvailable: true` from a warehouse
+  // (ADVERTISEMENT_REACTIVATION_REQUIRES_ADMIN) - re-enabling is an admin action.
+  pauseWarehouseAdvertisement: (advertisementId) =>
+    request(`/warehouse/advertisements/${advertisementId}/availability`, {
+      method: 'PATCH',
+      body: { isAvailable: false },
+    }),
   // Same two shapes as pendingOffers: no args for the full pending list,
-  // { limit, after } for the management page's paginated view.
-  pendingAdvertisements: ({ limit, after } = {}) => {
+  // { limit, after } for the management page's paginated view. `status`
+  // ('pending' | 'approved') picks which list that paginated view shows.
+  pendingAdvertisements: ({ status, limit, after } = {}) => {
     const params = new URLSearchParams();
+    if (status) params.set('status', status);
     if (limit) params.set('limit', limit);
     if (after) params.set('after', after);
     const qs = params.toString();
@@ -227,6 +236,13 @@ export const api = {
     request(`/admin/advertisements/${advertisementId}/reject`, {
       method: 'POST',
       body: { rejectionNote },
+    }),
+  // Either direction. An admin is the only one who can make a paused package
+  // available again, including one its own warehouse paused.
+  setAdvertisementAvailability: (advertisementId, isAvailable) =>
+    request(`/admin/advertisements/${advertisementId}/availability`, {
+      method: 'PATCH',
+      body: { isAvailable },
     }),
   // No args: the full list - used by WarehouseOrderDetailPage's "does this
   // order already have a pending return" lookup. Pass { limit, after } for

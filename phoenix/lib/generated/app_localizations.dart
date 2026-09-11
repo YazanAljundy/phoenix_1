@@ -1040,6 +1040,30 @@ abstract class AppLocalizations {
   /// **'This package is no longer available. It may have expired or been withdrawn.'**
   String get advertisementUnavailableMessage;
 
+  /// No description provided for @packageUnavailableBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'This package is no longer available. You won\'t be able to place the order with it.'**
+  String get packageUnavailableBanner;
+
+  /// No description provided for @packageUnavailableCheckoutMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'No longer available: {names}. The order wasn\'t placed — remove it from your cart to continue.'**
+  String packageUnavailableCheckoutMessage(String names);
+
+  /// No description provided for @errorPackageUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'This package is no longer available.'**
+  String get errorPackageUnavailable;
+
+  /// No description provided for @removeUnavailablePackagesButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from cart'**
+  String get removeUnavailablePackagesButton;
+
   /// No description provided for @advertisementIncompleteMessage.
   ///
   /// In en, this message translates to:

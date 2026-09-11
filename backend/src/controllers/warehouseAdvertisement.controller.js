@@ -44,4 +44,21 @@ const remove = asyncHandler(async (req, res) => {
   res.json({ success: true, message: 'Advertisement deleted.' });
 });
 
-module.exports = { list, create, update, remove };
+// Pause only. The service refuses `isAvailable: true` with a 403 - re-enabling
+// a package is an admin's decision - so the one body this accepts is
+// { isAvailable: false }.
+const updateAvailability = asyncHandler(async (req, res) => {
+  const warehouse = await loadWarehouseOrThrow(req.user._id);
+  const row = await service.updateAdvertisementAvailability(
+    req.params.id,
+    warehouse._id,
+    req.body?.isAvailable
+  );
+  res.json({
+    success: true,
+    message: 'Advertisement paused.',
+    ...viewModel.toAdvertisementResponse(row),
+  });
+});
+
+module.exports = { list, create, update, remove, updateAvailability };

@@ -47,6 +47,13 @@ class _CartViewState extends State<CartView> {
   String _describeError(CartState state) {
     final l10n = context.l10n;
 
+    // The refused packages are already flagged on their lines by the time this
+    // runs (CartCubit.submitOrder), so their names come off the cart itself.
+    if (state.errorCode == 'PACKAGE_UNAVAILABLE') {
+      final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+      return describeUnavailablePackages(l10n, isArabic, state.items);
+    }
+
     if (state.errorCode == 'STOCK_CHECK_FAILED') {
       final problems = (state.errorDetails?['problems'] as List?)
           ?.cast<Map<String, dynamic>>();
@@ -191,10 +198,18 @@ class _CartViewState extends State<CartView> {
             current.errorMessage != null &&
             previous.errorMessage != current.errorMessage,
         listener: (context, state) {
+          // A refused package gets its way out right in the dialog: one tap
+          // removes every package the server turned away, instead of the
+          // pharmacist hunting down each flagged line.
+          final cubit = context.read<CartCubit>();
+          final hasRefusedPackages = state.errorCode == 'PACKAGE_UNAVAILABLE' &&
+              state.items.any((item) => item.isPackage && !item.isAvailable);
           AppDialog.show(
             context: context,
-            title: l10n.errorState,
+            title: hasRefusedPackages ? l10n.advertisementUnavailableTitle : l10n.errorState,
             content: _describeError(state),
+            actionLabel: hasRefusedPackages ? l10n.removeUnavailablePackagesButton : null,
+            onAction: hasRefusedPackages ? cubit.removeUnavailablePackages : null,
           );
         },
         builder: (context, state) {

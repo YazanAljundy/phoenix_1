@@ -236,6 +236,50 @@ async function deleteAdvertisement(advertisementId, warehouseId) {
   }
 }
 
+// The warehouse's pause switch, in ONE direction. A warehouse can take its own
+// package off sale at once, with no admin involved - but it cannot put it back.
+// Re-enabling is an admin's decision (adminAdvertisement.service.js's
+// setAdvertisementAvailability), the same "a warehouse never puts its own
+// package live" rule approval already follows. Without that asymmetry a paused
+// package could be flipped back on at any time, unreviewed.
+//
+// Independent of `status` in both directions: pausing neither requires nor
+// changes an approval, and updateAdvertisement never assigns this flag (it only
+// copies buildAdvertisementFields' fields), so re-submitting a paused package's
+// content cannot quietly un-pause it either.
+async function updateAdvertisementAvailability(advertisementId, warehouseId, isAvailable) {
+  if (typeof isAvailable !== 'boolean') {
+    throw ApiError.badRequest('Invalid availability.', undefined, 'INVALID_AVAILABILITY');
+  }
+  // Ownership first: asking to re-enable another warehouse's package is the
+  // same 404 as naming one that doesn't exist, never a 403 that confirms it does.
+  const advertisement = await findOwnedAdvertisementOrThrow(advertisementId, warehouseId);
+
+  if (isAvailable) {
+    throw ApiError.forbidden(
+      'Only an admin can make this package available again.',
+      'ADVERTISEMENT_REACTIVATION_REQUIRES_ADMIN'
+    );
+  }
+
+  // Pausing an already-paused package writes and announces nothing - it just
+  // answers with the current state.
+  if (advertisement.isAvailable !== false) {
+    advertisement.isAvailable = false;
+    await advertisement.save();
+
+    // An admin has to act to bring it back, so the admin panel is told now.
+    emitToAdmins(EVENTS.ADVERTISEMENT_AVAILABILITY_UPDATED, {
+      advertisementId: advertisement._id.toString(),
+      warehouseId: String(warehouseId),
+      isAvailable: false,
+    });
+  }
+
+  const [row] = await attachProducts([advertisement]);
+  return row;
+}
+
 async function listAdvertisementsForWarehouse(warehouseId) {
   const advertisements = await Advertisement.find({ warehouseId }).sort({ createdAt: -1 });
   if (advertisements.length === 0) return [];
@@ -246,6 +290,7 @@ module.exports = {
   createAdvertisement,
   updateAdvertisement,
   deleteAdvertisement,
+  updateAdvertisementAvailability,
   listAdvertisementsForWarehouse,
   findOwnedAdvertisementOrThrow,
 };

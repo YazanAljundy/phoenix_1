@@ -566,6 +566,21 @@ class AppLocalizationsEn extends AppLocalizations {
       'This package is no longer available. It may have expired or been withdrawn.';
 
   @override
+  String get packageUnavailableBanner =>
+      'This package is no longer available. You won\'t be able to place the order with it.';
+
+  @override
+  String packageUnavailableCheckoutMessage(String names) {
+    return 'No longer available: $names. The order wasn\'t placed — remove it from your cart to continue.';
+  }
+
+  @override
+  String get errorPackageUnavailable => 'This package is no longer available.';
+
+  @override
+  String get removeUnavailablePackagesButton => 'Remove from cart';
+
+  @override
   String advertisementIncompleteMessage(String names) {
     return 'Some products in this package are no longer sold by this warehouse, so it can\'t be added: $names';
   }

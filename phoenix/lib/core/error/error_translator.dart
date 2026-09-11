@@ -49,6 +49,8 @@ String translateErrorCode(AppLocalizations l10n, String? code, String fallbackMe
       return l10n.errorExchangeRateUnavailable;
     case 'STOCK_CHECK_FAILED':
       return l10n.errorStockCheckFailedGeneric;
+    case 'PACKAGE_UNAVAILABLE':
+      return l10n.errorPackageUnavailable;
     case 'ORDER_NOT_FOUND':
       return l10n.errorOrderNotFound;
     case 'ORDER_NOT_CANCELLABLE':

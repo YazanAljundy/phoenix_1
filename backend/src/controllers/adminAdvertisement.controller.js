@@ -16,7 +16,12 @@ const listPending = asyncHandler(async (req, res) => {
 
   const { limit, after } = parseCursorQuery(req.query, 20);
   const cursor = parseObjectIdCursor(after);
-  const { rows, hasMore, nextCursor, totalCount } = await service.listPaginatedPendingAdvertisements({
+  // `status` picks the list: the pending queue (the default, so every existing
+  // caller is unchanged) or the approved packages an admin can pause and
+  // re-enable. Validated in the service.
+  const status = typeof req.query.status === 'string' ? req.query.status : 'pending';
+  const { rows, hasMore, nextCursor, totalCount } = await service.listPaginatedAdvertisements({
+    status,
     limit,
     after: cursor,
   });
@@ -38,4 +43,14 @@ const reject = asyncHandler(async (req, res) => {
   res.json({ success: true, message: 'Advertisement rejected.' });
 });
 
-module.exports = { listPending, approve, reject };
+// Pause or re-enable, either direction - see setAdvertisementAvailability.
+const updateAvailability = asyncHandler(async (req, res) => {
+  const advertisement = await service.setAdvertisementAvailability(req.params.id, req.body?.isAvailable);
+  res.json({
+    success: true,
+    message: advertisement.isAvailable ? 'Advertisement made available.' : 'Advertisement paused.',
+    isAvailable: advertisement.isAvailable,
+  });
+});
+
+module.exports = { listPending, approve, reject, updateAvailability };

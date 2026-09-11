@@ -8,6 +8,7 @@ router.use(authenticate, authorize('warehouse'), requireActiveStatus);
 
 router.get('/', controller.list);
 router.post('/', controller.create);
+router.patch('/:id/availability', controller.updateAvailability);
 router.patch('/:id', controller.update);
 router.delete('/:id', controller.remove);
 

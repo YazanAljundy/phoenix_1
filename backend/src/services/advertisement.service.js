@@ -18,6 +18,25 @@ function activeFilter(now = new Date()) {
   return { status: 'approved', startDate: { $lte: now }, endDate: { $gte: now } };
 }
 
+// What the pharmacist-facing LIST shows: a live package that is also not
+// paused. Kept apart from activeFilter on purpose - activeFilter is also the
+// gate loadActiveAdvertisementOrThrow applies for checkout and the cart
+// endpoint, and those two must still FIND a paused package, so they can refuse
+// it as PACKAGE_UNAVAILABLE / report isAvailable:false instead of answering as
+// if it had never existed.
+//
+// `$ne: false` rather than `true`: a package saved before isAvailable existed
+// has no value stored, and must stay listed.
+function listableFilter(now = new Date()) {
+  return { ...activeFilter(now), isAvailable: { $ne: false } };
+}
+
+// The one reading of the flag, for a hydrated document or a lean object alike -
+// a missing value (a package that predates the field) counts as available.
+function isAdvertisementAvailable(advertisement) {
+  return advertisement.isAvailable !== false;
+}
+
 // Only what a card and a cart line actually need off a product.
 const ADVERTISEMENT_PRODUCT_SELECT =
   'categoryId nameAr nameEn manufacturerAr manufacturerEn image unitAr unitEn price isAvailable masterProductId';
@@ -38,11 +57,11 @@ async function loadProductsFor(advertisements) {
   return new Map(products.map((p) => [p._id.toString(), p]));
 }
 
-// Every advertisement a pharmacy may currently see. Pending, rejected, expired
-// and not-yet-started ones are all excluded by the one filter above, which the
-// {status, startDate, endDate} index backs directly.
+// Every advertisement a pharmacy may currently see. Pending, rejected, expired,
+// not-yet-started and paused ones are all excluded by listableFilter, whose
+// status/date part the {status, startDate, endDate} index backs directly.
 async function listActiveAdvertisements() {
-  const advertisements = await Advertisement.find(activeFilter()).sort({ createdAt: -1 });
+  const advertisements = await Advertisement.find(listableFilter()).sort({ createdAt: -1 });
   if (advertisements.length === 0) return [];
 
   const warehouseIds = [...new Set(advertisements.map((ad) => ad.warehouseId.toString()))];
@@ -65,10 +84,15 @@ async function listActiveAdvertisements() {
   );
 }
 
-// The single gate for "is this advertisement orderable right now". Both the
+// The single gate for "is this advertisement still live". Both the
 // cart-prefill endpoint and createOrder go through this, so the screen the
 // pharmacist saw and the order the server accepts can never disagree about
 // whether a package is still live.
+//
+// Deliberately does NOT look at isAvailable. A paused package is still found
+// here, and each caller decides what pausing means for it: createOrder refuses
+// it with PACKAGE_UNAVAILABLE, and the cart endpoint reports isAvailable:false
+// so the app can explain it on a package already sitting in a cart.
 async function loadActiveAdvertisementOrThrow(advertisementId) {
   if (!mongoose.Types.ObjectId.isValid(advertisementId)) {
     throw ApiError.notFound('This advertisement is no longer available.', 'ADVERTISEMENT_UNAVAILABLE');
@@ -134,11 +158,23 @@ async function prepareAdvertisementCart(advertisementId) {
     items.push({ product, quantity: item.quantity });
   }
 
-  return { advertisement, warehouse, items, unavailableItems };
+  // A paused package still gets its full payload rather than a 404: the
+  // pharmacist may already hold it in their cart, and the app needs its
+  // contents and this flag to say why it can no longer be bought. Checkout is
+  // what actually refuses it (createOrder, PACKAGE_UNAVAILABLE).
+  return {
+    advertisement,
+    warehouse,
+    items,
+    unavailableItems,
+    isAvailable: isAdvertisementAvailable(advertisement),
+  };
 }
 
 module.exports = {
   activeFilter,
+  listableFilter,
+  isAdvertisementAvailable,
   listActiveAdvertisements,
   loadActiveAdvertisementOrThrow,
   prepareAdvertisementCart,

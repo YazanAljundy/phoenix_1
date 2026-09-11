@@ -54,6 +54,34 @@ void main() {
     );
   }
 
+  CartItem packageLine({required bool isAvailable}) => CartItem.fromPackage(
+        packageId: 'ad1',
+        titleAr: 'باقة',
+        titleEn: 'Package',
+        warehouseName: 'Warehouse',
+        pricePerCopyUsd: 40,
+        copies: 1,
+        contents: const [],
+        isAvailable: isAvailable,
+      );
+
+  testWidgets('an unavailable package line shows the warning banner', (tester) async {
+    await pumpTile(tester, item: packageLine(isAvailable: false));
+
+    final l10n = AppLocalizations.of(tester.element(find.byType(CartItemTile)))!;
+    expect(find.text(l10n.packageUnavailableBanner), findsOneWidget);
+    // Still removable - the banner warns, it doesn't take the controls away.
+    expect(find.byType(QuantityStepper), findsOneWidget);
+    expect(find.byIcon(Icons.delete_outline), findsOneWidget);
+  });
+
+  testWidgets('an available package line shows no warning', (tester) async {
+    await pumpTile(tester, item: packageLine(isAvailable: true));
+
+    final l10n = AppLocalizations.of(tester.element(find.byType(CartItemTile)))!;
+    expect(find.text(l10n.packageUnavailableBanner), findsNothing);
+  });
+
   testWidgets('displays the real quantity from the cart item', (tester) async {
     await pumpTile(tester, item: _item);
 

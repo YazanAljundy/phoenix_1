@@ -66,6 +66,23 @@ String describePriceProblems(
   return '${lines.join(' ')} ${l10n.priceChangedConfirmHint}';
 }
 
+// Renders a PACKAGE_UNAVAILABLE refusal. By the time it is shown, CartCubit has
+// already flagged the refused package lines (isAvailable: false) from the
+// server's `details.advertisementIds`, so the names are read off those lines -
+// the same "the client already knows the names" contract as the two above.
+String describeUnavailablePackages(
+  AppLocalizations l10n,
+  bool isArabic,
+  List<CartItem> cartItems,
+) {
+  final names = cartItems
+      .where((item) => item.isPackage && !item.isAvailable)
+      .map((item) => isArabic ? item.nameAr : (item.nameEn ?? item.nameAr))
+      .join(isArabic ? '، ' : ', ');
+  if (names.isEmpty) return l10n.errorPackageUnavailable;
+  return l10n.packageUnavailableCheckoutMessage(names);
+}
+
 CartItem? _findItem(List<CartItem> items, String? productId) {
   for (final item in items) {
     if (item.productId == productId) return item;

@@ -280,6 +280,17 @@
   "advertisementReplaceCartConfirm": "Replace cart",
   "advertisementUnavailableTitle": "Package unavailable",
   "advertisementUnavailableMessage": "This package is no longer available. It may have expired or been withdrawn.",
+  "packageUnavailableBanner": "This package is no longer available. You won't be able to place the order with it.",
+  "packageUnavailableCheckoutMessage": "No longer available: {names}. The order wasn't placed — remove it from your cart to continue.",
+  "@packageUnavailableCheckoutMessage": {
+    "placeholders": {
+      "names": {
+        "type": "String"
+      }
+    }
+  },
+  "errorPackageUnavailable": "This package is no longer available.",
+  "removeUnavailablePackagesButton": "Remove from cart",
   "advertisementIncompleteMessage": "Some products in this package are no longer sold by this warehouse, so it can't be added: {names}",
   "@advertisementIncompleteMessage": {
     "placeholders": {

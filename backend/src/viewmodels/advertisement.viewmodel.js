@@ -57,7 +57,7 @@ function toActiveAdvertisementsResponse(rows) {
 // the cart needs to show the discount before checkout. They are display-only:
 // createOrder re-reads all of them from the database and never trusts what
 // the client sends back.
-function toAdvertisementCartResponse({ advertisement, warehouse, items, unavailableItems }) {
+function toAdvertisementCartResponse({ advertisement, warehouse, items, unavailableItems, isAvailable }) {
   return {
     advertisementCart: {
       advertisementId: advertisement._id,
@@ -66,6 +66,11 @@ function toAdvertisementCartResponse({ advertisement, warehouse, items, unavaila
       warehouseId: advertisement.warehouseId,
       warehouseNameAr: warehouse ? warehouse.nameAr : null,
       warehouseNameEn: warehouse ? warehouse.nameEn : null,
+      // Whether the package can still be bought. False once its warehouse or
+      // an admin has paused it: the payload is still complete, so a cart that
+      // already holds the package can show what it is and why it can't be
+      // ordered, and checkout refuses it with PACKAGE_UNAVAILABLE.
+      isAvailable: isAvailable ?? true,
       totalPriceUsd: advertisement.totalPriceUsd,
       // Quantity-weighted sum of the AVAILABLE items' current catalog prices -
       // the figure the cart shows the package discount against. A gone/

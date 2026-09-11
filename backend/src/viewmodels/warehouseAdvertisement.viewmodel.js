@@ -47,6 +47,9 @@ function serializeAdvertisement(advertisement, productById) {
     endDate: advertisement.endDate,
     status: advertisement.status,
     rejectionNote: advertisement.rejectionNote,
+    // The pause switch - its own layer, independent of `status`. `!== false`
+    // so a package saved before the field existed reports available.
+    isAvailable: advertisement.isAvailable !== false,
     createdAt: advertisement.createdAt,
   };
 }

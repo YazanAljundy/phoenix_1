@@ -571,6 +571,21 @@ class AppLocalizationsAr extends AppLocalizations {
       'لم تعد هذه الباقة متاحة. ربما انتهت مدتها أو تم سحبها.';
 
   @override
+  String get packageUnavailableBanner =>
+      'هذه الباقة لم تعد متاحة، لن تتمكن من إتمام الطلب بها.';
+
+  @override
+  String packageUnavailableCheckoutMessage(String names) {
+    return 'لم تعد متاحة: $names. لم يتم إرسال الطلب — احذفها من السلة للمتابعة.';
+  }
+
+  @override
+  String get errorPackageUnavailable => 'هذه الباقة لم تعد متاحة.';
+
+  @override
+  String get removeUnavailablePackagesButton => 'حذف من السلة';
+
+  @override
   String advertisementIncompleteMessage(String names) {
     return 'بعض منتجات هذه الباقة لم يعد المستودع يبيعها، لذلك لا يمكن إضافتها: $names';
   }

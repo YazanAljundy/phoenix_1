@@ -8,6 +8,7 @@ import { useExchangeRate } from '../context/ExchangeRateContext';
 import { formatSyp, formatUsd, formatMoneyFromUsd, sypFromUsd } from '../utils/currency';
 import { AdvertisementsSubNav } from '../components/AdvertisementsSubNav';
 import { WarehouseGroupSubNav } from '../components/WarehouseGroupSubNav';
+import { REALTIME_EVENTS, useRealtimeSync } from '../realtime/useRealtimeSync';
 import { withArFallback } from '../utils/displayName';
 import { contactAdminOnWhatsApp } from '../utils/whatsapp';
 
@@ -478,6 +479,10 @@ export function WarehouseAdvertisementsPage() {
     load();
   }, [load]);
 
+  // An admin re-enabling (or pausing) one of this warehouse's packages is the
+  // one change to this list that happens somewhere else - re-read it then.
+  useRealtimeSync([REALTIME_EVENTS.ADVERTISEMENT_AVAILABILITY_UPDATED], () => load());
+
   const statusBadge = (status) => {
     const className =
       status === 'approved' ? 'status-delivered' : status === 'rejected' ? 'status-cancelled' : 'status-pending';
@@ -490,6 +495,24 @@ export function WarehouseAdvertisementsPage() {
     setError(null);
     try {
       await api.deleteWarehouseAdvertisement(advertisement.id);
+      await load();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  // One way only. A paused package stays off sale until an admin makes it
+  // available again, so this page deliberately has no "resume" button - the
+  // backend would refuse it anyway. Asks first, since it takes effect for
+  // every pharmacy at once and can't be undone from here.
+  const handlePause = async (advertisement) => {
+    if (!window.confirm(t('advertisements.confirmPause', { title: advertisement.titleEn }))) return;
+    setBusyId(advertisement.id);
+    setError(null);
+    try {
+      await api.pauseWarehouseAdvertisement(advertisement.id);
       await load();
     } catch (err) {
       setError(err.message);
@@ -607,12 +630,32 @@ export function WarehouseAdvertisementsPage() {
                   <td className="wh-num wh-table-date">
                     {new Date(advertisement.endDate).toLocaleDateString()}
                   </td>
-                  <td>{statusBadge(advertisement.status)}</td>
+                  <td>
+                    {statusBadge(advertisement.status)}
+                    {/* Its own line under the status: pausing is a separate
+                        layer on top of approval, not a status of its own. */}
+                    {!advertisement.isAvailable && (
+                      <div className="wh-table-sub">
+                        <span className="availability-badge availability-paused">
+                          {t('advertisements.pausedAwaitingAdmin')}
+                        </span>
+                      </div>
+                    )}
+                  </td>
                   <td>
                     <div className="table-row-actions">
                       <button className="btn-secondary" onClick={() => setEditing(advertisement)}>
                         {t('common.edit')}
                       </button>
+                      {advertisement.status === 'approved' && advertisement.isAvailable && (
+                        <button
+                          className="btn-secondary"
+                          disabled={busyId === advertisement.id}
+                          onClick={() => handlePause(advertisement)}
+                        >
+                          {t('advertisements.pause')}
+                        </button>
+                      )}
                       <button
                         className="btn-reject"
                         disabled={busyId === advertisement.id}
