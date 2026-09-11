@@ -212,16 +212,18 @@ export const api = {
     request(`/warehouse/advertisements/${advertisementId}`, { method: 'PATCH', body: data }),
   deleteWarehouseAdvertisement: (advertisementId) =>
     request(`/warehouse/advertisements/${advertisementId}`, { method: 'DELETE' }),
-  // Pause only. The backend refuses `isAvailable: true` from a warehouse
-  // (ADVERTISEMENT_REACTIVATION_REQUIRES_ADMIN) - re-enabling is an admin action.
-  pauseWarehouseAdvertisement: (advertisementId) =>
+  // Either direction, restricted server-side to an approved package
+  // (ADVERTISEMENT_NOT_APPROVED otherwise) - a warehouse can pause AND
+  // re-enable its own package, same as an admin can for any package.
+  setWarehouseAdvertisementAvailability: (advertisementId, isAvailable) =>
     request(`/warehouse/advertisements/${advertisementId}/availability`, {
       method: 'PATCH',
-      body: { isAvailable: false },
+      body: { isAvailable },
     }),
   // Same two shapes as pendingOffers: no args for the full pending list,
   // { limit, after } for the management page's paginated view. `status`
-  // ('pending' | 'approved') picks which list that paginated view shows.
+  // ('pending' | 'approved' | 'rejected') picks which list that paginated
+  // view shows - the Advertisements page's three tabs all use this.
   pendingAdvertisements: ({ status, limit, after } = {}) => {
     const params = new URLSearchParams();
     if (status) params.set('status', status);
@@ -230,6 +232,11 @@ export const api = {
     const qs = params.toString();
     return request(`/admin/advertisements${qs ? `?${qs}` : ''}`);
   },
+  // Every advertisement, every warehouse, every status, unpaginated. Not used
+  // by the Advertisements page (its Rejected tab now uses pendingAdvertisements
+  // above like the other two) - kept for any other caller that wants the full
+  // unfiltered set.
+  allAdvertisements: () => request('/admin/advertisements/all'),
   approveAdvertisement: (advertisementId) =>
     request(`/admin/advertisements/${advertisementId}/approve`, { method: 'POST' }),
   rejectAdvertisement: (advertisementId, rejectionNote) =>
@@ -237,18 +244,25 @@ export const api = {
       method: 'POST',
       body: { rejectionNote },
     }),
-  // Either direction. An admin is the only one who can make a paused package
-  // available again, including one its own warehouse paused.
+  // Direct content edit, at any status - the admin IS the approval authority,
+  // so (unlike a warehouse edit) this never sends the package back for review.
+  updateAdminAdvertisement: (advertisementId, data) =>
+    request(`/admin/advertisements/${advertisementId}`, { method: 'PATCH', body: data }),
+  deleteAdminAdvertisement: (advertisementId) =>
+    request(`/admin/advertisements/${advertisementId}`, { method: 'DELETE' }),
+  // Either direction. An admin can flip any package's availability regardless
+  // of which warehouse owns it.
   setAdvertisementAvailability: (advertisementId, isAvailable) =>
     request(`/admin/advertisements/${advertisementId}/availability`, {
       method: 'PATCH',
       body: { isAvailable },
     }),
   // No args: the full list - used by WarehouseOrderDetailPage's "does this
-  // order already have a pending return" lookup. Pass { limit, after } for
-  // the Returns management page's own paginated, newest-first view.
-  warehouseReturns: ({ limit, after } = {}) => {
+  // order already have a pending return" lookup. Pass { status, limit, after }
+  // for the Returns management page's own paginated, newest-first, filterable view.
+  warehouseReturns: ({ status, limit, after } = {}) => {
     const params = new URLSearchParams();
+    if (status && status !== 'all') params.set('status', status);
     if (limit) params.set('limit', limit);
     if (after) params.set('after', after);
     const qs = params.toString();
@@ -428,9 +442,10 @@ export const api = {
   updateComplaintStatus: (complaintId, status) =>
     request(`/admin/complaints/${complaintId}/status`, { method: 'PATCH', body: { status } }),
   // Warehouse: only the complaints filed against the caller's own warehouse,
-  // read-only.
-  warehouseComplaints: ({ limit, after } = {}) => {
+  // read-only. Pass { status } to filter (same enum as the admin queue).
+  warehouseComplaints: ({ status, limit, after } = {}) => {
     const params = new URLSearchParams();
+    if (status) params.set('status', status);
     if (limit) params.set('limit', limit);
     if (after) params.set('after', after);
     const qs = params.toString();

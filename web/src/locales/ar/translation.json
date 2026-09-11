@@ -172,6 +172,7 @@
     "warehouseNetLabel": "صافي ما تستلمه"
   },
   "returns": {
+    "filterAll": "الكل",
     "reasonDamaged": "تالف",
     "reasonWrongItem": "صنف خاطئ",
     "reasonOther": "أخرى",
@@ -306,6 +307,7 @@
       "thumbnailColumn": "الصورة المصغّرة"
     },
     "admin": {
+      "filterAll": "الكل",
       "publishNew": "نشر إعلان جديد",
       "modalTitle": "نشر إعلان جديد",
       "publishBanner": "نشر الإعلان",
@@ -380,6 +382,7 @@
     "newAdvertisement": "إعلان جديد",
     "modalTitle": "إعلان جديد",
     "editTitle": "تعديل الإعلان",
+    "saveChanges": "حفظ التعديلات",
     "approvalNotice": "يراجع الأدمن الإعلان قبل أن تراه الصيدليات. تعديل إعلان منشور يعيده للمراجعة من جديد.",
     "noAdvertisements": "لم تنشئ أي إعلان بعد.",
     "titleEn": "العنوان (إنجليزي)",
@@ -413,7 +416,7 @@
     "contactAdmin": "تواصل مع الأدمن",
     "paymentWhatsappMessage": "مرحباً، أريد إكمال الدفع لنشر إعلان جديد.\nرقم المستودع: {{warehouseId}}\nرقم طلب الإعلان: #{{advertisementNumber}}",
     "pause": "إيقاف مؤقت",
-    "confirmPause": "إيقاف \"{{title}}\" مؤقتاً؟ ستتوقف الصيدليات عن رؤيتها فوراً، ولا يمكن إعادة تفعيلها إلا من قِبل الأدمن.",
+    "confirmPause": "إيقاف \"{{title}}\" مؤقتاً؟ ستتوقف الصيدليات عن رؤيتها فوراً، ويمكنك أنت أو الأدمن إعادة تفعيلها في أي وقت.",
     "pausedAwaitingAdmin": "متوقفة — بانتظار تفعيل الأدمن",
     "available": "متاحة",
     "paused": "متوقفة",
@@ -429,7 +432,7 @@
       "approvedCountLabel": "المعتمدة ({{count}})",
       "noApprovedAdvertisements": "لا توجد باقات معتمدة بعد.",
       "availabilityColumn": "الإتاحة",
-      "availabilityHint": "الإيقاف المؤقت يخفي الباقة عن الصيدليات دون إلغاء اعتمادها. وحده الأدمن يستطيع إعادة تفعيل باقة متوقفة.",
+      "availabilityHint": "الإيقاف المؤقت يخفي الباقة عن الصيدليات دون إلغاء اعتمادها. المستودع أو الأدمن يستطيع إعادة تفعيل باقة متوقفة.",
       "pause": "إيقاف مؤقت",
       "makeAvailable": "تفعيل",
       "confirmPause": "إيقاف \"{{title}}\" مؤقتاً؟ ستختفي عن كل الصيدليات حتى تعيد تفعيلها.",
@@ -438,7 +441,11 @@
       "rejectionHint": "الموافقة تنشر الإعلان لكل الصيدليات. الرفض يتطلب ذكر السبب.",
       "confirmApprove": "هل توافق على الإعلان \"{{title}}\"؟",
       "rejectPrompt": "ما سبب رفض \"{{title}}\"؟ سيظهر هذا السبب للمستودع.",
-      "rejectionNoteRequired": "يجب ذكر سبب الرفض."
+      "rejectionNoteRequired": "يجب ذكر سبب الرفض.",
+      "rejectedTab": "المرفوضة",
+      "rejectedCountLabel": "المرفوضة ({{count}})",
+      "noRejectedAdvertisements": "لا توجد باقات مرفوضة.",
+      "rejectedHint": "الباقة المرفوضة تبقى محفوظة مع ملاحظة الرفض، مخفية عن الصيدليات. يمكنك تعديل محتواها مباشرة أو حذفها — التعديل لا يغيّر حالتها."
     }
   },
   "offers": {

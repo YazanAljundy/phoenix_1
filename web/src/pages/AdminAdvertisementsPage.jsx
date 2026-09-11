@@ -7,15 +7,16 @@ import { useExchangeRate } from '../context/ExchangeRateContext';
 import { REALTIME_EVENTS, useRealtimeSync } from '../realtime/useRealtimeSync';
 import { formatMoneyFromUsd } from '../utils/currency';
 import { AdvertisementsSubNav } from '../components/AdvertisementsSubNav';
+import { AdvertisementModal } from '../components/AdvertisementModal';
 import { withArFallback } from '../utils/displayName';
 
 const PAGE_SIZE = 20;
 
-// The two lists this page shows, both from the same paginated endpoint with a
-// `status` (see adminAdvertisement.service.js). Pending is the moderation
-// queue; Approved is where a live package is paused or made available again -
-// the only place a package its own warehouse paused can ever come back.
-const STATUS_TABS = ['pending', 'approved'];
+// All three tabs come from the same paginated endpoint with a `status` (see
+// adminAdvertisement.service.listPaginatedAdvertisements) - Approved is also
+// where a live package is paused or made available again; Rejected is kept
+// (not deleted) along with its rejectionNote, same as Offer/Banner rejection.
+const STATUS_TABS = ['pending', 'approved', 'rejected'];
 
 // The moderation queue for warehouse advertisement packages - the same shape
 // as AdminOffersPage, with the package's individual product lines expanded
@@ -26,10 +27,13 @@ export function AdminAdvertisementsPage() {
   const [statusFilter, setStatusFilter] = useState('pending');
   const [busyId, setBusyId] = useState(null);
   const [actionError, setActionError] = useState(null);
+  const [editingAdvertisement, setEditingAdvertisement] = useState(null);
   // Computed by the backend independently of pagination, so it stays accurate
   // however many pages have been loaded. Always the count for the tab showing.
   const [totalCount, setTotalCount] = useState(0);
 
+  // Every tab (pending/approved/rejected) is the same paginated endpoint with
+  // a different `status`.
   const fetchPage = useCallback(
     (cursor) =>
       api
@@ -45,7 +49,7 @@ export function AdminAdvertisementsPage() {
     [statusFilter]
   );
 
-  const { data: advertisements, isLoading, isLoadingMore, hasMore, error, loadMore, reset } =
+  const { data: advertisements, isLoading, hasMore, isLoadingMore, error, loadMore, reset } =
     usePaginatedData(fetchPage);
 
   useEffect(() => {
@@ -54,8 +58,8 @@ export function AdminAdvertisementsPage() {
   }, [statusFilter]);
 
   // A warehouse submitting, editing or pausing a package, and another admin
-  // deciding or toggling one, all change these lists - reset() re-reads page
-  // one, which also refreshes the count.
+  // deciding, editing, deleting or toggling one, all change this list -
+  // re-read page one, which also refreshes the count.
   useRealtimeSync(
     [
       REALTIME_EVENTS.ADVERTISEMENT_PENDING,
@@ -129,6 +133,42 @@ export function AdminAdvertisementsPage() {
   };
 
   const isPendingTab = statusFilter === 'pending';
+  const isApprovedTab = statusFilter === 'approved';
+
+  // A rejected package's content edit never touches status (the admin IS the
+  // approval authority - see adminAdvertisement.service.adminUpdateAdvertisement),
+  // unlike the warehouse's own edit which re-queues it. Delete works from any
+  // tab; edit does too.
+  const handleDelete = async (advertisement) => {
+    if (!window.confirm(t('advertisements.confirmDelete', { title: advertisement.titleEn }))) return;
+    setBusyId(advertisement.id);
+    setActionError(null);
+    try {
+      await api.deleteAdminAdvertisement(advertisement.id);
+      reset();
+    } catch (err) {
+      setActionError(err.message);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const handleEditSaved = () => {
+    setEditingAdvertisement(null);
+    reset();
+  };
+
+  const hintText = isPendingTab
+    ? t('advertisements.admin.rejectionHint')
+    : isApprovedTab
+      ? t('advertisements.admin.availabilityHint')
+      : t('advertisements.admin.rejectedHint');
+
+  const emptyStateText = isPendingTab
+    ? t('advertisements.admin.noAdvertisements')
+    : isApprovedTab
+      ? t('advertisements.admin.noApprovedAdvertisements')
+      : t('advertisements.admin.noRejectedAdvertisements');
 
   return (
     <div>
@@ -136,11 +176,7 @@ export function AdminAdvertisementsPage() {
 
       <div className="adm-page-head">
         <h1>{t('nav.advertisements')}</h1>
-        <div className="adm-page-head-meta">
-          {isPendingTab
-            ? t('advertisements.admin.rejectionHint')
-            : t('advertisements.admin.availabilityHint')}
-        </div>
+        <div className="adm-page-head-meta">{hintText}</div>
       </div>
 
       {(error || actionError) && <p className="error-text">{error || actionError}</p>}
@@ -168,11 +204,7 @@ export function AdminAdvertisementsPage() {
       ) : advertisements.length === 0 ? (
         <div className="adm-empty-state">
           <div className="adm-empty-state-icon">&#10003;</div>
-          <div className="adm-empty-state-title">
-            {isPendingTab
-              ? t('advertisements.admin.noAdvertisements')
-              : t('advertisements.admin.noApprovedAdvertisements')}
-          </div>
+          <div className="adm-empty-state-title">{emptyStateText}</div>
         </div>
       ) : (
         <>
@@ -247,7 +279,7 @@ export function AdminAdvertisementsPage() {
                     </td>
                     <td>
                       <div className="adm-row-actions">
-                        {isPendingTab ? (
+                        {isPendingTab && (
                           <>
                             <button
                               className="btn-approve"
@@ -264,7 +296,8 @@ export function AdminAdvertisementsPage() {
                               {t('common.reject')}
                             </button>
                           </>
-                        ) : (
+                        )}
+                        {isApprovedTab && (
                           <button
                             className={advertisement.isAvailable ? 'btn-reject' : 'btn-approve'}
                             disabled={busyId === advertisement.id}
@@ -275,6 +308,22 @@ export function AdminAdvertisementsPage() {
                               : t('advertisements.admin.makeAvailable')}
                           </button>
                         )}
+                        {/* Direct edit/delete, on every tab - full parity with
+                            AdminOffersPage's own row actions. */}
+                        <button
+                          className="adm-row-action"
+                          disabled={busyId === advertisement.id}
+                          onClick={() => setEditingAdvertisement(advertisement)}
+                        >
+                          {t('common.edit')}
+                        </button>
+                        <button
+                          className="adm-row-action adm-row-action-danger"
+                          disabled={busyId === advertisement.id}
+                          onClick={() => handleDelete(advertisement)}
+                        >
+                          {t('common.delete')}
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -289,6 +338,17 @@ export function AdminAdvertisementsPage() {
             pageSize={PAGE_SIZE}
           />
         </>
+      )}
+
+      {editingAdvertisement && (
+        <AdvertisementModal
+          advertisement={editingAdvertisement}
+          usdToSyp={usdToSyp}
+          canAddProducts={false}
+          onClose={() => setEditingAdvertisement(null)}
+          onSubmit={(body) => api.updateAdminAdvertisement(editingAdvertisement.id, body)}
+          onSaved={handleEditSaved}
+        />
       )}
     </div>
   );

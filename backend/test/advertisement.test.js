@@ -460,6 +460,99 @@ test('the admin queue paginates without repeats and reports a total count', asyn
   assert.strictEqual(totalCount, 5);
 });
 
+// --- Admin listing + direct edit/delete ------------------------------------
+
+test('the admin sees every package, every warehouse, every status - including rejected', async () => {
+  const a = await service.createAdvertisement(ids.warehouse, payload());
+  await adminService.rejectAdvertisement(a.advertisement._id.toString(), 'no good');
+  const b = await service.createAdvertisement(ids.warehouse, payload({ titleEn: 'Second' }));
+  await adminService.approveAdvertisement(b.advertisement._id.toString(), ids.adminUser);
+  await service.createAdvertisement(ids.warehouse, payload({ titleEn: 'Third' })); // stays pending
+
+  const rows = await adminService.listAllAdvertisements();
+  assert.strictEqual(rows.length, 3);
+  assert.deepStrictEqual(
+    rows.map((r) => r.advertisement.status).sort(),
+    ['approved', 'pending', 'rejected']
+  );
+});
+
+test('a rejected package is invisible to the pending/approved queues but paginable via its own status and visible via listAll', async () => {
+  const created = await service.createAdvertisement(ids.warehouse, payload());
+  await adminService.rejectAdvertisement(created.advertisement._id.toString(), 'no good');
+
+  assert.strictEqual((await adminService.listPendingAdvertisements()).length, 0);
+
+  const { rows, totalCount } = await adminService.listPaginatedAdvertisements({
+    status: 'rejected',
+    limit: 10,
+  });
+  assert.strictEqual(rows.length, 1);
+  assert.strictEqual(rows[0].advertisement.status, 'rejected');
+  assert.strictEqual(totalCount, 1);
+
+  const all = await adminService.listAllAdvertisements();
+  assert.strictEqual(all.length, 1);
+  assert.strictEqual(all[0].advertisement.status, 'rejected');
+});
+
+test('an unlistable status is still rejected by listPaginatedAdvertisements', async () => {
+  await assert.rejects(
+    () => adminService.listPaginatedAdvertisements({ status: 'bogus', limit: 10 }),
+    (err) => err.code === 'INVALID_STATUS'
+  );
+});
+
+test('an admin direct edit applies to a rejected package without touching its status', async () => {
+  const created = await service.createAdvertisement(ids.warehouse, payload());
+  await adminService.rejectAdvertisement(created.advertisement._id.toString(), 'wrong price');
+
+  await adminService.adminUpdateAdvertisement(
+    created.advertisement._id.toString(),
+    payload({ totalPriceUsd: 6 })
+  );
+
+  const fresh = await Advertisement.findById(created.advertisement._id);
+  assert.strictEqual(fresh.totalPriceUsd, 6);
+  assert.strictEqual(fresh.status, 'rejected', 'a content edit is not a moderation decision');
+  assert.strictEqual(fresh.rejectionNote, 'wrong price', 'left untouched');
+});
+
+test('an admin direct edit applies to an approved package without sending it back to pending', async () => {
+  const created = await service.createAdvertisement(ids.warehouse, payload());
+  await adminService.approveAdvertisement(created.advertisement._id.toString(), ids.adminUser);
+
+  await adminService.adminUpdateAdvertisement(
+    created.advertisement._id.toString(),
+    payload({ totalPriceUsd: 7 })
+  );
+
+  const fresh = await Advertisement.findById(created.advertisement._id);
+  assert.strictEqual(fresh.totalPriceUsd, 7);
+  assert.strictEqual(fresh.status, 'approved', 'the admin IS the approval authority - no re-review');
+});
+
+test("an admin edit still validates the package against its own warehouse's catalog, never the client's", async () => {
+  const created = await service.createAdvertisement(ids.warehouse, payload());
+
+  await assert.rejects(
+    () =>
+      adminService.adminUpdateAdvertisement(
+        created.advertisement._id.toString(),
+        payload({ items: [{ productId: ids.foreign.toString() }] })
+      ),
+    (err) => err.code === 'PRODUCT_NOT_FOUND'
+  );
+});
+
+test('an admin delete removes any package, any status, from the database', async () => {
+  const rejected = await service.createAdvertisement(ids.warehouse, payload());
+  await adminService.rejectAdvertisement(rejected.advertisement._id.toString(), 'no');
+
+  await adminService.adminDeleteAdvertisement(rejected.advertisement._id.toString());
+  assert.strictEqual(await Advertisement.findById(rejected.advertisement._id), null);
+});
+
 // --- The existing Offer feature is untouched ------------------------------
 
 test('packages do not touch the Offer collection', async () => {

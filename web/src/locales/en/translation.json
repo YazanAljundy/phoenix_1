@@ -164,6 +164,7 @@
     "warehouseNetLabel": "You receive"
   },
   "returns": {
+    "filterAll": "All",
     "reasonDamaged": "Damaged",
     "reasonWrongItem": "Wrong item",
     "reasonOther": "Other",
@@ -294,6 +295,7 @@
       "thumbnailColumn": "Thumbnail"
     },
     "admin": {
+      "filterAll": "All",
       "publishNew": "Publish new banner",
       "modalTitle": "Publish a new banner",
       "publishBanner": "Publish banner",
@@ -368,6 +370,7 @@
     "newAdvertisement": "New advertisement",
     "modalTitle": "New advertisement",
     "editTitle": "Edit advertisement",
+    "saveChanges": "Save changes",
     "approvalNotice": "An advertisement is reviewed by an admin before pharmacies can see it. Editing one that is already live sends it back for review.",
     "noAdvertisements": "You haven't created any advertisements yet.",
     "titleEn": "Title (English)",
@@ -401,7 +404,7 @@
     "contactAdmin": "Contact admin",
     "paymentWhatsappMessage": "Hello, I'd like to complete payment to publish a new advertisement.\nWarehouse ID: {{warehouseId}}\nAdvertisement request number: #{{advertisementNumber}}",
     "pause": "Pause",
-    "confirmPause": "Pause \"{{title}}\"? Pharmacies stop seeing it right away, and only an admin can make it available again.",
+    "confirmPause": "Pause \"{{title}}\"? Pharmacies stop seeing it right away - you or an admin can make it available again anytime.",
     "pausedAwaitingAdmin": "Paused — waiting for an admin to re-enable",
     "available": "Available",
     "paused": "Paused",
@@ -417,7 +420,7 @@
       "approvedCountLabel": "Approved ({{count}})",
       "noApprovedAdvertisements": "No approved packages yet.",
       "availabilityColumn": "Availability",
-      "availabilityHint": "Pausing hides a package from pharmacies without undoing its approval. Only an admin can make a paused package available again.",
+      "availabilityHint": "Pausing hides a package from pharmacies without undoing its approval. The warehouse or an admin can make it available again.",
       "pause": "Pause",
       "makeAvailable": "Make available",
       "confirmPause": "Pause \"{{title}}\"? It disappears for every pharmacy until you make it available again.",
@@ -426,7 +429,11 @@
       "rejectionHint": "Approving publishes the package to every pharmacy. A rejection must say why.",
       "confirmApprove": "Approve the advertisement \"{{title}}\"?",
       "rejectPrompt": "Why is \"{{title}}\" being rejected? The warehouse will see this note.",
-      "rejectionNoteRequired": "A rejection note is required."
+      "rejectionNoteRequired": "A rejection note is required.",
+      "rejectedTab": "Rejected",
+      "rejectedCountLabel": "Rejected ({{count}})",
+      "noRejectedAdvertisements": "No rejected packages.",
+      "rejectedHint": "A rejected package is kept with its note, hidden from pharmacies. You can edit its content directly or delete it - editing does not change its status."
     }
   },
   "offers": {

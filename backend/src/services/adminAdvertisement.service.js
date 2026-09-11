@@ -5,6 +5,7 @@ const Product = require('../models/product.model');
 const Pharmacy = require('../models/pharmacy.model');
 const Warehouse = require('../models/warehouse.model');
 const { applyResolvedIdentity } = require('./productCatalog.service');
+const { buildAdvertisementFields } = require('./warehouseAdvertisement.service');
 const notificationService = require('./notification.service');
 const { emitToAdmins, emitToWarehouse, EVENTS } = require('../realtime');
 
@@ -18,11 +19,16 @@ const ADMIN_ADVERTISEMENTS_DEFAULT_LIMIT = 20;
 const PENDING_ADVERTISEMENT_FIELDS =
   'titleAr titleEn items totalPriceUsd startDate endDate status rejectionNote isAvailable createdAt warehouseId';
 
-// The two lists the management page can show. `pending` is the moderation
+// The three lists the management page can show. `pending` is the moderation
 // queue; `approved` is where an admin finds a live package to pause or
-// re-enable (setAdvertisementAvailability below) - including one its own
-// warehouse paused, which only an admin can bring back.
-const LISTABLE_STATUSES = ['pending', 'approved'];
+// re-enable (setAdvertisementAvailability below) - including one only an
+// admin can still reach, e.g. a package its warehouse's own edit sent back to
+// `pending` while paused (see warehouseAdvertisement.service.js's
+// updateAdvertisement, which never touches isAvailable). `rejected` is the
+// same paginated shape as the other two - unlike Offer, a rejected
+// Advertisement is kept (not deleted) along with its rejectionNote, so it can
+// be listed and paged exactly like any other status.
+const LISTABLE_STATUSES = ['pending', 'approved', 'rejected'];
 const ADVERTISEMENT_PRODUCT_SELECT = 'nameAr nameEn manufacturerAr manufacturerEn masterProductId';
 const CATALOG_IDENTITY_SELECT = 'nameAr nameEn manufacturerAr manufacturerEn';
 
@@ -100,11 +106,38 @@ function listPaginatedPendingAdvertisements(options = {}) {
   return listPaginatedAdvertisements({ ...options, status: 'pending' });
 }
 
+// The admin's cross-warehouse oversight view - EVERY advertisement, every
+// warehouse, every status, unpaginated. No longer the only way to reach a
+// rejected package (the Rejected tab now uses the same paginated
+// listPaginatedAdvertisements as Pending/Approved); kept for any other
+// caller that genuinely wants the full unfiltered set.
+async function listAllAdvertisements() {
+  const advertisements = await Advertisement.find({})
+    .select(PENDING_ADVERTISEMENT_FIELDS)
+    .sort({ createdAt: -1 });
+  if (advertisements.length === 0) return [];
+  return attachRefs(advertisements);
+}
+
 async function findPendingAdvertisementOrThrow(advertisementId) {
   if (!mongoose.Types.ObjectId.isValid(advertisementId)) {
     throw ApiError.notFound('Advertisement not found.', 'ADVERTISEMENT_NOT_FOUND');
   }
   const advertisement = await Advertisement.findOne({ _id: advertisementId, status: 'pending' });
+  if (!advertisement) {
+    throw ApiError.notFound('Advertisement not found.', 'ADVERTISEMENT_NOT_FOUND');
+  }
+  return advertisement;
+}
+
+// Unrestricted by status - the admin's direct edit/delete can reach a
+// pending, approved, or rejected package alike, same as adminOffer.service's
+// findAnyOfferOrThrow.
+async function findAnyAdvertisementOrThrow(advertisementId) {
+  if (!mongoose.Types.ObjectId.isValid(advertisementId)) {
+    throw ApiError.notFound('Advertisement not found.', 'ADVERTISEMENT_NOT_FOUND');
+  }
+  const advertisement = await Advertisement.findById(advertisementId);
   if (!advertisement) {
     throw ApiError.notFound('Advertisement not found.', 'ADVERTISEMENT_NOT_FOUND');
   }
@@ -184,16 +217,57 @@ async function rejectAdvertisement(advertisementId, rejectionNote) {
   return advertisement;
 }
 
+// The admin edits any package's content directly - the admin IS the approval
+// authority, so there is no buffer / re-review the way a warehouse's own
+// updateAdvertisement sends the package back to `pending`. Reachable at any
+// status (pending/approved/rejected), same as adminUpdateOffer. Unlike Offer,
+// Advertisement has no pendingUpdate buffer to guard against, so there is no
+// conflict precondition here.
+//
+// `status`/`rejectionNote`/`approvedBy`/`approvedAt`/`isAvailable` are
+// deliberately left untouched: a content edit is not itself a moderation or
+// availability decision.
+async function adminUpdateAdvertisement(advertisementId, data) {
+  const advertisement = await findAnyAdvertisementOrThrow(advertisementId);
+  const fields = await buildAdvertisementFields(advertisement.warehouseId, data);
+
+  Object.assign(advertisement, fields);
+  await advertisement.save();
+
+  emitToAdmins(EVENTS.ADVERTISEMENT_STATUS_UPDATED, {
+    advertisementId: advertisement._id.toString(),
+    warehouseId: advertisement.warehouseId.toString(),
+    status: advertisement.status,
+  });
+
+  return advertisement;
+}
+
+// A hard delete, from any warehouse and any status, really gone from the
+// database. Same shape as adminDeleteOffer.
+async function adminDeleteAdvertisement(advertisementId) {
+  const advertisement = await findAnyAdvertisementOrThrow(advertisementId);
+  await advertisement.deleteOne();
+
+  emitToAdmins(EVENTS.ADVERTISEMENT_STATUS_UPDATED, {
+    advertisementId: advertisement._id.toString(),
+    warehouseId: advertisement.warehouseId.toString(),
+    status: 'deleted',
+  });
+}
+
 // The admin side of the pause switch: either direction, at any time, on any
-// package. No status precondition - the flag is its own layer - and no
-// direction rule, unlike the warehouse's one-way version
-// (warehouseAdvertisement.service.js's updateAdvertisementAvailability). This is
-// the only way a paused package ever comes back.
+// package - no status precondition, unlike the warehouse's own version
+// (warehouseAdvertisement.service.js's updateAdvertisementAvailability, which
+// requires `status === 'approved'`). An admin can act on a package regardless
+// of its moderation state; this is also still the only way to flip the flag on
+// a package its own warehouse cannot yet toggle (e.g. one it paused before a
+// content edit sent it back to `pending` - see updateAdvertisement).
 //
 // Approval and this flag never touch each other: approveAdvertisement leaves
 // isAvailable exactly as it finds it, so a package its warehouse paused and then
-// re-submitted comes out of moderation still paused until an admin says
-// otherwise here.
+// re-submitted comes out of moderation still paused until someone (warehouse or
+// admin) explicitly turns it back on.
 async function setAdvertisementAvailability(advertisementId, isAvailable) {
   if (typeof isAvailable !== 'boolean') {
     throw ApiError.badRequest('Invalid availability.', undefined, 'INVALID_AVAILABILITY');
@@ -229,7 +303,10 @@ module.exports = {
   listPendingAdvertisements,
   listPaginatedAdvertisements,
   listPaginatedPendingAdvertisements,
+  listAllAdvertisements,
   approveAdvertisement,
   rejectAdvertisement,
+  adminUpdateAdvertisement,
+  adminDeleteAdvertisement,
   setAdvertisementAvailability,
 };
