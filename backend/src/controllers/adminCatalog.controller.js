@@ -10,7 +10,9 @@ const list = asyncHandler(async (req, res) => {
   const cursor = parseObjectIdCursor(after);
 
   const { items, hasMore, nextCursor } = await catalogService.listCatalog({
-    search: req.query.q,
+    // Unified on `search` (was `q`) to match GET /admin/products and
+    // GET /admin/accounts, rather than being the odd one out.
+    search: req.query.search,
     categoryId: typeof req.query.categoryId === 'string' ? req.query.categoryId : undefined,
     manufacturer: typeof req.query.manufacturer === 'string' ? req.query.manufacturer : undefined,
     limit,

@@ -199,7 +199,11 @@ export const api = {
   // rather than pulling the whole catalog down to filter it here.
   searchWarehouseProducts: ({ q, limit, after } = {}) => {
     const params = new URLSearchParams();
-    if (q) params.set('q', q);
+    // `search` (was `q`) at the HTTP boundary - unified with every other
+    // text-search endpoint. Kept as `q` in this function's own arguments so
+    // every existing caller (e.g. the advertisement product picker) is
+    // unchanged.
+    if (q) params.set('search', q);
     if (limit) params.set('limit', limit);
     if (after) params.set('after', after);
     const qs = params.toString();
@@ -344,7 +348,7 @@ export const api = {
   resetExchangeRate: () => request('/admin/exchange-rate/reset', { method: 'PATCH' }),
   adminCatalog: ({ search, categoryId, manufacturer, limit, after } = {}) => {
     const params = new URLSearchParams();
-    if (search) params.set('q', search);
+    if (search) params.set('search', search);
     if (categoryId) params.set('categoryId', categoryId);
     if (manufacturer) params.set('manufacturer', manufacturer);
     if (limit) params.set('limit', limit);
@@ -368,8 +372,10 @@ export const api = {
       body: changes,
     }),
   deactivateCatalogItem: (id) => request(`/admin/catalog/${id}`, { method: 'DELETE' }),
+  // `search` (was `q`) at the HTTP boundary - unified with every other
+  // text-search endpoint.
   warehouseCatalogSearch: (q) =>
-    request(`/warehouse/catalog/search${q ? `?q=${encodeURIComponent(q)}` : ''}`),
+    request(`/warehouse/catalog/search${q ? `?search=${encodeURIComponent(q)}` : ''}`),
   downloadWarehouseProductTemplate: () => requestBlob('/warehouse/products/template'),
   importWarehouseProducts: (file) => requestUpload('/warehouse/products/import', file),
   warehouseDiscounts: () => request('/warehouse/discounts'),
