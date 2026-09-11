@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { api } from '../api/client';
@@ -9,6 +9,7 @@ import { withArFallback } from '../utils/displayName';
 import { WarehouseGroupSubNav } from '../components/WarehouseGroupSubNav';
 
 const PAGE_SIZE = 15;
+const FILTERS = ['all', 'pending', 'in_review', 'resolved', 'closed'];
 
 function statusBadgeClass(status) {
   if (status === 'resolved') return 'status-delivered';
@@ -23,17 +24,25 @@ function statusBadgeClass(status) {
 export function WarehouseComplaintsPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [statusFilter, setStatusFilter] = useState('all');
 
   const statusLabel = (status) => t(`complaints.status.${status}`);
+  const filterLabel = (filter) => (filter === 'all' ? t('complaints.admin.filterAll') : statusLabel(filter));
 
   const fetchPage = useCallback(
     (cursor) =>
-      api.warehouseComplaints({ limit: PAGE_SIZE, after: cursor }).then((data) => ({
-        rows: data.complaints,
-        hasMore: data.pagination.hasMore,
-        nextCursor: data.pagination.nextCursor,
-      })),
-    [],
+      api
+        .warehouseComplaints({
+          status: statusFilter === 'all' ? undefined : statusFilter,
+          limit: PAGE_SIZE,
+          after: cursor,
+        })
+        .then((data) => ({
+          rows: data.complaints,
+          hasMore: data.pagination.hasMore,
+          nextCursor: data.pagination.nextCursor,
+        })),
+    [statusFilter],
   );
 
   const { data: complaints, isLoading, isLoadingMore, hasMore, error, loadMore, reset } =
@@ -42,7 +51,7 @@ export function WarehouseComplaintsPage() {
   useEffect(() => {
     reset();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [statusFilter]);
 
   useRealtimeSync(
     [REALTIME_EVENTS.COMPLAINT_CREATED, REALTIME_EVENTS.COMPLAINT_UPDATED],
@@ -55,6 +64,19 @@ export function WarehouseComplaintsPage() {
 
       <div className="wh-page-head">
         <h1>{t('nav.complaints')}</h1>
+      </div>
+
+      <div className="wh-pills">
+        {FILTERS.map((filter) => (
+          <button
+            key={filter}
+            type="button"
+            className={`wh-pill${statusFilter === filter ? ' active' : ''}`}
+            onClick={() => setStatusFilter(filter)}
+          >
+            {filterLabel(filter)}
+          </button>
+        ))}
       </div>
 
       {error && <p className="error-text">{error}</p>}
