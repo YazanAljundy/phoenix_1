@@ -25,6 +25,7 @@ export function AdminProductsPage() {
   const [categories, setCategories] = useState([]);
   const [warehouses, setWarehouses] = useState([]);
   const [warehouseFilter, setWarehouseFilter] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [editingProduct, setEditingProduct] = useState(null);
@@ -50,6 +51,7 @@ export function AdminProductsPage() {
         .adminProducts({
           search: searchQuery || undefined,
           warehouseId: warehouseFilter || undefined,
+          categoryId: categoryFilter || undefined,
           limit: PAGE_SIZE,
           after: cursor,
         })
@@ -58,7 +60,7 @@ export function AdminProductsPage() {
           hasMore: data.pagination.hasMore,
           nextCursor: data.pagination.nextCursor,
         })),
-    [searchQuery, warehouseFilter]
+    [searchQuery, warehouseFilter, categoryFilter]
   );
 
   const {
@@ -74,7 +76,7 @@ export function AdminProductsPage() {
   useEffect(() => {
     reset();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQuery, warehouseFilter]);
+  }, [searchQuery, warehouseFilter, categoryFilter]);
 
   const handleSaved = () => {
     setEditingProduct(null);
@@ -118,6 +120,18 @@ export function AdminProductsPage() {
           {warehouses.map((warehouse) => (
             <option key={warehouse.id} value={warehouse.id}>
               {warehouse.nameEn}
+            </option>
+          ))}
+        </select>
+        <select
+          className="adm-filter-select"
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+        >
+          <option value="">{t('products.allCategories')}</option>
+          {categories.map((category) => (
+            <option key={category.id} value={category.id}>
+              {category.nameEn}
             </option>
           ))}
         </select>

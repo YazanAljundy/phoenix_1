@@ -43,8 +43,12 @@ const ADMIN_PRODUCTS_DEFAULT_LIMIT = 30;
 
 // The Products management page (unlike listAllProducts above - still used
 // as-is by the Dashboard's count and the Banners composer's product picker,
-// both needing every product) wants "Load more" plus warehouse/search
-// filters sent to the server. Cursor pagination: sorted by `_id` ascending,
+// both needing every product) wants "Load more" plus warehouse/category/search
+// filters sent to the server. `categoryId` alone (no warehouseId) falls back to
+// a collection scan - the only compound index that covers it is
+// {warehouseId,categoryId,_id}, which needs warehouseId as its prefix to be
+// used. Fine at today's product volume; worth an index if that combination
+// becomes a common, slow query. Cursor pagination: sorted by `_id` ascending,
 // same tradeoff productCatalog.service.js's listCatalog already made for
 // its own admin list (a stable, unique cursor field wins over the alphabetical
 // sort listAllProducts uses, see that function's comment).
@@ -53,10 +57,19 @@ const ADMIN_PRODUCTS_DEFAULT_LIMIT = 30;
 // on the Product doc itself (Section 14 Part 2) - so `search` can't just
 // regex Product's own fields, it also has to catch products linked to a
 // catalog entry whose name/manufacturer matches.
-async function listPaginatedAllProducts({ search, warehouseId, limit = ADMIN_PRODUCTS_DEFAULT_LIMIT, after = null } = {}) {
+async function listPaginatedAllProducts({
+  search,
+  warehouseId,
+  categoryId,
+  limit = ADMIN_PRODUCTS_DEFAULT_LIMIT,
+  after = null,
+} = {}) {
   const filter = {};
   if (warehouseId) {
     filter.warehouseId = warehouseId;
+  }
+  if (categoryId) {
+    filter.categoryId = categoryId;
   }
   if (search && search.trim()) {
     const pattern = new RegExp(escapeRegex(search.trim()), 'i');

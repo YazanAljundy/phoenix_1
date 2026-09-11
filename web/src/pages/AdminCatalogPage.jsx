@@ -196,6 +196,7 @@ export function AdminCatalogPage() {
   const { t } = useTranslation();
   const [categories, setCategories] = useState([]);
   const [search, setSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
   const [busyId, setBusyId] = useState(null);
   const [actionError, setActionError] = useState(null);
   // Separate from actionError: disabling an entry that took warehouse
@@ -214,21 +215,25 @@ export function AdminCatalogPage() {
 
   const fetchPage = useCallback(
     (cursor) =>
-      api.adminCatalog({ search, limit: PAGE_SIZE, after: cursor }).then((data) => ({
-        rows: data.items,
-        hasMore: data.pagination.hasMore,
-        nextCursor: data.pagination.nextCursor,
-      })),
-    [search]
+      api
+        .adminCatalog({ search, categoryId: categoryFilter || undefined, limit: PAGE_SIZE, after: cursor })
+        .then((data) => ({
+          rows: data.items,
+          hasMore: data.pagination.hasMore,
+          nextCursor: data.pagination.nextCursor,
+        })),
+    [search, categoryFilter]
   );
 
   const { data: items, isLoading, isLoadingMore, hasMore, error, loadMore, reset } =
     usePaginatedData(fetchPage);
 
+  // Category is a discrete choice, so it reloads immediately on change - only
+  // the free-text search waits for the form's submit button (handleSearchSubmit).
   useEffect(() => {
     reset();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [categoryFilter]);
 
   const handleSearchSubmit = (event) => {
     event.preventDefault();
@@ -342,6 +347,18 @@ export function AdminCatalogPage() {
         <button type="submit" className="btn-secondary">
           {t('common.search')}
         </button>
+        <select
+          className="adm-filter-select"
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+        >
+          <option value="">{t('products.allCategories')}</option>
+          {categories.map((category) => (
+            <option key={category.id} value={category.id}>
+              {category.nameEn}
+            </option>
+          ))}
+        </select>
       </form>
 
       {(error || actionError) && <p className="error-text">{error || actionError}</p>}

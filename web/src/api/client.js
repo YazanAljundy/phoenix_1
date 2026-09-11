@@ -285,12 +285,13 @@ export const api = {
   ratePharmacy: (orderId, rating, comment) =>
     request('/warehouse/reviews', { method: 'POST', body: { orderId, rating, comment } }),
   // No args: every product - used by the Dashboard's count and the Banners
-  // composer's product picker. Pass { search, warehouseId, limit, after }
-  // for the Products management page's own paginated, filtered view.
-  adminProducts: ({ search, warehouseId, limit, after } = {}) => {
+  // composer's product picker. Pass { search, warehouseId, categoryId, limit,
+  // after } for the Products management page's own paginated, filtered view.
+  adminProducts: ({ search, warehouseId, categoryId, limit, after } = {}) => {
     const params = new URLSearchParams();
     if (search) params.set('search', search);
     if (warehouseId) params.set('warehouseId', warehouseId);
+    if (categoryId) params.set('categoryId', categoryId);
     if (limit) params.set('limit', limit);
     if (after) params.set('after', after);
     const qs = params.toString();
@@ -335,9 +336,10 @@ export const api = {
   adminExchangeRate: () => request('/admin/exchange-rate'),
   setExchangeRate: (usdToSyp) => request('/admin/exchange-rate', { method: 'PATCH', body: { usdToSyp } }),
   resetExchangeRate: () => request('/admin/exchange-rate/reset', { method: 'PATCH' }),
-  adminCatalog: ({ search, limit, after } = {}) => {
+  adminCatalog: ({ search, categoryId, limit, after } = {}) => {
     const params = new URLSearchParams();
     if (search) params.set('q', search);
+    if (categoryId) params.set('categoryId', categoryId);
     if (limit) params.set('limit', limit);
     if (after) params.set('after', after);
     const qs = params.toString();

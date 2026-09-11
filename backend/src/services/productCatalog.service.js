@@ -68,8 +68,11 @@ const DEFAULT_CATALOG_LIMIT = 30;
 // Cursor pagination: sorted by `_id` ascending (replacing the previous
 // manufacturerAr/nameAr sort - a stable, unique cursor field is required for
 // pagination to work correctly, see pagination.js).
-async function listCatalog({ search, limit = DEFAULT_CATALOG_LIMIT, after = null } = {}) {
+async function listCatalog({ search, categoryId, limit = DEFAULT_CATALOG_LIMIT, after = null } = {}) {
   const filter = {};
+  if (categoryId) {
+    filter.categoryId = categoryId;
+  }
   if (search && search.trim()) {
     const pattern = new RegExp(escapeRegex(search.trim()), 'i');
     filter.$or = [

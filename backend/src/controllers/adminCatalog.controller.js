@@ -11,6 +11,7 @@ const list = asyncHandler(async (req, res) => {
 
   const { items, hasMore, nextCursor } = await catalogService.listCatalog({
     search: req.query.q,
+    categoryId: typeof req.query.categoryId === 'string' ? req.query.categoryId : undefined,
     limit,
     after: cursor,
   });
