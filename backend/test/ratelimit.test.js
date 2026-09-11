@@ -12,7 +12,7 @@
 // way app.js configures the real one (trust proxy 1), so req.ip resolution is
 // the genuine article rather than a stub.
 process.env.MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/feniq-ratelimit-test';
-process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-ratelimit-tests';
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-ratelimit-tests-';
 process.env.NODE_ENV = 'test';
 
 const test = require('node:test');

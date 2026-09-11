@@ -9,8 +9,10 @@ import 'package:feniq/core/services/auth_event_bus.dart';
 import 'package:feniq/core/services/fcm_service.dart';
 import 'package:feniq/core/services/navigation_service.dart';
 import 'package:feniq/core/services/secure_storage_service.dart';
+import 'package:feniq/features/auth/data/models/auth_response.dart';
 import 'package:feniq/features/auth/data/models/user_model.dart';
 import 'package:feniq/features/auth/data/repositories/auth_repository_impl.dart';
+import 'package:feniq/features/notifications/data/repositories/notification_repository.dart';
 import 'package:feniq/routes/route_names.dart';
 
 import 'auth_state.dart';
@@ -20,9 +22,11 @@ class AuthCubit extends Cubit<AuthState> {
     required AuthRepositoryImpl authRepository,
     required SecureStorageService secureStorage,
     required FcmService fcmService,
+    required NotificationRepository notificationRepository,
   }) : _authRepository = authRepository,
        _secureStorage = secureStorage,
        _fcmService = fcmService,
+       _notificationRepository = notificationRepository,
        super(const AuthState()) {
     // A single app-wide place reacts to "an authenticated request got 401"
     // (emitted by AuthInterceptor). Re-entrancy is guarded inside
@@ -35,6 +39,11 @@ class AuthCubit extends Cubit<AuthState> {
   final AuthRepositoryImpl _authRepository;
   final SecureStorageService _secureStorage;
   final FcmService _fcmService;
+
+  // Injected rather than reached through NotificationCubit so that both
+  // logout paths - the deliberate one and the forced 401 one - clear the
+  // inbox from the same place, instead of each caller having to remember.
+  final NotificationRepository _notificationRepository;
 
   late final StreamSubscription<void> _unauthorizedSubscription;
 
@@ -188,9 +197,13 @@ class AuthCubit extends Cubit<AuthState> {
   }
 
   // Section 6-2/3: registers and saves directly - no OTP step (temporarily
-  // disabled, see auth_repository.dart). Also serves as the returning-user
-  // re-entry path: if `phone` already has an account, the backend logs it
-  // back in and ignores name/pharmacyName/address/password.
+  // disabled, see auth_repository.dart).
+  //
+  // Creates NEW accounts only. This used to double as the returning-user
+  // re-entry path - a phone that already had an account was silently logged
+  // back in - but that was an authentication bypass (audit F-01) and the
+  // backend now answers an existing phone with 409 PHONE_ALREADY_REGISTERED.
+  // Returning users go through loginWithPassword / PasswordLoginView.
   Future<bool> register({
     required String name,
     required String pharmacyName,
@@ -211,7 +224,7 @@ class AuthCubit extends Cubit<AuthState> {
         latitude: latitude,
         longitude: longitude,
       );
-      await _secureStorage.write(StorageKeys.authToken, result.token);
+      await _persistSession(result);
       _onAuthenticated();
       final sessionStatus = _sessionStatusFor(result.user);
       emit(
@@ -248,7 +261,7 @@ class AuthCubit extends Cubit<AuthState> {
         phone: phone,
         password: password,
       );
-      await _secureStorage.write(StorageKeys.authToken, result.token);
+      await _persistSession(result);
       _onAuthenticated();
       final sessionStatus = _sessionStatusFor(result.user);
       emit(
@@ -276,12 +289,62 @@ class AuthCubit extends Cubit<AuthState> {
   Future<void> logout() async {
     _isHandlingUnauthorized = false;
     _lastValidatedAt = null;
+
+    // Before the token goes: detaching the device needs an Authorization
+    // header, so this has to happen while the session is still usable
+    // (audit F-07). Every step is individually best-effort - none of them
+    // may prevent the user from signing out.
     try {
-      await _secureStorage.delete(StorageKeys.authToken);
+      await _fcmService.unregisterDevice();
+    } catch (_) {
+      // FcmService already swallows its own failures, but logout must not
+      // depend on that staying true - being unable to reach the server can
+      // never be a reason a user cannot sign out of this device.
+    }
+    await _clearLocalUserData();
+
+    try {
+      await _clearStoredSession();
     } catch (_) {
       // Best-effort - the local session is cleared regardless.
     }
     emit(const AuthState(sessionStatus: SessionStatus.unauthenticated));
+  }
+
+  // Anything readable on this device that belonged to the account being
+  // signed out. The notification inbox is a single global
+  // SharedPreferences key, so without this the next person to sign in on a
+  // shared phone would read the previous pharmacist's notifications
+  // (audit F-08).
+  Future<void> _clearLocalUserData() async {
+    try {
+      await _notificationRepository.clear();
+    } catch (_) {
+      // Best-effort.
+    }
+  }
+
+  // Both tokens land together or not at all. The refresh token is what lets
+  // AuthInterceptor ride over the 24h access-token expiry (audit F-03)
+  // without bouncing the user to the login screen.
+  Future<void> _persistSession(AuthResponse result) async {
+    await _secureStorage.write(StorageKeys.authToken, result.token);
+    final refreshToken = result.refreshToken;
+    if (refreshToken != null && refreshToken.isNotEmpty) {
+      await _secureStorage.write(StorageKeys.refreshToken, refreshToken);
+    } else {
+      // Talking to a backend that predates refresh tokens. Drop any stale
+      // one rather than leaving a previous session's credential behind.
+      await _secureStorage.delete(StorageKeys.refreshToken);
+    }
+  }
+
+  // Signing out must leave nothing behind that could resume the session -
+  // and the refresh token is exactly that, so it has to go with the access
+  // token rather than outliving it in secure storage.
+  Future<void> _clearStoredSession() async {
+    await _secureStorage.delete(StorageKeys.authToken);
+    await _secureStorage.delete(StorageKeys.refreshToken);
   }
 
   // A fresh, confirmed sign-in: re-arm the 401 handler and reset the
@@ -303,8 +366,12 @@ class AuthCubit extends Cubit<AuthState> {
     final alreadySignedOut =
         state.sessionStatus == SessionStatus.unauthenticated;
     _log('[AUTH] Handling unauthorized - clearing token and session');
+    // The session is already rejected, so there is no point calling the
+    // backend to detach the device - but the local inbox still has to go,
+    // for the same shared-device reason a deliberate logout clears it.
+    await _clearLocalUserData();
     try {
-      await _secureStorage.delete(StorageKeys.authToken);
+      await _clearStoredSession();
     } catch (_) {
       // Best-effort cleanup.
     }

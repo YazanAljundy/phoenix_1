@@ -8,7 +8,7 @@
 // re-divided every historical order and every SYP payment by TODAY's rate on
 // every recompute, so a settled account drifted into a phantom credit or debt
 // whenever the lira moved.
-process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-fx-tests';
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-fx-tests-padding';
 process.env.NODE_ENV = 'test';
 
 const test = require('node:test');

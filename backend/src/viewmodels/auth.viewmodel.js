@@ -35,9 +35,13 @@ function serializeWarehouse(warehouse) {
   };
 }
 
-function toAuthResponse({ user, pharmacy, warehouse, token }) {
+// `refreshToken` is only present on responses that actually start or renew
+// a session (register / login / refresh); getMe has none to give, which is
+// why toMeResponse is a separate shape rather than a flag on this one.
+function toAuthResponse({ user, pharmacy, warehouse, token, refreshToken }) {
   return {
     token,
+    refreshToken,
     user: serializeUser(user),
     pharmacy: serializePharmacy(pharmacy),
     warehouse: serializeWarehouse(warehouse),

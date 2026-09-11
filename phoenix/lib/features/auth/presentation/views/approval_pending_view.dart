@@ -63,7 +63,8 @@ class _ApprovalPendingViewState extends State<ApprovalPendingView>
       actionLabel: l10n.logout,
       onAction: () async {
         await authCubit.logout();
-        if (context.mounted) context.goNamed(RouteNames.registration);
+        // Login, not registration - see the same note in ProfileView (F-01).
+        if (context.mounted) context.goNamed(RouteNames.login);
       },
     );
   }

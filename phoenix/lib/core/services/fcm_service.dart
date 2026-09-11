@@ -124,6 +124,35 @@ class FcmService {
     }
   }
 
+  /// Detaches this device from the account being signed out (audit F-07).
+  ///
+  /// Two steps, in this order. The backend row goes first, because that is
+  /// what actually stops notifications being addressed here; deleting the
+  /// Firebase token first would leave us without the value needed to name the
+  /// row to remove. Then the Firebase token itself, so the next sign-in
+  /// mints a fresh one rather than reusing an identifier the old account
+  /// once owned.
+  ///
+  /// Never throws. Logging out must succeed even with no network - the
+  /// server row is then left behind, but registerDeviceToken already pulls
+  /// a token away from any previous owner when someone next signs in here.
+  Future<void> unregisterDevice() async {
+    try {
+      final token = await _messaging.getToken();
+      if (token != null && token.isNotEmpty) {
+        await _authRepository.deleteDeviceToken(fcmToken: token);
+      }
+    } catch (e) {
+      _logger.error('Failed to unregister device token with backend', e);
+    }
+
+    try {
+      await _messaging.deleteToken();
+    } catch (e) {
+      _logger.error('Failed to delete the FCM token', e);
+    }
+  }
+
   // TEMP DIAGNOSTIC HELPER (see FCM_DEBUG task) - never logs the full token.
   String _maskedToken(String token) {
     if (token.length <= 16) return token;

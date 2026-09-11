@@ -39,7 +39,7 @@ function parseOptionalLocation(body) {
 
 // TODO(re-enable-otp): route stays live and fully working, but no current
 // client calls it - registration/login are password-only for now. See the
-// TODO in auth.service.js's registerOrLogin.
+// TODO in auth.service.js's register.
 const sendOtp = asyncHandler(async (req, res) => {
   const phone = normalizePhone(req.body.phone);
   if (!isValidPhone(phone)) {
@@ -70,7 +70,7 @@ const register = asyncHandler(async (req, res) => {
 
   const location = parseOptionalLocation(req.body);
 
-  const result = await authService.registerOrLogin({
+  const result = await authService.register({
     name,
     pharmacyName,
     phone,
@@ -123,9 +123,62 @@ const loginWithPassword = asyncHandler(async (req, res) => {
   });
 });
 
+// Deliberately unauthenticated: the access token this is called with is
+// expired by definition, so requiring a valid one would make it useless.
+// The refresh token in the body is the credential.
+const refresh = asyncHandler(async (req, res) => {
+  const refreshToken = requireNonEmptyString(req.body.refreshToken, 'refreshToken is required.');
+
+  const result = await authService.refreshSession(refreshToken);
+
+  res.json({
+    success: true,
+    message: 'Session refreshed.',
+    ...authViewModel.toAuthResponse(result),
+  });
+});
+
 const me = asyncHandler(async (req, res) => {
   const result = await authService.getMe(req.user._id);
   res.json({ success: true, ...authViewModel.toMeResponse(result) });
+});
+
+// Section F-06. Requires the current password even though the caller is
+// already authenticated: a borrowed unlocked laptop must not be enough to
+// take an account over.
+const changePassword = asyncHandler(async (req, res) => {
+  const currentPassword = requireNonEmptyString(
+    req.body.currentPassword,
+    'Your current password is required.'
+  );
+  const newPassword = requirePassword(req.body.newPassword, 'A new password is required.');
+
+  if (currentPassword === newPassword) {
+    throw ApiError.badRequest('The new password must be different from the current one.');
+  }
+
+  const result = await authService.changePassword(req.user._id, {
+    currentPassword,
+    newPassword,
+  });
+
+  // The tokenVersion bump invalidated the token this request arrived with,
+  // so the caller is handed a replacement pair to store. Every other device
+  // stays signed out, which is the point of changing a password.
+  res.json({
+    success: true,
+    message: 'Password changed. Other devices have been signed out.',
+    ...authViewModel.toAuthResponse(result),
+  });
+});
+
+// Admin-only. The route guard enforces the role; this only validates input.
+const adminResetPassword = asyncHandler(async (req, res) => {
+  const newPassword = requirePassword(req.body.newPassword, 'A new password is required.');
+
+  await authService.adminResetPassword(req.params.userId, newPassword);
+
+  res.json({ success: true, message: 'Password reset. That account has been signed out.' });
 });
 
 const registerDeviceToken = asyncHandler(async (req, res) => {
@@ -154,4 +207,25 @@ const registerDeviceToken = asyncHandler(async (req, res) => {
   res.json({ success: true, message: 'Device registered.' });
 });
 
-module.exports = { sendOtp, register, login, loginWithPassword, me, registerDeviceToken };
+// The logout counterpart of registerDeviceToken. Best-effort from the
+// client's point of view - it must never block signing out - so this stays
+// idempotent: detaching a token that is not attached is a success.
+const deleteDeviceToken = asyncHandler(async (req, res) => {
+  const fcmToken = requireNonEmptyString(req.body.fcmToken, 'fcmToken is required.');
+
+  await authService.deleteDeviceToken(req.user._id, fcmToken);
+  res.json({ success: true, message: 'Device unregistered.' });
+});
+
+module.exports = {
+  sendOtp,
+  register,
+  login,
+  loginWithPassword,
+  refresh,
+  me,
+  changePassword,
+  adminResetPassword,
+  registerDeviceToken,
+  deleteDeviceToken,
+};

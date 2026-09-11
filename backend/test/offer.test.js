@@ -4,7 +4,7 @@
 // consequence (a permanent offer counts as "active" with no end date).
 //
 // Runs against its own database (feniq-offer-test) and drops it at the end.
-process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-offer-tests';
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-offer-tests-padd';
 process.env.NODE_ENV = 'test';
 
 const test = require('node:test');

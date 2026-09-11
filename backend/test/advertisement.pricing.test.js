@@ -16,7 +16,7 @@
 //
 // The first test below is the worked example, asserted end to end against the
 // real order-creation path.
-process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-ad-pricing';
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-ad-pricing-paddi';
 process.env.NODE_ENV = 'test';
 
 const test = require('node:test');

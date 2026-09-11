@@ -74,6 +74,24 @@ async function createUsers() {
       confirmPassword: password,
     });
     if (response.status === 429) fail('Registration was rate-limited. Wait or use a local test environment with suitable limits.');
+    // 409 means this fixture phone survives from an earlier run. Registration
+    // stopped doubling as a login (audit F-01), so re-authenticate explicitly
+    // instead of treating the conflict as a fatal setup error.
+    if (response.status === 409) {
+      const { response: loginResponse, data: loginData } = await request(
+        'POST',
+        `${baseUrl}/auth/login-password`,
+        { phone, password }
+      );
+      if (!loginResponse.ok || !loginData || !loginData.token) {
+        fail(
+          `Fixture user ${phone} already exists but could not be authenticated (HTTP ${loginResponse.status}). ` +
+            'It was probably created by an earlier run with a different generated password - delete it and rerun.'
+        );
+      }
+      users.push({ phone, password });
+      continue;
+    }
     if (!response.ok || !data || !data.token) fail(`Registration failed with HTTP ${response.status}. Response did not contain a token; OTP or another registration prerequisite may be enabled.`);
     if (!data.user || data.user.status !== 'active') {
       const generatedUsers = [...users, { phone, password }];

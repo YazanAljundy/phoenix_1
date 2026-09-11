@@ -12,7 +12,7 @@
 //   * a backdated payment lands on the day the money moved
 //   * a mistake and its correction both appear - nothing is airbrushed out
 //   * an invoice re-renders identically after the exchange rate moves
-process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-statement';
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-statement-paddin';
 process.env.NODE_ENV = 'test';
 
 const test = require('node:test');

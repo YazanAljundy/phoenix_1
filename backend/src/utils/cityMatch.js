@@ -4,7 +4,7 @@
 // the two sides of that comparison are populated by completely different
 // mechanisms, and neither one is controlled.
 //
-//  - A pharmacy's city is never collected. auth.service.js's registerOrLogin
+//  - A pharmacy's city is never collected. auth.service.js's register
 //    hardcodes 'Latakia' for every self-registration (the form only asks for
 //    name/pharmacyName/phone/address), and no route anywhere updates it
 //    afterwards - so the left-hand side is always that exact ASCII string.

@@ -4,7 +4,7 @@
 // entries are immutable and append-only, sequences are gap-free per account,
 // the balance cache always equals a full replay, and a reversal exactly
 // negates its target without re-converting anything at today's rate.
-process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-ledger-tests';
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-ledger-tests-pad';
 process.env.NODE_ENV = 'test';
 
 const test = require('node:test');

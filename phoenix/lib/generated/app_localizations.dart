@@ -1100,6 +1100,30 @@ abstract class AppLocalizations {
   /// **'Something about this request wasn\'t valid. Please try again.'**
   String get errorInvalidRequest;
 
+  /// No description provided for @errorInvalidCredentials.
+  ///
+  /// In en, this message translates to:
+  /// **'The phone number or password is incorrect.'**
+  String get errorInvalidCredentials;
+
+  /// No description provided for @errorAccountBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'This account has been blocked. Please contact support.'**
+  String get errorAccountBlocked;
+
+  /// No description provided for @errorAccountNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'No account found for this phone number. Please create one first.'**
+  String get errorAccountNotFound;
+
+  /// No description provided for @errorPhoneAlreadyRegistered.
+  ///
+  /// In en, this message translates to:
+  /// **'This phone number already has an account. Please log in instead.'**
+  String get errorPhoneAlreadyRegistered;
+
   /// No description provided for @errorPharmacyNotFound.
   ///
   /// In en, this message translates to:

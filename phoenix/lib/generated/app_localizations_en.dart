@@ -601,6 +601,22 @@ class AppLocalizationsEn extends AppLocalizations {
       'Something about this request wasn\'t valid. Please try again.';
 
   @override
+  String get errorInvalidCredentials =>
+      'The phone number or password is incorrect.';
+
+  @override
+  String get errorAccountBlocked =>
+      'This account has been blocked. Please contact support.';
+
+  @override
+  String get errorAccountNotFound =>
+      'No account found for this phone number. Please create one first.';
+
+  @override
+  String get errorPhoneAlreadyRegistered =>
+      'This phone number already has an account. Please log in instead.';
+
+  @override
   String get errorPharmacyNotFound =>
       'We couldn\'t find your pharmacy profile. Please contact support.';
 

@@ -4,7 +4,7 @@
 // dispute, a correction to a delivered order that must not be re-priced, a
 // write-off. Admin-only, and every one carries a mandatory reason - an
 // unexplained balance movement is exactly what V1's audit had no answer for.
-process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-adjustments';
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-adjustments-padd';
 process.env.NODE_ENV = 'test';
 
 const test = require('node:test');
