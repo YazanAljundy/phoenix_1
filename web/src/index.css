@@ -3375,6 +3375,54 @@ a.adm-pill {
   color: var(--adm-text);
 }
 
+/* SearchableSelect - a text-input-driven Dropdown for filters whose value set
+   isn't small/bounded enough for a plain .adm-filter-select (see the
+   manufacturer filter on Products/Catalog). */
+.adm-searchable-select {
+  position: relative;
+}
+
+.adm-searchable-select-menu {
+  position: absolute;
+  inset-inline-start: 0;
+  inset-inline-end: 0;
+  top: calc(100% + 4px);
+  z-index: 30;
+  max-height: 260px;
+  overflow-y: auto;
+  background: #fff;
+  border: 1px solid var(--adm-border);
+  box-shadow: 0 8px 20px rgb(var(--brand-navy-rgb) / 0.15);
+}
+
+.adm-searchable-select-option {
+  display: block;
+  width: 100%;
+  padding: 10px 14px;
+  border: none;
+  background: none;
+  text-align: start;
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--adm-text);
+  cursor: pointer;
+}
+
+.adm-searchable-select-option:hover {
+  background: #f4f6f8;
+}
+
+.adm-searchable-select-all {
+  color: var(--adm-text-muted);
+  border-bottom: 1px solid var(--adm-border);
+}
+
+.adm-searchable-select-hint {
+  padding: 10px 14px;
+  font-size: 12.5px;
+  color: var(--adm-text-muted);
+}
+
 .adm-badge-permanent {
   display: inline-block;
   padding: 2px 8px;

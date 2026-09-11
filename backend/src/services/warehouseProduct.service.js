@@ -540,4 +540,7 @@ module.exports = {
   findOwnedProductOrThrow,
   applyProductUpdate,
   importProductsFromExcel,
+  // Exported for adminProduct.service.js's own manufacturer filter, which
+  // needs the exact same two-step (legacy field OR linked-catalog ids) match.
+  manufacturerMatchClauses,
 };

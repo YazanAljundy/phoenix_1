@@ -12,6 +12,10 @@ router.use(authenticate, authorize('admin'));
 // a conflict - kept first for readability (the "how do I add medicines"
 // entry point before the CRUD-ish routes).
 router.get('/template', controller.downloadTemplate);
+// Backs the Searchable Dropdown manufacturer filter on both this page and
+// Admin Products - registered before '/' so it reads as its own endpoint,
+// not a variant of the main list.
+router.get('/manufacturers', controller.searchManufacturers);
 router.get('/', controller.list);
 router.post('/import', catalogImportUpload, controller.importExcel);
 router.patch('/:id', controller.update);

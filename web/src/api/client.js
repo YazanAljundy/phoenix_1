@@ -285,13 +285,15 @@ export const api = {
   ratePharmacy: (orderId, rating, comment) =>
     request('/warehouse/reviews', { method: 'POST', body: { orderId, rating, comment } }),
   // No args: every product - used by the Dashboard's count and the Banners
-  // composer's product picker. Pass { search, warehouseId, categoryId, limit,
-  // after } for the Products management page's own paginated, filtered view.
-  adminProducts: ({ search, warehouseId, categoryId, limit, after } = {}) => {
+  // composer's product picker. Pass { search, warehouseId, categoryId,
+  // manufacturer, limit, after } for the Products management page's own
+  // paginated, filtered view.
+  adminProducts: ({ search, warehouseId, categoryId, manufacturer, limit, after } = {}) => {
     const params = new URLSearchParams();
     if (search) params.set('search', search);
     if (warehouseId) params.set('warehouseId', warehouseId);
     if (categoryId) params.set('categoryId', categoryId);
+    if (manufacturer) params.set('manufacturer', manufacturer);
     if (limit) params.set('limit', limit);
     if (after) params.set('after', after);
     const qs = params.toString();
@@ -336,15 +338,21 @@ export const api = {
   adminExchangeRate: () => request('/admin/exchange-rate'),
   setExchangeRate: (usdToSyp) => request('/admin/exchange-rate', { method: 'PATCH', body: { usdToSyp } }),
   resetExchangeRate: () => request('/admin/exchange-rate/reset', { method: 'PATCH' }),
-  adminCatalog: ({ search, categoryId, limit, after } = {}) => {
+  adminCatalog: ({ search, categoryId, manufacturer, limit, after } = {}) => {
     const params = new URLSearchParams();
     if (search) params.set('q', search);
     if (categoryId) params.set('categoryId', categoryId);
+    if (manufacturer) params.set('manufacturer', manufacturer);
     if (limit) params.set('limit', limit);
     if (after) params.set('after', after);
     const qs = params.toString();
     return request(`/admin/catalog${qs ? `?${qs}` : ''}`);
   },
+  // Backs the Searchable Dropdown manufacturer filter on both Admin Products
+  // and Admin Catalog - a type-ahead over the central catalog's distinct
+  // manufacturer names, capped server-side (adminCatalog.service.js).
+  searchAdminManufacturers: (search) =>
+    request(`/admin/catalog/manufacturers${search ? `?search=${encodeURIComponent(search)}` : ''}`),
   downloadCatalogTemplate: () => requestBlob('/admin/catalog/template'),
   importCatalogExcel: (file) => requestUpload('/admin/catalog/import', file),
   // `confirmed` re-sends the identical body with ?confirm=true, to go through

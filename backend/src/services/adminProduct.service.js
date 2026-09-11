@@ -3,7 +3,7 @@ const { ApiError } = require('../utils/ApiError');
 const Product = require('../models/product.model');
 const Warehouse = require('../models/warehouse.model');
 const ProductCatalog = require('../models/productCatalog.model');
-const { applyProductUpdate } = require('./warehouseProduct.service');
+const { applyProductUpdate, manufacturerMatchClauses } = require('./warehouseProduct.service');
 const { applyResolvedIdentity, escapeRegex } = require('./productCatalog.service');
 
 // Section 13c: the admin's oversight view spans every warehouse - unlike the
@@ -56,11 +56,16 @@ const ADMIN_PRODUCTS_DEFAULT_LIMIT = 30;
 // A linked product's real name/manufacturer lives on its catalog entry, not
 // on the Product doc itself (Section 14 Part 2) - so `search` can't just
 // regex Product's own fields, it also has to catch products linked to a
-// catalog entry whose name/manufacturer matches.
+// catalog entry whose name/manufacturer matches. `manufacturer` is a second,
+// independent condition (the Searchable Dropdown filter, picked from an exact
+// name via GET /admin/catalog/manufacturers) - when both `search` and
+// `manufacturer` are given, each needs its own $or, so they're ANDed via
+// $and rather than one overwriting the other's top-level $or.
 async function listPaginatedAllProducts({
   search,
   warehouseId,
   categoryId,
+  manufacturer,
   limit = ADMIN_PRODUCTS_DEFAULT_LIMIT,
   after = null,
 } = {}) {
@@ -71,20 +76,33 @@ async function listPaginatedAllProducts({
   if (categoryId) {
     filter.categoryId = categoryId;
   }
+
+  const andConditions = [];
   if (search && search.trim()) {
     const pattern = new RegExp(escapeRegex(search.trim()), 'i');
     const matchingCatalogEntries = await ProductCatalog.find(
       { $or: [{ nameAr: pattern }, { nameEn: pattern }, { manufacturerAr: pattern }, { manufacturerEn: pattern }] },
       '_id'
     );
-    filter.$or = [
-      { nameAr: pattern },
-      { nameEn: pattern },
-      { manufacturerAr: pattern },
-      { manufacturerEn: pattern },
-      { masterProductId: { $in: matchingCatalogEntries.map((c) => c._id) } },
-    ];
+    andConditions.push({
+      $or: [
+        { nameAr: pattern },
+        { nameEn: pattern },
+        { manufacturerAr: pattern },
+        { manufacturerEn: pattern },
+        { masterProductId: { $in: matchingCatalogEntries.map((c) => c._id) } },
+      ],
+    });
   }
+  if (manufacturer && manufacturer.trim()) {
+    andConditions.push({ $or: await manufacturerMatchClauses(manufacturer.trim()) });
+  }
+  if (andConditions.length === 1) {
+    filter.$or = andConditions[0].$or;
+  } else if (andConditions.length > 1) {
+    filter.$and = andConditions;
+  }
+
   if (after !== null) {
     filter._id = { $gt: after };
   }

@@ -33,6 +33,7 @@
     "loadMore": "Load more ({{count}} more)",
     "loadingMore": "Loading...",
     "allResultsShown": "All results shown",
+    "noMatches": "No matches",
     "unexpectedError": "Something went wrong. Please try again."
   },
   "app": {
@@ -506,6 +507,8 @@
     "noProductsAdmin": "No products found.",
     "allWarehouses": "All warehouses",
     "allCategories": "All categories",
+    "allManufacturers": "All manufacturers",
+    "manufacturerFilterPlaceholder": "Manufacturer...",
     "removed": "Removed",
     "available": "Available",
     "paused": "Paused",

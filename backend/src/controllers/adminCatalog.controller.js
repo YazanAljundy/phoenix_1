@@ -12,6 +12,7 @@ const list = asyncHandler(async (req, res) => {
   const { items, hasMore, nextCursor } = await catalogService.listCatalog({
     search: req.query.q,
     categoryId: typeof req.query.categoryId === 'string' ? req.query.categoryId : undefined,
+    manufacturer: typeof req.query.manufacturer === 'string' ? req.query.manufacturer : undefined,
     limit,
     after: cursor,
   });
@@ -20,6 +21,12 @@ const list = asyncHandler(async (req, res) => {
     ...catalogViewModel.toCatalogListResponse(items),
     pagination: paginationMeta(hasMore, nextCursor),
   });
+});
+
+const searchManufacturers = asyncHandler(async (req, res) => {
+  const search = typeof req.query.search === 'string' ? req.query.search : undefined;
+  const manufacturers = await catalogService.searchManufacturers(search);
+  res.json({ success: true, manufacturers });
 });
 
 const downloadTemplate = asyncHandler(async (req, res) => {
@@ -61,4 +68,4 @@ const deactivate = asyncHandler(async (req, res) => {
   });
 });
 
-module.exports = { list, downloadTemplate, importExcel, update, deactivate };
+module.exports = { list, searchManufacturers, downloadTemplate, importExcel, update, deactivate };

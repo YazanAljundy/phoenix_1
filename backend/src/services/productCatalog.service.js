@@ -68,10 +68,19 @@ const DEFAULT_CATALOG_LIMIT = 30;
 // Cursor pagination: sorted by `_id` ascending (replacing the previous
 // manufacturerAr/nameAr sort - a stable, unique cursor field is required for
 // pagination to work correctly, see pagination.js).
-async function listCatalog({ search, categoryId, limit = DEFAULT_CATALOG_LIMIT, after = null } = {}) {
+async function listCatalog({
+  search,
+  categoryId,
+  manufacturer,
+  limit = DEFAULT_CATALOG_LIMIT,
+  after = null,
+} = {}) {
   const filter = {};
   if (categoryId) {
     filter.categoryId = categoryId;
+  }
+  if (manufacturer && manufacturer.trim()) {
+    filter.manufacturerAr = manufacturer.trim();
   }
   if (search && search.trim()) {
     const pattern = new RegExp(escapeRegex(search.trim()), 'i');
@@ -103,6 +112,25 @@ async function searchActiveForWarehouse(search) {
     filter.nameAr = new RegExp(escapeRegex(search.trim()), 'i');
   }
   return ProductCatalog.find(filter).sort({ nameAr: 1 }).limit(50);
+}
+
+const MANUFACTURER_SEARCH_LIMIT = 50;
+
+// Backs the admin Products/Catalog pages' manufacturer filter - a Searchable
+// Dropdown rather than a plain one, since the central catalog's manufacturer
+// count isn't bounded the way a fixed enum's would be. Same type-ahead shape
+// as searchActiveForWarehouse above (capped, no cursor - a real search narrows
+// this fast). `distinct` on manufacturerAr returns the canonical value even
+// when the match came from manufacturerEn.
+async function searchManufacturers(search) {
+  const filter = {};
+  if (search && search.trim()) {
+    const pattern = new RegExp(escapeRegex(search.trim()), 'i');
+    filter.$or = [{ manufacturerAr: pattern }, { manufacturerEn: pattern }];
+  }
+  const names = await ProductCatalog.distinct('manufacturerAr', filter);
+  names.sort((a, b) => a.localeCompare(b));
+  return names.slice(0, MANUFACTURER_SEARCH_LIMIT);
 }
 
 // ---------------------------------------------------------------------------
@@ -698,6 +726,7 @@ async function importFromExcel(file) {
 module.exports = {
   listCatalog,
   searchActiveForWarehouse,
+  searchManufacturers,
   updateCatalogItem,
   deactivateCatalogItem,
   generateTemplateBuffer,

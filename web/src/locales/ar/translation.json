@@ -33,6 +33,7 @@
     "loadMore": "تحميل المزيد ({{count}} إضافي)",
     "loadingMore": "جاري التحميل...",
     "allResultsShown": "تم عرض كل النتائج",
+    "noMatches": "لا توجد نتائج",
     "unexpectedError": "حدث خطأ غير متوقع. حاول مرة أخرى."
   },
   "app": {
@@ -518,6 +519,8 @@
     "noProductsAdmin": "لا توجد منتجات.",
     "allWarehouses": "كل المستودعات",
     "allCategories": "كل التصنيفات",
+    "allManufacturers": "كل الشركات المصنّعة",
+    "manufacturerFilterPlaceholder": "الشركة المصنّعة...",
     "removed": "محذوف",
     "available": "متوفر",
     "paused": "متوقف",

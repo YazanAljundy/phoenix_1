@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../api/client';
 import { LoadMoreControl } from '../components/LoadMoreControl';
+import { SearchableSelect } from '../components/SearchableSelect';
 import { usePaginatedData } from '../hooks/usePaginatedData';
 
 const PAGE_SIZE = 30;
@@ -197,6 +198,7 @@ export function AdminCatalogPage() {
   const [categories, setCategories] = useState([]);
   const [search, setSearch] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
+  const [manufacturerFilter, setManufacturerFilter] = useState('');
   const [busyId, setBusyId] = useState(null);
   const [actionError, setActionError] = useState(null);
   // Separate from actionError: disabling an entry that took warehouse
@@ -216,24 +218,36 @@ export function AdminCatalogPage() {
   const fetchPage = useCallback(
     (cursor) =>
       api
-        .adminCatalog({ search, categoryId: categoryFilter || undefined, limit: PAGE_SIZE, after: cursor })
+        .adminCatalog({
+          search,
+          categoryId: categoryFilter || undefined,
+          manufacturer: manufacturerFilter || undefined,
+          limit: PAGE_SIZE,
+          after: cursor,
+        })
         .then((data) => ({
           rows: data.items,
           hasMore: data.pagination.hasMore,
           nextCursor: data.pagination.nextCursor,
         })),
-    [search, categoryFilter]
+    [search, categoryFilter, manufacturerFilter]
+  );
+
+  const fetchManufacturerOptions = useCallback(
+    (term) => api.searchAdminManufacturers(term).then((data) => data.manufacturers),
+    []
   );
 
   const { data: items, isLoading, isLoadingMore, hasMore, error, loadMore, reset } =
     usePaginatedData(fetchPage);
 
-  // Category is a discrete choice, so it reloads immediately on change - only
-  // the free-text search waits for the form's submit button (handleSearchSubmit).
+  // Category/manufacturer are discrete choices, so they reload immediately on
+  // change - only the free-text search waits for the form's submit button
+  // (handleSearchSubmit).
   useEffect(() => {
     reset();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [categoryFilter]);
+  }, [categoryFilter, manufacturerFilter]);
 
   const handleSearchSubmit = (event) => {
     event.preventDefault();
@@ -359,6 +373,15 @@ export function AdminCatalogPage() {
             </option>
           ))}
         </select>
+        <SearchableSelect
+          value={manufacturerFilter}
+          onChange={setManufacturerFilter}
+          fetchOptions={fetchManufacturerOptions}
+          placeholder={t('products.manufacturerFilterPlaceholder')}
+          allLabel={t('products.allManufacturers')}
+          loadingLabel={t('common.loading')}
+          noMatchesLabel={t('common.noMatches')}
+        />
       </form>
 
       {(error || actionError) && <p className="error-text">{error || actionError}</p>}
