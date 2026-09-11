@@ -10,6 +10,7 @@ import { withArFallback } from '../utils/displayName';
 import { contactAdminOnWhatsApp } from '../utils/whatsapp';
 
 const PAGE_SIZE = 15;
+const STATUS_FILTERS = ['all', 'pending', 'approved', 'rejected'];
 
 const EMPTY_BANNER_FORM = { imageFile: null, title: '', productId: '', startDate: '', endDate: '' };
 
@@ -208,6 +209,7 @@ export function WarehouseBannersPage() {
   const bannerStatusLabel = useBannerStatusLabel();
   const { warehouse } = useAuth();
   const [products, setProducts] = useState([]);
+  const [statusFilter, setStatusFilter] = useState('all');
   const [showCreateBanner, setShowCreateBanner] = useState(false);
   const [editingBanner, setEditingBanner] = useState(null);
   const [busyBannerId, setBusyBannerId] = useState(null);
@@ -220,12 +222,18 @@ export function WarehouseBannersPage() {
 
   const fetchPage = useCallback(
     (cursor) =>
-      api.warehouseBanners({ limit: PAGE_SIZE, after: cursor }).then((data) => ({
-        rows: data.banners,
-        hasMore: data.pagination.hasMore,
-        nextCursor: data.pagination.nextCursor,
-      })),
-    []
+      api
+        .warehouseBanners({
+          status: statusFilter === 'all' ? undefined : statusFilter,
+          limit: PAGE_SIZE,
+          after: cursor,
+        })
+        .then((data) => ({
+          rows: data.banners,
+          hasMore: data.pagination.hasMore,
+          nextCursor: data.pagination.nextCursor,
+        })),
+    [statusFilter]
   );
 
   const { data: banners, isLoading, isLoadingMore, hasMore, error, loadMore, reset } =
@@ -234,7 +242,7 @@ export function WarehouseBannersPage() {
   useEffect(() => {
     reset();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [statusFilter]);
 
   const handleBannerCreated = (bannerNumber) => {
     setShowCreateBanner(false);
@@ -291,6 +299,26 @@ export function WarehouseBannersPage() {
         <img src="/images/whatsapp_icon.png" alt="" width="20" height="20" className="btn-icon" />
         {t('banners.warehouse.whatsappRequest')}
       </button>
+
+      <div className="wh-filters">
+        <select
+          className="wh-filter-select"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+        >
+          {STATUS_FILTERS.map((filter) => (
+            <option key={filter} value={filter}>
+              {filter === 'all'
+                ? t('banners.admin.filterAll')
+                : filter === 'approved'
+                  ? t('banners.statusApproved')
+                  : filter === 'rejected'
+                    ? t('banners.statusRejected')
+                    : t('banners.statusPending')}
+            </option>
+          ))}
+        </select>
+      </div>
 
       {(error || actionError) && <p className="error-text">{error || actionError}</p>}
 

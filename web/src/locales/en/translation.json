@@ -414,6 +414,7 @@
       "approved": "Approved",
       "rejected": "Rejected"
     },
+    "filterAll": "All",
     "admin": {
       "warehouseColumn": "Warehouse",
       "pendingTab": "Pending",

@@ -205,7 +205,11 @@ export const api = {
     const qs = params.toString();
     return request(`/warehouse/products/search${qs ? `?${qs}` : ''}`);
   },
-  warehouseAdvertisements: () => request('/warehouse/advertisements'),
+  // Pass { status } to filter to one of the package's three statuses; omit
+  // for every one of the warehouse's own packages, as before this filter
+  // existed.
+  warehouseAdvertisements: ({ status } = {}) =>
+    request(`/warehouse/advertisements${status ? `?status=${status}` : ''}`),
   createWarehouseAdvertisement: (data) =>
     request('/warehouse/advertisements', { method: 'POST', body: data }),
   updateWarehouseAdvertisement: (advertisementId, data) =>
@@ -411,8 +415,9 @@ export const api = {
       method: 'PATCH',
       body: { minOrderAmountUsd, maxOrderAmountUsd, requireDeliverySealPhoto },
     }),
-  warehouseBanners: ({ limit, after } = {}) => {
+  warehouseBanners: ({ status, limit, after } = {}) => {
     const params = new URLSearchParams();
+    if (status) params.set('status', status);
     if (limit) params.set('limit', limit);
     if (after) params.set('after', after);
     const qs = params.toString();

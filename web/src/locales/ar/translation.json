@@ -426,6 +426,7 @@
       "approved": "تمت الموافقة",
       "rejected": "مرفوض"
     },
+    "filterAll": "الكل",
     "admin": {
       "warehouseColumn": "المستودع",
       "pendingTab": "بانتظار المراجعة",

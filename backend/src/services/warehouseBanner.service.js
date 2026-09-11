@@ -90,13 +90,23 @@ async function createBanner(warehouseId, userId, { productId, startDate, endDate
 
 const WAREHOUSE_BANNERS_DEFAULT_LIMIT = 15;
 
+function validateStatusFilter(status) {
+  if (status && !Banner.schema.path('status').enumValues.includes(status)) {
+    throw ApiError.badRequest('Invalid status filter.', undefined, 'INVALID_STATUS_FILTER');
+  }
+}
+
 // An ObjectId's embedded timestamp makes `_id` descending equivalent to the
 // `createdAt` descending sort above, so no compound cursor is needed.
+// `status` is optional - omitted, this is every one of the warehouse's own
+// banners regardless of status, same default as before this filter existed.
 async function listPaginatedBannersForWarehouse(
   warehouseId,
-  { limit = WAREHOUSE_BANNERS_DEFAULT_LIMIT, after = null } = {}
+  { status, limit = WAREHOUSE_BANNERS_DEFAULT_LIMIT, after = null } = {}
 ) {
+  validateStatusFilter(status);
   const filter = { warehouseId };
+  if (status) filter.status = status;
   if (after !== null) {
     filter._id = { $lt: after };
   }

@@ -236,43 +236,46 @@ async function deleteAdvertisement(advertisementId, warehouseId) {
   }
 }
 
-// The warehouse's pause switch, in ONE direction. A warehouse can take its own
-// package off sale at once, with no admin involved - but it cannot put it back.
-// Re-enabling is an admin's decision (adminAdvertisement.service.js's
-// setAdvertisementAvailability), the same "a warehouse never puts its own
-// package live" rule approval already follows. Without that asymmetry a paused
-// package could be flipped back on at any time, unreviewed.
+// The warehouse's pause switch, both directions. A warehouse can take its own
+// package off sale, or bring it back, with no admin involved - the admin's own
+// switch (adminAdvertisement.service.js's setAdvertisementAvailability) still
+// works the same way alongside this one, for the packages of any warehouse.
 //
-// Independent of `status` in both directions: pausing neither requires nor
-// changes an approval, and updateAdvertisement never assigns this flag (it only
-// copies buildAdvertisementFields' fields), so re-submitting a paused package's
-// content cannot quietly un-pause it either.
+// Restricted to an `approved` package: a pending or rejected row has never
+// been on sale, so "pause"/"make available" doesn't mean anything on it yet -
+// that content is still (or again) awaiting a moderation decision, not an
+// availability one.
+//
+// Independent of `status` otherwise, and of updateAdvertisement's own
+// back-to-pending behavior: toggling this flag never touches `status`, and
+// editing content never touches this flag (updateAdvertisement only copies
+// buildAdvertisementFields' fields) - the two are deliberately separate axes.
 async function updateAdvertisementAvailability(advertisementId, warehouseId, isAvailable) {
   if (typeof isAvailable !== 'boolean') {
     throw ApiError.badRequest('Invalid availability.', undefined, 'INVALID_AVAILABILITY');
   }
-  // Ownership first: asking to re-enable another warehouse's package is the
-  // same 404 as naming one that doesn't exist, never a 403 that confirms it does.
+  // Ownership first: acting on another warehouse's package is the same 404 as
+  // naming one that doesn't exist, never a 403/400 that confirms it does.
   const advertisement = await findOwnedAdvertisementOrThrow(advertisementId, warehouseId);
 
-  if (isAvailable) {
-    throw ApiError.forbidden(
-      'Only an admin can make this package available again.',
-      'ADVERTISEMENT_REACTIVATION_REQUIRES_ADMIN'
+  if (advertisement.status !== 'approved') {
+    throw ApiError.badRequest(
+      'Only an approved package can be paused or made available.',
+      undefined,
+      'ADVERTISEMENT_NOT_APPROVED'
     );
   }
 
-  // Pausing an already-paused package writes and announces nothing - it just
+  // Setting the state it is already in writes and announces nothing - it just
   // answers with the current state.
-  if (advertisement.isAvailable !== false) {
-    advertisement.isAvailable = false;
+  if ((advertisement.isAvailable !== false) !== isAvailable) {
+    advertisement.isAvailable = isAvailable;
     await advertisement.save();
 
-    // An admin has to act to bring it back, so the admin panel is told now.
     emitToAdmins(EVENTS.ADVERTISEMENT_AVAILABILITY_UPDATED, {
       advertisementId: advertisement._id.toString(),
       warehouseId: String(warehouseId),
-      isAvailable: false,
+      isAvailable,
     });
   }
 
@@ -280,8 +283,19 @@ async function updateAdvertisementAvailability(advertisementId, warehouseId, isA
   return row;
 }
 
-async function listAdvertisementsForWarehouse(warehouseId) {
-  const advertisements = await Advertisement.find({ warehouseId }).sort({ createdAt: -1 });
+function validateStatusFilter(status) {
+  if (status && !Advertisement.schema.path('status').enumValues.includes(status)) {
+    throw ApiError.badRequest('Invalid status filter.', undefined, 'INVALID_STATUS_FILTER');
+  }
+}
+
+// `status` is optional - omitted, this is every one of the warehouse's own
+// packages regardless of status, same default as before this filter existed.
+async function listAdvertisementsForWarehouse(warehouseId, status) {
+  validateStatusFilter(status);
+  const filter = { warehouseId };
+  if (status) filter.status = status;
+  const advertisements = await Advertisement.find(filter).sort({ createdAt: -1 });
   if (advertisements.length === 0) return [];
   return attachProducts(advertisements);
 }
@@ -293,4 +307,8 @@ module.exports = {
   updateAdvertisementAvailability,
   listAdvertisementsForWarehouse,
   findOwnedAdvertisementOrThrow,
+  // Shared with adminAdvertisement.service.js's adminUpdateAdvertisement, same
+  // reasoning as warehouseOffer.service.js exporting buildOfferFields: one
+  // validation path for both the warehouse's and the admin's direct edit.
+  buildAdvertisementFields,
 };

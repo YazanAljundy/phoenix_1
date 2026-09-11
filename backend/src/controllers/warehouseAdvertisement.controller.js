@@ -14,7 +14,8 @@ async function loadWarehouseOrThrow(userId) {
 
 const list = asyncHandler(async (req, res) => {
   const warehouse = await loadWarehouseOrThrow(req.user._id);
-  const rows = await service.listAdvertisementsForWarehouse(warehouse._id);
+  const status = typeof req.query.status === 'string' && req.query.status ? req.query.status : undefined;
+  const rows = await service.listAdvertisementsForWarehouse(warehouse._id, status);
   res.json({ success: true, ...viewModel.toAdvertisementListResponse(rows) });
 });
 
@@ -44,9 +45,8 @@ const remove = asyncHandler(async (req, res) => {
   res.json({ success: true, message: 'Advertisement deleted.' });
 });
 
-// Pause only. The service refuses `isAvailable: true` with a 403 - re-enabling
-// a package is an admin's decision - so the one body this accepts is
-// { isAvailable: false }.
+// Either direction - see updateAdvertisementAvailability. Restricted to an
+// approved package there (400 ADVERTISEMENT_NOT_APPROVED otherwise).
 const updateAvailability = asyncHandler(async (req, res) => {
   const warehouse = await loadWarehouseOrThrow(req.user._id);
   const row = await service.updateAdvertisementAvailability(
@@ -56,7 +56,7 @@ const updateAvailability = asyncHandler(async (req, res) => {
   );
   res.json({
     success: true,
-    message: 'Advertisement paused.',
+    message: row.advertisement.isAvailable ? 'Advertisement made available.' : 'Advertisement paused.',
     ...viewModel.toAdvertisementResponse(row),
   });
 });
