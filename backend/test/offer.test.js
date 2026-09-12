@@ -129,14 +129,17 @@ test('a warehouse cannot make an offer on another warehouse\'s product', async (
 // Warehouse list + isolation
 // ---------------------------------------------------------------------------
 
-test('the warehouse list returns every one of its offers, any status', async () => {
+test('the warehouse list returns every one of its offers, any status, paginated', async () => {
   const a = await warehouseOfferService.createOffer(WAREHOUSE_A, { productId: productA1._id.toString(), titleAr: 'a', titleEn: 'a', discountPercentage: 10, startDate: iso(0), endDate: iso(3) });
   await adminOfferService.approveOffer(a.offer._id.toString(), ADMIN_ID);
   await warehouseOfferService.createOffer(WAREHOUSE_A, { productId: productA2._id.toString(), titleAr: 'b', titleEn: 'b', discountPercentage: 20, startDate: iso(0), endDate: iso(3) });
   await warehouseOfferService.createOffer(WAREHOUSE_B, { productId: productB1._id.toString(), titleAr: 'c', titleEn: 'c', discountPercentage: 30, startDate: iso(0), endDate: iso(3) });
 
-  const rows = await warehouseOfferService.listOffersForWarehouse(WAREHOUSE_A);
+  // No `status` passed - still every status, same as before pagination
+  // existed; only the shape (a page + cursor, not a bare array) changed.
+  const { rows, hasMore } = await warehouseOfferService.listPaginatedOffersForWarehouse(WAREHOUSE_A);
   assert.strictEqual(rows.length, 2, 'only warehouse A\'s offers');
+  assert.strictEqual(hasMore, false, 'both fit under the default page size');
   assert.ok(rows.every((r) => r.product), 'each row resolves its product name');
 });
 
@@ -271,8 +274,9 @@ test('the admin sees every warehouse\'s offers, each tagged with its warehouse',
   await warehouseOfferService.createOffer(WAREHOUSE_A, { productId: productA1._id.toString(), titleAr: 'a', titleEn: 'a', discountPercentage: 10, startDate: iso(0), endDate: iso(3) });
   await warehouseOfferService.createOffer(WAREHOUSE_B, { productId: productB1._id.toString(), titleAr: 'c', titleEn: 'c', discountPercentage: 30, startDate: iso(0), endDate: iso(3) });
 
-  const rows = await adminOfferService.listAllOffers();
+  const { rows, hasMore } = await adminOfferService.listPaginatedAllOffers();
   assert.strictEqual(rows.length, 2);
+  assert.strictEqual(hasMore, false, 'both fit under the default page size');
   const names = rows.map((r) => r.warehouse && r.warehouse.nameEn).sort();
   assert.deepStrictEqual(names, ['Alpha', 'Beta']);
 });
