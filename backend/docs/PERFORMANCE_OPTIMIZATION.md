@@ -684,3 +684,39 @@ products
 ```
 
 All other collections' indexes are unchanged from §4.
+
+---
+
+## Level 3 — Name-search indexes (product-owner override of the Level 2 deferral)
+
+Level 2 explicitly deferred a name index for `admin.listAccounts`
+(`pharmacies`/`warehouses`) and left the `products`/`productcatalogs` name
+search as a plain COLLSCAN, both on the same reasoning: an unanchored
+`/x/i` regex can't seek a B-tree, so the index "won't fully solve" the scan.
+The product owner overrode that deferral - add the indexes as good practice
+regardless of current data volume - **with the same constraint Level 1/2
+already established: no switch to `$text`/tokenized search without separate
+sign-off**, since that changes matching behavior (`"صيد"` no longer matching
+`"صيدلية"` the way an unanchored substring regex does).
+
+**What was actually measured** (explain("executionStats"), synthetic 8 000-doc
+collections, same methodology as Level 2): adding a plain single-field index
+does NOT turn the scan into a seek - `keysExamined` stays at the full
+collection size either way, because an unanchored regex still can't be
+bounded. The real, measured benefit is narrower: MongoDB evaluates the regex
+against the compact index entry during the scan and only FETCHes (reads the
+full BSON document for) entries that actually match, instead of FETCHing
+every document the way a COLLSCAN does - `docsExamined` dropped from 8 000 to
+the actual match count (1) in the benchmark, for both `_id`-only and
+full-document projections alike.
+
+**Indexes added:**
+
+- `products`: `{nameAr:1}`, `{nameEn:1}`, `{manufacturerAr:1}`, `{manufacturerEn:1}` (all four fields were previously unindexed for search).
+- `productcatalogs`: `{nameEn:1}`, `{manufacturerEn:1}` only - `nameAr` and `manufacturerAr` were measured to already get an IXSCAN (not COLLSCAN) off the existing `{nameAr:1,manufacturerAr:1}` unique index, so a dedicated single-field index for either would be a pure duplicate with no measured benefit.
+- `pharmacies`: `{nameAr:1}`, `{nameEn:1}`, `{ownerName:1}`, `{phone:1}` - `city` already had its own index.
+- `warehouses`: `{nameAr:1}`, `{nameEn:1}`, `{phone:1}` - `city` already had its own index; no `ownerName` field exists.
+- `reviews`: `{warehouseId:1, reviewerType:1, isVisible:1, rating:1, _id:-1}`, added **alongside** (not replacing) the existing `{warehouseId:1, reviewerType:1, isVisible:1, _id:-1}` - backs the new `rating` pill filter on `listPaginatedReviewsForWarehouse`. Measured that replacing the old index with this one broke the no-rating-filter path (`keysExamined` 16 → 1200, plan gained a blocking in-memory `SORT`), so both are kept.
+
+No query, sort, pagination, or API response shape changed - single-field
+indexes only, exactly the Level 1/2 ground rule.

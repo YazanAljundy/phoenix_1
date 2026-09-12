@@ -87,6 +87,19 @@ productCatalogSchema.index({ nameAr: 1, manufacturerAr: 1 }, { unique: true });
 // to add a constraint.
 productCatalogSchema.index({ nameKey: 1, manufacturerKey: 1 });
 
+// Perf/pagination follow-up: plain single-field indexes backing the free-text
+// $or search (offer.service.js's buildOfferSearchOr, adminProduct/product
+// catalog search) - NOT a text index, see product.model.js's note on why.
+// `nameAr` and `manufacturerAr` are skipped here: measured via explain(), a
+// manufacturerAr-only regex query already gets an IXSCAN off the existing
+// {nameAr,manufacturerAr} unique index above (MongoDB will scan any index
+// that touches the filtered field rather than fall back to a full COLLSCAN),
+// so a dedicated single-field index for either would be a pure duplicate with
+// no measurable benefit - the "no index without justification" rule cuts the
+// other way here.
+productCatalogSchema.index({ nameEn: 1 });
+productCatalogSchema.index({ manufacturerEn: 1 });
+
 module.exports = model('ProductCatalog', productCatalogSchema);
 // Exported so the import path and the backfill script derive their lookup
 // keys with the exact same function the documents were written with.

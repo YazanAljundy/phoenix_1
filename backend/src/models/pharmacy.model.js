@@ -47,4 +47,17 @@ pharmacySchema.index({ userId: 1 });
 pharmacySchema.index({ city: 1 });
 pharmacySchema.index({ location: '2dsphere' });
 
+// Perf/pagination follow-up: plain single-field indexes backing the
+// unanchored regex `$or` name searches (admin.service.js's
+// buildAccountSearchOr, accountStatement.service.js's
+// resolveMatchingPharmacyIds). Deliberately NOT a text index - see
+// product.model.js's note for why, and for the measured limit: an unanchored
+// `/x/i` still examines every index entry (no seek), but avoids fetching
+// every full document the way a COLLSCAN does. `city` already has its own
+// index above, so it is not repeated here.
+pharmacySchema.index({ nameAr: 1 });
+pharmacySchema.index({ nameEn: 1 });
+pharmacySchema.index({ ownerName: 1 });
+pharmacySchema.index({ phone: 1 });
+
 module.exports = model('Pharmacy', pharmacySchema);

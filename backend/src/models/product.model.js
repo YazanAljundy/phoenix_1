@@ -83,6 +83,21 @@ productSchema.index({ warehouseId: 1, _id: 1 });
 // the ProductCatalog master list (product.service / adminProduct.service), and
 // nothing in the codebase issues a `$text` query any more. Dropped by
 // scripts/level2-index-migration.js. Re-add here if a `$text` search is built.
+//
+// Perf/pagination follow-up: plain single-field indexes added below instead -
+// deliberately NOT a text index (that would change search from substring to
+// tokenized full-text matching, a real behavior change nobody signed off on).
+// These do NOT turn the unanchored regex the admin search still uses into a
+// seek (`keysExamined` stays a full scan either way - MongoDB can't bound an
+// unanchored `/x/i`) - measured via explain("executionStats") on a synthetic
+// 8k-doc collection: COLLSCAN 8000 docs -> IXSCAN 8000 keys examined, but only
+// the actually-matching document(s) get FETCHed instead of every document in
+// the collection. That is a real win (no full-document deserialization for
+// non-matches) even though the scan itself is still O(collection size).
+productSchema.index({ nameAr: 1 });
+productSchema.index({ nameEn: 1 });
+productSchema.index({ manufacturerAr: 1 });
+productSchema.index({ manufacturerEn: 1 });
 
 // A warehouse can't link the same catalog entry to two of its own products
 // (Section 14 Part 2) - partial so it only applies once masterProductId is
