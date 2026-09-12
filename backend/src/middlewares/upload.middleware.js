@@ -79,16 +79,62 @@ const catalogImportUpload = wrapMulter(
   'The Excel file must be smaller than 5MB.'
 );
 
-// Section: banner image - a single required photo, same shape as
-// returnPhotosUpload above (single file instead of an array), just its own
-// field name.
+// Section: banner media. A warehouse-submitted banner stays image-only
+// (unchanged from before this feature); the admin's own upload additionally
+// accepts GIF/video, with no size cap (see adminBannerMediaUpload below).
+// Split into two named filters (rather than one shared image-only filter)
+// per-role instead of duplicating the multer/wrapMulter boilerplate twice.
+const BANNER_VIDEO_MIME_TYPES = new Set(['video/mp4', 'video/webm', 'video/quicktime', 'video/ogg']);
+
+function resolveWarehouseBannerMediaType(mimetype) {
+  if (ALLOWED_MIME_TYPES.has(mimetype)) return 'image';
+  throw ApiError.badRequest('Banner image must be a JPEG, PNG, or WEBP image.', undefined, 'INVALID_MEDIA_TYPE');
+}
+
+function resolveAdminBannerMediaType(mimetype) {
+  if (mimetype === 'image/gif') return 'gif';
+  if (ALLOWED_MIME_TYPES.has(mimetype)) return 'image';
+  if (BANNER_VIDEO_MIME_TYPES.has(mimetype)) return 'video';
+  throw ApiError.badRequest(
+    'Banner media must be a JPEG/PNG/WEBP/GIF image or an MP4/WEBM/MOV video.',
+    undefined,
+    'INVALID_MEDIA_TYPE'
+  );
+}
+
+// Wraps a resolver into a multer fileFilter that stashes the resolved kind
+// on `file` - multer carries the same object through to req.file, so the
+// controller reads it back as req.file.bannerMediaType without re-sniffing
+// the MIME type a second time.
+function bannerMediaFileFilter(resolveMediaType) {
+  return (req, file, cb) => {
+    try {
+      file.bannerMediaType = resolveMediaType(file.mimetype);
+      cb(null, true);
+    } catch (err) {
+      cb(err);
+    }
+  };
+}
+
 const bannerImageUpload = wrapMulter(
   multer({
     storage,
-    fileFilter: imageFileFilter,
+    fileFilter: bannerMediaFileFilter(resolveWarehouseBannerMediaType),
     limits: { fileSize: MAX_FILE_SIZE_BYTES },
   }).single('image'),
   'Banner image must be smaller than 5MB.'
+);
+
+// Admin banners only: image, GIF, or video (autoplay in the pharmacy app's
+// slider) - deliberately no `limits.fileSize`, since a promotional video may
+// be large and the request is for no cap on this path specifically.
+const adminBannerMediaUpload = wrapMulter(
+  multer({
+    storage,
+    fileFilter: bannerMediaFileFilter(resolveAdminBannerMediaType),
+  }).single('image'),
+  'Banner file is too large.'
 );
 
 // Delivery seal photo - a single photo the pharmacy attaches when confirming
@@ -123,11 +169,35 @@ function verifyImageMagicBytes(buffer) {
   });
 }
 
+const GIF_SIGNATURES = [Buffer.from('GIF87a', 'ascii'), Buffer.from('GIF89a', 'ascii')];
+const WEBM_SIGNATURE = Buffer.from([0x1a, 0x45, 0xdf, 0xa3]);
+
+// Same content-sniffing idea as verifyImageMagicBytes, extended to the two
+// extra media kinds only the admin's banner upload accepts. Falls back to
+// verifyImageMagicBytes for a plain image so that check never diverges
+// between the two call sites.
+function verifyBannerMediaMagicBytes(buffer, mediaType) {
+  if (!Buffer.isBuffer(buffer) || buffer.length < 12) return false;
+  if (mediaType === 'video') {
+    // Every MP4/MOV/M4V container starts with a size word then an 'ftyp'
+    // box; WebM/MKV starts with the EBML header instead.
+    return buffer.subarray(4, 8).toString('ascii') === 'ftyp' || buffer.subarray(0, 4).equals(WEBM_SIGNATURE);
+  }
+  if (mediaType === 'gif') {
+    return GIF_SIGNATURES.some((sig) => buffer.subarray(0, sig.length).equals(sig));
+  }
+  return verifyImageMagicBytes(buffer);
+}
+
 module.exports = {
   returnPhotosUpload,
   catalogImportUpload,
   bannerImageUpload,
+  adminBannerMediaUpload,
   deliverySealPhotoUpload,
   verifyImageMagicBytes,
+  verifyBannerMediaMagicBytes,
+  resolveAdminBannerMediaType,
+  resolveWarehouseBannerMediaType,
   MAX_RETURN_PHOTOS,
 };

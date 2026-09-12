@@ -8,9 +8,9 @@ const bannerSchema = new Schema(
     bannerNumber: { type: Number, required: true },
     // null = the admin's own banner, not tied to any one warehouse.
     warehouseId: { type: Schema.Types.ObjectId, ref: 'Warehouse', default: null },
-    // TODO(production): stored on the server's local filesystem, same as
-    // verificationPhoto/return photos - migrate to Cloudflare R2 before any
-    // real production deploy (see upload.middleware.js).
+    // Streamed straight to Cloudinary from memory, same as return/seal photos
+    // (see upload.middleware.js / upload.service.js) - nothing is ever
+    // written to the server's own filesystem.
     //
     // Required when the admin publishes directly (enforced in
     // adminBanner.controller.js); a warehouse-submitted banner may start
@@ -18,6 +18,14 @@ const bannerSchema = new Schema(
     // adminBanner.service.js's updateBanner) - not enforced at the schema
     // level so that path can save a null.
     imageUrl: { type: String, default: null },
+    // 'image' (default - covers every pre-existing banner), 'gif', or
+    // 'video'. Resolved from the uploaded file's real MIME type, not the
+    // client-sent extension (see upload.middleware.js's
+    // resolveAdminBannerMediaType). Only the admin's own upload path
+    // (adminBanner.controller.js) can ever produce 'gif'/'video' - a
+    // warehouse-submitted banner stays image-only, so this is always
+    // 'image' there.
+    mediaType: { type: String, enum: ['image', 'video', 'gif'], default: 'image' },
     productId: { type: Schema.Types.ObjectId, ref: 'Product', default: null },
     // Resolved and snapshotted at creation time from the product (see
     // warehouseBanner.service.js/adminBanner.service.js) - not looked up
