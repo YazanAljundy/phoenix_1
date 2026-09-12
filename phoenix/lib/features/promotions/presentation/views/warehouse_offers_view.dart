@@ -16,14 +16,14 @@ import 'package:feniq/features/promotions/presentation/managers/warehouse_offers
 import 'package:feniq/features/promotions/presentation/widgets/promotion_hero_card.dart';
 import 'package:feniq/routes/route_names.dart';
 
-/// What the Offers chip on the Offers & Ads tab opens: the offers running at
-/// the warehouse the pharmacist is ordering from, and no other warehouse's.
+/// What a tapped Offer card on the Offers & Ads tab opens: the offers running
+/// at that offer's own warehouse, and no other warehouse's.
 ///
-/// Discovery only, exactly like the tab itself. A tapped offer takes the same
-/// hand-off the tab gives it - into the existing warehouse -> manufacturer ->
-/// catalog flow, where the price, quantity and add-to-cart rules already live -
-/// so nothing about how an offer is priced or bought is decided here. The
-/// warehouse is fixed for the life of the screen (see WarehouseOffersCubit),
+/// Discovery only, exactly like the tab itself. A tapped offer here takes the
+/// same hand-off the tab gives it - into the existing warehouse -> manufacturer
+/// -> catalog flow, where the price, quantity and add-to-cart rules already
+/// live - so nothing about how an offer is priced or bought is decided here.
+/// The warehouse is fixed for the life of the screen (see WarehouseOffersCubit),
 /// which is why there is no warehouse filter to switch away with.
 class WarehouseOffersView extends StatelessWidget {
   const WarehouseOffersView({super.key, required this.warehouseName});

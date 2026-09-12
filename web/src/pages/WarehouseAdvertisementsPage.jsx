@@ -302,10 +302,10 @@ export function WarehouseAdvertisementsPage() {
           advertisement={editing === 'new' ? null : editing}
           usdToSyp={usdToSyp}
           onClose={() => setEditing(null)}
-          onSubmit={(body) =>
+          onSubmit={(body, imageFile) =>
             editing === 'new'
-              ? api.createWarehouseAdvertisement(body)
-              : api.updateWarehouseAdvertisement(editing.id, body)
+              ? api.createWarehouseAdvertisement(body, imageFile)
+              : api.updateWarehouseAdvertisement(editing.id, body, imageFile)
           }
           onSaved={handleSaved}
           onCreated={handleCreated}

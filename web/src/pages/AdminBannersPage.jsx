@@ -142,6 +142,7 @@ function EditBannerModal({ banner, onClose, onSaved }) {
   const [title, setTitle] = useState(banner.title);
   const [startDate, setStartDate] = useState(banner.startDate.slice(0, 10));
   const [endDate, setEndDate] = useState(banner.endDate.slice(0, 10));
+  const [imageFile, setImageFile] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
 
@@ -160,7 +161,7 @@ function EditBannerModal({ banner, onClose, onSaved }) {
 
     setIsSaving(true);
     try {
-      await api.updateAdminBanner(banner.id, { title: title.trim(), startDate, endDate });
+      await api.updateAdminBanner(banner.id, { title: title.trim(), startDate, endDate }, imageFile);
       onSaved();
     } catch (err) {
       setError(err.message);
@@ -174,6 +175,22 @@ function EditBannerModal({ banner, onClose, onSaved }) {
       <div className="modal" onClick={(event) => event.stopPropagation()}>
         <h2>{t('banners.admin.editBanner')}</h2>
         <form onSubmit={handleSubmit} className="product-form">
+          {banner.imageUrl && (
+            <img
+              className="return-photo-thumb"
+              src={banner.imageUrl}
+              alt={banner.title}
+              style={{ width: 96, height: 96 }}
+            />
+          )}
+          <label>
+            {t('banners.admin.replaceImageOptional')}
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
+            />
+          </label>
           <label>
             {t('banners.title')}
             <input value={title} onChange={(e) => setTitle(e.target.value)} required />
@@ -206,7 +223,7 @@ function EditBannerModal({ banner, onClose, onSaved }) {
 }
 
 // Section: every banner regardless of status - approve/reject apply to the
-// pending ones, edit (dates/title) applies to pending or approved, and
+// pending ones, edit (dates/title/image) applies to pending or approved, and
 // delete works across all three statuses (admin has full authority, unlike
 // a warehouse's own banner which can't delete once approved).
 export function AdminBannersPage() {
@@ -356,7 +373,11 @@ export function AdminBannersPage() {
                         <tr key={banner.id}>
                           <td className="adm-num">{banner.bannerNumber}</td>
                           <td>
-                            <img className="adm-table-thumb" src={banner.imageUrl} alt={banner.title} />
+                            {banner.imageUrl ? (
+                              <img className="adm-table-thumb" src={banner.imageUrl} alt={banner.title} />
+                            ) : (
+                              <span className="hint">{t('banners.admin.noImageYet')}</span>
+                            )}
                           </td>
                           <td>
                             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

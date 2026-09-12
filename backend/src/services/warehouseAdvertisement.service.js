@@ -4,6 +4,7 @@ const Advertisement = require('../models/advertisement.model');
 const Product = require('../models/product.model');
 const Counter = require('../models/counter.model');
 const { applyResolvedIdentity } = require('./productCatalog.service');
+const { deleteImageByUrl } = require('./upload.service');
 const { emitToAdmins, EVENTS } = require('../realtime');
 
 // Same atomic $inc pattern as Banner's nextBannerNumber (warehouseBanner.service.js).
@@ -116,7 +117,7 @@ async function buildAdvertisementFields(warehouseId, data) {
   const items = await validateItems(data.items, warehouseId);
   validatePriceUsd(data.totalPriceUsd, 'INVALID_TOTAL_PRICE');
 
-  return {
+  const fields = {
     titleAr: data.titleAr.trim(),
     titleEn: data.titleEn.trim(),
     items,
@@ -124,6 +125,13 @@ async function buildAdvertisementFields(warehouseId, data) {
     startDate,
     endDate,
   };
+  // Optional, and only touched when the caller actually sets the key - a
+  // content edit with no new file must leave the stored image alone (see the
+  // controllers' resolveUploadedImage/imageUrl handling).
+  if (data.imageUrl !== undefined) {
+    fields.imageUrl = data.imageUrl || null;
+  }
+  return fields;
 }
 
 async function findOwnedAdvertisementOrThrow(advertisementId, warehouseId) {
@@ -188,6 +196,7 @@ async function createAdvertisement(warehouseId, data) {
 async function updateAdvertisement(advertisementId, warehouseId, data) {
   const advertisement = await findOwnedAdvertisementOrThrow(advertisementId, warehouseId);
   const fields = await buildAdvertisementFields(warehouseId, data);
+  const previousImageUrl = advertisement.imageUrl;
 
   Object.assign(advertisement, fields);
 
@@ -208,6 +217,13 @@ async function updateAdvertisement(advertisementId, warehouseId, data) {
 
   await advertisement.save();
 
+  // Fire-and-forget, same reasoning as Banner's deleteBannerImage - an
+  // orphaned Cloudinary asset from a replaced image is never worth failing
+  // the edit that already succeeded over.
+  if (fields.imageUrl !== undefined && previousImageUrl && previousImageUrl !== fields.imageUrl) {
+    deleteImageByUrl(previousImageUrl);
+  }
+
   // Only re-queued content is announced - an edit to something already
   // sitting in the queue doesn't need a second signal.
   if (wasModerated) {
@@ -224,6 +240,10 @@ async function updateAdvertisement(advertisementId, warehouseId, data) {
 async function deleteAdvertisement(advertisementId, warehouseId) {
   const advertisement = await findOwnedAdvertisementOrThrow(advertisementId, warehouseId);
   await advertisement.deleteOne();
+
+  if (advertisement.imageUrl) {
+    deleteImageByUrl(advertisement.imageUrl);
+  }
 
   // A pending advertisement was occupying the admin queue - tell the panel to
   // drop it, the same way rejectOffer does when it removes a row.

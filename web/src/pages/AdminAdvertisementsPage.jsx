@@ -346,7 +346,7 @@ export function AdminAdvertisementsPage() {
           usdToSyp={usdToSyp}
           canAddProducts={false}
           onClose={() => setEditingAdvertisement(null)}
-          onSubmit={(body) => api.updateAdminAdvertisement(editingAdvertisement.id, body)}
+          onSubmit={(body, imageFile) => api.updateAdminAdvertisement(editingAdvertisement.id, body, imageFile)}
           onSaved={handleEditSaved}
         />
       )}

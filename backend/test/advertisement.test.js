@@ -324,6 +324,44 @@ test('the normal product prices are never modified by a package', async () => {
   assert.strictEqual(paracetamol.priceHistory.length, 0);
 });
 
+// --- Image (optional) ------------------------------------------------------
+
+test('a package can be created with an image, and it is serialized back', async () => {
+  const created = await service.createAdvertisement(
+    ids.warehouse,
+    payload({ imageUrl: 'https://res.cloudinary.com/test/advertisements/pkg.jpg' })
+  );
+  assert.strictEqual(created.advertisement.imageUrl, 'https://res.cloudinary.com/test/advertisements/pkg.jpg');
+
+  const { advertisement } = viewModel.toAdvertisementResponse(created);
+  assert.strictEqual(advertisement.imageUrl, 'https://res.cloudinary.com/test/advertisements/pkg.jpg');
+});
+
+test('a package can be created without an image - it is optional, unlike Banner', async () => {
+  const created = await service.createAdvertisement(ids.warehouse, payload());
+  assert.strictEqual(created.advertisement.imageUrl, null);
+
+  const { advertisement } = viewModel.toAdvertisementResponse(created);
+  assert.strictEqual(advertisement.imageUrl, null);
+});
+
+test('an admin can replace an approved package image without sending it back to pending', async () => {
+  const created = await service.createAdvertisement(
+    ids.warehouse,
+    payload({ imageUrl: 'https://res.cloudinary.com/test/advertisements/old.jpg' })
+  );
+  await adminService.approveAdvertisement(created.advertisement._id.toString(), ids.adminUser);
+
+  await adminService.adminUpdateAdvertisement(
+    created.advertisement._id.toString(),
+    payload({ imageUrl: 'https://res.cloudinary.com/test/advertisements/new.jpg' })
+  );
+
+  const fresh = await Advertisement.findById(created.advertisement._id);
+  assert.strictEqual(fresh.imageUrl, 'https://res.cloudinary.com/test/advertisements/new.jpg');
+  assert.strictEqual(fresh.status, 'approved', 'the admin IS the approval authority - no re-review');
+});
+
 // --- Editing --------------------------------------------------------------
 
 test('the package total can be edited later', async () => {

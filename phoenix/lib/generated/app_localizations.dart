@@ -272,6 +272,30 @@ abstract class AppLocalizations {
   /// **'My current location'**
   String get useCurrentLocationTooltip;
 
+  /// No description provided for @areaTypeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Area type'**
+  String get areaTypeLabel;
+
+  /// No description provided for @areaTypeCity.
+  ///
+  /// In en, this message translates to:
+  /// **'City'**
+  String get areaTypeCity;
+
+  /// No description provided for @areaTypeCityRing.
+  ///
+  /// In en, this message translates to:
+  /// **'City ring'**
+  String get areaTypeCityRing;
+
+  /// No description provided for @areaTypeRural.
+  ///
+  /// In en, this message translates to:
+  /// **'Rural'**
+  String get areaTypeRural;
+
   /// No description provided for @confirmPasswordLabel.
   ///
   /// In en, this message translates to:
@@ -2672,23 +2696,11 @@ abstract class AppLocalizations {
   /// **'Add to cart'**
   String get addToCartFullButton;
 
-  /// Title of the screen the Offers chip on the Offers & Ads tab opens: the offers of the warehouse the pharmacist is ordering from (the one the cart is bound to).
+  /// Title of the screen a tapped Offer card on the Offers & Ads tab opens: the offers of that offer's own warehouse.
   ///
   /// In en, this message translates to:
   /// **'Warehouse offers'**
   String get warehouseOffersTitle;
-
-  /// No description provided for @warehouseOffersNoWarehouseTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'No warehouse selected'**
-  String get warehouseOffersNoWarehouseTitle;
-
-  /// No description provided for @warehouseOffersNoWarehouseMessage.
-  ///
-  /// In en, this message translates to:
-  /// **'Offers are shown for the warehouse you are ordering from. Choose a warehouse and add a product to your cart first.'**
-  String get warehouseOffersNoWarehouseMessage;
 }
 
 class _AppLocalizationsDelegate

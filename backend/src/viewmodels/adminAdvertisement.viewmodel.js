@@ -15,4 +15,10 @@ function toPendingAdvertisementsResponse(rows) {
   return { advertisements: rows.map(serializePendingAdvertisement) };
 }
 
-module.exports = { toPendingAdvertisementsResponse };
+// Every advertisement, every warehouse, every status - same shape as the
+// pending-queue response, just fed a different row set (listAllAdvertisements).
+function toAdvertisementsResponse(rows) {
+  return { advertisements: rows.map(serializePendingAdvertisement) };
+}
+
+module.exports = { toPendingAdvertisementsResponse, toAdvertisementsResponse };

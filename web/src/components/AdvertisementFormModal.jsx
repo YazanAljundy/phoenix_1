@@ -185,6 +185,7 @@ export function AdvertisementFormModal({
         }))
       : []
   );
+  const [imageFile, setImageFile] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
 
@@ -294,10 +295,10 @@ export function AdvertisementFormModal({
     setIsSaving(true);
     try {
       if (isEdit) {
-        await onSubmit(body);
+        await onSubmit(body, imageFile);
         onSaved();
       } else {
-        const data = await onSubmit(body);
+        const data = await onSubmit(body, imageFile);
         // Hand the number to the success modal - the same "step 2" the banner
         // flow shows, so the admin knows which submission the payment is for.
         onCreated(data.advertisement.advertisementNumber);
@@ -329,6 +330,23 @@ export function AdvertisementFormModal({
               />
             </label>
           </div>
+
+          {isEdit && advertisement.imageUrl && (
+            <img
+              className="return-photo-thumb"
+              src={advertisement.imageUrl}
+              alt={advertisement.titleEn}
+              style={{ width: 96, height: 96 }}
+            />
+          )}
+          <label>
+            {t('advertisements.imageOptional')}
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
+            />
+          </label>
 
           {canAddProducts && <ProductPicker selectedIds={selectedIds} onAdd={handleAdd} />}
 

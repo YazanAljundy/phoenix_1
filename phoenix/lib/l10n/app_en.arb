@@ -29,6 +29,10 @@
   "locationPermissionDeniedMessage": "Couldn't access your location - you can still drag the map manually.",
   "addressNotResolvedYetMessage": "Please wait for the map to resolve an address, or adjust the pin's position.",
   "useCurrentLocationTooltip": "My current location",
+  "areaTypeLabel": "Area type",
+  "areaTypeCity": "City",
+  "areaTypeCityRing": "City ring",
+  "areaTypeRural": "Rural",
   "confirmPasswordLabel": "Confirm password",
   "confirmPasswordHint": "Re-enter your password",
   "passwordHint": "At least {min} characters",
@@ -855,8 +859,6 @@
   },
   "warehouseOffersTitle": "Warehouse offers",
   "@warehouseOffersTitle": {
-    "description": "Title of the screen the Offers chip on the Offers & Ads tab opens: the offers of the warehouse the pharmacist is ordering from (the one the cart is bound to)."
-  },
-  "warehouseOffersNoWarehouseTitle": "No warehouse selected",
-  "warehouseOffersNoWarehouseMessage": "Offers are shown for the warehouse you are ordering from. Choose a warehouse and add a product to your cart first."
+    "description": "Title of the screen a tapped Offer card on the Offers & Ads tab opens: the offers of that offer's own warehouse."
+  }
 }

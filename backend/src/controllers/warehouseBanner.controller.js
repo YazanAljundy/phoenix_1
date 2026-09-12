@@ -32,17 +32,19 @@ const list = asyncHandler(async (req, res) => {
 });
 
 const create = asyncHandler(async (req, res) => {
-  if (!req.file) {
-    throw ApiError.badRequest('A banner image is required.', undefined, 'BANNER_IMAGE_REQUIRED');
+  // Optional here (unlike the admin's own create, still required there): a
+  // warehouse may submit a banner without an image and have one attached by
+  // the admin during review (adminBanner.service.js's updateBanner).
+  let imageUrl = null;
+  if (req.file) {
+    if (!verifyImageMagicBytes(req.file.buffer)) {
+      throw ApiError.badRequest('Banner image file content is not a valid image.');
+    }
+    // Uploaded to Cloudinary first; if a later step (date validation, etc.)
+    // rejects the request, the just-uploaded image is removed so a user error
+    // doesn't leave an orphan behind.
+    imageUrl = await uploadImage(req.file.buffer, 'banners');
   }
-  if (!verifyImageMagicBytes(req.file.buffer)) {
-    throw ApiError.badRequest('Banner image file content is not a valid image.');
-  }
-
-  // Uploaded to Cloudinary first; if a later step (date validation, etc.)
-  // rejects the request, the just-uploaded image is removed so a user error
-  // doesn't leave an orphan behind.
-  const imageUrl = await uploadImage(req.file.buffer, 'banners');
 
   let banner;
   try {

@@ -40,6 +40,11 @@ const advertisementSchema = new Schema(
     // alongside it as context, and as a saving %). Editable after approval,
     // see the service.
     totalPriceUsd: { type: Number, required: true, min: 0 },
+    // Optional - same Cloudinary mechanism as Banner's imageUrl (see
+    // warehouseAdvertisement.service.js/adminAdvertisement.service.js), but a
+    // package can exist without one, unlike a Banner where the image IS the
+    // content.
+    imageUrl: { type: String, default: null },
     startDate: { type: Date, required: true },
     endDate: { type: Date, required: true },
     // Unlike Offer (pending/approved, where a rejection just deletes the row),

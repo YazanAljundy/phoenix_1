@@ -312,9 +312,12 @@
       "numberColumn": "#",
       "warehouseTitleColumn": "Warehouse / Title",
       "rangeColumn": "From — To",
-      "editDeleteHint": "Rejecting requires a reason shown to the banner's owner. Editing is limited to the title and dates."
+      "editDeleteHint": "Rejecting requires a reason shown to the banner's owner. Editing covers the title, dates and image.",
+      "replaceImageOptional": "Replace image (optional)",
+      "noImageYet": "No image yet"
     },
     "image": "Image",
+    "imageOptional": "Image (optional)",
     "title": "Title",
     "linkedProductOptional": "Linked product (optional)",
     "noProduct": "No product",
@@ -380,6 +383,7 @@
     "noAdvertisements": "You haven't created any advertisements yet.",
     "titleEn": "Title (English)",
     "titleAr": "Title (Arabic)",
+    "imageOptional": "Image (optional)",
     "numberColumn": "#",
     "titleColumn": "Advertisement",
     "productsColumn": "Products",

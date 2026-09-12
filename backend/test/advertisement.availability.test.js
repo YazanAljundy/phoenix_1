@@ -6,8 +6,9 @@
 // temporarily without losing that approval:
 //   - a paused package is not listed, and cannot be bought,
 //   - the cart endpoint still answers for it, reporting isAvailable:false,
-//   - a warehouse can pause its own package but never re-enable it,
-//   - an admin can flip it either way,
+//   - a warehouse can pause AND re-enable its own package, but only while it
+//     is `approved` - a pending or rejected package answers ADVERTISEMENT_NOT_APPROVED,
+//   - an admin can flip any package either way, at any status,
 //   - an order already placed on it is untouched, and still editable from its
 //     frozen snapshot.
 process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-advertisement-availability-tests';
@@ -81,6 +82,8 @@ function buy(packages) {
 
 const pauseAsWarehouse = (advertisementId) =>
   warehouseAdvertisementService.updateAdvertisementAvailability(advertisementId, ids.warehouse, false);
+const reactivateAsWarehouse = (advertisementId) =>
+  warehouseAdvertisementService.updateAdvertisementAvailability(advertisementId, ids.warehouse, true);
 
 const listedIds = async () =>
   (await advertisementService.listActiveAdvertisements()).map((row) => String(row.advertisement._id));
@@ -249,17 +252,62 @@ test('pausing an already-paused package is harmless', async () => {
   assert.strictEqual((await Advertisement.findById(pkg._id)).isAvailable, false);
 });
 
-test('a warehouse cannot re-enable its own package through its endpoint', async () => {
+test('a warehouse re-enables its own package through its endpoint', async () => {
   const pkg = await makePackage();
   await pauseAsWarehouse(pkg._id);
 
-  await assert.rejects(
-    () => warehouseAdvertisementService.updateAdvertisementAvailability(pkg._id, ids.warehouse, true),
-    rejectsWith('ADVERTISEMENT_REACTIVATION_REQUIRES_ADMIN', (err) => {
-      assert.strictEqual(err.statusCode, 403);
-    })
-  );
-  assert.strictEqual((await Advertisement.findById(pkg._id)).isAvailable, false);
+  const row = await reactivateAsWarehouse(pkg._id);
+
+  const stored = await Advertisement.findById(pkg._id);
+  assert.strictEqual(stored.isAvailable, true);
+  assert.strictEqual(stored.status, 'approved', 're-enabling never touches the approval');
+  assert.strictEqual(row.advertisement.isAvailable, true);
+  assert.ok((await listedIds()).includes(String(pkg._id)), 'listed again');
+});
+
+test('re-enabling an already-available package is harmless', async () => {
+  const pkg = await makePackage();
+  await reactivateAsWarehouse(pkg._id);
+  assert.strictEqual((await Advertisement.findById(pkg._id)).isAvailable, true);
+});
+
+test('a warehouse cannot pause or re-enable a package that is not approved', async () => {
+  const pending = await makePackage({ status: 'pending' });
+  const rejected = await makePackage({ status: 'rejected', rejectionNote: 'no' });
+
+  for (const pkg of [pending, rejected]) {
+    await assert.rejects(
+      () => warehouseAdvertisementService.updateAdvertisementAvailability(pkg._id, ids.warehouse, false),
+      rejectsWith('ADVERTISEMENT_NOT_APPROVED', (err) => {
+        assert.strictEqual(err.statusCode, 400);
+      })
+    );
+    await assert.rejects(
+      () => reactivateAsWarehouse(pkg._id),
+      rejectsWith('ADVERTISEMENT_NOT_APPROVED', (err) => {
+        assert.strictEqual(err.statusCode, 400);
+      })
+    );
+  }
+  assert.strictEqual((await Advertisement.findById(pending._id)).isAvailable, true);
+  assert.strictEqual((await Advertisement.findById(rejected._id)).isAvailable, true);
+});
+
+test('toggling availability never changes status or moderation fields', async () => {
+  const pkg = await makePackage();
+  const beforeApprovedAt = pkg.approvedAt;
+
+  await pauseAsWarehouse(pkg._id);
+  let stored = await Advertisement.findById(pkg._id);
+  assert.strictEqual(stored.status, 'approved');
+  assert.strictEqual(stored.rejectionNote, null);
+  assert.strictEqual(String(stored.approvedAt), String(beforeApprovedAt));
+
+  await reactivateAsWarehouse(pkg._id);
+  stored = await Advertisement.findById(pkg._id);
+  assert.strictEqual(stored.status, 'approved');
+  assert.strictEqual(stored.rejectionNote, null);
+  assert.strictEqual(String(stored.approvedAt), String(beforeApprovedAt));
 });
 
 test("a warehouse cannot pause another warehouse's package (IDOR)", async () => {
@@ -270,6 +318,17 @@ test("a warehouse cannot pause another warehouse's package (IDOR)", async () => 
     rejectsWith('ADVERTISEMENT_NOT_FOUND')
   );
   assert.strictEqual((await Advertisement.findById(pkg._id)).isAvailable, true);
+});
+
+test("a warehouse cannot re-enable another warehouse's package (IDOR)", async () => {
+  const pkg = await makePackage();
+  await pauseAsWarehouse(pkg._id);
+
+  await assert.rejects(
+    () => warehouseAdvertisementService.updateAdvertisementAvailability(pkg._id, ids.otherWarehouse, true),
+    rejectsWith('ADVERTISEMENT_NOT_FOUND')
+  );
+  assert.strictEqual((await Advertisement.findById(pkg._id)).isAvailable, false);
 });
 
 test('the availability must be a real boolean', async () => {

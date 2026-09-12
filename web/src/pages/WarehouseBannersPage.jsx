@@ -56,7 +56,7 @@ function CreateBannerModal({ products, editingBanner, onClose, onCreated, onSave
     event.preventDefault();
     setError(null);
 
-    if ((!isEditing && !form.imageFile) || !form.title.trim() || !form.startDate || !form.endDate) {
+    if (!form.title.trim() || !form.startDate || !form.endDate) {
       setError(t('common.requiredFields'));
       return;
     }
@@ -77,7 +77,7 @@ function CreateBannerModal({ products, editingBanner, onClose, onCreated, onSave
         onSaved();
       } else {
         const formData = new FormData();
-        formData.append('image', form.imageFile);
+        if (form.imageFile) formData.append('image', form.imageFile);
         formData.append('title', form.title.trim());
         formData.append('startDate', form.startDate);
         formData.append('endDate', form.endDate);
@@ -98,20 +98,21 @@ function CreateBannerModal({ products, editingBanner, onClose, onCreated, onSave
         <h2>{isEditing ? t('banners.warehouse.editBanner') : t('banners.warehouse.modalTitle')}</h2>
         <form onSubmit={handleSubmit} className="product-form">
           {isEditing ? (
-            <img
-              className="return-photo-thumb"
-              src={editingBanner.imageUrl}
-              alt={editingBanner.title}
-              style={{ width: 96, height: 96 }}
-            />
+            editingBanner.imageUrl && (
+              <img
+                className="return-photo-thumb"
+                src={editingBanner.imageUrl}
+                alt={editingBanner.title}
+                style={{ width: 96, height: 96 }}
+              />
+            )
           ) : (
             <label>
-              {t('banners.image')}
+              {t('banners.imageOptional')}
               <input
                 type="file"
                 accept="image/png,image/jpeg,image/webp"
                 onChange={(e) => setField('imageFile', e.target.files?.[0] ?? null)}
-                required
               />
             </label>
           )}
@@ -346,7 +347,11 @@ export function WarehouseBannersPage() {
                   <tr key={banner.id}>
                     <td className="wh-num wh-table-order-num">#{banner.bannerNumber}</td>
                     <td>
-                      <img className="wh-table-thumb" src={banner.imageUrl} alt={banner.title} />
+                      {banner.imageUrl ? (
+                        <img className="wh-table-thumb" src={banner.imageUrl} alt={banner.title} />
+                      ) : (
+                        <span className="hint">{t('banners.admin.noImageYet')}</span>
+                      )}
                     </td>
                     <td>
                       {banner.title}

@@ -31,8 +31,6 @@ void main() {
       expect(l10n.promotionsError.trim(), isNotEmpty);
       expect(l10n.offerPermanent.trim(), isNotEmpty);
       expect(l10n.warehouseOffersTitle.trim(), isNotEmpty);
-      expect(l10n.warehouseOffersNoWarehouseTitle.trim(), isNotEmpty);
-      expect(l10n.warehouseOffersNoWarehouseMessage.trim(), isNotEmpty);
     }
   });
 

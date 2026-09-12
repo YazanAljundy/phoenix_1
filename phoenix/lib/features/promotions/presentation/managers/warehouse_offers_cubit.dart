@@ -6,7 +6,8 @@ import 'package:feniq/features/promotions/data/models/promotion.dart';
 import 'promotions_state.dart';
 
 /// Backs WarehouseOffersView: the offers running right now at ONE warehouse -
-/// the one the pharmacist is ordering from - and nothing else.
+/// the one a tapped Offer card on the Offers & Ads tab belongs to - and
+/// nothing else.
 ///
 /// It reads the very listing the Offers & Ads tab reads (GET /offers/active)
 /// and keeps only this warehouse's rows, so every figure on screen is the

@@ -6,18 +6,19 @@ const Pharmacy = require('../models/pharmacy.model');
 const Warehouse = require('../models/warehouse.model');
 const { applyResolvedIdentity } = require('./productCatalog.service');
 const { buildAdvertisementFields } = require('./warehouseAdvertisement.service');
+const { deleteImageByUrl } = require('./upload.service');
 const notificationService = require('./notification.service');
 const { emitToAdmins, emitToWarehouse, EVENTS } = require('../realtime');
 
 const ADMIN_ADVERTISEMENTS_DEFAULT_LIMIT = 20;
 
 // adminAdvertisement.viewmodel.js's serializePendingAdvertisement reads, off
-// the advertisement: id/titleAr/titleEn/items/totalPriceUsd/startDate/endDate/
-// status/rejectionNote/isAvailable/createdAt. warehouseId is the join key.
-// isAvailable has to be listed here like any other field: left out of the
-// projection, a paused package would serialize as available.
+// the advertisement: id/titleAr/titleEn/items/totalPriceUsd/imageUrl/
+// startDate/endDate/status/rejectionNote/isAvailable/createdAt. warehouseId is
+// the join key. isAvailable has to be listed here like any other field: left
+// out of the projection, a paused package would serialize as available.
 const PENDING_ADVERTISEMENT_FIELDS =
-  'titleAr titleEn items totalPriceUsd startDate endDate status rejectionNote isAvailable createdAt warehouseId';
+  'titleAr titleEn items totalPriceUsd imageUrl startDate endDate status rejectionNote isAvailable createdAt warehouseId';
 
 // The three lists the management page can show. `pending` is the moderation
 // queue; `approved` is where an admin finds a live package to pause or
@@ -230,9 +231,17 @@ async function rejectAdvertisement(advertisementId, rejectionNote) {
 async function adminUpdateAdvertisement(advertisementId, data) {
   const advertisement = await findAnyAdvertisementOrThrow(advertisementId);
   const fields = await buildAdvertisementFields(advertisement.warehouseId, data);
+  const previousImageUrl = advertisement.imageUrl;
 
   Object.assign(advertisement, fields);
   await advertisement.save();
+
+  // Fire-and-forget, same reasoning as Banner's own admin edit - an orphaned
+  // Cloudinary asset from a replaced image is never worth failing the edit
+  // that already succeeded over.
+  if (fields.imageUrl !== undefined && previousImageUrl && previousImageUrl !== fields.imageUrl) {
+    deleteImageByUrl(previousImageUrl);
+  }
 
   emitToAdmins(EVENTS.ADVERTISEMENT_STATUS_UPDATED, {
     advertisementId: advertisement._id.toString(),
@@ -248,6 +257,10 @@ async function adminUpdateAdvertisement(advertisementId, data) {
 async function adminDeleteAdvertisement(advertisementId) {
   const advertisement = await findAnyAdvertisementOrThrow(advertisementId);
   await advertisement.deleteOne();
+
+  if (advertisement.imageUrl) {
+    deleteImageByUrl(advertisement.imageUrl);
+  }
 
   emitToAdmins(EVENTS.ADVERTISEMENT_STATUS_UPDATED, {
     advertisementId: advertisement._id.toString(),

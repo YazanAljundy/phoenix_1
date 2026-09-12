@@ -81,11 +81,28 @@ const remove = asyncHandler(async (req, res) => {
 });
 
 const update = asyncHandler(async (req, res) => {
-  await adminBannerService.updateBanner(req.params.id, {
-    startDate: req.body.startDate,
-    endDate: req.body.endDate,
-    title: req.body.title,
-  });
+  // Replacing the image is optional on an edit - the admin can change just
+  // the title/dates, or swap the image too, at any status (including an
+  // already-approved banner).
+  let imageUrl;
+  if (req.file) {
+    if (!verifyImageMagicBytes(req.file.buffer)) {
+      throw ApiError.badRequest('Banner image file content is not a valid image.');
+    }
+    imageUrl = await uploadImage(req.file.buffer, 'banners');
+  }
+
+  try {
+    await adminBannerService.updateBanner(req.params.id, {
+      startDate: req.body.startDate,
+      endDate: req.body.endDate,
+      title: req.body.title,
+      imageUrl,
+    });
+  } catch (err) {
+    if (imageUrl) await deleteImageByUrl(imageUrl);
+    throw err;
+  }
   res.json({ success: true, message: 'Banner updated.' });
 });
 

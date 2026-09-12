@@ -79,16 +79,34 @@ async function requestUpload(path, file) {
 
 // Like requestUpload, but for endpoints that take a file *alongside* other
 // form fields (a banner's image + title/dates/productId) rather than just
-// the file alone - caller builds the FormData itself.
-async function requestFormData(path, formData) {
+// the file alone - caller builds the FormData itself. `method` defaults to
+// POST (every create path) but a multipart edit (replacing an image on an
+// existing banner/advertisement) needs PATCH.
+async function requestFormData(path, formData, method = 'POST') {
   const token = getToken();
   const headers = token ? { Authorization: `Bearer ${token}` } : {};
-  const response = await fetch(`${API_BASE_URL}${path}`, { method: 'POST', headers, body: formData });
+  const response = await fetch(`${API_BASE_URL}${path}`, { method, headers, body: formData });
   const data = await response.json().catch(() => null);
   if (!response.ok) {
     throw new ApiError(data?.message ?? 'Upload failed. Please try again.', response.status);
   }
   return data;
+}
+
+// Builds the multipart body for an advertisement create/update that includes
+// an image. `items` is an array, so (unlike a banner's scalar fields) it has
+// to travel as a JSON-encoded string field - the backend parses it back out
+// (see warehouseAdvertisement.controller.js's normalizeAdvertisementBody).
+function advertisementFormData(data, imageFile) {
+  const formData = new FormData();
+  formData.append('titleAr', data.titleAr);
+  formData.append('titleEn', data.titleEn);
+  formData.append('items', JSON.stringify(data.items));
+  formData.append('totalPriceUsd', String(data.totalPriceUsd));
+  formData.append('startDate', data.startDate);
+  formData.append('endDate', data.endDate);
+  formData.append('image', imageFile);
+  return formData;
 }
 
 export const api = {
@@ -241,10 +259,26 @@ export const api = {
   // existed.
   warehouseAdvertisements: ({ status } = {}) =>
     request(`/warehouse/advertisements${status ? `?status=${status}` : ''}`),
-  createWarehouseAdvertisement: (data) =>
-    request('/warehouse/advertisements', { method: 'POST', body: data }),
-  updateWarehouseAdvertisement: (advertisementId, data) =>
-    request(`/warehouse/advertisements/${advertisementId}`, { method: 'PATCH', body: data }),
+  // `imageFile`, when given, attaches/replaces the package's optional image -
+  // sent as multipart (items/totalPriceUsd travel JSON-encoded as form
+  // fields, same reasoning as the banner uploads above). Without it, this
+  // stays the plain JSON POST/PATCH it always was.
+  createWarehouseAdvertisement: (data, imageFile) => {
+    if (imageFile) {
+      return requestFormData('/warehouse/advertisements', advertisementFormData(data, imageFile));
+    }
+    return request('/warehouse/advertisements', { method: 'POST', body: data });
+  },
+  updateWarehouseAdvertisement: (advertisementId, data, imageFile) => {
+    if (imageFile) {
+      return requestFormData(
+        `/warehouse/advertisements/${advertisementId}`,
+        advertisementFormData(data, imageFile),
+        'PATCH'
+      );
+    }
+    return request(`/warehouse/advertisements/${advertisementId}`, { method: 'PATCH', body: data });
+  },
   deleteWarehouseAdvertisement: (advertisementId) =>
     request(`/warehouse/advertisements/${advertisementId}`, { method: 'DELETE' }),
   // Either direction, restricted server-side to an approved package
@@ -281,8 +315,17 @@ export const api = {
     }),
   // Direct content edit, at any status - the admin IS the approval authority,
   // so (unlike a warehouse edit) this never sends the package back for review.
-  updateAdminAdvertisement: (advertisementId, data) =>
-    request(`/admin/advertisements/${advertisementId}`, { method: 'PATCH', body: data }),
+  // `imageFile`, when given, attaches/replaces the package's image too.
+  updateAdminAdvertisement: (advertisementId, data, imageFile) => {
+    if (imageFile) {
+      return requestFormData(
+        `/admin/advertisements/${advertisementId}`,
+        advertisementFormData(data, imageFile),
+        'PATCH'
+      );
+    }
+    return request(`/admin/advertisements/${advertisementId}`, { method: 'PATCH', body: data });
+  },
   deleteAdminAdvertisement: (advertisementId) =>
     request(`/admin/advertisements/${advertisementId}`, { method: 'DELETE' }),
   // Either direction. An admin can flip any package's availability regardless
@@ -519,5 +562,19 @@ export const api = {
   rejectBanner: (bannerId, rejectionNote) =>
     request(`/admin/banners/${bannerId}/reject`, { method: 'PATCH', body: { rejectionNote } }),
   deleteAdminBanner: (id) => request(`/admin/banners/${id}`, { method: 'DELETE' }),
-  updateAdminBanner: (id, changes) => request(`/admin/banners/${id}`, { method: 'PATCH', body: changes }),
+  // `imageFile`, when given, replaces the banner's image too (allowed at any
+  // status, including an already-approved banner) - sent as multipart, same
+  // shape as createAdminBanner. Without it, this stays the plain JSON PATCH
+  // it always was.
+  updateAdminBanner: (id, changes, imageFile) => {
+    if (imageFile) {
+      const formData = new FormData();
+      if (changes.title !== undefined) formData.append('title', changes.title);
+      if (changes.startDate !== undefined) formData.append('startDate', changes.startDate);
+      if (changes.endDate !== undefined) formData.append('endDate', changes.endDate);
+      formData.append('image', imageFile);
+      return requestFormData(`/admin/banners/${id}`, formData, 'PATCH');
+    }
+    return request(`/admin/banners/${id}`, { method: 'PATCH', body: changes });
+  },
 };

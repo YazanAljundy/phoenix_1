@@ -99,6 +99,18 @@ class AppLocalizationsAr extends AppLocalizations {
   String get useCurrentLocationTooltip => 'موقعي الحالي';
 
   @override
+  String get areaTypeLabel => 'نوع المنطقة';
+
+  @override
+  String get areaTypeCity => 'مدينة';
+
+  @override
+  String get areaTypeCityRing => 'طوق مدينة';
+
+  @override
+  String get areaTypeRural => 'ريف';
+
+  @override
   String get confirmPasswordLabel => 'تأكيد كلمة المرور';
 
   @override
@@ -1564,11 +1576,4 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get warehouseOffersTitle => 'عروض المستودع';
-
-  @override
-  String get warehouseOffersNoWarehouseTitle => 'لم يتم تحديد مستودع';
-
-  @override
-  String get warehouseOffersNoWarehouseMessage =>
-      'تُعرض هنا عروض المستودع الذي تطلب منه. اختر مستودعاً وأضف منتجاً إلى السلة أولاً.';
 }

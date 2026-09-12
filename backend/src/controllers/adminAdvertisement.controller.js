@@ -1,7 +1,30 @@
 const { asyncHandler } = require('../utils/asyncHandler');
+const { ApiError } = require('../utils/ApiError');
 const service = require('../services/adminAdvertisement.service');
 const viewModel = require('../viewmodels/adminAdvertisement.viewmodel');
 const { parseCursorQuery, parseObjectIdCursor, paginationMeta } = require('../utils/pagination');
+const { verifyImageMagicBytes } = require('../middlewares/upload.middleware');
+const { uploadImage, deleteImageByUrl } = require('../services/upload.service');
+
+// `items` (an array) and `totalPriceUsd` (a number) travel as plain JSON on
+// every existing caller. An optional image turns the request into
+// multipart/form-data instead, where every field arrives as a string - this
+// is a no-op for a JSON body and only matters once a file is attached. Same
+// helper as warehouseAdvertisement.controller.js's own copy.
+function normalizeAdvertisementBody(body) {
+  const normalized = { ...body };
+  if (typeof normalized.items === 'string') {
+    try {
+      normalized.items = JSON.parse(normalized.items);
+    } catch {
+      throw ApiError.badRequest('Invalid items.', undefined, 'INVALID_ADVERTISEMENT_ITEMS');
+    }
+  }
+  if (typeof normalized.totalPriceUsd === 'string') {
+    normalized.totalPriceUsd = Number(normalized.totalPriceUsd);
+  }
+  return normalized;
+}
 
 // Two shapes on one endpoint, exactly as adminOffer.controller.listPending
 // does: no `limit` returns every pending advertisement at once (for a
@@ -54,9 +77,26 @@ const reject = asyncHandler(async (req, res) => {
 
 // Direct content edit, at any status - the admin IS the approval authority,
 // so there is no buffer/re-review the way a warehouse's own edit re-queues
-// the package. Same shape as adminOffer.controller.update.
+// the package. Same shape as adminOffer.controller.update. The image is
+// optional to replace here too, same mechanism as Banner's own admin edit.
 const update = asyncHandler(async (req, res) => {
-  await service.adminUpdateAdvertisement(req.params.id, req.body);
+  let imageUrl;
+  if (req.file) {
+    if (!verifyImageMagicBytes(req.file.buffer)) {
+      throw ApiError.badRequest('Advertisement image file content is not a valid image.');
+    }
+    imageUrl = await uploadImage(req.file.buffer, 'advertisements');
+  }
+
+  const data = normalizeAdvertisementBody(req.body);
+  if (imageUrl !== undefined) data.imageUrl = imageUrl;
+
+  try {
+    await service.adminUpdateAdvertisement(req.params.id, data);
+  } catch (err) {
+    if (imageUrl) await deleteImageByUrl(imageUrl);
+    throw err;
+  }
   res.json({ success: true, message: 'Advertisement updated.' });
 });
 

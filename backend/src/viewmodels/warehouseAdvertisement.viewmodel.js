@@ -42,6 +42,7 @@ function serializeAdvertisement(advertisement, productById) {
     items,
     calculatedItemsTotalUsd: sumUsd,
     totalPriceUsd: advertisement.totalPriceUsd,
+    imageUrl: advertisement.imageUrl ?? null,
     savingPercentage: savingPercentage(sumUsd, advertisement.totalPriceUsd),
     startDate: advertisement.startDate,
     endDate: advertisement.endDate,

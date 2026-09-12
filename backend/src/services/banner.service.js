@@ -15,6 +15,10 @@ async function listActiveBanners() {
     status: 'approved',
     startDate: { $lte: now },
     endDate: { $gte: now },
+    // A warehouse-submitted banner may still be waiting on the admin to
+    // attach an image (see adminBanner.service.js's updateBanner) - it isn't
+    // "live" until it has one, since the slide IS the image.
+    imageUrl: { $ne: null },
   })
     .select('imageUrl productId manufacturerAr warehouseId')
     .sort({ createdAt: -1 })

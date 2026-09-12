@@ -14,7 +14,6 @@ import 'package:feniq/features/advertisements/data/repositories/advertisements_r
 import 'package:feniq/features/cart/data/repositories/order_repository.dart';
 import 'package:feniq/features/cart/presentation/managers/cart_cubit.dart';
 import 'package:feniq/features/catalog/data/models/manufacturers_route_args.dart';
-import 'package:feniq/features/catalog/data/models/product_model.dart';
 import 'package:feniq/features/exchange_rate/data/models/exchange_rate_model.dart';
 import 'package:feniq/features/exchange_rate/data/repositories/exchange_rate_repository.dart';
 import 'package:feniq/features/exchange_rate/presentation/managers/exchange_rate_cubit.dart';
@@ -22,6 +21,7 @@ import 'package:feniq/features/notifications/data/repositories/notification_repo
 import 'package:feniq/features/notifications/presentation/managers/notification_cubit.dart';
 import 'package:feniq/features/offers/data/models/offer_model.dart';
 import 'package:feniq/features/offers/data/repositories/offers_repository.dart';
+import 'package:feniq/features/promotions/data/models/promotion.dart';
 import 'package:feniq/features/promotions/presentation/managers/promotions_cubit.dart';
 import 'package:feniq/features/promotions/presentation/managers/promotions_state.dart';
 import 'package:feniq/features/promotions/presentation/managers/warehouse_offers_cubit.dart';
@@ -45,21 +45,9 @@ class _MockWarehouseRepository extends Mock implements WarehouseRepository {}
 
 class _MockExchangeRateRepository extends Mock implements ExchangeRateRepository {}
 
-const _product = ProductModel(
-  id: 'p1',
-  nameAr: 'دواء',
-  nameEn: 'Med',
-  manufacturerAr: 'شركة',
-  manufacturerEn: 'Co',
-  priceUsd: 5,
-  discountPriceUsd: 5,
-  isAvailable: true,
-  hasActiveOffer: false,
-);
-
-// The Offers chip on the Offers & Ads tab and the screen it opens: the offers
-// of the ONE warehouse the pharmacist is ordering from (the cart's warehouse),
-// never another warehouse's, and never a warehouse picked on their behalf.
+// WarehouseOffersCubit/View: the offers running at ONE given warehouse, and
+// nothing else. Opened today by tapping an Offer card on the Offers & Ads
+// tab (see promotions_view_test.dart), scoped to that offer's own warehouse.
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -78,10 +66,6 @@ void main() {
 
     when(() => exchangeRateRepository.getExchangeRate())
         .thenAnswer((_) async => ExchangeRateModel(usdToSyp: 15000));
-    // The cart looks up its warehouse's order limits when it binds - not what
-    // is under test here.
-    when(() => warehouseRepository.getWarehouseProfile(any()))
-        .thenAnswer((_) async => throw Exception('limits fetch not exercised here'));
 
     cartCubit = CartCubit(
       orderRepository: _MockOrderRepository(),
@@ -273,13 +257,15 @@ void main() {
     }
   });
 
-  group('the Offers chip on the Offers & Ads tab', () {
+  // "Offers" and "Packages" are a plain in-place kind filter on the tab's
+  // already-loaded list - neither navigates anywhere, has a cart dependency,
+  // or a "no warehouse" gate. (They did briefly for Offers; reverted per an
+  // explicit owner request the same day - see promotions_view.dart.)
+  group('the kind chips on the Offers & Ads tab', () {
     late PromotionsCubit promotionsCubit;
     late NotificationCubit notificationCubit;
-    String? openedWarehouseId;
 
     setUp(() async {
-      openedWarehouseId = null;
       SharedPreferences.setMockInitialValues({});
       notificationCubit = NotificationCubit(
         repository: NotificationRepository(
@@ -311,19 +297,6 @@ void main() {
               child: const PromotionsView(),
             ),
           ),
-          GoRoute(
-            name: RouteNames.warehouseOffers,
-            path: RoutePaths.warehouseOffers,
-            builder: (context, state) {
-              openedWarehouseId = state.pathParameters['warehouseId'];
-              return Scaffold(body: Text('WAREHOUSE OFFERS ${state.extra}'));
-            },
-          ),
-          GoRoute(
-            name: RouteNames.warehouseSelection,
-            path: RoutePaths.warehouseSelection,
-            builder: (context, state) => const Scaffold(body: Text('WAREHOUSE SELECTION')),
-          ),
         ],
       );
 
@@ -350,39 +323,16 @@ void main() {
       await tester.pumpAndSettle();
     }
 
-    testWidgets('opens the offers of the warehouse the cart is ordering from', (tester) async {
-      cartCubit.addProduct(_product, warehouseId: 'W2', warehouseName: 'Beta', quantity: 1);
-      stubOffers([
-        offer(id: 'o1', warehouseId: 'W1', warehouseNameEn: 'Alpha', titleEn: 'Offer One'),
-        offer(id: 'o2', warehouseId: 'W2', warehouseNameEn: 'Beta', titleEn: 'Offer Two'),
-      ]);
-
-      await pumpTab(tester);
-      await tester.tap(find.widgetWithText(ChoiceChip, 'Offers'));
-      await tester.pumpAndSettle();
-
-      expect(openedWarehouseId, 'W2');
-      expect(find.text('WAREHOUSE OFFERS Beta'), findsOneWidget);
-      // It navigates - it no longer narrows the all-warehouses list in place.
-      expect(promotionsCubit.state.kindFilter, isNull);
-    });
-
-    testWidgets('with nothing in the cart it never picks a warehouse itself', (tester) async {
+    testWidgets('Offers filters the list to offer-kind items only, in place', (tester) async {
       stubOffers([offer(id: 'o1', warehouseId: 'W1', titleEn: 'Offer One')]);
 
       await pumpTab(tester);
       await tester.tap(find.widgetWithText(ChoiceChip, 'Offers'));
       await tester.pumpAndSettle();
 
-      expect(openedWarehouseId, isNull);
-      expect(find.text('No warehouse selected'), findsOneWidget);
-
-      // The empty cart's own way out: go and choose a warehouse.
-      await tester.tap(find.text('Browse products'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('WAREHOUSE SELECTION'), findsOneWidget);
-      expect(openedWarehouseId, isNull);
+      expect(promotionsCubit.state.kindFilter, PromotionKind.offer);
+      // No navigation - still the same tab.
+      expect(find.byType(PromotionsView), findsOneWidget);
     });
 
     testWidgets('Packages still filters the list in place', (tester) async {
@@ -392,8 +342,7 @@ void main() {
       await tester.tap(find.widgetWithText(ChoiceChip, 'Packages'));
       await tester.pumpAndSettle();
 
-      expect(openedWarehouseId, isNull);
-      expect(promotionsCubit.state.kindFilter, isNotNull);
+      expect(promotionsCubit.state.kindFilter, PromotionKind.package);
     });
   });
 }

@@ -324,9 +324,12 @@
       "numberColumn": "الرقم",
       "warehouseTitleColumn": "المستودع / العنوان",
       "rangeColumn": "من — إلى",
-      "editDeleteHint": "الرفض يطلب سبباً يظهر لصاحب الإعلان. التعديل يقتصر على العنوان والتواريخ."
+      "editDeleteHint": "الرفض يطلب سبباً يظهر لصاحب الإعلان. التعديل يشمل العنوان والتواريخ والصورة.",
+      "replaceImageOptional": "استبدال الصورة (اختياري)",
+      "noImageYet": "لا توجد صورة بعد"
     },
     "image": "الصورة",
+    "imageOptional": "الصورة (اختياري)",
     "title": "العنوان",
     "linkedProductOptional": "منتج مرتبط (اختياري)",
     "noProduct": "بدون منتج",
@@ -392,6 +395,7 @@
     "noAdvertisements": "لم تنشئ أي إعلان بعد.",
     "titleEn": "العنوان (إنجليزي)",
     "titleAr": "العنوان (عربي)",
+    "imageOptional": "الصورة (اختياري)",
     "numberColumn": "#",
     "titleColumn": "الإعلان",
     "productsColumn": "المنتجات",

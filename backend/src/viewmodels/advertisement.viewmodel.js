@@ -41,6 +41,7 @@ function serializeActiveAdvertisement({ advertisement, productById, warehouse })
     // total - the difference is the saving. Derived, never stored.
     itemsTotalUsd: sumUsd,
     totalPriceUsd: advertisement.totalPriceUsd,
+    imageUrl: advertisement.imageUrl ?? null,
     savingPercentage: savingPercentage(sumUsd, advertisement.totalPriceUsd),
     endDate: advertisement.endDate,
   };

@@ -100,6 +100,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get useCurrentLocationTooltip => 'My current location';
 
   @override
+  String get areaTypeLabel => 'Area type';
+
+  @override
+  String get areaTypeCity => 'City';
+
+  @override
+  String get areaTypeCityRing => 'City ring';
+
+  @override
+  String get areaTypeRural => 'Rural';
+
+  @override
   String get confirmPasswordLabel => 'Confirm password';
 
   @override
@@ -1559,11 +1571,4 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get warehouseOffersTitle => 'Warehouse offers';
-
-  @override
-  String get warehouseOffersNoWarehouseTitle => 'No warehouse selected';
-
-  @override
-  String get warehouseOffersNoWarehouseMessage =>
-      'Offers are shown for the warehouse you are ordering from. Choose a warehouse and add a product to your cart first.';
 }

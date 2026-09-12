@@ -29,6 +29,10 @@
   "locationPermissionDeniedMessage": "تعذّر الوصول لموقعك، يمكنك تحريك الخريطة يدوياً لتحديد الموقع.",
   "addressNotResolvedYetMessage": "يرجى الانتظار حتى يتم تحديد العنوان من الخريطة، أو حرّك الخريطة لضبط الموقع.",
   "useCurrentLocationTooltip": "موقعي الحالي",
+  "areaTypeLabel": "نوع المنطقة",
+  "areaTypeCity": "مدينة",
+  "areaTypeCityRing": "طوق مدينة",
+  "areaTypeRural": "ريف",
   "confirmPasswordLabel": "تأكيد كلمة المرور",
   "confirmPasswordHint": "أعد إدخال كلمة المرور",
   "passwordHint": "{min} أحرف على الأقل",
@@ -721,7 +725,5 @@
   "offerEndsOn": "حتى {date}",
   "offerPermanent": "عرض دائم",
   "addToCartFullButton": "إضافة إلى السلة",
-  "warehouseOffersTitle": "عروض المستودع",
-  "warehouseOffersNoWarehouseTitle": "لم يتم تحديد مستودع",
-  "warehouseOffersNoWarehouseMessage": "تُعرض هنا عروض المستودع الذي تطلب منه. اختر مستودعاً وأضف منتجاً إلى السلة أولاً."
+  "warehouseOffersTitle": "عروض المستودع"
 }
