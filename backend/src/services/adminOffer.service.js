@@ -6,6 +6,7 @@ const Pharmacy = require('../models/pharmacy.model');
 const Warehouse = require('../models/warehouse.model');
 const { applyResolvedIdentity } = require('./productCatalog.service');
 const { buildOfferFields } = require('./warehouseOffer.service');
+const { buildOfferListFilter, listPaginatedOffers, OFFER_REVIEW_FILTER } = require('./offer.service');
 const notificationService = require('./notification.service');
 const { emitToAdmins, EVENTS } = require('../realtime');
 
@@ -69,14 +70,41 @@ async function listPendingOffers() {
   return attachRefs(offers);
 }
 
+const ADMIN_OFFERS_DEFAULT_LIMIT = 20;
+
 // Section 5: the admin's cross-warehouse oversight view - EVERY offer, every
-// warehouse, every status (unlike listPendingOffers above). Unpaginated, the
-// same call adminProduct.service.listAllProducts makes for its own oversight
-// list: an offer is a curated, time-bounded per-product discount, so the whole
-// set is small and the panel filters it client-side (status / product / discount).
-async function listAllOffers() {
-  const offers = await Offer.find({}).sort({ createdAt: -1 });
-  return attachRefs(offers);
+// warehouse, every status, now filtered (status pill / search / discount
+// range) and cursor-paginated server-side. Used to fetch every offer
+// unpaginated and let the Offers page filter it in React (see
+// web/src/pages/offersFilters.js, still used for display-only concerns like
+// the status badge - the filtering logic itself moved to
+// offer.service.js's buildOfferListFilter/buildOfferStatusFilter, and this
+// function's own JSDoc-adjacent history has the field-by-field parity check).
+// `reviewCount` is independent of whichever status pill is selected - the
+// Review pill's own badge needs the total queue size regardless of what page
+// is currently showing, same reasoning as adminComplaint.service.js's
+// per-status counts.
+async function listPaginatedAllOffers({
+  status,
+  search,
+  minDiscount,
+  maxDiscount,
+  limit = ADMIN_OFFERS_DEFAULT_LIMIT,
+  after = null,
+} = {}) {
+  const filter = await buildOfferListFilter({
+    status,
+    search,
+    minDiscount,
+    maxDiscount,
+    includeWarehouseName: true,
+  });
+  const [{ rows, hasMore, nextCursor }, reviewCount] = await Promise.all([
+    listPaginatedOffers(filter, { limit, after }),
+    Offer.countDocuments(OFFER_REVIEW_FILTER),
+  ]);
+  if (rows.length === 0) return { rows: [], hasMore, nextCursor, reviewCount };
+  return { rows: await attachRefs(rows), hasMore, nextCursor, reviewCount };
 }
 
 async function findModerableOfferOrThrow(offerId) {
@@ -244,7 +272,7 @@ async function adminDeleteOffer(offerId) {
 
 module.exports = {
   listPendingOffers,
-  listAllOffers,
+  listPaginatedAllOffers,
   approveOffer,
   rejectOffer,
   adminUpdateOffer,

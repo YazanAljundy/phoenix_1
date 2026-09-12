@@ -177,7 +177,22 @@ export const api = {
   createWarehouseProduct: (data) => request('/warehouse/products', { method: 'POST', body: data }),
   updateWarehouseProduct: (productId, changes) =>
     request(`/warehouse/products/${productId}`, { method: 'PATCH', body: changes }),
-  warehouseOffers: () => request('/warehouse/offers'),
+  // Filtered (status pill / search / discount range) and cursor-paginated -
+  // the Warehouse Offers page's own paginated, filtered view. `status` is
+  // one of OFFER_FILTERS ('all' | 'review' | 'active' | 'upcoming' |
+  // 'expired' | 'permanent'). Response carries reviewCount independent of
+  // whichever status is passed - the Review pill's badge.
+  warehouseOffers: ({ status, search, minDiscount, maxDiscount, limit, after } = {}) => {
+    const params = new URLSearchParams();
+    if (status) params.set('status', status);
+    if (search) params.set('search', search);
+    if (minDiscount !== undefined && minDiscount !== '') params.set('minDiscount', minDiscount);
+    if (maxDiscount !== undefined && maxDiscount !== '') params.set('maxDiscount', maxDiscount);
+    if (limit) params.set('limit', limit);
+    if (after) params.set('after', after);
+    const qs = params.toString();
+    return request(`/warehouse/offers${qs ? `?${qs}` : ''}`);
+  },
   createWarehouseOffer: (data) => request('/warehouse/offers', { method: 'POST', body: data }),
   // An edit to a still-pending offer is applied in place; an edit to an
   // approved offer is parked for admin review (backend updateOffer).
@@ -187,9 +202,21 @@ export const api = {
   // No args: the moderation queue (pending offers + parked edits) - used by the
   // Dashboard's stat card/recent list.
   pendingOffers: () => request('/admin/offers'),
-  // Section 5: every offer, every warehouse, every status. Unpaginated - the
-  // Offers page filters it client-side.
-  allOffers: () => request('/admin/offers/all'),
+  // Section 5: every offer, every warehouse, every status - filtered (status
+  // pill / search / discount range) and cursor-paginated, the Admin Offers
+  // page's own paginated view. Response carries reviewCount independent of
+  // whichever status is passed - the Review pill's badge.
+  allOffers: ({ status, search, minDiscount, maxDiscount, limit, after } = {}) => {
+    const params = new URLSearchParams();
+    if (status) params.set('status', status);
+    if (search) params.set('search', search);
+    if (minDiscount !== undefined && minDiscount !== '') params.set('minDiscount', minDiscount);
+    if (maxDiscount !== undefined && maxDiscount !== '') params.set('maxDiscount', maxDiscount);
+    if (limit) params.set('limit', limit);
+    if (after) params.set('after', after);
+    const qs = params.toString();
+    return request(`/admin/offers/all${qs ? `?${qs}` : ''}`);
+  },
   approveOffer: (offerId) => request(`/admin/offers/${offerId}/approve`, { method: 'POST' }),
   rejectOffer: (offerId) => request(`/admin/offers/${offerId}/reject`, { method: 'POST' }),
   updateAdminOffer: (offerId, data) => request(`/admin/offers/${offerId}`, { method: 'PATCH', body: data }),
