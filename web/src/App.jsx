@@ -14,7 +14,7 @@ import { WarehousePanel } from './pages/WarehousePanel';
 // in AuthContext.login before it ever reaches here.
 function Gate() {
   const { t } = useTranslation();
-  const { status, user } = useAuth();
+  const { status, user, retry } = useAuth();
 
   if (status === 'loading') {
     return (
@@ -26,6 +26,22 @@ function Gate() {
 
   if (status === 'unauthenticated') {
     return <LoginPage />;
+  }
+
+  // The session is intact but the server could not be reached to confirm
+  // it (audit F-04). Offer a retry rather than signing the operator out -
+  // during an outage a login screen is not something they could act on.
+  if (status === 'offline') {
+    return (
+      <div className="auth-screen">
+        <div className="auth-card">
+          <p className="error-text">{t('auth.connectionFailed')}</p>
+          <button type="button" className="btn-primary" onClick={retry}>
+            {t('common.retry')}
+          </button>
+        </div>
+      </div>
+    );
   }
 
   // One RealtimeProvider around both panels - it is role-agnostic (it just

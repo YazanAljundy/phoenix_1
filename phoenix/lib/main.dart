@@ -253,6 +253,7 @@ class MyApp extends StatelessWidget {
               authRepository: authRepository,
               secureStorage: secureStorage,
               fcmService: fcmService,
+            notificationRepository: notificationRepository,
             ),
           ),
           BlocProvider(

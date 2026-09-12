@@ -34,7 +34,8 @@
     "loadingMore": "Loading...",
     "allResultsShown": "All results shown",
     "noMatches": "No matches",
-    "unexpectedError": "Something went wrong. Please try again."
+    "unexpectedError": "Something went wrong. Please try again.",
+    "retry": "Try again"
   },
   "app": {
     "brand": "Feniq Admin"
@@ -73,7 +74,8 @@
     "phoneLabel": "Phone number",
     "passwordLabel": "Password",
     "logIn": "Log in",
-    "loggingIn": "Logging in..."
+    "loggingIn": "Logging in...",
+    "connectionFailed": "Could not reach the server. Your session is still active - check your connection and try again."
   },
   "orders": {
     "tabAll": "All",

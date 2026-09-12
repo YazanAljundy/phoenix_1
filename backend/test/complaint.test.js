@@ -4,7 +4,7 @@
 // end, same pattern as readpath.lean.test.js / notification.fanout.test.js.
 // The realtime layer is left as-is: emitToWarehouse/emitToAdmins tolerate a
 // null io (no socket server booted here) and simply no-op.
-process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-complaint-tests';
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-complaint-tests-';
 process.env.NODE_ENV = 'test';
 
 const test = require('node:test');

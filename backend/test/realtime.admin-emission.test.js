@@ -5,7 +5,7 @@
 // Models and the realtime module are stubbed through require.cache before the
 // services load, so this needs no database and no socket server.
 process.env.MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/feniq-test';
-process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-realtime-tests';
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-realtime-tests-p';
 process.env.NODE_ENV = 'test';
 
 const test = require('node:test');
@@ -155,6 +155,11 @@ stubModule('models/pharmacy.model.js', { find: async () => [], findOne: async ()
 stubModule('models/warehouse.model.js', { find: async () => [], findById: async () => null });
 stubModule('models/product.model.js', productModelStub);
 stubModule('models/counter.model.js', { findOneAndUpdate: async () => ({ seq: 1 }) });
+// blockAccount/rejectAccount revoke the account's live sessions (audit
+// F-03). Stubbed like every other model here so these tests keep needing no
+// database - without it the deleteMany waits on a connection that is never
+// made and the test times out.
+stubModule('models/refreshToken.model.js', { deleteMany: async () => ({ deletedCount: 0 }) });
 
 const adminService = require('../src/services/admin.service');
 const adminBannerService = require('../src/services/adminBanner.service');

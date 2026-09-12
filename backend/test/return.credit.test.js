@@ -9,7 +9,7 @@
 // The invariant these tests exist to protect: crediting every unit of an order
 // back sums to EXACTLY that order's finalPrice - no rounding remainder left
 // behind as phantom debt.
-process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-return-credit';
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-return-credit-pa';
 process.env.NODE_ENV = 'test';
 
 const test = require('node:test');

@@ -40,7 +40,11 @@ class ProfileView extends StatelessWidget {
       actionLabel: l10n.logout,
       onAction: () async {
         await authCubit.logout();
-        if (context.mounted) context.goNamed(RouteNames.registration);
+        // Login, not registration (audit F-01). This used to land on the
+        // registration form because re-registering an existing phone silently
+        // logged you back in; the backend now answers that with a 409, so
+        // sending a returning pharmacist there would dead-end them.
+        if (context.mounted) context.goNamed(RouteNames.login);
       },
     );
   }

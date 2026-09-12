@@ -85,4 +85,16 @@ class AuthRepositoryImpl implements AuthRepository {
       throw ServerFailure.fromDioError(e);
     }
   }
+
+  @override
+  Future<void> deleteDeviceToken({required String fcmToken}) async {
+    try {
+      await _apiClient.dio.delete(
+        Endpoints.deviceToken,
+        data: {'fcmToken': fcmToken},
+      );
+    } on DioException catch (e) {
+      throw ServerFailure.fromDioError(e);
+    }
+  }
 }

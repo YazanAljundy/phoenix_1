@@ -632,6 +632,20 @@ class AppLocalizationsAr extends AppLocalizations {
       'هناك خطأ في هذا الطلب. يرجى المحاولة مرة أخرى.';
 
   @override
+  String get errorInvalidCredentials => 'رقم الهاتف أو كلمة المرور غير صحيحة.';
+
+  @override
+  String get errorAccountBlocked => 'تم حظر هذا الحساب. يرجى التواصل مع الدعم.';
+
+  @override
+  String get errorAccountNotFound =>
+      'لا يوجد حساب مرتبط بهذا الرقم. يرجى إنشاء حساب أولاً.';
+
+  @override
+  String get errorPhoneAlreadyRegistered =>
+      'هذا الرقم لديه حساب بالفعل. يرجى تسجيل الدخول.';
+
+  @override
   String get errorPharmacyNotFound =>
       'لم نتمكن من العثور على ملف صيدليتك. يرجى التواصل مع الدعم.';
 

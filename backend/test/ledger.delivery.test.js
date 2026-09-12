@@ -7,7 +7,7 @@
 //   * no ledger entry exists for any status before `delivered`
 //   * the whole transition is atomic - status, invoice number and charge
 //     either all land or none do
-process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-delivery-tests';
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-delivery-tests-p';
 process.env.NODE_ENV = 'test';
 
 const test = require('node:test');

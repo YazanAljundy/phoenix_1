@@ -35,4 +35,8 @@ abstract class AuthRepository {
   // but the repository call itself stays a plain throw-on-failure like
   // every other endpoint here.
   Future<void> registerDeviceToken({required String fcmToken, required String deviceType});
+
+  // Detaches this device from the signed-in account on logout. Same
+  // best-effort contract as registerDeviceToken above.
+  Future<void> deleteDeviceToken({required String fcmToken});
 }

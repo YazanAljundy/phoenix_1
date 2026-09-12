@@ -7,7 +7,7 @@
 // rather than in someone's browser.
 //
 // One test per screen, named after it.
-process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-endpoints';
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-endpoints-paddin';
 process.env.NODE_ENV = 'test';
 
 const test = require('node:test');

@@ -8,7 +8,7 @@
 // What has to stay true: every eligible recipient still gets exactly one
 // Notification row, one failing recipient never costs the others, and the
 // number of simultaneous operations is actually capped.
-process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-fanout-tests';
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-fanout-tests-pad';
 process.env.NODE_ENV = 'test';
 
 const test = require('node:test');

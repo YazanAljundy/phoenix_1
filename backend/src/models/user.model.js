@@ -26,6 +26,14 @@ const userSchema = new Schema(
     },
     lang: { type: String, enum: ['ar', 'en'], default: 'ar' },
     deviceTokens: { type: [deviceTokenSchema], default: [] },
+
+    // Bumped to invalidate every access token already issued for this user
+    // (audit F-03). authenticate compares it against the claim in the token,
+    // reading it from the findById it already performs - so revocation costs
+    // no extra query. Defaults to 0, and a token minted before this field
+    // existed carries no claim and is read as 0, so deploying it logs nobody
+    // out.
+    tokenVersion: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

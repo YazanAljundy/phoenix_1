@@ -5,7 +5,7 @@
 // The scenarios it covered are all still here (ownership, validation,
 // overpayment-becomes-credit), but the correction mechanism is now a reversal
 // that keeps both the mistake and its undoing in the history.
-process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-payment-tests';
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-payment-tests-pa';
 process.env.NODE_ENV = 'test';
 
 const test = require('node:test');

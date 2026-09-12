@@ -34,6 +34,40 @@ void main() {
       expect(translateErrorCode(ar, 'HTTP_404', 'x'), ar.errorNotFound);
     });
 
+    // Auth codes (F-01/F-02). The backend used to send no `code` at all on
+    // these, so they fell through to the raw English `fallbackMessage` even
+    // in Arabic - the assertions below are what stops that regressing.
+    test('auth failures are localized, not passed through in English', () {
+      const rawEnglish = 'Incorrect phone number or password.';
+
+      expect(translateErrorCode(en, 'INVALID_CREDENTIALS', rawEnglish),
+          en.errorInvalidCredentials);
+      expect(translateErrorCode(ar, 'INVALID_CREDENTIALS', rawEnglish),
+          ar.errorInvalidCredentials);
+      expect(translateErrorCode(ar, 'INVALID_CREDENTIALS', rawEnglish),
+          isNot(rawEnglish));
+
+      expect(translateErrorCode(ar, 'ACCOUNT_BLOCKED', 'x'), ar.errorAccountBlocked);
+      expect(translateErrorCode(ar, 'ACCOUNT_NOT_FOUND', 'x'), ar.errorAccountNotFound);
+      expect(translateErrorCode(ar, 'PHONE_ALREADY_REGISTERED', 'x'),
+          ar.errorPhoneAlreadyRegistered);
+    });
+
+    // The 409 from /auth/register (F-01) carries its code in the body rather
+    // than relying on a status fallback - _httpFallbackCode has no 409 case,
+    // so without the code this would render as raw English.
+    test('a 409 conflict body still resolves to localized copy', () {
+      final failure = ServerFailure.fromResponse(409, {
+        'message': 'This phone number is already registered. Please log in instead.',
+        'code': 'PHONE_ALREADY_REGISTERED',
+      });
+
+      expect(failure.statusCode, 409);
+      expect(failure.code, 'PHONE_ALREADY_REGISTERED');
+      expect(translateErrorCode(ar, failure.code, failure.errMessage),
+          ar.errorPhoneAlreadyRegistered);
+    });
+
     test('HTTP 500 / 502 / 503 all map to the same server-error copy', () {
       expect(translateErrorCode(en, 'HTTP_500', 'x'), en.errorServer);
       expect(translateErrorCode(en, 'HTTP_502', 'x'), en.errorServer);

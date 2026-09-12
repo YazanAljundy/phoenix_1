@@ -7,7 +7,7 @@
 // Deliberately NOT a ledger event. Commission is warehouse↔platform; a
 // LedgerAccount is pharmacy↔warehouse. These tests pin that separation - a
 // collection must never touch a pharmacy's balance.
-process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-commission';
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-commission-paddi';
 process.env.NODE_ENV = 'test';
 
 const test = require('node:test');

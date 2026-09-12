@@ -162,6 +162,18 @@ class NotificationRepository {
     ]);
   }
 
+  /// Wipes the whole inbox (audit F-08).
+  ///
+  /// The store is one global SharedPreferences key, not scoped per user, so
+  /// without this the next person to sign in on a shared device would read
+  /// the previous pharmacist's order numbers, delivery states and payment
+  /// alerts. Called from logout.
+  Future<void> clear() async {
+    _items = [];
+    await _storage.remove(kNotificationsStorageKey);
+    _emit();
+  }
+
   Future<void> markAllAsRead() async {
     await _storage.reload();
     final current = _readFromDisk();
