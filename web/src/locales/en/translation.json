@@ -656,7 +656,13 @@
       "resetToApi": "Back to automatic API",
       "enterPositive": "Enter a positive number.",
       "newRateLabel": "New rate (SYP per USD)",
-      "changeHint": "Change of {{percent}}% from the current rate."
+      "changeHint": "Change of {{percent}}% from the current rate.",
+      "historyTitle": "Rate history",
+      "historyEmpty": "No rate changes recorded yet.",
+      "historyDateColumn": "Date",
+      "historyRateColumn": "Rate",
+      "historyPreviousColumn": "Previous",
+      "historySourceColumn": "Source"
     },
     "notifications": {
       "titleArLabel": "Title (Arabic)",

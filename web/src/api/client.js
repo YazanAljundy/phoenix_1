@@ -373,6 +373,15 @@ export const api = {
   adminExchangeRate: () => request('/admin/exchange-rate'),
   setExchangeRate: (usdToSyp) => request('/admin/exchange-rate', { method: 'PATCH', body: { usdToSyp } }),
   resetExchangeRate: () => request('/admin/exchange-rate/reset', { method: 'PATCH' }),
+  // The append-only trail behind the current rate - cursor-paginated the same
+  // way every other "Load more" list in the panel is.
+  adminExchangeRateHistory: ({ limit, after } = {}) => {
+    const params = new URLSearchParams();
+    if (limit) params.set('limit', limit);
+    if (after) params.set('after', after);
+    const qs = params.toString();
+    return request(`/admin/exchange-rate/history${qs ? `?${qs}` : ''}`);
+  },
   adminCatalog: ({ search, categoryId, manufacturer, limit, after } = {}) => {
     const params = new URLSearchParams();
     if (search) params.set('search', search);

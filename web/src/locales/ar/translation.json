@@ -668,7 +668,13 @@
       "resetToApi": "رجوع للـ API التلقائي",
       "enterPositive": "أدخل رقماً موجباً.",
       "newRateLabel": "السعر الجديد (ل.س لكل دولار)",
-      "changeHint": "تغيير بنسبة {{percent}}% عن السعر الحالي."
+      "changeHint": "تغيير بنسبة {{percent}}% عن السعر الحالي.",
+      "historyTitle": "سجل تغييرات السعر",
+      "historyEmpty": "لا يوجد تغييرات مسجَّلة على السعر حتى الآن.",
+      "historyDateColumn": "التاريخ",
+      "historyRateColumn": "السعر",
+      "historyPreviousColumn": "السابق",
+      "historySourceColumn": "المصدر"
     },
     "notifications": {
       "titleArLabel": "العنوان (عربي)",
