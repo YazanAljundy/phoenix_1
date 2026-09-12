@@ -4,6 +4,7 @@ function serializeActiveBanner(banner) {
   return {
     id: banner._id,
     imageUrl: banner.imageUrl,
+    mediaType: banner.mediaType,
     productId: banner.productId,
     manufacturerAr: banner.manufacturerAr,
     warehouseId: banner.warehouseId,

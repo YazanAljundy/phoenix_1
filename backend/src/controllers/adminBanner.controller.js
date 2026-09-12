@@ -2,8 +2,8 @@ const { asyncHandler } = require('../utils/asyncHandler');
 const { ApiError } = require('../utils/ApiError');
 const adminBannerService = require('../services/adminBanner.service');
 const adminBannerViewModel = require('../viewmodels/adminBanner.viewmodel');
-const { verifyImageMagicBytes } = require('../middlewares/upload.middleware');
-const { uploadImage, deleteImageByUrl } = require('../services/upload.service');
+const { verifyBannerMediaMagicBytes } = require('../middlewares/upload.middleware');
+const { uploadMedia, deleteImageByUrl } = require('../services/upload.service');
 const { parseCursorQuery, parseObjectIdCursor, paginationMeta } = require('../utils/pagination');
 
 // Two shapes on one endpoint: the Dashboard's pending-count calls this with
@@ -35,14 +35,17 @@ const create = asyncHandler(async (req, res) => {
   if (!req.file) {
     throw ApiError.badRequest('A banner image is required.', undefined, 'BANNER_IMAGE_REQUIRED');
   }
-  if (!verifyImageMagicBytes(req.file.buffer)) {
-    throw ApiError.badRequest('Banner image file content is not a valid image.');
+  // Resolved by adminBannerMediaUpload's fileFilter (upload.middleware.js) -
+  // 'image', 'gif', or 'video'.
+  const mediaType = req.file.bannerMediaType;
+  if (!verifyBannerMediaMagicBytes(req.file.buffer, mediaType)) {
+    throw ApiError.badRequest('Banner file content does not match its declared type.', undefined, 'INVALID_MEDIA_TYPE');
   }
 
   // Uploaded to Cloudinary first; removed again if a later step (date
   // validation, product lookup) rejects the request, so a user error never
   // leaves an orphan behind.
-  const imageUrl = await uploadImage(req.file.buffer, 'banners');
+  const imageUrl = await uploadMedia(req.file.buffer, 'banners', mediaType === 'video' ? 'video' : 'image');
 
   let banner;
   try {
@@ -52,6 +55,7 @@ const create = asyncHandler(async (req, res) => {
       endDate: req.body.endDate,
       title: req.body.title,
       imageUrl,
+      mediaType,
     });
   } catch (err) {
     await deleteImageByUrl(imageUrl);
@@ -81,15 +85,17 @@ const remove = asyncHandler(async (req, res) => {
 });
 
 const update = asyncHandler(async (req, res) => {
-  // Replacing the image is optional on an edit - the admin can change just
-  // the title/dates, or swap the image too, at any status (including an
-  // already-approved banner).
+  // Replacing the media is optional on an edit - the admin can change just
+  // the title/dates, or swap the image/gif/video too, at any status
+  // (including an already-approved banner).
   let imageUrl;
+  let mediaType;
   if (req.file) {
-    if (!verifyImageMagicBytes(req.file.buffer)) {
-      throw ApiError.badRequest('Banner image file content is not a valid image.');
+    mediaType = req.file.bannerMediaType;
+    if (!verifyBannerMediaMagicBytes(req.file.buffer, mediaType)) {
+      throw ApiError.badRequest('Banner file content does not match its declared type.', undefined, 'INVALID_MEDIA_TYPE');
     }
-    imageUrl = await uploadImage(req.file.buffer, 'banners');
+    imageUrl = await uploadMedia(req.file.buffer, 'banners', mediaType === 'video' ? 'video' : 'image');
   }
 
   try {
@@ -98,6 +104,7 @@ const update = asyncHandler(async (req, res) => {
       endDate: req.body.endDate,
       title: req.body.title,
       imageUrl,
+      mediaType,
     });
   } catch (err) {
     if (imageUrl) await deleteImageByUrl(imageUrl);

@@ -45,7 +45,7 @@ function deleteBannerImage(url) {
 // rejectionNote/startDate/endDate/warehouseId/createdAt; off the joined
 // warehouse and product: their two names only.
 const ADMIN_BANNER_FIELDS =
-  'bannerNumber imageUrl productId manufacturerAr title status rejectionNote startDate endDate warehouseId createdAt';
+  'bannerNumber imageUrl mediaType productId manufacturerAr title status rejectionNote startDate endDate warehouseId createdAt';
 const BANNER_REF_NAME_SELECT = 'nameAr nameEn';
 const BANNER_PRODUCT_SELECT = 'nameAr nameEn manufacturerAr manufacturerEn masterProductId';
 const CATALOG_IDENTITY_SELECT = 'nameAr nameEn manufacturerAr manufacturerEn';
@@ -132,7 +132,7 @@ async function listPaginatedBanners(status, { limit = ADMIN_BANNERS_DEFAULT_LIMI
 // marker for "the admin's own banner, not tied to any one warehouse").
 // `productId` isn't ownership-scoped here (unlike the warehouse's own
 // createBanner) since the admin can reference any warehouse's product.
-async function createAdminBanner(userId, { productId, startDate, endDate, title, imageUrl }) {
+async function createAdminBanner(userId, { productId, startDate, endDate, title, imageUrl, mediaType }) {
   const trimmedTitle = validateTitle(title);
 
   const parsedStart = parseDate(startDate);
@@ -164,6 +164,7 @@ async function createAdminBanner(userId, { productId, startDate, endDate, title,
     bannerNumber,
     warehouseId: null,
     imageUrl,
+    mediaType: mediaType || 'image',
     productId: resolvedProductId,
     manufacturerAr,
     title: trimmedTitle,
@@ -234,12 +235,12 @@ async function deleteBanner(bannerId) {
 }
 
 // Dates/title, and (unlike a warehouse's own banner, which can never touch
-// its image after submitting) the image too - the admin is the approval
+// its image after submitting) the media too - the admin is the approval
 // authority, so there is no re-review to protect here, at any status
 // including an already-approved banner. Passing `imageUrl` replaces the
-// stored one and cleans up the old Cloudinary asset; omitting it leaves the
-// banner's image untouched.
-async function updateBanner(bannerId, { startDate, endDate, title, imageUrl }) {
+// stored one (and its `mediaType` alongside it) and cleans up the old
+// Cloudinary asset; omitting it leaves the banner's media untouched.
+async function updateBanner(bannerId, { startDate, endDate, title, imageUrl, mediaType }) {
   const banner = await findBannerOrThrow(bannerId);
 
   if (title !== undefined) {
@@ -259,6 +260,7 @@ async function updateBanner(bannerId, { startDate, endDate, title, imageUrl }) {
   if (imageUrl) {
     const oldImageUrl = banner.imageUrl;
     banner.imageUrl = imageUrl;
+    banner.mediaType = mediaType || 'image';
     if (oldImageUrl && oldImageUrl !== imageUrl) {
       deleteBannerImage(oldImageUrl);
     }

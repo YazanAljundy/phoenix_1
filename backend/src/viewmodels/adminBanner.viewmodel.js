@@ -3,6 +3,7 @@ function serializeAdminBanner({ banner, warehouse, product }) {
     id: banner._id,
     bannerNumber: banner.bannerNumber,
     imageUrl: banner.imageUrl,
+    mediaType: banner.mediaType,
     productId: banner.productId,
     productNameAr: product ? product.nameAr : null,
     productNameEn: product ? product.nameEn : null,

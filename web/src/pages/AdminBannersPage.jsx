@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../api/client';
 import { LoadMoreControl } from '../components/LoadMoreControl';
@@ -8,6 +8,39 @@ import { AdvertisementsSubNav } from '../components/AdvertisementsSubNav';
 import { withArFallback } from '../utils/displayName';
 
 const PAGE_SIZE = 20;
+
+// Section: the admin-only upload accepts image/GIF/video (see
+// upload.middleware.js's resolveAdminBannerMediaType on the backend) - a
+// local object-URL preview before submit, picking <img> vs <video> off the
+// picked File's own MIME type. Revoked on unmount/replacement so picking a
+// few files in a row doesn't leak blob URLs.
+function useFilePreviewUrl(file) {
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const previewUrlRef = useRef(null);
+
+  useEffect(() => {
+    if (previewUrlRef.current) URL.revokeObjectURL(previewUrlRef.current);
+    const next = file ? URL.createObjectURL(file) : null;
+    previewUrlRef.current = next;
+    setPreviewUrl(next);
+    return () => {
+      if (next) URL.revokeObjectURL(next);
+    };
+  }, [file]);
+
+  return previewUrl;
+}
+
+function BannerFilePreview({ file }) {
+  const previewUrl = useFilePreviewUrl(file);
+  if (!previewUrl) return null;
+
+  return file.type.startsWith('video/') ? (
+    <video className="return-photo-thumb" src={previewUrl} style={{ width: 96, height: 96 }} muted loop autoPlay playsInline />
+  ) : (
+    <img className="return-photo-thumb" src={previewUrl} alt="" style={{ width: 96, height: 96 }} />
+  );
+}
 
 // Section: always-visible composer (mockup frame 1e) rather than a
 // "Publish new banner" button opening a modal - same state/validation/
@@ -69,11 +102,12 @@ function BannerComposer({ products, onCreated }) {
           {t('banners.image')}
           <input
             type="file"
-            accept="image/png,image/jpeg,image/webp"
+            accept="image/*,video/*"
             onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
             required
           />
         </label>
+        <BannerFilePreview file={imageFile} />
         <label>
           {t('banners.title')}
           <input value={title} onChange={(e) => setTitle(e.target.value)} required />
@@ -175,22 +209,34 @@ function EditBannerModal({ banner, onClose, onSaved }) {
       <div className="modal" onClick={(event) => event.stopPropagation()}>
         <h2>{t('banners.admin.editBanner')}</h2>
         <form onSubmit={handleSubmit} className="product-form">
-          {banner.imageUrl && (
-            <img
-              className="return-photo-thumb"
-              src={banner.imageUrl}
-              alt={banner.title}
-              style={{ width: 96, height: 96 }}
-            />
-          )}
+          {banner.imageUrl &&
+            (banner.mediaType === 'video' ? (
+              <video
+                className="return-photo-thumb"
+                src={banner.imageUrl}
+                style={{ width: 96, height: 96 }}
+                muted
+                loop
+                autoPlay
+                playsInline
+              />
+            ) : (
+              <img
+                className="return-photo-thumb"
+                src={banner.imageUrl}
+                alt={banner.title}
+                style={{ width: 96, height: 96 }}
+              />
+            ))}
           <label>
             {t('banners.admin.replaceImageOptional')}
             <input
               type="file"
-              accept="image/png,image/jpeg,image/webp"
+              accept="image/*,video/*"
               onChange={(e) => setImageFile(e.target.files?.[0] ?? null)}
             />
           </label>
+          <BannerFilePreview file={imageFile} />
           <label>
             {t('banners.title')}
             <input value={title} onChange={(e) => setTitle(e.target.value)} required />
@@ -374,7 +420,11 @@ export function AdminBannersPage() {
                           <td className="adm-num">{banner.bannerNumber}</td>
                           <td>
                             {banner.imageUrl ? (
-                              <img className="adm-table-thumb" src={banner.imageUrl} alt={banner.title} />
+                              banner.mediaType === 'video' ? (
+                                <video className="adm-table-thumb" src={banner.imageUrl} muted loop playsInline preload="metadata" />
+                              ) : (
+                                <img className="adm-table-thumb" src={banner.imageUrl} alt={banner.title} />
+                              )
                             ) : (
                               <span className="hint">{t('banners.admin.noImageYet')}</span>
                             )}

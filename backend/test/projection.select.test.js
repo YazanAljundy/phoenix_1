@@ -493,15 +493,18 @@ test('manufacturer-discounts list keeps its fields', async () => {
 
 // --- banners ---------------------------------------------------------
 
-test('active banners list keeps exactly its five slide fields', async () => {
+test('active banners list keeps exactly its six slide fields', async () => {
   const banners = await bannerService.listActiveBanners();
   const { banners: rows } = bannerViewModel.toActiveBannersResponse(banners);
   assert.strictEqual(rows.length, 1);
   assert.deepStrictEqual(
     Object.keys(rows[0]).sort(),
-    ['id', 'imageUrl', 'productId', 'manufacturerAr', 'warehouseId'].sort()
+    // mediaType ('image'/'gif'/'video') added alongside imageUrl so the
+    // pharmacy app's BannerSlider knows how to render each slide.
+    ['id', 'imageUrl', 'mediaType', 'productId', 'manufacturerAr', 'warehouseId'].sort()
   );
   assert.strictEqual(rows[0].imageUrl, 'https://x/b.jpg');
+  assert.strictEqual(rows[0].mediaType, 'image');
   assert.strictEqual(String(rows[0].warehouseId), String(ids.warehouse));
 });
 
