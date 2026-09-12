@@ -2159,6 +2159,43 @@ a.adm-pill {
   gap: 12px;
 }
 
+.wh-review-bar-row-clickable {
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 4px 6px;
+  margin: 0 -6px;
+  border-radius: 6px;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  text-align: inherit;
+}
+
+.wh-review-bar-row-clickable:hover {
+  background: var(--wh-bg);
+}
+
+.wh-review-bar-row-clickable.active {
+  background: #fff3e0;
+}
+
+.wh-review-bar-row-clickable.active .wh-review-bar-label {
+  color: var(--wh-orange);
+}
+
+.wh-review-filter-clear {
+  display: inline-block;
+  margin-top: 8px;
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 12px;
+  color: var(--wh-orange);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
 .wh-review-bar-label {
   width: 30px;
   flex: none;

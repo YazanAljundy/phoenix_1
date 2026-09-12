@@ -271,7 +271,9 @@
     "summary_other": "{{rating}} بالمعدل · {{count}} تقييمات",
     "orderNumber": "طلب رقم {{number}}",
     "latest": "أحدث التقييمات",
-    "anonymousReviewer": "مستخدم"
+    "anonymousReviewer": "مستخدم",
+    "filterAll": "الكل",
+    "noMatchingReviews": "لا توجد تقييمات بهذا التصنيف."
   },
   "discounts": {
     "addTitle": "إضافة حسم لشركة مصنّعة",

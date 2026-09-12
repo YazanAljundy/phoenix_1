@@ -310,10 +310,11 @@ export const api = {
   approveReturn: (returnId) => request(`/warehouse/returns/${returnId}/approve`, { method: 'POST' }),
   rejectReturn: (returnId, rejectionNote) =>
     request(`/warehouse/returns/${returnId}/reject`, { method: 'POST', body: { rejectionNote } }),
-  warehouseReviews: ({ limit, after } = {}) => {
+  warehouseReviews: ({ limit, after, rating } = {}) => {
     const params = new URLSearchParams();
     if (limit) params.set('limit', limit);
     if (after) params.set('after', after);
+    if (rating) params.set('rating', rating);
     const qs = params.toString();
     return request(`/warehouse/reviews${qs ? `?${qs}` : ''}`);
   },

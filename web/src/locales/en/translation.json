@@ -259,7 +259,9 @@
     "summary_other": "{{rating}} average · {{count}} reviews",
     "orderNumber": "Order #{{number}}",
     "latest": "Latest reviews",
-    "anonymousReviewer": "User"
+    "anonymousReviewer": "User",
+    "filterAll": "All",
+    "noMatchingReviews": "No reviews match this rating."
   },
   "discounts": {
     "addTitle": "Add a manufacturer discount",

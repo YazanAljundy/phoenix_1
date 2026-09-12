@@ -22,8 +22,9 @@ const list = asyncHandler(async (req, res) => {
   const warehouse = await loadWarehouseOrThrow(req.user._id);
   const { limit, after } = parseCursorQuery(req.query, 15);
   const cursor = parseObjectIdCursor(after);
+  const rating = typeof req.query.rating === 'string' ? req.query.rating : undefined;
   const { rows, hasMore, nextCursor, averageRating, totalCount, distribution } =
-    await warehouseReviewService.listPaginatedReviewsForWarehouse(warehouse._id, { limit, after: cursor });
+    await warehouseReviewService.listPaginatedReviewsForWarehouse(warehouse._id, { limit, after: cursor, rating });
   res.json({
     success: true,
     ...warehouseReviewViewModel.toWarehouseReviewsResponse({ reviews: rows, averageRating }),

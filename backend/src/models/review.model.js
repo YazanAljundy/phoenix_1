@@ -34,4 +34,16 @@ reviewSchema.index({ warehouseId: 1, reviewerType: 1, isVisible: 1, _id: -1 });
 // listReviewsForPharmacy: find({ pharmacyId, reviewerType }).sort({ createdAt:-1 })
 reviewSchema.index({ pharmacyId: 1, reviewerType: 1, createdAt: -1 });
 
+// Perf follow-up: the Reviews page's `rating` pill filter -
+// listPaginatedReviewsForWarehouse's find({warehouseId, reviewerType,
+// isVisible, rating}).sort({_id:-1}). Added ALONGSIDE the index above rather
+// than extending it in place (inserting `rating` before `_id`) - measured via
+// explain("executionStats") that dropping the 4-field index in favor of a
+// 5-field one broke the NO-rating-filter path: MongoDB could no longer use it
+// to serve the `_id` sort once `rating` sat unbound between the filter
+// prefix and the sort key (keysExamined 16 -> 1200, plan gained a blocking
+// in-memory SORT stage). Two indexes serving two access patterns is the
+// correct, measured choice here, not a compromise.
+reviewSchema.index({ warehouseId: 1, reviewerType: 1, isVisible: 1, rating: 1, _id: -1 });
+
 module.exports = model('Review', reviewSchema);
