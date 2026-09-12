@@ -17,10 +17,14 @@ const list = asyncHandler(async (req, res) => {
   const { limit, after } = parseCursorQuery(req.query, 30);
   const cursor = parseObjectIdCursor(after);
   const warehouseId = typeof req.query.warehouseId === 'string' ? req.query.warehouseId : undefined;
+  const categoryId = typeof req.query.categoryId === 'string' ? req.query.categoryId : undefined;
+  const manufacturer = typeof req.query.manufacturer === 'string' ? req.query.manufacturer : undefined;
   const search = typeof req.query.search === 'string' ? req.query.search : undefined;
   const { rows, hasMore, nextCursor } = await adminProductService.listPaginatedAllProducts({
     search,
     warehouseId,
+    categoryId,
+    manufacturer,
     limit,
     after: cursor,
   });

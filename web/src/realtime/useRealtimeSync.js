@@ -60,6 +60,10 @@ export const REALTIME_EVENTS = {
   BANNER_STATUS_UPDATED: 'banner.status.updated',
   ADVERTISEMENT_PENDING: 'advertisement.pending',
   ADVERTISEMENT_STATUS_UPDATED: 'advertisement.status.updated',
+  // The one advertisement event that ALSO reaches the warehouse panel: the
+  // server sends it to the admin room on every pause/re-enable, and to the
+  // owning warehouse's room when an admin makes the change.
+  ADVERTISEMENT_AVAILABILITY_UPDATED: 'advertisement.availability.updated',
 
   // Complaints. Routed to BOTH rooms server-side (see events.js): the admin
   // triage queue and the one warehouse a complaint is filed against.

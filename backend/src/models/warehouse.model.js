@@ -43,4 +43,13 @@ const warehouseSchema = new Schema(
 warehouseSchema.index({ userId: 1 });
 warehouseSchema.index({ city: 1 });
 
+// Perf/pagination follow-up: plain single-field indexes backing the
+// unanchored regex `$or` name searches (admin.service.js's
+// buildAccountSearchOr). Deliberately NOT a text index - see
+// product.model.js's note for why and for the measured limit. `city` already
+// has its own index above; Warehouse has no `ownerName` field.
+warehouseSchema.index({ nameAr: 1 });
+warehouseSchema.index({ nameEn: 1 });
+warehouseSchema.index({ phone: 1 });
+
 module.exports = model('Warehouse', warehouseSchema);

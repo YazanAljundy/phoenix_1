@@ -158,7 +158,7 @@ class _ContextCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
-    final navy = AppColors.navyOf(context);
+    final ink = AppColors.textOf(context);
 
     final (IconData icon, String label, List<String> lines) = switch (state.context) {
       ComplaintContext.general => (
@@ -186,14 +186,14 @@ class _ContextCard extends StatelessWidget {
       width: double.infinity,
       padding: const EdgeInsets.all(AppSizes.spacingMedium),
       decoration: BoxDecoration(
-        color: navy.withValues(alpha: 0.08),
+        color: ink.withValues(alpha: 0.08),
         borderRadius: AppRadius.medium,
-        border: Border.all(color: navy.withValues(alpha: 0.25)),
+        border: Border.all(color: ink.withValues(alpha: 0.25)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 20, color: navy),
+          Icon(icon, size: 20, color: ink),
           const SizedBox(width: AppSizes.spacingMedium),
           Expanded(
             child: Column(

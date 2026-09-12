@@ -87,6 +87,21 @@ Future<void> launchAdvertisementCart(BuildContext context, String advertisementI
 
   if (!context.mounted) return;
 
+  // Paused by its warehouse or an admin. The server still describes it, but
+  // will refuse it at checkout, so it is never added here. A copy that is
+  // already sitting in the cart from before the pause is flagged right away,
+  // so its warning shows the next time the cart is opened rather than only
+  // after a refused checkout.
+  if (!preparation.isAvailable) {
+    cartCubit.markPackagesUnavailable([preparation.advertisementId]);
+    await AppDialog.show(
+      context: context,
+      title: l10n.advertisementUnavailableTitle,
+      content: l10n.advertisementUnavailableMessage,
+    );
+    return;
+  }
+
   // A package is all-or-nothing: the server rejects an incomplete one at
   // checkout (ADVERTISEMENT_ITEM_MISSING), so it is never half-added here.
   if (!preparation.isComplete) {

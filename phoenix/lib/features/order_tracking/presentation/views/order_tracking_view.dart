@@ -761,7 +761,7 @@ class _OrderComplaintsSection extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(Icons.support_agent_outlined, size: 20, color: AppColors.navyOf(context)),
+              Icon(Icons.support_agent_outlined, size: 20, color: AppColors.textOf(context)),
               const SizedBox(width: AppSizes.spacingSmall),
               Expanded(
                 child: Text(l10n.orderComplaintsSectionTitle, style: context.textTheme.titleMedium),
@@ -834,8 +834,8 @@ class _OrderComplaintsSection extends StatelessWidget {
               icon: const Icon(Icons.add_comment_outlined, size: 18),
               label: Text(l10n.submitComplaintAboutOrderCta),
               style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.navyOf(context),
-                side: BorderSide(color: AppColors.navyOf(context)),
+                foregroundColor: AppColors.textOf(context),
+                side: BorderSide(color: AppColors.textOf(context)),
                 shape: const RoundedRectangleBorder(borderRadius: AppRadius.small),
                 padding: const EdgeInsets.symmetric(vertical: 12),
               ),

@@ -100,10 +100,13 @@ class PackagePromotion extends Promotion {
       ? advertisement.warehouseNameAr
       : (advertisement.warehouseNameEn ?? advertisement.warehouseNameAr);
 
-  /// The first item that actually has one - a package has no image of its own,
-  /// only its products'.
+  /// The package's own image when it has one; otherwise the first item that
+  /// actually has one, since older packages (or ones the warehouse never
+  /// attached a photo to) carry no image of their own, only their products'.
   @override
   String? get imageUrl {
+    final packageImage = advertisement.imageUrl;
+    if (packageImage != null && packageImage.trim().isNotEmpty) return packageImage;
     for (final item in advertisement.items) {
       final image = item.image;
       if (image != null && image.trim().isNotEmpty) return image;

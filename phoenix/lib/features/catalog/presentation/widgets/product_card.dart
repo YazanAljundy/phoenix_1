@@ -251,21 +251,28 @@ class _AddButton extends StatelessWidget {
       backgroundColor: AppColors.primaryOf(context).withValues(alpha: 0.12),
       foregroundColor: AppColors.primaryOf(context),
       disabledBackgroundColor: AppColors.borderOf(context),
-      shape: compact
-          ? const CircleBorder()
-          : const RoundedRectangleBorder(borderRadius: AppRadius.small),
-      padding: compact ? EdgeInsets.zero : const EdgeInsets.symmetric(vertical: 8),
+      shape: const RoundedRectangleBorder(borderRadius: AppRadius.small),
+      padding: compact
+          ? const EdgeInsets.symmetric(horizontal: AppSizes.spacingSmall + AppSizes.spacingXSmall)
+          : const EdgeInsets.symmetric(vertical: 8),
       elevation: 0,
     );
 
+    // The list row's button used to be a bare "+" icon. It now says what it
+    // does - the same button, callback and tinted style, only a labelled pill
+    // in place of the circle, about as wide as the in-cart stepper that takes
+    // its slot once the product is added.
     if (compact) {
       return SizedBox(
-        width: 40,
         height: 40,
         child: FilledButton(
           onPressed: available ? onTap : null,
           style: style,
-          child: const Icon(Icons.add, size: 20),
+          child: Text(
+            l10n.addToCartFullButton,
+            maxLines: 1,
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+          ),
         ),
       );
     }
@@ -328,7 +335,7 @@ class _PriceDisplay extends StatelessWidget {
         Text(
           formatMoneyFromUsd(product.discountPriceUsd, usdToSyp, l10n.currencySuffix),
           style: TextStyle(
-            color: AppColors.secondary,
+            color: AppColors.secondaryOf(context),
             fontWeight: FontWeight.bold,
             fontSize: 15,
           ),

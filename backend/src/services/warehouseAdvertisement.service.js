@@ -4,6 +4,7 @@ const Advertisement = require('../models/advertisement.model');
 const Product = require('../models/product.model');
 const Counter = require('../models/counter.model');
 const { applyResolvedIdentity } = require('./productCatalog.service');
+const { deleteImageByUrl } = require('./upload.service');
 const { emitToAdmins, EVENTS } = require('../realtime');
 
 // Same atomic $inc pattern as Banner's nextBannerNumber (warehouseBanner.service.js).
@@ -116,7 +117,7 @@ async function buildAdvertisementFields(warehouseId, data) {
   const items = await validateItems(data.items, warehouseId);
   validatePriceUsd(data.totalPriceUsd, 'INVALID_TOTAL_PRICE');
 
-  return {
+  const fields = {
     titleAr: data.titleAr.trim(),
     titleEn: data.titleEn.trim(),
     items,
@@ -124,6 +125,13 @@ async function buildAdvertisementFields(warehouseId, data) {
     startDate,
     endDate,
   };
+  // Optional, and only touched when the caller actually sets the key - a
+  // content edit with no new file must leave the stored image alone (see the
+  // controllers' resolveUploadedImage/imageUrl handling).
+  if (data.imageUrl !== undefined) {
+    fields.imageUrl = data.imageUrl || null;
+  }
+  return fields;
 }
 
 async function findOwnedAdvertisementOrThrow(advertisementId, warehouseId) {
@@ -188,6 +196,7 @@ async function createAdvertisement(warehouseId, data) {
 async function updateAdvertisement(advertisementId, warehouseId, data) {
   const advertisement = await findOwnedAdvertisementOrThrow(advertisementId, warehouseId);
   const fields = await buildAdvertisementFields(warehouseId, data);
+  const previousImageUrl = advertisement.imageUrl;
 
   Object.assign(advertisement, fields);
 
@@ -208,6 +217,13 @@ async function updateAdvertisement(advertisementId, warehouseId, data) {
 
   await advertisement.save();
 
+  // Fire-and-forget, same reasoning as Banner's deleteBannerImage - an
+  // orphaned Cloudinary asset from a replaced image is never worth failing
+  // the edit that already succeeded over.
+  if (fields.imageUrl !== undefined && previousImageUrl && previousImageUrl !== fields.imageUrl) {
+    deleteImageByUrl(previousImageUrl);
+  }
+
   // Only re-queued content is announced - an edit to something already
   // sitting in the queue doesn't need a second signal.
   if (wasModerated) {
@@ -225,6 +241,10 @@ async function deleteAdvertisement(advertisementId, warehouseId) {
   const advertisement = await findOwnedAdvertisementOrThrow(advertisementId, warehouseId);
   await advertisement.deleteOne();
 
+  if (advertisement.imageUrl) {
+    deleteImageByUrl(advertisement.imageUrl);
+  }
+
   // A pending advertisement was occupying the admin queue - tell the panel to
   // drop it, the same way rejectOffer does when it removes a row.
   if (advertisement.status === 'pending') {
@@ -236,8 +256,66 @@ async function deleteAdvertisement(advertisementId, warehouseId) {
   }
 }
 
-async function listAdvertisementsForWarehouse(warehouseId) {
-  const advertisements = await Advertisement.find({ warehouseId }).sort({ createdAt: -1 });
+// The warehouse's pause switch, both directions. A warehouse can take its own
+// package off sale, or bring it back, with no admin involved - the admin's own
+// switch (adminAdvertisement.service.js's setAdvertisementAvailability) still
+// works the same way alongside this one, for the packages of any warehouse.
+//
+// Restricted to an `approved` package: a pending or rejected row has never
+// been on sale, so "pause"/"make available" doesn't mean anything on it yet -
+// that content is still (or again) awaiting a moderation decision, not an
+// availability one.
+//
+// Independent of `status` otherwise, and of updateAdvertisement's own
+// back-to-pending behavior: toggling this flag never touches `status`, and
+// editing content never touches this flag (updateAdvertisement only copies
+// buildAdvertisementFields' fields) - the two are deliberately separate axes.
+async function updateAdvertisementAvailability(advertisementId, warehouseId, isAvailable) {
+  if (typeof isAvailable !== 'boolean') {
+    throw ApiError.badRequest('Invalid availability.', undefined, 'INVALID_AVAILABILITY');
+  }
+  // Ownership first: acting on another warehouse's package is the same 404 as
+  // naming one that doesn't exist, never a 403/400 that confirms it does.
+  const advertisement = await findOwnedAdvertisementOrThrow(advertisementId, warehouseId);
+
+  if (advertisement.status !== 'approved') {
+    throw ApiError.badRequest(
+      'Only an approved package can be paused or made available.',
+      undefined,
+      'ADVERTISEMENT_NOT_APPROVED'
+    );
+  }
+
+  // Setting the state it is already in writes and announces nothing - it just
+  // answers with the current state.
+  if ((advertisement.isAvailable !== false) !== isAvailable) {
+    advertisement.isAvailable = isAvailable;
+    await advertisement.save();
+
+    emitToAdmins(EVENTS.ADVERTISEMENT_AVAILABILITY_UPDATED, {
+      advertisementId: advertisement._id.toString(),
+      warehouseId: String(warehouseId),
+      isAvailable,
+    });
+  }
+
+  const [row] = await attachProducts([advertisement]);
+  return row;
+}
+
+function validateStatusFilter(status) {
+  if (status && !Advertisement.schema.path('status').enumValues.includes(status)) {
+    throw ApiError.badRequest('Invalid status filter.', undefined, 'INVALID_STATUS_FILTER');
+  }
+}
+
+// `status` is optional - omitted, this is every one of the warehouse's own
+// packages regardless of status, same default as before this filter existed.
+async function listAdvertisementsForWarehouse(warehouseId, status) {
+  validateStatusFilter(status);
+  const filter = { warehouseId };
+  if (status) filter.status = status;
+  const advertisements = await Advertisement.find(filter).sort({ createdAt: -1 });
   if (advertisements.length === 0) return [];
   return attachProducts(advertisements);
 }
@@ -246,6 +324,11 @@ module.exports = {
   createAdvertisement,
   updateAdvertisement,
   deleteAdvertisement,
+  updateAdvertisementAvailability,
   listAdvertisementsForWarehouse,
   findOwnedAdvertisementOrThrow,
+  // Shared with adminAdvertisement.service.js's adminUpdateAdvertisement, same
+  // reasoning as warehouseOffer.service.js exporting buildOfferFields: one
+  // validation path for both the warehouse's and the admin's direct edit.
+  buildAdvertisementFields,
 };

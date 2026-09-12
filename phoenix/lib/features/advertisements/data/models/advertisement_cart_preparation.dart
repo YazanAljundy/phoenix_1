@@ -26,6 +26,7 @@ class AdvertisementCartPreparation {
     required this.itemsTotalUsd,
     required this.totalPriceUsd,
     this.unavailableItems = const [],
+    this.isAvailable = true,
   });
 
   final String advertisementId;
@@ -53,6 +54,13 @@ class AdvertisementCartPreparation {
   /// Reported so the pharmacist is told, never silently dropped.
   final List<UnavailableReorderItem> unavailableItems;
 
+  /// False once the package's warehouse or an admin has paused it. The server
+  /// still sends the full payload for a paused package - so a cart already
+  /// holding it can say what it is - but refuses it at checkout
+  /// (PACKAGE_UNAVAILABLE). Defaults to true for a server that predates the
+  /// field.
+  final bool isAvailable;
+
   bool get hasItems => contents.isNotEmpty;
 
   /// A package can only be bought whole. If any of its products is
@@ -71,6 +79,7 @@ class AdvertisementCartPreparation {
       pricePerCopyUsd: totalPriceUsd,
       copies: copies,
       contents: contents,
+      isAvailable: isAvailable,
     );
   }
 
@@ -97,6 +106,7 @@ class AdvertisementCartPreparation {
           .firstOrNull,
       itemsTotalUsd: (json['itemsTotalUsd'] as num?) ?? 0,
       totalPriceUsd: json['totalPriceUsd'] as num,
+      isAvailable: (json['isAvailable'] as bool?) ?? true,
       unavailableItems: ((json['unavailableItems'] as List?) ?? const [])
           .map((e) => UnavailableReorderItem.fromJson(e as Map<String, dynamic>))
           .toList(),

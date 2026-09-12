@@ -44,23 +44,29 @@ void main() {
   Future<void> pumpCard(
     WidgetTester tester, {
     int cartQuantity = 0,
+    bool isGrid = true,
+    Locale? locale,
     ValueChanged<int>? onAdd,
     ValueChanged<int>? onCartQuantityChanged,
     VoidCallback? onCartRemove,
   }) {
     return tester.pumpWidget(
       MaterialApp(
+        locale: locale,
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: BlocProvider<ExchangeRateCubit>.value(
           value: rateCubit,
           child: Scaffold(
             body: Center(
+              // A grid cell at the catalog's real metrics, or a list row as wide
+              // as a 360pt phone leaves it (minus the screen's side padding).
               child: SizedBox(
-                width: 160,
-                height: 316,
+                width: isGrid ? 160 : 328,
+                height: isGrid ? 316 : null,
                 child: ProductCard(
                   product: _product,
+                  isGrid: isGrid,
                   cartQuantity: cartQuantity,
                   onAdd: onAdd ?? (_) {},
                   onCartQuantityChanged: onCartQuantityChanged,
@@ -116,5 +122,48 @@ void main() {
     await tester.pump();
 
     expect(reported, [3, 30]);
+  });
+
+  // The list row - the catalog's default layout - used to offer a bare "+"
+  // here. It is the same button now, labelled.
+  group('list row add button', () {
+    testWidgets('reads "Add to cart" instead of a bare +', (tester) async {
+      await pumpCard(tester, isGrid: false);
+
+      expect(find.text('Add to cart'), findsOneWidget);
+      expect(find.byIcon(Icons.add), findsNothing);
+      expect(find.byType(QuantityStepper), findsNothing);
+    });
+
+    testWidgets('runs the same quantity sheet -> onAdd flow the + did', (tester) async {
+      final added = <int>[];
+      await pumpCard(tester, isGrid: false, onAdd: added.add);
+
+      await tester.tap(find.text('Add to cart'));
+      await tester.pumpAndSettle();
+
+      // The existing pre-add quantity sheet: step to 2, then confirm.
+      await tester.tap(find.byIcon(Icons.add));
+      await tester.pump();
+      await tester.tap(find.text('Add'));
+      await tester.pumpAndSettle();
+
+      expect(added, [2]);
+    });
+
+    testWidgets('once the product is in the cart the slot is still the stepper', (tester) async {
+      await pumpCard(tester, isGrid: false, cartQuantity: 3);
+
+      expect(find.byType(QuantityStepper), findsOneWidget);
+      expect(find.text('Add to cart'), findsNothing);
+    });
+
+    testWidgets('fits a phone-width row in Arabic', (tester) async {
+      await loadRate(15000);
+      await pumpCard(tester, isGrid: false, locale: const Locale('ar'));
+
+      expect(find.text('إضافة إلى السلة'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
   });
 }

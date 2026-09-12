@@ -167,8 +167,8 @@ class _ReorderButtonState extends State<ReorderButton> {
       icon: icon,
       label: Text(l10n.reorderButton),
       style: OutlinedButton.styleFrom(
-        foregroundColor: AppColors.navyOf(context),
-        side: BorderSide(color: AppColors.navyOf(context)),
+        foregroundColor: AppColors.textOf(context),
+        side: BorderSide(color: AppColors.textOf(context)),
         shape: const RoundedRectangleBorder(borderRadius: AppRadius.small),
         padding: EdgeInsets.symmetric(
           horizontal: widget.dense ? 12 : 16,

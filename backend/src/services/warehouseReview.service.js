@@ -79,11 +79,27 @@ async function listReviewsForWarehouse(warehouseId) {
 // averageRating/totalCount/distribution come from getReviewStatsForWarehouse
 // above, not from this page's rows, so they stay correct regardless of how
 // many pages have been loaded.
+// Exact match against Review.rating - the stars pill is 1-5 or 'all', never
+// a range, so this stays a plain equality clause rather than the min/max
+// pattern the Offers page's discount filter uses.
+function validateRatingFilter(rating) {
+  if (rating === undefined || rating === null || rating === 'all') return undefined;
+  const value = Number(rating);
+  if (!Number.isInteger(value) || value < 1 || value > 5) {
+    throw ApiError.badRequest('Invalid rating filter.', undefined, 'INVALID_RATING_FILTER');
+  }
+  return value;
+}
+
 async function listPaginatedReviewsForWarehouse(
   warehouseId,
-  { limit = WAREHOUSE_REVIEWS_DEFAULT_LIMIT, after = null } = {}
+  { limit = WAREHOUSE_REVIEWS_DEFAULT_LIMIT, after = null, rating } = {}
 ) {
+  const ratingFilter = validateRatingFilter(rating);
   const filter = { warehouseId, ...RECEIVED_REVIEW_FILTER_FIELDS };
+  if (ratingFilter !== undefined) {
+    filter.rating = ratingFilter;
+  }
   if (after !== null) {
     filter._id = { $lt: after };
   }
@@ -173,4 +189,9 @@ async function createPharmacyReview(warehouseId, userId, { orderId, rating, comm
   return review;
 }
 
-module.exports = { listReviewsForWarehouse, listPaginatedReviewsForWarehouse, createPharmacyReview };
+module.exports = {
+  listReviewsForWarehouse,
+  listPaginatedReviewsForWarehouse,
+  createPharmacyReview,
+  validateRatingFilter,
+};

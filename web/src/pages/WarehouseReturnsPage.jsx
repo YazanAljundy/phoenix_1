@@ -8,6 +8,7 @@ import { REALTIME_EVENTS, useRealtimeSync } from '../realtime/useRealtimeSync';
 import { formatSyp } from '../utils/currency';
 
 const PAGE_SIZE = 15;
+const STATUS_FILTERS = ['all', 'pending', 'approved', 'rejected'];
 
 function statusBadgeClass(returnRequest) {
   if (returnRequest.status === 'approved') return 'status-delivered';
@@ -21,6 +22,7 @@ function statusBadgeClass(returnRequest) {
 export function WarehouseReturnsPage() {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const [statusFilter, setStatusFilter] = useState('all');
   const [busyId, setBusyId] = useState(null);
   const [actionError, setActionError] = useState(null);
 
@@ -30,16 +32,23 @@ export function WarehouseReturnsPage() {
     return t('returns.statusPending');
   };
 
+  const filterLabel = (filter) => {
+    if (filter === 'all') return t('returns.filterAll');
+    if (filter === 'approved') return t('returns.statusApproved');
+    if (filter === 'rejected') return t('returns.statusRejected');
+    return t('returns.statusPending');
+  };
+
   // Newest first is the backend's own paginated sort now (see
   // listPaginatedReturnsForWarehouse) - no client-side re-sort needed here.
   const fetchPage = useCallback(
     (cursor) =>
-      api.warehouseReturns({ limit: PAGE_SIZE, after: cursor }).then((data) => ({
+      api.warehouseReturns({ status: statusFilter, limit: PAGE_SIZE, after: cursor }).then((data) => ({
         rows: data.returns,
         hasMore: data.pagination.hasMore,
         nextCursor: data.pagination.nextCursor,
       })),
-    []
+    [statusFilter]
   );
 
   const { data: returns, isLoading, isLoadingMore, hasMore, error, loadMore, reset } =
@@ -48,7 +57,7 @@ export function WarehouseReturnsPage() {
   useEffect(() => {
     reset();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [statusFilter]);
 
   // Realtime: same signal-then-refetch shape as the orders queue. A return
   // filed by a pharmacy has a customer waiting on the decision, so the queue
@@ -109,6 +118,19 @@ export function WarehouseReturnsPage() {
     <div>
       <div className="wh-page-head">
         <h1>{t('nav.returns')}</h1>
+      </div>
+
+      <div className="wh-pills">
+        {STATUS_FILTERS.map((filter) => (
+          <button
+            key={filter}
+            type="button"
+            className={`wh-pill${statusFilter === filter ? ' active' : ''}`}
+            onClick={() => setStatusFilter(filter)}
+          >
+            {filterLabel(filter)}
+          </button>
+        ))}
       </div>
 
       {(error || actionError) && <p className="error-text">{error || actionError}</p>}

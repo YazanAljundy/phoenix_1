@@ -1,6 +1,7 @@
 const { asyncHandler } = require('../utils/asyncHandler');
 const exchangeRateService = require('../services/exchangeRate.service');
 const exchangeRateViewModel = require('../viewmodels/exchangeRate.viewmodel');
+const { parseCursorQuery, parseObjectIdCursor, paginationMeta } = require('../utils/pagination');
 
 // Unlike the public endpoint, this always returns 200 - even with no rate
 // stored yet - so the panel can render the card in an empty state and let
@@ -18,18 +19,22 @@ const setManualRate = asyncHandler(async (req, res) => {
   res.json({ success: true, ...exchangeRateViewModel.toAdminExchangeRateResponse(rate) });
 });
 
-// The append-only history behind the current rate, newest first.
+// The append-only history behind the current rate, newest first - cursor-
+// paginated the same way every other "Load more" list in the panel is.
 const listHistory = asyncHandler(async (req, res) => {
-  const history = await exchangeRateService.listRateHistory({ limit: 20 });
+  const { limit, after } = parseCursorQuery(req.query, 20);
+  const cursor = parseObjectIdCursor(after);
+  const { rows, hasMore, nextCursor } = await exchangeRateService.listRateHistory({ limit, after: cursor });
   res.json({
     success: true,
-    history: history.map((row) => ({
+    history: rows.map((row) => ({
       id: row._id,
       usdToSyp: row.usdToSyp,
       previousUsdToSyp: row.previousUsdToSyp,
       source: row.source,
       effectiveFrom: row.effectiveFrom,
     })),
+    pagination: paginationMeta(hasMore, nextCursor),
   });
 });
 

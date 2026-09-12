@@ -49,11 +49,20 @@ class CartItemTile extends StatelessWidget {
     // Every figure on this tile is SYP, converted from the stored USD price
     // at the current rate.
     final usdToSyp = context.watch<ExchangeRateCubit>().state.usdToSyp;
+    final secondary = AppColors.textSecondaryOf(context);
 
+    // A little roomier than the app's default card: the cart is where each
+    // line gets checked before the order goes out, so every line gets a larger
+    // picture, larger type and the full-size quantity controls.
     return CustomCard(
+      padding: const EdgeInsets.all(AppSizes.spacingMedium + AppSizes.spacingXSmall),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (item.isPackage && !item.isAvailable) ...[
+            const _UnavailablePackageBanner(),
+            const SizedBox(height: AppSizes.spacingMedium),
+          ],
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -76,34 +85,32 @@ class CartItemTile extends StatelessWidget {
                         Expanded(
                           child: Text(
                             name,
-                            style: context.textTheme.titleSmall,
+                            style: context.textTheme.titleMedium,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: AppSizes.spacingXSmall),
                     Text(
                       isArabic ? item.manufacturerAr : (item.manufacturerEn ?? item.manufacturerAr),
-                      style: context.textTheme.bodySmall?.copyWith(
-                        color: AppColors.textSecondaryOf(context),
-                      ),
+                      style: context.textTheme.bodyMedium?.copyWith(color: secondary),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: AppSizes.spacingXSmall),
+                    const SizedBox(height: AppSizes.spacingSmall),
                     if (item.hasOffer)
                       Wrap(
                         crossAxisAlignment: WrapCrossAlignment.center,
-                        spacing: AppSizes.spacingXSmall,
+                        spacing: AppSizes.spacingSmall,
                         children: [
                           Text(
                             formatMoneyFromUsd(item.unitPriceUsd, usdToSyp, l10n.currencySuffix),
                             style: TextStyle(
                               decoration: TextDecoration.lineThrough,
-                              color: AppColors.textSecondaryOf(context),
-                              fontSize: 11.5,
+                              color: secondary,
+                              fontSize: 12,
                             ),
                           ),
                           Text(
@@ -111,7 +118,7 @@ class CartItemTile extends StatelessWidget {
                             style: TextStyle(
                               color: AppColors.secondaryOf(context),
                               fontWeight: FontWeight.bold,
-                              fontSize: 13,
+                              fontSize: 15,
                             ),
                           ),
                         ],
@@ -122,7 +129,7 @@ class CartItemTile extends StatelessWidget {
                         style: TextStyle(
                           color: AppColors.primaryOf(context),
                           fontWeight: FontWeight.bold,
-                          fontSize: 13,
+                          fontSize: 15,
                         ),
                       ),
                     // What the package actually delivers, at the current copy
@@ -135,9 +142,7 @@ class CartItemTile extends StatelessWidget {
                           padding: const EdgeInsetsDirectional.only(top: 2),
                           child: Text(
                             '${content.name(isArabic)} x${content.quantityPerCopy * item.quantity}',
-                            style: context.textTheme.bodySmall?.copyWith(
-                              color: AppColors.textSecondaryOf(context),
-                            ),
+                            style: context.textTheme.bodySmall?.copyWith(color: secondary),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -146,13 +151,34 @@ class CartItemTile extends StatelessWidget {
                   ],
                 ),
               ),
+              const SizedBox(width: AppSizes.spacingSmall),
+              // The same remove action, on a soft tinted square so it reads as
+              // a button at a glance without shouting over the line itself.
               IconButton(
                 icon: Icon(Icons.delete_outline, color: AppColors.errorOf(context)),
                 onPressed: () => _confirmRemoval(context),
+                style: IconButton.styleFrom(
+                  backgroundColor: AppColors.errorOf(context).withValues(alpha: 0.08),
+                  shape: const RoundedRectangleBorder(borderRadius: AppRadius.small),
+                ),
               ),
             ],
           ),
-          const Divider(height: AppSizes.spacingLarge),
+          const SizedBox(height: AppSizes.spacingMedium),
+          Divider(height: 1, color: AppColors.borderOf(context)),
+          const SizedBox(height: AppSizes.spacingMedium),
+          // A package's number is its copy count, so it is captioned - above
+          // the stepper rather than beside it, so that at full size the
+          // caption never squeezes the line total.
+          if (item.isPackage) ...[
+            Text(
+              l10n.packageCopiesLabel,
+              style: context.textTheme.bodySmall?.copyWith(color: secondary),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: AppSizes.spacingXSmall),
+          ],
           Row(
             children: [
               // The real cart quantity - QuantityStepper holds no number of its
@@ -161,33 +187,24 @@ class CartItemTile extends StatelessWidget {
               // clearing the field, or − at 1) opens the remove confirmation.
               QuantityStepper(
                 quantity: item.quantity,
-                compact: true,
                 decrementTooltip: l10n.decreaseQuantityLabel,
                 incrementTooltip: l10n.increaseQuantityLabel,
                 onChanged: onQuantityChanged,
                 onBelowMin: () => _confirmRemoval(context),
               ),
-              if (item.isPackage) ...[
-                const SizedBox(width: AppSizes.spacingXSmall),
-                Flexible(
-                  child: Text(
-                    l10n.packageCopiesLabel,
-                    style: context.textTheme.bodySmall?.copyWith(
-                      color: AppColors.textSecondaryOf(context),
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
+              const SizedBox(width: AppSizes.spacingMedium),
               Expanded(
                 child: Align(
                   alignment: AlignmentDirectional.centerEnd,
-                  child: Text(
-                    formatMoneyFromUsd(item.lineTotalUsd, usdToSyp, l10n.currencySuffix),
-                    style: context.textTheme.titleSmall,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                  // Scales down instead of ellipsizing on a very narrow
+                  // screen: a cut-off amount would misstate what the line costs.
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      formatMoneyFromUsd(item.lineTotalUsd, usdToSyp, l10n.currencySuffix),
+                      style: context.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                      maxLines: 1,
+                    ),
                   ),
                 ),
               ),
@@ -211,10 +228,10 @@ class _ItemImage extends StatelessWidget {
     // for when real URLs land.
     return AppNetworkImage(
       url: url,
-      width: 56,
-      height: 56,
+      width: 72,
+      height: 72,
       fit: BoxFit.cover,
-      borderRadius: AppRadius.small,
+      borderRadius: AppRadius.medium,
       fallbackIcon: Icons.medication_outlined,
     );
   }
@@ -239,6 +256,46 @@ class _PackageBadge extends StatelessWidget {
           color: AppColors.secondaryOf(context),
           fontWeight: FontWeight.bold,
         ),
+      ),
+    );
+  }
+}
+
+// On a package line the server has reported as no longer available (paused by
+// its warehouse or an admin). A standing warning, not a blocker: the line keeps
+// its quantity and remove controls, and checkout is left to the server, which
+// refuses the package with the same message this states.
+class _UnavailablePackageBanner extends StatelessWidget {
+  const _UnavailablePackageBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    final color = AppColors.errorOf(context);
+    return Container(
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSizes.spacingSmall,
+        vertical: AppSizes.spacingXSmall,
+      ),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: AppRadius.small,
+        border: Border.all(color: color.withValues(alpha: 0.4)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(Icons.error_outline, size: 18, color: color),
+          const SizedBox(width: AppSizes.spacingXSmall),
+          Expanded(
+            child: Text(
+              context.l10n.packageUnavailableBanner,
+              style: context.textTheme.bodySmall?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

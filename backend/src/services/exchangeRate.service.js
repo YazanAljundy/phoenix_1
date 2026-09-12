@@ -175,9 +175,23 @@ async function setManualRate(usdToSyp, changedBy = null) {
 
 // The rates the singleton has held, newest first - shown beside the admin's
 // rate card so a change is visible in context rather than replacing the only
-// copy of the old number.
-async function listRateHistory({ limit = 20 } = {}) {
-  return ExchangeRateHistory.find({}).sort({ effectiveFrom: -1 }).limit(limit).lean();
+// copy of the old number. Cursor-paginated on `_id` rather than `effectiveFrom`
+// - the two orderings always agree, since recordRateChange stamps
+// effectiveFrom with `new Date()` at the exact moment it creates the row and
+// nothing ever backdates it - but `_id` is what every other cursor-paginated
+// list in the app sorts and cursors on (see offer.service.js's
+// listPaginatedOffers), so this stays consistent with that rather than
+// inventing its own convention.
+async function listRateHistory({ limit = 20, after = null } = {}) {
+  const filter = after !== null ? { _id: { $lt: after } } : {};
+  const rows = await ExchangeRateHistory.find(filter)
+    .sort({ _id: -1 })
+    .limit(limit + 1)
+    .lean();
+  const hasMore = rows.length > limit;
+  const page = hasMore ? rows.slice(0, limit) : rows;
+  const nextCursor = page.length > 0 ? String(page[page.length - 1]._id) : null;
+  return { rows: page, hasMore, nextCursor };
 }
 
 // Admin-triggered "hand control back to the API". Always clears

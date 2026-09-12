@@ -65,6 +65,7 @@ class AdvertisementModel {
     required this.items,
     required this.itemsTotalUsd,
     required this.totalPriceUsd,
+    this.imageUrl,
     required this.savingPercentage,
   });
 
@@ -79,6 +80,11 @@ class AdvertisementModel {
   // is what is actually charged; the gap between them is the saving.
   final num itemsTotalUsd;
   final num totalPriceUsd;
+  // The package's own optional image. Null renders the app's standard themed
+  // placeholder (see AppNetworkImage) - most packages carry no image of
+  // their own, only their products' (see PackagePromotion.imageUrl's
+  // per-item fallback).
+  final String? imageUrl;
   // The saving % the package total represents against the catalog total,
   // computed server-side (0 when the total isn't below the sum).
   final int savingPercentage;
@@ -107,6 +113,7 @@ class AdvertisementModel {
           .toList(),
       itemsTotalUsd: itemsTotal,
       totalPriceUsd: total,
+      imageUrl: json['imageUrl'] as String?,
       // Fall back to the local formula if an older server doesn't send it.
       savingPercentage: (json['savingPercentage'] as num?)?.round() ??
           (itemsTotal > 0 ? (((itemsTotal - total) / itemsTotal) * 100).round().clamp(0, 100) : 0),

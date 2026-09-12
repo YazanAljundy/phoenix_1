@@ -8,6 +8,7 @@ class RouteNames {
   static const String approvalPending = 'approval-pending';
   static const String warehouseSelection = 'warehouse-selection';
   static const String promotions = 'promotions';
+  static const String warehouseOffers = 'warehouse-offers';
   static const String warehouseProfile = 'warehouse-profile';
   static const String manufacturers = 'manufacturers';
   static const String catalog = 'catalog';

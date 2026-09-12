@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:feniq/core/constants/app_colors.dart';
 import 'package:feniq/core/theme/dark_theme.dart';
 import 'package:feniq/core/theme/light_theme.dart';
 import 'package:feniq/core/widgets/custom_card.dart';
@@ -8,7 +9,7 @@ import 'package:feniq/features/warehouse_selection/presentation/widgets/warehous
 import 'package:feniq/generated/app_localizations.dart';
 
 // The redesigned card has a fixed budget: WarehouseSelectionView lays it out
-// in a grid tile of at most 210pt wide and exactly 288pt tall. A card that
+// in a grid tile of at most 210pt wide and exactly 220pt tall. A card that
 // overflows that renders a yellow-and-black overflow stripe in front of the
 // pharmacist, so the budget is worth pinning - especially against the two
 // things that stretch it, a long name and a large text scale.
@@ -17,9 +18,11 @@ import 'package:feniq/generated/app_localizations.dart';
 // inside the real tile size is the assertion; the expects below just prove
 // the content actually made it in.
 void main() {
-  // The narrowest tile the grid produces on a phone (two columns inside a
-  // 390pt screen), which is the tightest the card ever has to be.
-  const tileSize = Size(171, 288);
+  // A touch narrower than the tile the grid produces on a phone (two columns
+  // inside a 390pt screen), which is about the tightest the card ever has to
+  // be. The card's height doesn't depend on its width, only its text wrapping
+  // does.
+  const tileSize = Size(171, 220);
 
   WarehouseModel warehouse({String? name, String? logo}) => WarehouseModel(
     id: 'w1',
@@ -80,6 +83,12 @@ void main() {
 
     expect(find.text('Latakia Warehouse'), findsOneWidget);
     expect(find.byType(CustomCard), findsOneWidget);
+    // The label was once drawn in navyOf, which in night mode is the card's
+    // own fill colour - present in the tree, invisible on screen.
+    expect(
+      tester.widget<Text>(find.text('Profile')).style?.color,
+      isNot(AppColors.darkSurfaceElevated),
+    );
   });
 
   testWidgets('fits its grid tile in Arabic, right to left', (tester) async {
@@ -116,6 +125,21 @@ void main() {
 
     expect(find.byType(WarehouseCard), findsOneWidget);
     expect(find.text('Profile'), findsOneWidget);
+  });
+
+  testWidgets('survives a long name at a larger text scale together', (tester) async {
+    // The worst case the tile height is sized for: a name wrapping to two
+    // lines, with every line taller.
+    await pumpCard(
+      tester,
+      theme: LightTheme.data,
+      locale: const Locale('ar'),
+      model: warehouse(name: 'مستودع النور الطبي الكبير للتوزيع والتجارة'),
+      textScale: 1.3,
+    );
+
+    expect(find.text('Latakia'), findsOneWidget);
+    expect(find.byType(OutlinedButton), findsOneWidget);
   });
 
   testWidgets('a warehouse with no logo still draws its placeholder', (tester) async {

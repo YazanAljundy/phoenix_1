@@ -8,6 +8,7 @@ import {
   productFormFromProduct,
 } from '../components/ProductFormModal';
 import { LoadMoreControl } from '../components/LoadMoreControl';
+import { SearchableSelect } from '../components/SearchableSelect';
 import { usePaginatedData } from '../hooks/usePaginatedData';
 import { useExchangeRate } from '../context/ExchangeRateContext';
 import { formatUsdAsSyp } from '../utils/currency';
@@ -25,6 +26,8 @@ export function AdminProductsPage() {
   const [categories, setCategories] = useState([]);
   const [warehouses, setWarehouses] = useState([]);
   const [warehouseFilter, setWarehouseFilter] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
+  const [manufacturerFilter, setManufacturerFilter] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [editingProduct, setEditingProduct] = useState(null);
@@ -50,6 +53,8 @@ export function AdminProductsPage() {
         .adminProducts({
           search: searchQuery || undefined,
           warehouseId: warehouseFilter || undefined,
+          categoryId: categoryFilter || undefined,
+          manufacturer: manufacturerFilter || undefined,
           limit: PAGE_SIZE,
           after: cursor,
         })
@@ -58,7 +63,12 @@ export function AdminProductsPage() {
           hasMore: data.pagination.hasMore,
           nextCursor: data.pagination.nextCursor,
         })),
-    [searchQuery, warehouseFilter]
+    [searchQuery, warehouseFilter, categoryFilter, manufacturerFilter]
+  );
+
+  const fetchManufacturerOptions = useCallback(
+    (term) => api.searchAdminManufacturers(term).then((data) => data.manufacturers),
+    []
   );
 
   const {
@@ -74,7 +84,7 @@ export function AdminProductsPage() {
   useEffect(() => {
     reset();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchQuery, warehouseFilter]);
+  }, [searchQuery, warehouseFilter, categoryFilter, manufacturerFilter]);
 
   const handleSaved = () => {
     setEditingProduct(null);
@@ -121,6 +131,27 @@ export function AdminProductsPage() {
             </option>
           ))}
         </select>
+        <select
+          className="adm-filter-select"
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+        >
+          <option value="">{t('products.allCategories')}</option>
+          {categories.map((category) => (
+            <option key={category.id} value={category.id}>
+              {category.nameEn}
+            </option>
+          ))}
+        </select>
+        <SearchableSelect
+          value={manufacturerFilter}
+          onChange={setManufacturerFilter}
+          fetchOptions={fetchManufacturerOptions}
+          placeholder={t('products.manufacturerFilterPlaceholder')}
+          allLabel={t('products.allManufacturers')}
+          loadingLabel={t('common.loading')}
+          noMatchesLabel={t('common.noMatches')}
+        />
         <input
           type="text"
           className="adm-filter-search"

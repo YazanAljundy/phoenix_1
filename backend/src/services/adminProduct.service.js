@@ -3,7 +3,7 @@ const { ApiError } = require('../utils/ApiError');
 const Product = require('../models/product.model');
 const Warehouse = require('../models/warehouse.model');
 const ProductCatalog = require('../models/productCatalog.model');
-const { applyProductUpdate } = require('./warehouseProduct.service');
+const { applyProductUpdate, manufacturerMatchClauses } = require('./warehouseProduct.service');
 const { applyResolvedIdentity, escapeRegex } = require('./productCatalog.service');
 
 // Section 13c: the admin's oversight view spans every warehouse - unlike the
@@ -43,8 +43,12 @@ const ADMIN_PRODUCTS_DEFAULT_LIMIT = 30;
 
 // The Products management page (unlike listAllProducts above - still used
 // as-is by the Dashboard's count and the Banners composer's product picker,
-// both needing every product) wants "Load more" plus warehouse/search
-// filters sent to the server. Cursor pagination: sorted by `_id` ascending,
+// both needing every product) wants "Load more" plus warehouse/category/search
+// filters sent to the server. `categoryId` alone (no warehouseId) falls back to
+// a collection scan - the only compound index that covers it is
+// {warehouseId,categoryId,_id}, which needs warehouseId as its prefix to be
+// used. Fine at today's product volume; worth an index if that combination
+// becomes a common, slow query. Cursor pagination: sorted by `_id` ascending,
 // same tradeoff productCatalog.service.js's listCatalog already made for
 // its own admin list (a stable, unique cursor field wins over the alphabetical
 // sort listAllProducts uses, see that function's comment).
@@ -52,26 +56,53 @@ const ADMIN_PRODUCTS_DEFAULT_LIMIT = 30;
 // A linked product's real name/manufacturer lives on its catalog entry, not
 // on the Product doc itself (Section 14 Part 2) - so `search` can't just
 // regex Product's own fields, it also has to catch products linked to a
-// catalog entry whose name/manufacturer matches.
-async function listPaginatedAllProducts({ search, warehouseId, limit = ADMIN_PRODUCTS_DEFAULT_LIMIT, after = null } = {}) {
+// catalog entry whose name/manufacturer matches. `manufacturer` is a second,
+// independent condition (the Searchable Dropdown filter, picked from an exact
+// name via GET /admin/catalog/manufacturers) - when both `search` and
+// `manufacturer` are given, each needs its own $or, so they're ANDed via
+// $and rather than one overwriting the other's top-level $or.
+async function listPaginatedAllProducts({
+  search,
+  warehouseId,
+  categoryId,
+  manufacturer,
+  limit = ADMIN_PRODUCTS_DEFAULT_LIMIT,
+  after = null,
+} = {}) {
   const filter = {};
   if (warehouseId) {
     filter.warehouseId = warehouseId;
   }
+  if (categoryId) {
+    filter.categoryId = categoryId;
+  }
+
+  const andConditions = [];
   if (search && search.trim()) {
     const pattern = new RegExp(escapeRegex(search.trim()), 'i');
     const matchingCatalogEntries = await ProductCatalog.find(
       { $or: [{ nameAr: pattern }, { nameEn: pattern }, { manufacturerAr: pattern }, { manufacturerEn: pattern }] },
       '_id'
     );
-    filter.$or = [
-      { nameAr: pattern },
-      { nameEn: pattern },
-      { manufacturerAr: pattern },
-      { manufacturerEn: pattern },
-      { masterProductId: { $in: matchingCatalogEntries.map((c) => c._id) } },
-    ];
+    andConditions.push({
+      $or: [
+        { nameAr: pattern },
+        { nameEn: pattern },
+        { manufacturerAr: pattern },
+        { manufacturerEn: pattern },
+        { masterProductId: { $in: matchingCatalogEntries.map((c) => c._id) } },
+      ],
+    });
   }
+  if (manufacturer && manufacturer.trim()) {
+    andConditions.push({ $or: await manufacturerMatchClauses(manufacturer.trim()) });
+  }
+  if (andConditions.length === 1) {
+    filter.$or = andConditions[0].$or;
+  } else if (andConditions.length > 1) {
+    filter.$and = andConditions;
+  }
+
   if (after !== null) {
     filter._id = { $gt: after };
   }

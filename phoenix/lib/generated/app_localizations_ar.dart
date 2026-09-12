@@ -99,6 +99,18 @@ class AppLocalizationsAr extends AppLocalizations {
   String get useCurrentLocationTooltip => 'موقعي الحالي';
 
   @override
+  String get areaTypeLabel => 'نوع المنطقة';
+
+  @override
+  String get areaTypeCity => 'مدينة';
+
+  @override
+  String get areaTypeCityRing => 'طوق مدينة';
+
+  @override
+  String get areaTypeRural => 'ريف';
+
+  @override
   String get confirmPasswordLabel => 'تأكيد كلمة المرور';
 
   @override
@@ -569,6 +581,21 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get advertisementUnavailableMessage =>
       'لم تعد هذه الباقة متاحة. ربما انتهت مدتها أو تم سحبها.';
+
+  @override
+  String get packageUnavailableBanner =>
+      'هذه الباقة لم تعد متاحة، لن تتمكن من إتمام الطلب بها.';
+
+  @override
+  String packageUnavailableCheckoutMessage(String names) {
+    return 'لم تعد متاحة: $names. لم يتم إرسال الطلب — احذفها من السلة للمتابعة.';
+  }
+
+  @override
+  String get errorPackageUnavailable => 'هذه الباقة لم تعد متاحة.';
+
+  @override
+  String get removeUnavailablePackagesButton => 'حذف من السلة';
 
   @override
   String advertisementIncompleteMessage(String names) {
@@ -1557,4 +1584,10 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get offerPermanent => 'عرض دائم';
+
+  @override
+  String get addToCartFullButton => 'إضافة إلى السلة';
+
+  @override
+  String get warehouseOffersTitle => 'عروض المستودع';
 }

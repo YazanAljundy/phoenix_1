@@ -4,6 +4,7 @@ const Offer = require('../models/offer.model');
 const Product = require('../models/product.model');
 const { findOwnedProductOrThrow } = require('./warehouseProduct.service');
 const { applyResolvedIdentity } = require('./productCatalog.service');
+const { buildOfferListFilter, listPaginatedOffers, OFFER_REVIEW_FILTER } = require('./offer.service');
 const { emitToAdmins, EVENTS } = require('../realtime');
 
 function validateTitle(value, field) {
@@ -152,19 +153,13 @@ async function deleteOffer(offerId, warehouseId) {
   }
 }
 
-async function listOffersForWarehouse(warehouseId) {
-  // warehouseOffer.viewmodel.js's serializeOffer reads id/productId/titleAr/
-  // titleEn/discountPercentage/startDate/endDate/isPermanent/status/pendingUpdate/
-  // createdAt.
-  const offers = await Offer.find({ warehouseId })
-    .select(
-      'productId titleAr titleEn discountPercentage startDate endDate isPermanent status pendingUpdate createdAt'
-    )
-    .sort({ createdAt: -1 });
+// A parked edit can point at a different product than the live offer - both
+// names are shown, so gather ids from both. One $in query for the whole page,
+// never one per offer. applyResolvedIdentity reads the four identity fields
+// from the product or its linked catalog entry, nothing else.
+async function attachProducts(offers) {
   if (offers.length === 0) return [];
 
-  // A parked edit can point at a different product than the live offer - both
-  // names are shown, so gather ids from both.
   const productIds = [
     ...new Set(
       offers.flatMap((o) => [
@@ -173,9 +168,6 @@ async function listOffersForWarehouse(warehouseId) {
       ]).filter(Boolean)
     ),
   ];
-  // Only the product's resolved name is shown next to an offer -
-  // applyResolvedIdentity reads the four identity fields from the product or
-  // its linked catalog entry, nothing else.
   const products = await Product.find({ _id: { $in: productIds } })
     .select('nameAr nameEn manufacturerAr manufacturerEn masterProductId')
     .populate({ path: 'masterProductId', select: 'nameAr nameEn manufacturerAr manufacturerEn' });
@@ -191,11 +183,43 @@ async function listOffersForWarehouse(warehouseId) {
   }));
 }
 
+const WAREHOUSE_OFFERS_DEFAULT_LIMIT = 20;
+
+// The Warehouse Offers page - filtered (status pill / search / discount
+// range) and cursor-paginated server-side, replacing the old "every offer for
+// this warehouse, unpaginated, filtered in React" shape - see
+// offer.service.js's buildOfferListFilter/buildOfferStatusFilter for the
+// status-pill logic this took over from web/src/pages/offersFilters.js.
+// `reviewCount` is the Review pill's badge, independent of whichever pill is
+// currently selected.
+async function listPaginatedOffersForWarehouse(warehouseId, {
+  status,
+  search,
+  minDiscount,
+  maxDiscount,
+  limit = WAREHOUSE_OFFERS_DEFAULT_LIMIT,
+  after = null,
+} = {}) {
+  const filter = await buildOfferListFilter({
+    scopeFilter: { warehouseId },
+    status,
+    search,
+    minDiscount,
+    maxDiscount,
+    includeWarehouseName: false,
+  });
+  const [{ rows, hasMore, nextCursor }, reviewCount] = await Promise.all([
+    listPaginatedOffers(filter, { limit, after }),
+    Offer.countDocuments({ warehouseId, ...OFFER_REVIEW_FILTER }),
+  ]);
+  return { rows: await attachProducts(rows), hasMore, nextCursor, reviewCount };
+}
+
 module.exports = {
   createOffer,
   updateOffer,
   deleteOffer,
-  listOffersForWarehouse,
+  listPaginatedOffersForWarehouse,
   findOwnedOfferOrThrow,
   buildOfferFields,
 };

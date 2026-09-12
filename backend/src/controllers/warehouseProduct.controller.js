@@ -52,7 +52,10 @@ const search = asyncHandler(async (req, res) => {
   const cursor = parseObjectIdCursor(after);
   const { rows, hasMore, nextCursor } = await warehouseProductService.searchPaginatedProductsForWarehouse(
     warehouse._id,
-    { q: req.query.q, limit, after: cursor }
+    // `search` (was `q`) at the HTTP boundary - unified with every other
+    // text-search endpoint. The service's own param is still named `q`
+    // internally; only the wire-level query key changed.
+    { q: req.query.search, limit, after: cursor }
   );
   res.json({
     success: true,

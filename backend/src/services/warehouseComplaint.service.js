@@ -3,12 +3,22 @@ const { ApiError } = require('../utils/ApiError');
 const Complaint = require('../models/complaint.model');
 const { attachComplaintContext, paginateComplaints, loadResponder } = require('./complaint.service');
 
+function validateStatusFilter(status) {
+  if (status && !Complaint.schema.path('status').enumValues.includes(status)) {
+    throw ApiError.badRequest('Invalid status filter.', undefined, 'INVALID_STATUS_FILTER');
+  }
+}
+
 // Section 3/6: the warehouse sees ONLY the complaints filed against its own
 // warehouse. The filter is the warehouse resolved from the authenticated
 // user's profile (warehouseComplaint.controller.js), never a client id, so a
-// warehouse can never page into another warehouse's complaints.
-async function listComplaintsForWarehouse(warehouseId, opts = {}) {
-  return paginateComplaints({ warehouseId }, opts, { withPharmacy: true });
+// warehouse can never page into another warehouse's complaints. `status` is
+// optional, same enum as the admin queue (adminComplaint.service.js).
+async function listComplaintsForWarehouse(warehouseId, { status, ...opts } = {}) {
+  validateStatusFilter(status);
+  const filter = { warehouseId };
+  if (status) filter.status = status;
+  return paginateComplaints(filter, opts, { withPharmacy: true });
 }
 
 // IDOR guard: scoped to warehouseId. A complaint against a different warehouse

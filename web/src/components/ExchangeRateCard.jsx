@@ -1,6 +1,10 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../api/client';
+import { LoadMoreControl } from './LoadMoreControl';
+import { usePaginatedData } from '../hooks/usePaginatedData';
+
+const HISTORY_PAGE_SIZE = 20;
 
 // Section: USD display - the platform-wide USD -> new-SYP rate the Flutter
 // app converts every price with. Now rendered on its own page
@@ -12,6 +16,29 @@ export function ExchangeRateCard({ rate, onChanged }) {
   const [input, setInput] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
+
+  const fetchHistoryPage = useCallback(
+    (cursor) =>
+      api.adminExchangeRateHistory({ limit: HISTORY_PAGE_SIZE, after: cursor }).then((data) => ({
+        rows: data.history,
+        hasMore: data.pagination.hasMore,
+        nextCursor: data.pagination.nextCursor,
+      })),
+    []
+  );
+  const {
+    data: history,
+    isLoading: isHistoryLoading,
+    isLoadingMore: isHistoryLoadingMore,
+    hasMore: hasMoreHistory,
+    loadMore: loadMoreHistory,
+    reset: resetHistory,
+  } = usePaginatedData(fetchHistoryPage);
+
+  useEffect(() => {
+    resetHistory();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleSetManual = async (event) => {
     event.preventDefault();
@@ -26,6 +53,7 @@ export function ExchangeRateCard({ rate, onChanged }) {
       await api.setExchangeRate(usdToSyp);
       setInput('');
       onChanged();
+      resetHistory();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -39,6 +67,7 @@ export function ExchangeRateCard({ rate, onChanged }) {
     try {
       await api.resetExchangeRate();
       onChanged();
+      resetHistory();
     } catch (err) {
       setError(err.message);
     } finally {
@@ -112,6 +141,52 @@ export function ExchangeRateCard({ rate, onChanged }) {
           <p className="adm-rate-change-hint">
             {t('admin.exchangeRate.changeHint', { percent: `${inputValue > rate.usdToSyp ? '+' : ''}${changePercent}` })}
           </p>
+        )}
+      </div>
+
+      <div className="adm-rate-section">
+        <div className="adm-rate-section-title">{t('admin.exchangeRate.historyTitle')}</div>
+        {isHistoryLoading ? (
+          <p className="hint">{t('common.loading')}</p>
+        ) : history.length === 0 ? (
+          <p className="hint">{t('admin.exchangeRate.historyEmpty')}</p>
+        ) : (
+          <>
+            <div className="adm-card table-scroll">
+              <table className="adm-table">
+                <thead>
+                  <tr>
+                    <th>{t('admin.exchangeRate.historyDateColumn')}</th>
+                    <th className="adm-num">{t('admin.exchangeRate.historyRateColumn')}</th>
+                    <th className="adm-num">{t('admin.exchangeRate.historyPreviousColumn')}</th>
+                    <th>{t('admin.exchangeRate.historySourceColumn')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {history.map((row) => (
+                    <tr key={row.id}>
+                      <td>{new Date(row.effectiveFrom).toLocaleString()}</td>
+                      <td className="adm-num">{row.usdToSyp.toLocaleString()}</td>
+                      <td className="adm-num">{row.previousUsdToSyp != null ? row.previousUsdToSyp.toLocaleString() : '—'}</td>
+                      <td>
+                        <span
+                          className={`availability-badge ${row.source === 'manual' ? 'availability-paused' : 'availability-available'}`}
+                        >
+                          {row.source === 'manual' ? t('admin.exchangeRate.manual') : t('admin.exchangeRate.api')}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <LoadMoreControl
+              hasMore={hasMoreHistory}
+              isLoadingMore={isHistoryLoadingMore}
+              onLoadMore={loadMoreHistory}
+              pageSize={HISTORY_PAGE_SIZE}
+            />
+          </>
         )}
       </div>
 

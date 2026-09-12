@@ -13,7 +13,6 @@ import 'package:feniq/features/advertisements/data/models/advertisement_model.da
 import 'package:feniq/features/advertisements/data/repositories/advertisements_repository.dart';
 import 'package:feniq/features/cart/data/repositories/order_repository.dart';
 import 'package:feniq/features/cart/presentation/managers/cart_cubit.dart';
-import 'package:feniq/features/catalog/data/models/manufacturers_route_args.dart';
 import 'package:feniq/features/exchange_rate/data/models/exchange_rate_model.dart';
 import 'package:feniq/features/exchange_rate/data/repositories/exchange_rate_repository.dart';
 import 'package:feniq/features/exchange_rate/presentation/managers/exchange_rate_cubit.dart';
@@ -43,11 +42,10 @@ class _MockWarehouseRepository extends Mock implements WarehouseRepository {}
 
 class _MockExchangeRateRepository extends Mock implements ExchangeRateRepository {}
 
-// Where a tapped offer is meant to land: the existing manufacturers route,
-// which is what a tapped banner already uses. The stub records the arguments
-// the real ManufacturersView would have been built with.
-String? tappedWarehouseId;
-String? tappedManufacturer;
+// Where a tapped offer is meant to land: the offers of that offer's own
+// warehouse (WarehouseOffersView), not the manufacturer catalog directly.
+String? openedWarehouseId;
+String? openedWarehouseName;
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -63,8 +61,8 @@ void main() {
   late PromotionsCubit promotionsCubit;
 
   setUp(() async {
-    tappedWarehouseId = null;
-    tappedManufacturer = null;
+    openedWarehouseId = null;
+    openedWarehouseName = null;
 
     SharedPreferences.setMockInitialValues({});
     offersRepository = _MockOffersRepository();
@@ -125,13 +123,12 @@ void main() {
           ),
         ),
         GoRoute(
-          name: RouteNames.manufacturers,
-          path: RoutePaths.manufacturers,
+          name: RouteNames.warehouseOffers,
+          path: RoutePaths.warehouseOffers,
           builder: (context, state) {
-            tappedWarehouseId = state.pathParameters['warehouseId'];
-            final args = state.extra as ManufacturersRouteArgs?;
-            tappedManufacturer = args?.autoFilterManufacturer;
-            return const Scaffold(body: Text('MANUFACTURERS'));
+            openedWarehouseId = state.pathParameters['warehouseId'];
+            openedWarehouseName = state.extra as String?;
+            return Scaffold(body: Text('WAREHOUSE OFFERS ${state.extra}'));
           },
         ),
         GoRoute(
@@ -334,14 +331,14 @@ void main() {
   });
 
   group('tapping through', () {
-    testWidgets('an offer opens the existing catalog flow for its manufacturer', (tester) async {
+    testWidgets('an offer opens the offers of its own warehouse, not the cart\'s', (tester) async {
       stub(
         offers: [
           offer(
             id: 'o1',
             titleEn: 'Offer One',
             warehouseId: 'W-42',
-            manufacturerAr: 'شركة الاختبار',
+            warehouseNameEn: 'Warehouse 42',
           ),
         ],
       );
@@ -350,9 +347,9 @@ void main() {
       await tester.tap(find.byType(PromotionHeroCard).first);
       await tester.pumpAndSettle();
 
-      expect(find.text('MANUFACTURERS'), findsOneWidget);
-      expect(tappedWarehouseId, 'W-42');
-      expect(tappedManufacturer, 'شركة الاختبار');
+      expect(find.text('WAREHOUSE OFFERS Warehouse 42'), findsOneWidget);
+      expect(openedWarehouseId, 'W-42');
+      expect(openedWarehouseName, 'Warehouse 42');
     });
 
     testWidgets('a package goes through the shared package -> cart flow', (tester) async {

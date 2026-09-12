@@ -442,7 +442,7 @@ test('warehouse returns list + detail keep return + pharmacy + item fields', asy
 // --- offers -------------------------------------------------------------
 
 test('warehouse offers list keeps offer + product-name fields', async () => {
-  const rows = await warehouseOfferService.listOffersForWarehouse(ids.warehouse);
+  const { rows } = await warehouseOfferService.listPaginatedOffersForWarehouse(ids.warehouse);
   const { offers } = warehouseOfferViewModel.toOfferListResponse(rows);
   assert.strictEqual(offers.length, 1);
   const o = offers[0];

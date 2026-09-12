@@ -233,9 +233,13 @@ async function deleteBanner(bannerId) {
   await banner.deleteOne();
 }
 
-// Dates/title only - the image can't be swapped without re-review, so a
-// warehouse-submitted banner's image stays whatever was originally approved.
-async function updateBanner(bannerId, { startDate, endDate, title }) {
+// Dates/title, and (unlike a warehouse's own banner, which can never touch
+// its image after submitting) the image too - the admin is the approval
+// authority, so there is no re-review to protect here, at any status
+// including an already-approved banner. Passing `imageUrl` replaces the
+// stored one and cleans up the old Cloudinary asset; omitting it leaves the
+// banner's image untouched.
+async function updateBanner(bannerId, { startDate, endDate, title, imageUrl }) {
   const banner = await findBannerOrThrow(bannerId);
 
   if (title !== undefined) {
@@ -250,6 +254,14 @@ async function updateBanner(bannerId, { startDate, endDate, title }) {
     }
     banner.startDate = parsedStart;
     banner.endDate = parsedEnd;
+  }
+
+  if (imageUrl) {
+    const oldImageUrl = banner.imageUrl;
+    banner.imageUrl = imageUrl;
+    if (oldImageUrl && oldImageUrl !== imageUrl) {
+      deleteBannerImage(oldImageUrl);
+    }
   }
 
   await banner.save();

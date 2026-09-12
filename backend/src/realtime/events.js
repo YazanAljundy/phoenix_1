@@ -31,6 +31,12 @@ const EVENTS = {
   BANNER_STATUS_UPDATED: 'banner.status.updated',
   ADVERTISEMENT_PENDING: 'advertisement.pending',
   ADVERTISEMENT_STATUS_UPDATED: 'advertisement.status.updated',
+  // A package paused or re-enabled. Its own event, not a STATUS_UPDATED,
+  // because availability is a separate layer from moderation (see
+  // advertisement.model.js's isAvailable). Sent to the admin room on every
+  // change, and ALSO to the owning warehouse's room when an admin makes it -
+  // that warehouse is the one waiting on an admin to re-enable its package.
+  ADVERTISEMENT_AVAILABILITY_UPDATED: 'advertisement.availability.updated',
 
   // Complaint events. Unlike everything above, a complaint has TWO dashboards
   // that care: the admin queue that triages and answers it (admin room), and

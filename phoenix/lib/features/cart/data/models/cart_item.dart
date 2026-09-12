@@ -54,6 +54,7 @@ class CartItem {
     required this.quantity,
     this.packageId,
     this.packageContents = const [],
+    this.isAvailable = true,
   });
 
   /// A product's id on an ordinary line; the PACKAGE's id on a package line.
@@ -80,6 +81,13 @@ class CartItem {
 
   /// What one copy of the package contains. Empty on a product line.
   final List<CartPackageContent> packageContents;
+
+  /// Whether this line can still be bought. Only ever false on a PACKAGE line
+  /// the server has reported as paused (by its warehouse or an admin) after it
+  /// went into the cart. The line stays - so the pharmacist sees what happened
+  /// and chooses to remove it - and the tile shows a warning. Nothing here
+  /// blocks checkout: the server is what refuses it (PACKAGE_UNAVAILABLE).
+  final bool isAvailable;
 
   bool get isPackage => packageId != null;
 
@@ -122,6 +130,7 @@ class CartItem {
     required num pricePerCopyUsd,
     required int copies,
     required List<CartPackageContent> contents,
+    bool isAvailable = true,
   }) {
     return CartItem(
       productId: packageId,
@@ -134,10 +143,11 @@ class CartItem {
       discountPriceUsd: pricePerCopyUsd,
       quantity: copies,
       packageContents: contents,
+      isAvailable: isAvailable,
     );
   }
 
-  CartItem copyWith({int? quantity}) {
+  CartItem copyWith({int? quantity, bool? isAvailable}) {
     return CartItem(
       productId: productId,
       nameAr: nameAr,
@@ -152,6 +162,7 @@ class CartItem {
       quantity: quantity ?? this.quantity,
       packageId: packageId,
       packageContents: packageContents,
+      isAvailable: isAvailable ?? this.isAvailable,
     );
   }
 }

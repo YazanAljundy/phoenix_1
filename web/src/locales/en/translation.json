@@ -33,6 +33,7 @@
     "loadMore": "Load more ({{count}} more)",
     "loadingMore": "Loading...",
     "allResultsShown": "All results shown",
+    "noMatches": "No matches",
     "unexpectedError": "Something went wrong. Please try again.",
     "retry": "Try again"
   },
@@ -166,6 +167,7 @@
     "warehouseNetLabel": "You receive"
   },
   "returns": {
+    "filterAll": "All",
     "reasonDamaged": "Damaged",
     "reasonWrongItem": "Wrong item",
     "reasonOther": "Other",
@@ -259,7 +261,9 @@
     "summary_other": "{{rating}} average · {{count}} reviews",
     "orderNumber": "Order #{{number}}",
     "latest": "Latest reviews",
-    "anonymousReviewer": "User"
+    "anonymousReviewer": "User",
+    "filterAll": "All",
+    "noMatchingReviews": "No reviews match this rating."
   },
   "discounts": {
     "addTitle": "Add a manufacturer discount",
@@ -296,6 +300,7 @@
       "thumbnailColumn": "Thumbnail"
     },
     "admin": {
+      "filterAll": "All",
       "publishNew": "Publish new banner",
       "modalTitle": "Publish a new banner",
       "publishBanner": "Publish banner",
@@ -309,9 +314,12 @@
       "numberColumn": "#",
       "warehouseTitleColumn": "Warehouse / Title",
       "rangeColumn": "From — To",
-      "editDeleteHint": "Rejecting requires a reason shown to the banner's owner. Editing is limited to the title and dates."
+      "editDeleteHint": "Rejecting requires a reason shown to the banner's owner. Editing covers the title, dates and image.",
+      "replaceImageOptional": "Replace image (optional)",
+      "noImageYet": "No image yet"
     },
     "image": "Image",
+    "imageOptional": "Image (optional)",
     "title": "Title",
     "linkedProductOptional": "Linked product (optional)",
     "noProduct": "No product",
@@ -322,6 +330,8 @@
     "statusPending": "Pending review"
   },
   "debts": {
+    "searchPlaceholder": "Search by pharmacy name...",
+    "noMatchingDebts": "No pharmacies match this search.",
     "recordPayment": "Record a payment",
     "amount": "Amount",
     "currency": "Currency",
@@ -370,10 +380,12 @@
     "newAdvertisement": "New advertisement",
     "modalTitle": "New advertisement",
     "editTitle": "Edit advertisement",
+    "saveChanges": "Save changes",
     "approvalNotice": "An advertisement is reviewed by an admin before pharmacies can see it. Editing one that is already live sends it back for review.",
     "noAdvertisements": "You haven't created any advertisements yet.",
     "titleEn": "Title (English)",
     "titleAr": "Title (Arabic)",
+    "imageOptional": "Image (optional)",
     "numberColumn": "#",
     "titleColumn": "Advertisement",
     "productsColumn": "Products",
@@ -402,19 +414,38 @@
     "successBody": "To complete payment and publishing, contact the admin on WhatsApp.",
     "contactAdmin": "Contact admin",
     "paymentWhatsappMessage": "Hello, I'd like to complete payment to publish a new advertisement.\nWarehouse ID: {{warehouseId}}\nAdvertisement request number: #{{advertisementNumber}}",
+    "pause": "Pause",
+    "confirmPause": "Pause \"{{title}}\"? Pharmacies stop seeing it right away - you or an admin can make it available again anytime.",
+    "pausedAwaitingAdmin": "Paused — waiting for an admin to re-enable",
+    "available": "Available",
+    "paused": "Paused",
     "status": {
       "pending": "Pending review",
       "approved": "Approved",
       "rejected": "Rejected"
     },
+    "filterAll": "All",
     "admin": {
       "warehouseColumn": "Warehouse",
+      "pendingTab": "Pending",
+      "approvedTab": "Approved",
+      "approvedCountLabel": "Approved ({{count}})",
+      "noApprovedAdvertisements": "No approved packages yet.",
+      "availabilityColumn": "Availability",
+      "availabilityHint": "Pausing hides a package from pharmacies without undoing its approval. The warehouse or an admin can make it available again.",
+      "pause": "Pause",
+      "makeAvailable": "Make available",
+      "confirmPause": "Pause \"{{title}}\"? It disappears for every pharmacy until you make it available again.",
       "pendingCountLabel": "Pending ({{count}})",
       "noAdvertisements": "No advertisements are waiting for review.",
       "rejectionHint": "Approving publishes the package to every pharmacy. A rejection must say why.",
       "confirmApprove": "Approve the advertisement \"{{title}}\"?",
       "rejectPrompt": "Why is \"{{title}}\" being rejected? The warehouse will see this note.",
-      "rejectionNoteRequired": "A rejection note is required."
+      "rejectionNoteRequired": "A rejection note is required.",
+      "rejectedTab": "Rejected",
+      "rejectedCountLabel": "Rejected ({{count}})",
+      "noRejectedAdvertisements": "No rejected packages.",
+      "rejectedHint": "A rejected package is kept with its note, hidden from pharmacies. You can edit its content directly or delete it - editing does not change its status."
     }
   },
   "offers": {
@@ -486,6 +517,9 @@
     "noProductsForCompany": "This company has no products in your catalog.",
     "noProductsAdmin": "No products found.",
     "allWarehouses": "All warehouses",
+    "allCategories": "All categories",
+    "allManufacturers": "All manufacturers",
+    "manufacturerFilterPlaceholder": "Manufacturer...",
     "removed": "Removed",
     "available": "Available",
     "paused": "Paused",
@@ -632,7 +666,13 @@
       "resetToApi": "Back to automatic API",
       "enterPositive": "Enter a positive number.",
       "newRateLabel": "New rate (SYP per USD)",
-      "changeHint": "Change of {{percent}}% from the current rate."
+      "changeHint": "Change of {{percent}}% from the current rate.",
+      "historyTitle": "Rate history",
+      "historyEmpty": "No rate changes recorded yet.",
+      "historyDateColumn": "Date",
+      "historyRateColumn": "Rate",
+      "historyPreviousColumn": "Previous",
+      "historySourceColumn": "Source"
     },
     "notifications": {
       "titleArLabel": "Title (Arabic)",

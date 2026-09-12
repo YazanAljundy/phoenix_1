@@ -6,6 +6,7 @@ import 'package:feniq/core/constants/app_sizes.dart';
 import 'package:feniq/core/extensions/build_context_extensions.dart';
 import 'package:feniq/core/theme/app_text_theme.dart';
 import 'package:feniq/core/utils/currency_formatter.dart';
+import 'package:feniq/core/widgets/app_network_image.dart';
 import 'package:feniq/features/advertisements/data/models/advertisement_model.dart';
 import 'package:feniq/features/advertisements/presentation/utils/advertisement_cart_launcher.dart';
 import 'package:feniq/features/exchange_rate/presentation/managers/exchange_rate_cubit.dart';
@@ -64,6 +65,21 @@ class _AdvertisementCardState extends State<AdvertisementCard> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Optional - most packages carry no image of their own, in
+              // which case this renders nothing and the card looks exactly
+              // as it always has.
+              if (advertisement.imageUrl != null && advertisement.imageUrl!.trim().isNotEmpty) ...[
+                ClipRRect(
+                  borderRadius: AppRadius.medium,
+                  child: AppNetworkImage(
+                    url: advertisement.imageUrl,
+                    height: 120,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                const SizedBox(height: AppSizes.spacingSmall),
+              ],
               Row(
                 children: [
                   Expanded(

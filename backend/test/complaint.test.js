@@ -327,6 +327,35 @@ test('a warehouse sees only complaints against itself', async () => {
   assert.ok(rows.some((r) => String(r.complaint._id) === String(ids.orderComplaint)));
 });
 
+test('a warehouse can filter its own complaints by status', async () => {
+  const resolved = await Complaint.create({
+    complaintNumber: 990001,
+    pharmacyId: ids.pharmA,
+    pharmacyUserId: ids.phUserA,
+    warehouseId: ids.whA,
+    subject: 'status filter fixture',
+    description: 'seeded directly for the status-filter test',
+    status: 'resolved',
+  });
+
+  const { rows: pendingRows } = await warehouseComplaintService.listComplaintsForWarehouse(ids.whA, {
+    status: 'pending',
+  });
+  assert.ok(pendingRows.every((r) => r.complaint.status === 'pending'));
+  assert.ok(!pendingRows.some((r) => String(r.complaint._id) === String(resolved._id)));
+
+  const { rows: resolvedRows } = await warehouseComplaintService.listComplaintsForWarehouse(ids.whA, {
+    status: 'resolved',
+  });
+  assert.ok(resolvedRows.some((r) => String(r.complaint._id) === String(resolved._id)));
+  assert.ok(resolvedRows.every((r) => r.complaint.status === 'resolved'));
+
+  await assert.rejects(
+    () => warehouseComplaintService.listComplaintsForWarehouse(ids.whA, { status: 'bogus' }),
+    withCode('INVALID_STATUS_FILTER')
+  );
+});
+
 test('a warehouse cannot open a complaint filed against a different warehouse', async () => {
   await assert.rejects(
     () => warehouseComplaintService.getComplaintForWarehouse(ids.complaintA.toString(), ids.whB),

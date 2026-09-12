@@ -43,7 +43,9 @@ import 'package:feniq/features/order_tracking/presentation/managers/order_tracki
 import 'package:feniq/features/order_tracking/presentation/views/order_tracking_view.dart';
 import 'package:feniq/features/profile/presentation/views/profile_view.dart';
 import 'package:feniq/features/promotions/presentation/managers/promotions_cubit.dart';
+import 'package:feniq/features/promotions/presentation/managers/warehouse_offers_cubit.dart';
 import 'package:feniq/features/promotions/presentation/views/promotions_view.dart';
+import 'package:feniq/features/promotions/presentation/views/warehouse_offers_view.dart';
 import 'package:feniq/features/returns/data/repositories/return_repository.dart';
 import 'package:feniq/features/returns/presentation/managers/my_returns_cubit.dart';
 import 'package:feniq/features/returns/presentation/views/my_returns_view.dart';
@@ -182,6 +184,30 @@ class AppRouter {
                 warehouseName: args?.warehouseName ?? '',
                 manufacturer: args?.manufacturer ?? '',
               ),
+            ),
+          );
+        },
+      ),
+      // What the Offers chip on the Offers & Ads tab opens: the offers of the
+      // warehouse the pharmacist is ordering from (the cart's warehouse).
+      // Outside the shell, so it pushes full-screen like the catalog it hands
+      // off to; the warehouse name rides along in `extra` for the app bar.
+      GoRoute(
+        name: RouteNames.warehouseOffers,
+        path: RoutePaths.warehouseOffers,
+        pageBuilder: (context, state) {
+          final warehouseId = state.pathParameters['warehouseId']!;
+          final warehouseName = state.extra is String
+              ? state.extra as String
+              : '';
+          return buildPageTransition(
+            state: state,
+            child: BlocProvider(
+              create: (context) => WarehouseOffersCubit(
+                offersRepository: context.read<OffersRepository>(),
+                warehouseId: warehouseId,
+              )..load(),
+              child: WarehouseOffersView(warehouseName: warehouseName),
             ),
           );
         },

@@ -17,12 +17,13 @@ async function loadWarehouseOrThrow(userId) {
 
 const list = asyncHandler(async (req, res) => {
   const warehouse = await loadWarehouseOrThrow(req.user._id);
+  const status = typeof req.query.status === 'string' && req.query.status ? req.query.status : undefined;
   const { limit, after } = parseCursorQuery(req.query, COMPLAINTS_DEFAULT_LIMIT);
   const cursor = parseObjectIdCursor(after);
 
   const { rows, hasMore, nextCursor } = await warehouseComplaintService.listComplaintsForWarehouse(
     warehouse._id,
-    { limit, after: cursor }
+    { status, limit, after: cursor }
   );
   res.json({
     success: true,

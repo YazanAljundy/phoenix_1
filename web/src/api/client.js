@@ -234,15 +234,17 @@ async function requestUpload(path, file, { _retried = false } = {}) {
 
 // Like requestUpload, but for endpoints that take a file *alongside* other
 // form fields (a banner's image + title/dates/productId) rather than just
-// the file alone - caller builds the FormData itself.
-async function requestFormData(path, formData, { _retried = false } = {}) {
+// the file alone - caller builds the FormData itself. `method` defaults to
+// POST (every create path) but a multipart edit (replacing an image on an
+// existing banner/advertisement) needs PATCH.
+async function requestFormData(path, formData, method = 'POST', { _retried = false } = {}) {
   const headers = buildHeaders();
-  const response = await fetch(`${API_BASE_URL}${path}`, { method: 'POST', headers, body: formData });
+  const response = await fetch(`${API_BASE_URL}${path}`, { method, headers, body: formData });
 
   if (response.status === 401 && !_retried) {
     const refreshed = await refreshSession();
     if (refreshed) {
-      return requestFormData(path, formData, { _retried: true });
+      return requestFormData(path, formData, method, { _retried: true });
     }
   }
 
@@ -251,6 +253,22 @@ async function requestFormData(path, formData, { _retried = false } = {}) {
     throw new ApiError(data?.message ?? 'Upload failed. Please try again.', response.status);
   }
   return data;
+}
+
+// Builds the multipart body for an advertisement create/update that includes
+// an image. `items` is an array, so (unlike a banner's scalar fields) it has
+// to travel as a JSON-encoded string field - the backend parses it back out
+// (see warehouseAdvertisement.controller.js's normalizeAdvertisementBody).
+function advertisementFormData(data, imageFile) {
+  const formData = new FormData();
+  formData.append('titleAr', data.titleAr);
+  formData.append('titleEn', data.titleEn);
+  formData.append('items', JSON.stringify(data.items));
+  formData.append('totalPriceUsd', String(data.totalPriceUsd));
+  formData.append('startDate', data.startDate);
+  formData.append('endDate', data.endDate);
+  formData.append('image', imageFile);
+  return formData;
 }
 
 export const api = {
@@ -339,7 +357,22 @@ export const api = {
   createWarehouseProduct: (data) => request('/warehouse/products', { method: 'POST', body: data }),
   updateWarehouseProduct: (productId, changes) =>
     request(`/warehouse/products/${productId}`, { method: 'PATCH', body: changes }),
-  warehouseOffers: () => request('/warehouse/offers'),
+  // Filtered (status pill / search / discount range) and cursor-paginated -
+  // the Warehouse Offers page's own paginated, filtered view. `status` is
+  // one of OFFER_FILTERS ('all' | 'review' | 'active' | 'upcoming' |
+  // 'expired' | 'permanent'). Response carries reviewCount independent of
+  // whichever status is passed - the Review pill's badge.
+  warehouseOffers: ({ status, search, minDiscount, maxDiscount, limit, after } = {}) => {
+    const params = new URLSearchParams();
+    if (status) params.set('status', status);
+    if (search) params.set('search', search);
+    if (minDiscount !== undefined && minDiscount !== '') params.set('minDiscount', minDiscount);
+    if (maxDiscount !== undefined && maxDiscount !== '') params.set('maxDiscount', maxDiscount);
+    if (limit) params.set('limit', limit);
+    if (after) params.set('after', after);
+    const qs = params.toString();
+    return request(`/warehouse/offers${qs ? `?${qs}` : ''}`);
+  },
   createWarehouseOffer: (data) => request('/warehouse/offers', { method: 'POST', body: data }),
   // An edit to a still-pending offer is applied in place; an edit to an
   // approved offer is parked for admin review (backend updateOffer).
@@ -349,9 +382,21 @@ export const api = {
   // No args: the moderation queue (pending offers + parked edits) - used by the
   // Dashboard's stat card/recent list.
   pendingOffers: () => request('/admin/offers'),
-  // Section 5: every offer, every warehouse, every status. Unpaginated - the
-  // Offers page filters it client-side.
-  allOffers: () => request('/admin/offers/all'),
+  // Section 5: every offer, every warehouse, every status - filtered (status
+  // pill / search / discount range) and cursor-paginated, the Admin Offers
+  // page's own paginated view. Response carries reviewCount independent of
+  // whichever status is passed - the Review pill's badge.
+  allOffers: ({ status, search, minDiscount, maxDiscount, limit, after } = {}) => {
+    const params = new URLSearchParams();
+    if (status) params.set('status', status);
+    if (search) params.set('search', search);
+    if (minDiscount !== undefined && minDiscount !== '') params.set('minDiscount', minDiscount);
+    if (maxDiscount !== undefined && maxDiscount !== '') params.set('maxDiscount', maxDiscount);
+    if (limit) params.set('limit', limit);
+    if (after) params.set('after', after);
+    const qs = params.toString();
+    return request(`/admin/offers/all${qs ? `?${qs}` : ''}`);
+  },
   approveOffer: (offerId) => request(`/admin/offers/${offerId}/approve`, { method: 'POST' }),
   rejectOffer: (offerId) => request(`/admin/offers/${offerId}/reject`, { method: 'POST' }),
   updateAdminOffer: (offerId, data) => request(`/admin/offers/${offerId}`, { method: 'PATCH', body: data }),
@@ -361,28 +406,68 @@ export const api = {
   // rather than pulling the whole catalog down to filter it here.
   searchWarehouseProducts: ({ q, limit, after } = {}) => {
     const params = new URLSearchParams();
-    if (q) params.set('q', q);
+    // `search` (was `q`) at the HTTP boundary - unified with every other
+    // text-search endpoint. Kept as `q` in this function's own arguments so
+    // every existing caller (e.g. the advertisement product picker) is
+    // unchanged.
+    if (q) params.set('search', q);
     if (limit) params.set('limit', limit);
     if (after) params.set('after', after);
     const qs = params.toString();
     return request(`/warehouse/products/search${qs ? `?${qs}` : ''}`);
   },
-  warehouseAdvertisements: () => request('/warehouse/advertisements'),
-  createWarehouseAdvertisement: (data) =>
-    request('/warehouse/advertisements', { method: 'POST', body: data }),
-  updateWarehouseAdvertisement: (advertisementId, data) =>
-    request(`/warehouse/advertisements/${advertisementId}`, { method: 'PATCH', body: data }),
+  // Pass { status } to filter to one of the package's three statuses; omit
+  // for every one of the warehouse's own packages, as before this filter
+  // existed.
+  warehouseAdvertisements: ({ status } = {}) =>
+    request(`/warehouse/advertisements${status ? `?status=${status}` : ''}`),
+  // `imageFile`, when given, attaches/replaces the package's optional image -
+  // sent as multipart (items/totalPriceUsd travel JSON-encoded as form
+  // fields, same reasoning as the banner uploads above). Without it, this
+  // stays the plain JSON POST/PATCH it always was.
+  createWarehouseAdvertisement: (data, imageFile) => {
+    if (imageFile) {
+      return requestFormData('/warehouse/advertisements', advertisementFormData(data, imageFile));
+    }
+    return request('/warehouse/advertisements', { method: 'POST', body: data });
+  },
+  updateWarehouseAdvertisement: (advertisementId, data, imageFile) => {
+    if (imageFile) {
+      return requestFormData(
+        `/warehouse/advertisements/${advertisementId}`,
+        advertisementFormData(data, imageFile),
+        'PATCH'
+      );
+    }
+    return request(`/warehouse/advertisements/${advertisementId}`, { method: 'PATCH', body: data });
+  },
   deleteWarehouseAdvertisement: (advertisementId) =>
     request(`/warehouse/advertisements/${advertisementId}`, { method: 'DELETE' }),
+  // Either direction, restricted server-side to an approved package
+  // (ADVERTISEMENT_NOT_APPROVED otherwise) - a warehouse can pause AND
+  // re-enable its own package, same as an admin can for any package.
+  setWarehouseAdvertisementAvailability: (advertisementId, isAvailable) =>
+    request(`/warehouse/advertisements/${advertisementId}/availability`, {
+      method: 'PATCH',
+      body: { isAvailable },
+    }),
   // Same two shapes as pendingOffers: no args for the full pending list,
-  // { limit, after } for the management page's paginated view.
-  pendingAdvertisements: ({ limit, after } = {}) => {
+  // { limit, after } for the management page's paginated view. `status`
+  // ('pending' | 'approved' | 'rejected') picks which list that paginated
+  // view shows - the Advertisements page's three tabs all use this.
+  pendingAdvertisements: ({ status, limit, after } = {}) => {
     const params = new URLSearchParams();
+    if (status) params.set('status', status);
     if (limit) params.set('limit', limit);
     if (after) params.set('after', after);
     const qs = params.toString();
     return request(`/admin/advertisements${qs ? `?${qs}` : ''}`);
   },
+  // Every advertisement, every warehouse, every status, unpaginated. Not used
+  // by the Advertisements page (its Rejected tab now uses pendingAdvertisements
+  // above like the other two) - kept for any other caller that wants the full
+  // unfiltered set.
+  allAdvertisements: () => request('/admin/advertisements/all'),
   approveAdvertisement: (advertisementId) =>
     request(`/admin/advertisements/${advertisementId}/approve`, { method: 'POST' }),
   rejectAdvertisement: (advertisementId, rejectionNote) =>
@@ -390,11 +475,34 @@ export const api = {
       method: 'POST',
       body: { rejectionNote },
     }),
+  // Direct content edit, at any status - the admin IS the approval authority,
+  // so (unlike a warehouse edit) this never sends the package back for review.
+  // `imageFile`, when given, attaches/replaces the package's image too.
+  updateAdminAdvertisement: (advertisementId, data, imageFile) => {
+    if (imageFile) {
+      return requestFormData(
+        `/admin/advertisements/${advertisementId}`,
+        advertisementFormData(data, imageFile),
+        'PATCH'
+      );
+    }
+    return request(`/admin/advertisements/${advertisementId}`, { method: 'PATCH', body: data });
+  },
+  deleteAdminAdvertisement: (advertisementId) =>
+    request(`/admin/advertisements/${advertisementId}`, { method: 'DELETE' }),
+  // Either direction. An admin can flip any package's availability regardless
+  // of which warehouse owns it.
+  setAdvertisementAvailability: (advertisementId, isAvailable) =>
+    request(`/admin/advertisements/${advertisementId}/availability`, {
+      method: 'PATCH',
+      body: { isAvailable },
+    }),
   // No args: the full list - used by WarehouseOrderDetailPage's "does this
-  // order already have a pending return" lookup. Pass { limit, after } for
-  // the Returns management page's own paginated, newest-first view.
-  warehouseReturns: ({ limit, after } = {}) => {
+  // order already have a pending return" lookup. Pass { status, limit, after }
+  // for the Returns management page's own paginated, newest-first, filterable view.
+  warehouseReturns: ({ status, limit, after } = {}) => {
     const params = new URLSearchParams();
+    if (status && status !== 'all') params.set('status', status);
     if (limit) params.set('limit', limit);
     if (after) params.set('after', after);
     const qs = params.toString();
@@ -407,22 +515,26 @@ export const api = {
   approveReturn: (returnId) => request(`/warehouse/returns/${returnId}/approve`, { method: 'POST' }),
   rejectReturn: (returnId, rejectionNote) =>
     request(`/warehouse/returns/${returnId}/reject`, { method: 'POST', body: { rejectionNote } }),
-  warehouseReviews: ({ limit, after } = {}) => {
+  warehouseReviews: ({ limit, after, rating } = {}) => {
     const params = new URLSearchParams();
     if (limit) params.set('limit', limit);
     if (after) params.set('after', after);
+    if (rating) params.set('rating', rating);
     const qs = params.toString();
     return request(`/warehouse/reviews${qs ? `?${qs}` : ''}`);
   },
   ratePharmacy: (orderId, rating, comment) =>
     request('/warehouse/reviews', { method: 'POST', body: { orderId, rating, comment } }),
   // No args: every product - used by the Dashboard's count and the Banners
-  // composer's product picker. Pass { search, warehouseId, limit, after }
-  // for the Products management page's own paginated, filtered view.
-  adminProducts: ({ search, warehouseId, limit, after } = {}) => {
+  // composer's product picker. Pass { search, warehouseId, categoryId,
+  // manufacturer, limit, after } for the Products management page's own
+  // paginated, filtered view.
+  adminProducts: ({ search, warehouseId, categoryId, manufacturer, limit, after } = {}) => {
     const params = new URLSearchParams();
     if (search) params.set('search', search);
     if (warehouseId) params.set('warehouseId', warehouseId);
+    if (categoryId) params.set('categoryId', categoryId);
+    if (manufacturer) params.set('manufacturer', manufacturer);
     if (limit) params.set('limit', limit);
     if (after) params.set('after', after);
     const qs = params.toString();
@@ -450,10 +562,12 @@ export const api = {
     const qs = params.toString();
     return request(`/admin/commission/overview${qs ? `?${qs}` : ''}`);
   },
-  adminCommissionWarehouse: (warehouseId, { from, to } = {}) => {
+  adminCommissionWarehouse: (warehouseId, { from, to, limit, after } = {}) => {
     const params = new URLSearchParams();
     if (from) params.set('from', from);
     if (to) params.set('to', to);
+    if (limit) params.set('limit', limit);
+    if (after) params.set('after', after);
     const qs = params.toString();
     return request(`/admin/commission/warehouses/${warehouseId}${qs ? `?${qs}` : ''}`);
   },
@@ -467,14 +581,30 @@ export const api = {
   adminExchangeRate: () => request('/admin/exchange-rate'),
   setExchangeRate: (usdToSyp) => request('/admin/exchange-rate', { method: 'PATCH', body: { usdToSyp } }),
   resetExchangeRate: () => request('/admin/exchange-rate/reset', { method: 'PATCH' }),
-  adminCatalog: ({ search, limit, after } = {}) => {
+  // The append-only trail behind the current rate - cursor-paginated the same
+  // way every other "Load more" list in the panel is.
+  adminExchangeRateHistory: ({ limit, after } = {}) => {
     const params = new URLSearchParams();
-    if (search) params.set('q', search);
+    if (limit) params.set('limit', limit);
+    if (after) params.set('after', after);
+    const qs = params.toString();
+    return request(`/admin/exchange-rate/history${qs ? `?${qs}` : ''}`);
+  },
+  adminCatalog: ({ search, categoryId, manufacturer, limit, after } = {}) => {
+    const params = new URLSearchParams();
+    if (search) params.set('search', search);
+    if (categoryId) params.set('categoryId', categoryId);
+    if (manufacturer) params.set('manufacturer', manufacturer);
     if (limit) params.set('limit', limit);
     if (after) params.set('after', after);
     const qs = params.toString();
     return request(`/admin/catalog${qs ? `?${qs}` : ''}`);
   },
+  // Backs the Searchable Dropdown manufacturer filter on both Admin Products
+  // and Admin Catalog - a type-ahead over the central catalog's distinct
+  // manufacturer names, capped server-side (adminCatalog.service.js).
+  searchAdminManufacturers: (search) =>
+    request(`/admin/catalog/manufacturers${search ? `?search=${encodeURIComponent(search)}` : ''}`),
   downloadCatalogTemplate: () => requestBlob('/admin/catalog/template'),
   importCatalogExcel: (file) => requestUpload('/admin/catalog/import', file),
   // `confirmed` re-sends the identical body with ?confirm=true, to go through
@@ -486,8 +616,10 @@ export const api = {
       body: changes,
     }),
   deactivateCatalogItem: (id) => request(`/admin/catalog/${id}`, { method: 'DELETE' }),
+  // `search` (was `q`) at the HTTP boundary - unified with every other
+  // text-search endpoint.
   warehouseCatalogSearch: (q) =>
-    request(`/warehouse/catalog/search${q ? `?q=${encodeURIComponent(q)}` : ''}`),
+    request(`/warehouse/catalog/search${q ? `?search=${encodeURIComponent(q)}` : ''}`),
   downloadWarehouseProductTemplate: () => requestBlob('/warehouse/products/template'),
   importWarehouseProducts: (file) => requestUpload('/warehouse/products/import', file),
   warehouseDiscounts: () => request('/warehouse/discounts'),
@@ -502,10 +634,11 @@ export const api = {
   // browsing needs the second list rather than the registry.
   warehouseManufacturers: ({ inCatalog } = {}) =>
     request(`/warehouse/manufacturers${inCatalog ? '?inCatalog=true' : ''}`),
-  warehouseBalances: ({ limit, after } = {}) => {
+  warehouseBalances: ({ limit, after, search } = {}) => {
     const params = new URLSearchParams();
     if (limit) params.set('limit', limit);
     if (after) params.set('after', after);
+    if (search) params.set('search', search);
     const qs = params.toString();
     return request(`/warehouse/balances${qs ? `?${qs}` : ''}`);
   },
@@ -533,8 +666,9 @@ export const api = {
       method: 'PATCH',
       body: { minOrderAmountUsd, maxOrderAmountUsd, requireDeliverySealPhoto },
     }),
-  warehouseBanners: ({ limit, after } = {}) => {
+  warehouseBanners: ({ status, limit, after } = {}) => {
     const params = new URLSearchParams();
+    if (status) params.set('status', status);
     if (limit) params.set('limit', limit);
     if (after) params.set('after', after);
     const qs = params.toString();
@@ -574,9 +708,10 @@ export const api = {
   updateComplaintStatus: (complaintId, status) =>
     request(`/admin/complaints/${complaintId}/status`, { method: 'PATCH', body: { status } }),
   // Warehouse: only the complaints filed against the caller's own warehouse,
-  // read-only.
-  warehouseComplaints: ({ limit, after } = {}) => {
+  // read-only. Pass { status } to filter (same enum as the admin queue).
+  warehouseComplaints: ({ status, limit, after } = {}) => {
     const params = new URLSearchParams();
+    if (status) params.set('status', status);
     if (limit) params.set('limit', limit);
     if (after) params.set('after', after);
     const qs = params.toString();
@@ -589,5 +724,19 @@ export const api = {
   rejectBanner: (bannerId, rejectionNote) =>
     request(`/admin/banners/${bannerId}/reject`, { method: 'PATCH', body: { rejectionNote } }),
   deleteAdminBanner: (id) => request(`/admin/banners/${id}`, { method: 'DELETE' }),
-  updateAdminBanner: (id, changes) => request(`/admin/banners/${id}`, { method: 'PATCH', body: changes }),
+  // `imageFile`, when given, replaces the banner's image too (allowed at any
+  // status, including an already-approved banner) - sent as multipart, same
+  // shape as createAdminBanner. Without it, this stays the plain JSON PATCH
+  // it always was.
+  updateAdminBanner: (id, changes, imageFile) => {
+    if (imageFile) {
+      const formData = new FormData();
+      if (changes.title !== undefined) formData.append('title', changes.title);
+      if (changes.startDate !== undefined) formData.append('startDate', changes.startDate);
+      if (changes.endDate !== undefined) formData.append('endDate', changes.endDate);
+      formData.append('image', imageFile);
+      return requestFormData(`/admin/banners/${id}`, formData, 'PATCH');
+    }
+    return request(`/admin/banners/${id}`, { method: 'PATCH', body: changes });
+  },
 };

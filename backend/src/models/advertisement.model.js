@@ -40,6 +40,11 @@ const advertisementSchema = new Schema(
     // alongside it as context, and as a saving %). Editable after approval,
     // see the service.
     totalPriceUsd: { type: Number, required: true, min: 0 },
+    // Optional - same Cloudinary mechanism as Banner's imageUrl (see
+    // warehouseAdvertisement.service.js/adminAdvertisement.service.js), but a
+    // package can exist without one, unlike a Banner where the image IS the
+    // content.
+    imageUrl: { type: String, default: null },
     startDate: { type: Date, required: true },
     endDate: { type: Date, required: true },
     // Unlike Offer (pending/approved, where a rejection just deletes the row),
@@ -49,6 +54,23 @@ const advertisementSchema = new Schema(
     rejectionNote: { type: String, default: null },
     approvedBy: { type: Schema.Types.ObjectId, ref: 'User', default: null },
     approvedAt: { type: Date, default: null },
+    // Whether pharmacies can see and buy this package right now - a pause
+    // switch that sits ON TOP of `status`, never instead of it. `status` is the
+    // one-time moderation decision on the package's content; `isAvailable` lets
+    // an approved package come off sale temporarily without losing that
+    // approval. A warehouse can only turn it OFF; turning it back on is an
+    // admin's call (warehouseAdvertisement.service.js vs
+    // adminAdvertisement.service.js) - the same "a warehouse never puts its own
+    // package live" rule approval already follows.
+    //
+    // Orders already placed are untouched either way: each one freezes the
+    // package's terms onto itself (Order.orderPackageGroups) and never reads
+    // this document again.
+    //
+    // A package saved before this field existed has no value stored. Mongoose
+    // hydrates that as `true`, but a raw query does not - so every filter on
+    // this field is `{ $ne: false }`, never `true` (advertisement.service.js).
+    isAvailable: { type: Boolean, default: true },
   },
   { timestamps: true }
 );

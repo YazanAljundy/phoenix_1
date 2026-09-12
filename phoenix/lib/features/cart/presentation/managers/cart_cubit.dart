@@ -185,6 +185,37 @@ class CartCubit extends Cubit<CartState> {
     _loadWarehouseLimits(warehouseId);
   }
 
+  // Packages the server has reported as no longer available - paused by their
+  // warehouse or an admin after they went into the cart. The lines are kept,
+  // not dropped: the tile explains what happened and the pharmacist decides to
+  // remove them. Nothing here blocks checkout; the server refuses them there.
+  void markPackagesUnavailable(Iterable<String> packageIds) {
+    final ids = packageIds.toSet();
+    final needsFlag = state.items.any(
+      (item) => item.isPackage && item.isAvailable && ids.contains(item.packageId),
+    );
+    if (!needsFlag) return;
+    emit(state.copyWith(items: _flagUnavailablePackages(ids)));
+  }
+
+  /// The one-tap way out of a PACKAGE_UNAVAILABLE refusal: drops every package
+  /// line flagged unavailable and leaves the rest of the cart as it was.
+  void removeUnavailablePackages() {
+    final updated = state.items.where((item) => !(item.isPackage && !item.isAvailable)).toList();
+    if (updated.length == state.items.length) return;
+    if (updated.isEmpty) {
+      emit(const CartState());
+      return;
+    }
+    emit(state.copyWith(items: updated));
+  }
+
+  List<CartItem> _flagUnavailablePackages(Set<String> packageIds) => state.items
+      .map((item) => item.isPackage && packageIds.contains(item.packageId)
+          ? item.copyWith(isAvailable: false)
+          : item)
+      .toList();
+
   // Works the same for a product line and a package line: for a package the
   // number IS the copy count. There is no "breaking a package" any more - its
   // contents are not cart lines, so nothing can be taken out of one.
@@ -260,8 +291,17 @@ class CartCubit extends Cubit<CartState> {
       emit(const CartState());
       return order;
     } on Failure catch (f) {
+      // PACKAGE_UNAVAILABLE names the refused packages. Flagging those lines in
+      // this same emit puts each tile's warning on screen together with the
+      // error dialog that explains it.
+      final refusedPackageIds = f.code == 'PACKAGE_UNAVAILABLE'
+          ? ((f.details?['advertisementIds'] as List?) ?? const [])
+              .map((id) => id.toString())
+              .toSet()
+          : const <String>{};
       emit(
         state.copyWith(
+          items: refusedPackageIds.isEmpty ? null : _flagUnavailablePackages(refusedPackageIds),
           isSubmitting: false,
           errorMessage: f.errMessage,
           errorCode: f.code,

@@ -22,7 +22,7 @@ const { applyResolvedIdentity } = require('./productCatalog.service');
 const { getDiscountMapForWarehouse, computeDiscountedPriceUsd } = require('./manufacturerDiscount.service');
 // advertisement.service depends on warehouse/productCatalog only - it never
 // requires this file back, so there is no cycle here.
-const { loadActiveAdvertisementOrThrow } = require('./advertisement.service');
+const { loadActiveAdvertisementOrThrow, isAdvertisementAvailable } = require('./advertisement.service');
 const { emitToWarehouse, EVENTS } = require('../realtime');
 
 // Section 15: applies an Offer percentage then a manufacturer-discount
@@ -299,6 +299,9 @@ async function createOrder({
   // Loaded BEFORE the items are merged, because a legacy client's cart holds
   // duplicates of the package's own products that have to come off first.
   const advertisements = [];
+  // Collected rather than thrown on the first one, so a cart holding two
+  // paused packages learns about both in a single round trip.
+  const unavailableAdvertisementIds = [];
   for (const request of packageRequests) {
     // Throws ADVERTISEMENT_UNAVAILABLE unless it is approved AND inside its
     // date window right now - the same single gate the cart-prefill endpoint
@@ -311,11 +314,30 @@ async function createOrder({
         'ADVERTISEMENT_WAREHOUSE_MISMATCH'
       );
     }
+    // Paused by its warehouse or an admin since it went into the cart. It is
+    // still approved and in date, so this gets its own explicit code rather
+    // than the catch-all ADVERTISEMENT_UNAVAILABLE above.
+    if (!isAdvertisementAvailable(advertisement)) {
+      unavailableAdvertisementIds.push(String(advertisement._id));
+      continue;
+    }
     advertisements.push({
       advertisement,
       copies: request.copies,
       fromLegacyField: request.fromLegacyField,
     });
+  }
+
+  // Refused before any product is read or anything is priced. The ids travel
+  // in `details` so the app can flag exactly those cart lines and offer to
+  // remove them - the same "server sends ids, the client already knows the
+  // names" contract STOCK_CHECK_FAILED follows.
+  if (unavailableAdvertisementIds.length > 0) {
+    throw ApiError.badRequest(
+      'This package is no longer available.',
+      { advertisementIds: unavailableAdvertisementIds },
+      'PACKAGE_UNAVAILABLE'
+    );
   }
 
   const merged = deductLegacyPackageItems(mergeDuplicateItems(plainItems), advertisements);

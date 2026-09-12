@@ -187,7 +187,7 @@ class _OtpVerificationViewState extends State<OtpVerificationView> {
                                       size: AppSizes.iconSizeSmall,
                                       color: canResend
                                           ? AppColors.textSecondaryOf(context)
-                                          : AppColors.navyOf(context),
+                                          : AppColors.textOf(context),
                                     ),
                                     const SizedBox(width: AppSizes.spacingXSmall),
                                     Text(
@@ -197,7 +197,7 @@ class _OtpVerificationViewState extends State<OtpVerificationView> {
                                         fontWeight: FontWeight.w700,
                                         color: canResend
                                             ? AppColors.textSecondaryOf(context)
-                                            : AppColors.navyOf(context),
+                                            : AppColors.textOf(context),
                                       ),
                                     ),
                                   ],
@@ -255,10 +255,10 @@ class _Header extends StatelessWidget {
           width: 56,
           height: 56,
           decoration: BoxDecoration(
-            color: AppColors.navyOf(context).withValues(alpha: 0.1),
+            color: AppColors.textOf(context).withValues(alpha: 0.1),
             borderRadius: AppRadius.large,
           ),
-          child: Icon(Icons.sms_outlined, color: AppColors.navyOf(context), size: 28),
+          child: Icon(Icons.sms_outlined, color: AppColors.textOf(context), size: 28),
         ),
         const SizedBox(height: AppSizes.spacingMedium),
         Text(l10n.otpTitle, style: context.textTheme.displaySmall),

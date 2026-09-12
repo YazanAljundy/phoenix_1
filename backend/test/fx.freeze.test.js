@@ -266,7 +266,9 @@ test('a manual rate change appends to the history with the previous value', asyn
   await setRate(10000);
 
   await exchangeRateService.setManualRate(11500, ids.whUser);
-  const [latest] = await exchangeRateService.listRateHistory({ limit: 1 });
+  const {
+    rows: [latest],
+  } = await exchangeRateService.listRateHistory({ limit: 1 });
 
   assert.strictEqual(latest.usdToSyp, 11500);
   assert.strictEqual(latest.previousUsdToSyp, 10000);

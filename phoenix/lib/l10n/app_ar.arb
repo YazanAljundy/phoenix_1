@@ -29,6 +29,10 @@
   "locationPermissionDeniedMessage": "تعذّر الوصول لموقعك، يمكنك تحريك الخريطة يدوياً لتحديد الموقع.",
   "addressNotResolvedYetMessage": "يرجى الانتظار حتى يتم تحديد العنوان من الخريطة، أو حرّك الخريطة لضبط الموقع.",
   "useCurrentLocationTooltip": "موقعي الحالي",
+  "areaTypeLabel": "نوع المنطقة",
+  "areaTypeCity": "مدينة",
+  "areaTypeCityRing": "طوق مدينة",
+  "areaTypeRural": "ريف",
   "confirmPasswordLabel": "تأكيد كلمة المرور",
   "confirmPasswordHint": "أعد إدخال كلمة المرور",
   "passwordHint": "{min} أحرف على الأقل",
@@ -279,6 +283,17 @@
   "advertisementReplaceCartConfirm": "استبدال السلة",
   "advertisementUnavailableTitle": "الباقة غير متاحة",
   "advertisementUnavailableMessage": "لم تعد هذه الباقة متاحة. ربما انتهت مدتها أو تم سحبها.",
+  "packageUnavailableBanner": "هذه الباقة لم تعد متاحة، لن تتمكن من إتمام الطلب بها.",
+  "packageUnavailableCheckoutMessage": "لم تعد متاحة: {names}. لم يتم إرسال الطلب — احذفها من السلة للمتابعة.",
+  "@packageUnavailableCheckoutMessage": {
+    "placeholders": {
+      "names": {
+        "type": "String"
+      }
+    }
+  },
+  "errorPackageUnavailable": "هذه الباقة لم تعد متاحة.",
+  "removeUnavailablePackagesButton": "حذف من السلة",
   "advertisementIncompleteMessage": "بعض منتجات هذه الباقة لم يعد المستودع يبيعها، لذلك لا يمكن إضافتها: {names}",
   "@advertisementIncompleteMessage": {
     "placeholders": {
@@ -712,5 +727,7 @@
   "promotionsError": "تعذّر تحميل العروض.",
   "offerDiscountPercent": "خصم {percent}٪",
   "offerEndsOn": "حتى {date}",
-  "offerPermanent": "عرض دائم"
+  "offerPermanent": "عرض دائم",
+  "addToCartFullButton": "إضافة إلى السلة",
+  "warehouseOffersTitle": "عروض المستودع"
 }

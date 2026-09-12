@@ -3,6 +3,7 @@ const { ApiError } = require('../utils/ApiError');
 const Warehouse = require('../models/warehouse.model');
 const warehouseOfferService = require('../services/warehouseOffer.service');
 const warehouseOfferViewModel = require('../viewmodels/warehouseOffer.viewmodel');
+const { parseCursorQuery, parseObjectIdCursor, paginationMeta } = require('../utils/pagination');
 
 async function loadWarehouseOrThrow(userId) {
   const warehouse = await Warehouse.findOne({ userId });
@@ -12,10 +13,28 @@ async function loadWarehouseOrThrow(userId) {
   return warehouse;
 }
 
+// Filtered (status pill / search / discount range) and always cursor-
+// paginated - `limit` always gets a default (parseCursorQuery), never
+// unbounded.
 const list = asyncHandler(async (req, res) => {
   const warehouse = await loadWarehouseOrThrow(req.user._id);
-  const rows = await warehouseOfferService.listOffersForWarehouse(warehouse._id);
-  res.json({ success: true, ...warehouseOfferViewModel.toOfferListResponse(rows) });
+  const { limit, after } = parseCursorQuery(req.query, 20);
+  const cursor = parseObjectIdCursor(after);
+  const status = typeof req.query.status === 'string' ? req.query.status : undefined;
+  const search = typeof req.query.search === 'string' ? req.query.search : undefined;
+  const minDiscount = typeof req.query.minDiscount === 'string' ? req.query.minDiscount : undefined;
+  const maxDiscount = typeof req.query.maxDiscount === 'string' ? req.query.maxDiscount : undefined;
+
+  const { rows, hasMore, nextCursor, reviewCount } = await warehouseOfferService.listPaginatedOffersForWarehouse(
+    warehouse._id,
+    { status, search, minDiscount, maxDiscount, limit, after: cursor }
+  );
+  res.json({
+    success: true,
+    ...warehouseOfferViewModel.toOfferListResponse(rows),
+    pagination: paginationMeta(hasMore, nextCursor),
+    reviewCount,
+  });
 });
 
 const create = asyncHandler(async (req, res) => {

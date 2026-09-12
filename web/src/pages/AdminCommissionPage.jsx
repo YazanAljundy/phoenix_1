@@ -4,6 +4,10 @@ import { api } from '../api/client';
 import { formatSyp } from '../utils/currency';
 import { withArFallback } from '../utils/displayName';
 import { PAYMENT_METHODS } from '../utils/payments';
+import { LoadMoreControl } from '../components/LoadMoreControl';
+import { usePaginatedData } from '../hooks/usePaginatedData';
+
+const COLLECTIONS_PAGE_SIZE = 50;
 
 // Money-Flow V2 - the platform's side of commission.
 //
@@ -327,25 +331,39 @@ function CollectionHistory({ collections, onReverse }) {
 // breakdown behind them, the form that records a payment, and the history.
 function WarehouseCommissionDetail({ warehouseId, from, to, onBack, onChanged }) {
   const { t, i18n } = useTranslation();
-  const [detail, setDetail] = useState(null);
-  const [error, setError] = useState(null);
+  // summary/orders/warehouse/period are not paginated - every fetchPage call
+  // (the first load AND every "load more" of the collections history below)
+  // returns the full current detail, so they are refreshed as a side effect
+  // of that same request rather than fetched separately (same reasoning as
+  // AdminOffersPage's reviewCount, which rides along with its own fetchPage).
+  const [meta, setMeta] = useState(null);
   // The collection about to be reversed, held here so the modal is a sibling
   // of the table rather than a cell inside it.
   const [reversing, setReversing] = useState(null);
 
-  const load = useCallback(async () => {
-    setError(null);
-    try {
-      const response = await api.adminCommissionWarehouse(warehouseId, { from, to });
-      setDetail(response.detail);
-    } catch (err) {
-      setError(err.message);
-    }
-  }, [warehouseId, from, to]);
+  const fetchPage = useCallback(
+    (cursor) =>
+      api.adminCommissionWarehouse(warehouseId, { from, to, limit: COLLECTIONS_PAGE_SIZE, after: cursor }).then((response) => {
+        const { collections, pagination, ...rest } = response.detail;
+        setMeta(rest);
+        return { rows: collections, hasMore: pagination.hasMore, nextCursor: pagination.nextCursor };
+      }),
+    [warehouseId, from, to]
+  );
+  const {
+    data: collections,
+    isLoading,
+    isLoadingMore,
+    hasMore,
+    error,
+    loadMore,
+    reset,
+  } = usePaginatedData(fetchPage);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    reset();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [warehouseId, from, to]);
 
   // "Back" points toward where the list is - left in LTR, right in RTL.
   const backButton = (
@@ -364,7 +382,7 @@ function WarehouseCommissionDetail({ warehouseId, from, to, onBack, onChanged })
     );
   }
 
-  if (!detail) {
+  if (isLoading || !meta) {
     return (
       <div>
         {backButton}
@@ -373,12 +391,12 @@ function WarehouseCommissionDetail({ warehouseId, from, to, onBack, onChanged })
     );
   }
 
-  const { summary, orders, collections, warehouse, period } = detail;
+  const { summary, orders, warehouse, period } = meta;
 
   // Both the row above and this view have to move when a collection is
   // recorded or reversed, so every mutation refreshes the two together.
   const reload = async () => {
-    await load();
+    await reset();
     await onChanged();
   };
 
@@ -478,6 +496,14 @@ function WarehouseCommissionDetail({ warehouseId, from, to, onBack, onChanged })
             <span>{t('commission.history')}</span>
           </div>
           <CollectionHistory collections={collections} onReverse={setReversing} />
+          {collections.length > 0 && (
+            <LoadMoreControl
+              hasMore={hasMore}
+              isLoadingMore={isLoadingMore}
+              onLoadMore={loadMore}
+              pageSize={COLLECTIONS_PAGE_SIZE}
+            />
+          )}
         </div>
 
         <div>

@@ -36,7 +36,7 @@ class ManufacturerCard extends StatelessWidget {
               ),
               child: Icon(
                 Icons.factory_outlined,
-                color: AppColors.navyOf(context),
+                color: AppColors.textOf(context),
                 size: AppSizes.iconSizeLarge,
               ),
             ),

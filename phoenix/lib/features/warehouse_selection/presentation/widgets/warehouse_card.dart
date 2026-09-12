@@ -17,19 +17,31 @@ import 'package:feniq/features/warehouse_selection/data/models/warehouse_model.d
 // Visual pass (warehouses screen): the card now goes through the shared
 // CustomCard rather than rolling its own Container, so it carries the same
 // border, radius, shadow and press-scale as every other card in the app
-// instead of being the one flat outlined tile among them. Three changes came
+// instead of being the one flat outlined tile among them. Two changes came
 // with that:
 //
-//  * The logo is taller (a 1.4 banner rather than 1.7) - it is the only thing
-//    that distinguishes one warehouse from another at a glance, so it earns
-//    the space.
 //  * The city moved from a plain icon+text line into a quiet pill, which
 //    reads as a property of the warehouse rather than as a second title. It
 //    matters more now that the list can be showing other cities.
 //  * The phone number line is gone. It sat directly above a WhatsApp button
 //    carrying the same number, it is the least scannable thing that can go in
-//    a ~170px tile, and the profile screen shows it in full - dropping it is
-//    what pays for the taller logo and the extra breathing room.
+//    a ~170px tile, and the profile screen shows it in full.
+//
+// Compact pass: the tile is shorter so more warehouses fit on a screen, with
+// nothing taken off the card.
+//
+//  * The logo is a fixed-height strip rather than a 1.4 aspect-ratio block.
+//    On a phone tile that frames it at about the 2.2 the profile header uses,
+//    so the pharmacist sees the same crop in both places - and a fixed height
+//    keeps the card's height independent of the column width, which the
+//    grid's fixed tile height depends on.
+//  * The text block and the action row share one inset, so the name lines up
+//    with the button beneath it. The buttons keep their 36px height: the card
+//    got smaller, its tap targets did not.
+//  * Colours drawn on the card use textOf, not navyOf. In night mode navy is a
+//    surface colour identical to the card's own fill, which left the
+//    "Profile" label and the no-logo glyph invisible; in day mode the two
+//    tokens are the same navy, so nothing changes there.
 //
 // Deliberately absent: a rating. Warehouse.averageRating/reviewsCount are not
 // kept current on the document (see the backend's warehouse.service.js, which
@@ -48,6 +60,12 @@ class WarehouseCard extends StatelessWidget {
   final VoidCallback onSelect;
   final VoidCallback onViewProfile;
 
+  /// Height of the logo strip - public so the loading skeleton can match it.
+  static const double logoHeight = 80;
+
+  static const double _inset = AppSizes.spacingSmall + 2;
+  static const double _actionHeight = 36;
+
   @override
   Widget build(BuildContext context) {
     final l10n = context.l10n;
@@ -64,12 +82,7 @@ class WarehouseCard extends StatelessWidget {
         children: [
           _LogoBanner(url: warehouse.logo),
           Padding(
-            padding: const EdgeInsets.fromLTRB(
-              AppSizes.spacingMedium - 2,
-              AppSizes.spacingMedium - 4,
-              AppSizes.spacingMedium - 2,
-              0,
-            ),
+            padding: const EdgeInsets.fromLTRB(_inset, _inset, _inset, 0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -85,7 +98,7 @@ class WarehouseCard extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: AppSizes.spacingSmall),
+                const SizedBox(height: AppSizes.spacingXSmall + 2),
                 _CityPill(city: warehouse.city),
               ],
             ),
@@ -96,10 +109,10 @@ class WarehouseCard extends StatelessWidget {
           const Spacer(),
           Padding(
             padding: const EdgeInsets.fromLTRB(
-              AppSizes.spacingMedium - 4,
-              AppSizes.spacingSmall + 2,
-              AppSizes.spacingMedium - 4,
-              AppSizes.spacingMedium - 4,
+              _inset,
+              AppSizes.spacingSmall,
+              _inset,
+              _inset,
             ),
             child: Row(
               children: [
@@ -107,11 +120,13 @@ class WarehouseCard extends StatelessWidget {
                   child: OutlinedButton(
                     onPressed: onViewProfile,
                     style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.navyOf(context),
+                      foregroundColor: AppColors.textOf(context),
                       side: BorderSide(color: AppColors.borderOf(context)),
                       shape: const RoundedRectangleBorder(borderRadius: AppRadius.small),
-                      padding: const EdgeInsets.symmetric(vertical: 9),
-                      minimumSize: const Size(0, 36),
+                      // No vertical padding: the minimum size alone sets the
+                      // height, so a larger text scale doesn't grow the row.
+                      padding: const EdgeInsets.symmetric(horizontal: AppSizes.spacingSmall),
+                      minimumSize: const Size(0, _actionHeight),
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
                     child: Text(
@@ -120,13 +135,13 @@ class WarehouseCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: context.textTheme.bodySmall?.copyWith(
                         fontWeight: AppTextTheme.semiBold,
-                        color: AppColors.navyOf(context),
+                        color: AppColors.textOf(context),
                       ),
                     ),
                   ),
                 ),
                 const SizedBox(width: AppSizes.spacingSmall),
-                WhatsAppButton(phone: warehouse.phone, size: 36),
+                WhatsAppButton(phone: warehouse.phone, size: _actionHeight),
               ],
             ),
           ),
@@ -145,21 +160,22 @@ class _LogoBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        AspectRatio(
-          aspectRatio: 1.4,
+        SizedBox(
+          height: WarehouseCard.logoHeight,
+          width: double.infinity,
           child: AppNetworkImage(
             url: url,
             fit: BoxFit.cover,
             // A warehouse with no logo yet gets a calm tinted panel rather
-            // than a grey void - the same navy the app uses for empty states,
-            // at low alpha so it reads as a placeholder, not as content.
+            // than a grey void - the app's text colour at low alpha, so it
+            // reads as a placeholder, not as content, in both themes.
             fallback: Container(
-              color: AppColors.navyOf(context).withValues(alpha: 0.06),
+              color: AppColors.textOf(context).withValues(alpha: 0.06),
               alignment: Alignment.center,
               child: Icon(
                 Icons.local_shipping_outlined,
-                color: AppColors.navyOf(context).withValues(alpha: 0.45),
-                size: AppSizes.iconSizeLarge,
+                color: AppColors.textOf(context).withValues(alpha: 0.45),
+                size: AppSizes.iconSizeMedium + 4,
               ),
             ),
           ),
@@ -187,7 +203,7 @@ class _CityPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSizes.spacingSmall, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: AppSizes.spacingXSmall + 2, vertical: 2),
       decoration: BoxDecoration(
         color: AppColors.surfaceOf(context),
         borderRadius: AppRadius.full,
@@ -198,16 +214,17 @@ class _CityPill extends StatelessWidget {
         children: [
           Icon(
             Icons.location_on_outlined,
-            size: 13,
+            size: 12,
             color: AppColors.textSecondaryOf(context),
           ),
-          const SizedBox(width: AppSizes.spacingXSmall),
+          const SizedBox(width: 3),
           Flexible(
             child: Text(
               city,
               style: context.textTheme.bodySmall?.copyWith(
                 color: AppColors.textSecondaryOf(context),
                 fontWeight: AppTextTheme.semiBold,
+                fontSize: 11,
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,

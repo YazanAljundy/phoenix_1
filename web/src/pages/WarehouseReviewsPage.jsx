@@ -20,10 +20,12 @@ export function WarehouseReviewsPage() {
   const [averageRating, setAverageRating] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
   const [distributionByStar, setDistributionByStar] = useState({});
+  // null = the "all" pill/no star selected - every visible review.
+  const [ratingFilter, setRatingFilter] = useState(null);
 
   const fetchPage = useCallback(
     (cursor) =>
-      api.warehouseReviews({ limit: PAGE_SIZE, after: cursor }).then((data) => {
+      api.warehouseReviews({ limit: PAGE_SIZE, after: cursor, rating: ratingFilter ?? undefined }).then((data) => {
         setAverageRating(data.averageRating);
         setTotalCount(data.totalCount);
         setDistributionByStar(data.distribution);
@@ -33,7 +35,7 @@ export function WarehouseReviewsPage() {
           nextCursor: data.pagination.nextCursor,
         };
       }),
-    []
+    [ratingFilter]
   );
 
   const { data: reviews, isLoading, isLoadingMore, hasMore, error, loadMore, reset } =
@@ -42,7 +44,11 @@ export function WarehouseReviewsPage() {
   useEffect(() => {
     reset();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [ratingFilter]);
+
+  // Clicking the star row that's already active clears back to "all" -
+  // a toggle, not a one-way drill-down.
+  const toggleRatingFilter = (star) => setRatingFilter((current) => (current === star ? null : star));
 
   const distribution = [5, 4, 3, 2, 1].map((star) => ({
     star,
@@ -60,15 +66,17 @@ export function WarehouseReviewsPage() {
 
       {error && <p className="error-text">{error}</p>}
 
-      {isLoading ? (
+      {isLoading && totalCount === 0 && reviews.length === 0 ? (
         <p className="hint">{t('common.loading')}</p>
-      ) : reviews.length === 0 ? (
+      ) : totalCount === 0 ? (
         <div className="wh-empty-state">
           <div className="wh-empty-state-icon">★</div>
           <div className="wh-empty-state-title">{t('reviews.noReviews')}</div>
         </div>
       ) : (
         <>
+          {/* Kept visible even when the star filter below matches nothing -
+              it's how the admin gets back to "all" again. */}
           <div className="wh-review-summary-card">
             <div className="wh-review-score">
               <div className="wh-review-score-value wh-num">{averageRating.toFixed(1)}</div>
@@ -76,50 +84,71 @@ export function WarehouseReviewsPage() {
               <div className="wh-review-score-count">
                 {t('reviews.summary', { rating: averageRating.toFixed(1), count: totalCount })}
               </div>
+              {ratingFilter !== null && (
+                <button type="button" className="wh-review-filter-clear" onClick={() => setRatingFilter(null)}>
+                  {t('reviews.filterAll')}
+                </button>
+              )}
             </div>
             <div className="wh-review-bars">
               {distribution.map(({ star, count }) => (
-                <div className="wh-review-bar-row" key={star}>
+                <button
+                  type="button"
+                  key={star}
+                  className={`wh-review-bar-row wh-review-bar-row-clickable${ratingFilter === star ? ' active' : ''}`}
+                  onClick={() => toggleRatingFilter(star)}
+                  aria-pressed={ratingFilter === star}
+                >
                   <span className="wh-review-bar-label wh-num">{star}★</span>
                   <span className="wh-review-bar-track">
                     <span className="wh-review-bar-fill" style={{ width: `${(count / maxCount) * 100}%` }} />
                   </span>
                   <span className="wh-review-bar-count wh-num">{count}</span>
-                </div>
+                </button>
               ))}
             </div>
           </div>
 
-          <div className="wh-card" style={{ overflow: 'hidden' }}>
-            <div className="wh-review-list-head">{t('reviews.latest')}</div>
-            {reviews.map((review) => {
-              const reviewerName = review.reviewerName?.trim() || t('reviews.anonymousReviewer');
-              return (
-                <div className="wh-review-row" key={review.id}>
-                  <div className="wh-review-avatar">{reviewerName.charAt(0)}</div>
-                  <div style={{ minWidth: 0, flex: 1 }}>
-                    <div className="wh-review-row-head">
-                      <span className="wh-review-row-name">{reviewerName}</span>
-                      <StarRating value={review.rating} size={14} />
-                      <span className="wh-review-row-date wh-num">
-                        {new Date(review.createdAt).toLocaleDateString()}
-                      </span>
+          {isLoading ? (
+            <p className="hint">{t('common.loading')}</p>
+          ) : reviews.length === 0 ? (
+            <div className="wh-empty-state">
+              <div className="wh-empty-state-title">{t('reviews.noMatchingReviews')}</div>
+            </div>
+          ) : (
+            <>
+              <div className="wh-card" style={{ overflow: 'hidden' }}>
+                <div className="wh-review-list-head">{t('reviews.latest')}</div>
+                {reviews.map((review) => {
+                  const reviewerName = review.reviewerName?.trim() || t('reviews.anonymousReviewer');
+                  return (
+                    <div className="wh-review-row" key={review.id}>
+                      <div className="wh-review-avatar">{reviewerName.charAt(0)}</div>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div className="wh-review-row-head">
+                          <span className="wh-review-row-name">{reviewerName}</span>
+                          <StarRating value={review.rating} size={14} />
+                          <span className="wh-review-row-date wh-num">
+                            {new Date(review.createdAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                        {review.comment && <div className="wh-review-row-comment">&ldquo;{review.comment}&rdquo;</div>}
+                        <div className="wh-review-row-order wh-num">
+                          {t('reviews.orderNumber', { number: review.orderNumber })}
+                        </div>
+                      </div>
                     </div>
-                    {review.comment && <div className="wh-review-row-comment">&ldquo;{review.comment}&rdquo;</div>}
-                    <div className="wh-review-row-order wh-num">
-                      {t('reviews.orderNumber', { number: review.orderNumber })}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-          <LoadMoreControl
-            hasMore={hasMore}
-            isLoadingMore={isLoadingMore}
-            onLoadMore={loadMore}
-            pageSize={PAGE_SIZE}
-          />
+                  );
+                })}
+              </div>
+              <LoadMoreControl
+                hasMore={hasMore}
+                isLoadingMore={isLoadingMore}
+                onLoadMore={loadMore}
+                pageSize={PAGE_SIZE}
+              />
+            </>
+          )}
         </>
       )}
     </div>

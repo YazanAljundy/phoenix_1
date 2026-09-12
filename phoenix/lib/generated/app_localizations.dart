@@ -272,6 +272,30 @@ abstract class AppLocalizations {
   /// **'My current location'**
   String get useCurrentLocationTooltip;
 
+  /// No description provided for @areaTypeLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Area type'**
+  String get areaTypeLabel;
+
+  /// No description provided for @areaTypeCity.
+  ///
+  /// In en, this message translates to:
+  /// **'City'**
+  String get areaTypeCity;
+
+  /// No description provided for @areaTypeCityRing.
+  ///
+  /// In en, this message translates to:
+  /// **'City ring'**
+  String get areaTypeCityRing;
+
+  /// No description provided for @areaTypeRural.
+  ///
+  /// In en, this message translates to:
+  /// **'Rural'**
+  String get areaTypeRural;
+
   /// No description provided for @confirmPasswordLabel.
   ///
   /// In en, this message translates to:
@@ -1039,6 +1063,30 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This package is no longer available. It may have expired or been withdrawn.'**
   String get advertisementUnavailableMessage;
+
+  /// No description provided for @packageUnavailableBanner.
+  ///
+  /// In en, this message translates to:
+  /// **'This package is no longer available. You won\'t be able to place the order with it.'**
+  String get packageUnavailableBanner;
+
+  /// No description provided for @packageUnavailableCheckoutMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'No longer available: {names}. The order wasn\'t placed — remove it from your cart to continue.'**
+  String packageUnavailableCheckoutMessage(String names);
+
+  /// No description provided for @errorPackageUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'This package is no longer available.'**
+  String get errorPackageUnavailable;
+
+  /// No description provided for @removeUnavailablePackagesButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from cart'**
+  String get removeUnavailablePackagesButton;
 
   /// No description provided for @advertisementIncompleteMessage.
   ///
@@ -2665,6 +2713,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Ongoing'**
   String get offerPermanent;
+
+  /// The add button on a catalog list row, which used to be a bare + icon. The grid tile and the quantity sheet keep the shorter addToCartButton.
+  ///
+  /// In en, this message translates to:
+  /// **'Add to cart'**
+  String get addToCartFullButton;
+
+  /// Title of the screen a tapped Offer card on the Offers & Ads tab opens: the offers of that offer's own warehouse.
+  ///
+  /// In en, this message translates to:
+  /// **'Warehouse offers'**
+  String get warehouseOffersTitle;
 }
 
 class _AppLocalizationsDelegate

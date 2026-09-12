@@ -27,6 +27,14 @@ import 'package:feniq/features/warehouse_selection/presentation/widgets/warehous
 import 'package:feniq/features/warehouse_selection/presentation/widgets/warehouse_city_scope_bar.dart';
 import 'package:feniq/routes/route_names.dart';
 
+// One set of grid metrics for the loaded grid and its loading skeleton, so
+// the placeholder cells land exactly where the cards are about to. The tile
+// height is WarehouseCard's fixed budget - see warehouse_card.dart and the
+// layout test that pins it.
+const double _tileMaxWidth = 210;
+const double _tileHeight = 220;
+const double _gridSpacing = AppSizes.spacingMedium - 4;
+
 class WarehouseSelectionView extends StatefulWidget {
   const WarehouseSelectionView({super.key});
 
@@ -266,8 +274,9 @@ class _WarehouseSelectionViewState extends State<WarehouseSelectionView> {
                     // without needing a sliver of its own.
                     return SliverToBoxAdapter(
                       child: SkeletonGrid(
-                        maxCrossAxisExtent: 210,
-                        mainAxisExtent: 260,
+                        maxCrossAxisExtent: _tileMaxWidth,
+                        mainAxisExtent: _tileHeight,
+                        spacing: _gridSpacing,
                         itemBuilder: (context, index) =>
                             const _WarehouseSkeletonCell(),
                       ),
@@ -328,16 +337,15 @@ class _WarehouseSelectionViewState extends State<WarehouseSelectionView> {
                       // instead of jumping straight from 1 to 2 columns at
                       // 700px.
                       //
-                      // The tile is taller than it was (288 vs 260) to pay for
-                      // the redesigned card's bigger logo and the room around
-                      // its text - see warehouse_card.dart.
+                      // Tile metrics are shared with the skeleton above - see
+                      // _tileHeight.
                       sliver: SliverGrid(
                         gridDelegate:
                             const SliverGridDelegateWithMaxCrossAxisExtent(
-                              maxCrossAxisExtent: 210,
-                              mainAxisSpacing: AppSizes.spacingMedium,
-                              crossAxisSpacing: AppSizes.spacingMedium,
-                              mainAxisExtent: 288,
+                              maxCrossAxisExtent: _tileMaxWidth,
+                              mainAxisSpacing: _gridSpacing,
+                              crossAxisSpacing: _gridSpacing,
+                              mainAxisExtent: _tileHeight,
                             ),
                         delegate: SliverChildBuilderDelegate((context, index) {
                           final warehouse = filtered[index];
@@ -413,12 +421,12 @@ class _WarehouseSkeletonCell extends StatelessWidget {
       padding: EdgeInsets.zero,
       mainAxisSize: MainAxisSize.max,
       children: [
-        SkeletonBar(height: 104, radius: AppRadius.large),
+        SkeletonBar(height: WarehouseCard.logoHeight, radius: AppRadius.large),
         Padding(
           padding: EdgeInsets.fromLTRB(
-            AppSizes.spacingMedium - 2,
-            AppSizes.spacingMedium - 4,
-            AppSizes.spacingMedium - 2,
+            AppSizes.spacingSmall + 2,
+            AppSizes.spacingSmall + 2,
+            AppSizes.spacingSmall + 2,
             0,
           ),
           child: Column(
@@ -427,25 +435,26 @@ class _WarehouseSkeletonCell extends StatelessWidget {
             children: [
               SkeletonBar(height: 12),
               SizedBox(height: AppSizes.spacingXSmall),
-              SkeletonBar(width: 104, height: 12),
-              SizedBox(height: AppSizes.spacingSmall),
-              SkeletonBar(width: 76, height: 20, radius: AppRadius.full),
+              SkeletonBar(width: 96, height: 12),
+              SizedBox(height: AppSizes.spacingXSmall + 2),
+              SkeletonBar(width: 64, height: 18, radius: AppRadius.full),
             ],
           ),
         ),
         Spacer(),
         Padding(
           padding: EdgeInsets.fromLTRB(
-            AppSizes.spacingMedium - 4,
             AppSizes.spacingSmall + 2,
-            AppSizes.spacingMedium - 4,
-            AppSizes.spacingMedium - 4,
+            AppSizes.spacingSmall,
+            AppSizes.spacingSmall + 2,
+            AppSizes.spacingSmall + 2,
           ),
           child: Row(
             children: [
               Expanded(child: SkeletonBar(height: 36)),
               SizedBox(width: AppSizes.spacingSmall),
-              SkeletonBar(width: 36, height: 36, radius: AppRadius.full),
+              // Rounded square, not a circle - WhatsAppButton's own shape.
+              SkeletonBar(width: 36, height: 36),
             ],
           ),
         ),

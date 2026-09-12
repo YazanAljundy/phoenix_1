@@ -166,26 +166,45 @@ async function getCommissionOverview({ from, to } = {}) {
 
 // One warehouse's detail: the same figures as its overview row, plus the
 // per-order settlement breakdown and its collection history.
-async function getWarehouseCommissionDetail(warehouseId, { from, to } = {}) {
+async function getWarehouseCommissionDetail(warehouseId, { from, to, limit, after } = {}) {
   const warehouse = await loadWarehouseOrThrow(warehouseId);
   const period = resolvePeriod({ from, to });
 
-  const [summary, settlement, collections] = await Promise.all([
+  const [summary, settlement, collectionsPage] = await Promise.all([
     getWarehouseCommission(warehouse, period),
     getSettlementForWarehouse(warehouse._id, { from: period.from, to: period.to }),
     // The full history, not just the range: a reversed collection from outside
-    // the window still explains why an outstanding figure moved.
-    listCollectionsForWarehouse(warehouse._id),
+    // the window still explains why an outstanding figure moved. Now cursor-
+    // paginated rather than a flat limit:100 - see listCollectionsForWarehouse.
+    listCollectionsForWarehouse(warehouse._id, { limit, after }),
   ]);
 
-  return { period, warehouse, summary, orders: settlement.rows, collections };
+  return {
+    period,
+    warehouse,
+    summary,
+    orders: settlement.rows,
+    collections: collectionsPage.rows,
+    hasMoreCollections: collectionsPage.hasMore,
+    nextCollectionsCursor: collectionsPage.nextCursor,
+  };
 }
 
-async function listCollectionsForWarehouse(warehouseId, { limit = 100 } = {}) {
-  return CommissionCollection.find({ warehouseId })
-    .sort({ recordedAt: -1, _id: -1 })
-    .limit(limit)
+// Cursor-paginated on `_id` rather than `recordedAt` - the two orderings
+// always agree (recordedAt is stamped with `new Date()` at the exact instant
+// recordCollection creates the row, and is never backdated), and `_id` is
+// what every other cursor-paginated list in the app sorts and cursors on
+// (see offer.service.js's listPaginatedOffers).
+async function listCollectionsForWarehouse(warehouseId, { limit = 100, after = null } = {}) {
+  const filter = after !== null ? { warehouseId, _id: { $lt: after } } : { warehouseId };
+  const rows = await CommissionCollection.find(filter)
+    .sort({ _id: -1 })
+    .limit(limit + 1)
     .lean();
+  const hasMore = rows.length > limit;
+  const page = hasMore ? rows.slice(0, limit) : rows;
+  const nextCursor = page.length > 0 ? String(page[page.length - 1]._id) : null;
+  return { rows: page, hasMore, nextCursor };
 }
 
 // Records that a warehouse paid its commission.

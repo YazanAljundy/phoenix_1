@@ -51,9 +51,10 @@ function parseAccountCursor(after) {
 const list = asyncHandler(async (req, res) => {
   const warehouse = await loadWarehouseOrThrow(req.user._id);
   const { limit, after } = parseCursorQuery(req.query, 20);
+  const search = typeof req.query.search === 'string' ? req.query.search : undefined;
   const { rows, hasMore, nextCursor } = await statementService.listAccountsForWarehouse(
     warehouse._id,
-    { limit, after: parseAccountCursor(after) }
+    { limit, after: parseAccountCursor(after), search }
   );
   res.json({
     success: true,

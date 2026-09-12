@@ -11,7 +11,6 @@ import 'package:feniq/core/widgets/empty_view.dart';
 import 'package:feniq/core/widgets/failure_widget.dart';
 import 'package:feniq/features/advertisements/presentation/utils/advertisement_cart_launcher.dart';
 import 'package:feniq/features/cart/presentation/widgets/cart_button.dart';
-import 'package:feniq/features/catalog/data/models/manufacturers_route_args.dart';
 import 'package:feniq/features/notifications/presentation/widgets/notification_button.dart';
 import 'package:feniq/features/promotions/data/models/promotion.dart';
 import 'package:feniq/features/promotions/presentation/managers/promotions_cubit.dart';
@@ -24,10 +23,12 @@ import 'package:feniq/routes/route_names.dart';
 /// The Offers & Ads tab: the one place a pharmacist browses everything being
 /// promoted right now - product offers and warehouse packages together.
 ///
-/// Discovery only. Nothing is ordered from here: an offer hands off to the
-/// existing warehouse -> manufacturer -> catalog flow (the very route a tapped
-/// banner already uses), and a package hands off to the existing package ->
-/// cart flow. Neither builds a screen of its own.
+/// Discovery only. Nothing is ordered from here: tapping an offer opens
+/// WarehouseOffersView, scoped to that offer's own warehouse (see
+/// _handleTap below), and a package hands off to the existing package ->
+/// cart flow. Neither builds a screen of its own. The "All"/"Offers"/
+/// "Packages" chips above the list are a plain in-place kind filter (see
+/// PromotionFilterBar) - unlike an offer tap, they never navigate anywhere.
 class PromotionsView extends StatefulWidget {
   const PromotionsView({super.key});
 
@@ -51,17 +52,16 @@ class _PromotionsViewState extends State<PromotionsView> {
   Future<void> _handleTap(Promotion promotion) async {
     switch (promotion) {
       case OfferPromotion(:final offer):
-        // Straight into the catalog for that product's manufacturer, exactly
-        // as a tapped banner does - ManufacturersView jumps through on its own
-        // once it has confirmed the manufacturer is still stocked here.
+        // Not straight into the catalog - into the offers running at THIS
+        // offer's own warehouse (WarehouseOffersView/Cubit, the same screen
+        // the Offers chip opens for the cart's warehouse - see
+        // _openWarehouseOffers). That list's own tap is what makes the
+        // manufacturer -> catalog hand-off a tapped banner also uses.
         context.pushNamed(
-          RouteNames.manufacturers,
+          RouteNames.warehouseOffers,
           pathParameters: {'warehouseId': offer.warehouseId},
-          extra: ManufacturersRouteArgs(
-            warehouseName: promotion.warehouseName(
-              Localizations.localeOf(context).languageCode == 'ar',
-            ),
-            autoFilterManufacturer: offer.manufacturerAr,
+          extra: promotion.warehouseName(
+            Localizations.localeOf(context).languageCode == 'ar',
           ),
         );
       case PackagePromotion(:final advertisement):
@@ -142,7 +142,10 @@ class _PromotionsViewState extends State<PromotionsView> {
                 onRetry: () => context.read<PromotionsCubit>().load(),
               );
             case PromotionsStatus.loaded:
-              return _LoadedBody(state: state, onPromotionTap: _handleTap);
+              return _LoadedBody(
+                state: state,
+                onPromotionTap: _handleTap,
+              );
           }
         },
       ),
@@ -151,7 +154,10 @@ class _PromotionsViewState extends State<PromotionsView> {
 }
 
 class _LoadedBody extends StatelessWidget {
-  const _LoadedBody({required this.state, required this.onPromotionTap});
+  const _LoadedBody({
+    required this.state,
+    required this.onPromotionTap,
+  });
 
   final PromotionsState state;
   final ValueChanged<Promotion> onPromotionTap;

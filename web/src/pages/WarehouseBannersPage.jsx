@@ -10,6 +10,7 @@ import { withArFallback } from '../utils/displayName';
 import { contactAdminOnWhatsApp } from '../utils/whatsapp';
 
 const PAGE_SIZE = 15;
+const STATUS_FILTERS = ['all', 'pending', 'approved', 'rejected'];
 
 const EMPTY_BANNER_FORM = { imageFile: null, title: '', productId: '', startDate: '', endDate: '' };
 
@@ -55,7 +56,7 @@ function CreateBannerModal({ products, editingBanner, onClose, onCreated, onSave
     event.preventDefault();
     setError(null);
 
-    if ((!isEditing && !form.imageFile) || !form.title.trim() || !form.startDate || !form.endDate) {
+    if (!form.title.trim() || !form.startDate || !form.endDate) {
       setError(t('common.requiredFields'));
       return;
     }
@@ -76,7 +77,7 @@ function CreateBannerModal({ products, editingBanner, onClose, onCreated, onSave
         onSaved();
       } else {
         const formData = new FormData();
-        formData.append('image', form.imageFile);
+        if (form.imageFile) formData.append('image', form.imageFile);
         formData.append('title', form.title.trim());
         formData.append('startDate', form.startDate);
         formData.append('endDate', form.endDate);
@@ -97,20 +98,21 @@ function CreateBannerModal({ products, editingBanner, onClose, onCreated, onSave
         <h2>{isEditing ? t('banners.warehouse.editBanner') : t('banners.warehouse.modalTitle')}</h2>
         <form onSubmit={handleSubmit} className="product-form">
           {isEditing ? (
-            <img
-              className="return-photo-thumb"
-              src={editingBanner.imageUrl}
-              alt={editingBanner.title}
-              style={{ width: 96, height: 96 }}
-            />
+            editingBanner.imageUrl && (
+              <img
+                className="return-photo-thumb"
+                src={editingBanner.imageUrl}
+                alt={editingBanner.title}
+                style={{ width: 96, height: 96 }}
+              />
+            )
           ) : (
             <label>
-              {t('banners.image')}
+              {t('banners.imageOptional')}
               <input
                 type="file"
                 accept="image/png,image/jpeg,image/webp"
                 onChange={(e) => setField('imageFile', e.target.files?.[0] ?? null)}
-                required
               />
             </label>
           )}
@@ -208,6 +210,7 @@ export function WarehouseBannersPage() {
   const bannerStatusLabel = useBannerStatusLabel();
   const { warehouse } = useAuth();
   const [products, setProducts] = useState([]);
+  const [statusFilter, setStatusFilter] = useState('all');
   const [showCreateBanner, setShowCreateBanner] = useState(false);
   const [editingBanner, setEditingBanner] = useState(null);
   const [busyBannerId, setBusyBannerId] = useState(null);
@@ -220,12 +223,18 @@ export function WarehouseBannersPage() {
 
   const fetchPage = useCallback(
     (cursor) =>
-      api.warehouseBanners({ limit: PAGE_SIZE, after: cursor }).then((data) => ({
-        rows: data.banners,
-        hasMore: data.pagination.hasMore,
-        nextCursor: data.pagination.nextCursor,
-      })),
-    []
+      api
+        .warehouseBanners({
+          status: statusFilter === 'all' ? undefined : statusFilter,
+          limit: PAGE_SIZE,
+          after: cursor,
+        })
+        .then((data) => ({
+          rows: data.banners,
+          hasMore: data.pagination.hasMore,
+          nextCursor: data.pagination.nextCursor,
+        })),
+    [statusFilter]
   );
 
   const { data: banners, isLoading, isLoadingMore, hasMore, error, loadMore, reset } =
@@ -234,7 +243,7 @@ export function WarehouseBannersPage() {
   useEffect(() => {
     reset();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [statusFilter]);
 
   const handleBannerCreated = (bannerNumber) => {
     setShowCreateBanner(false);
@@ -292,6 +301,26 @@ export function WarehouseBannersPage() {
         {t('banners.warehouse.whatsappRequest')}
       </button>
 
+      <div className="wh-filters">
+        <select
+          className="wh-filter-select"
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+        >
+          {STATUS_FILTERS.map((filter) => (
+            <option key={filter} value={filter}>
+              {filter === 'all'
+                ? t('banners.admin.filterAll')
+                : filter === 'approved'
+                  ? t('banners.statusApproved')
+                  : filter === 'rejected'
+                    ? t('banners.statusRejected')
+                    : t('banners.statusPending')}
+            </option>
+          ))}
+        </select>
+      </div>
+
       {(error || actionError) && <p className="error-text">{error || actionError}</p>}
 
       {isLoading ? (
@@ -318,7 +347,11 @@ export function WarehouseBannersPage() {
                   <tr key={banner.id}>
                     <td className="wh-num wh-table-order-num">#{banner.bannerNumber}</td>
                     <td>
-                      <img className="wh-table-thumb" src={banner.imageUrl} alt={banner.title} />
+                      {banner.imageUrl ? (
+                        <img className="wh-table-thumb" src={banner.imageUrl} alt={banner.title} />
+                      ) : (
+                        <span className="hint">{t('banners.admin.noImageYet')}</span>
+                      )}
                     </td>
                     <td>
                       {banner.title}

@@ -123,7 +123,7 @@ class _MyReturnsViewState extends State<MyReturnsView> with SingleTickerProvider
             ),
             for (final order in orders)
               ListTile(
-                leading: Icon(Icons.storefront_outlined, color: AppColors.navyOf(sheetContext)),
+                leading: Icon(Icons.storefront_outlined, color: AppColors.textOf(sheetContext)),
                 title: Text(l10n.returnableOrderNumber('${order.orderNumber}')),
                 subtitle: Text(
                   (isArabic ? order.warehouseNameAr : order.warehouseNameEn) ??
@@ -363,9 +363,9 @@ class _ReturnsTabBar extends StatelessWidget {
       color: AppColors.backgroundOf(context),
       child: TabBar(
         controller: controller,
-        labelColor: AppColors.navyOf(context),
+        labelColor: AppColors.textOf(context),
         unselectedLabelColor: AppColors.textSecondaryOf(context),
-        indicatorColor: AppColors.navyOf(context),
+        indicatorColor: AppColors.textOf(context),
         indicatorWeight: 3,
         indicatorSize: TabBarIndicatorSize.tab,
         dividerColor: AppColors.borderOf(context),
@@ -460,13 +460,13 @@ class _EmptyReturns extends StatelessWidget {
                       width: 96,
                       height: 96,
                       decoration: BoxDecoration(
-                        color: AppColors.navyOf(context).withValues(alpha: 0.08),
+                        color: AppColors.textOf(context).withValues(alpha: 0.08),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
                         Icons.assignment_return_outlined,
                         size: 44,
-                        color: AppColors.navyOf(context),
+                        color: AppColors.textOf(context),
                       ),
                     ),
                     const SizedBox(height: AppSizes.spacingMedium),
@@ -539,13 +539,13 @@ class _ReturnableEmpty extends StatelessWidget {
                       width: 96,
                       height: 96,
                       decoration: BoxDecoration(
-                        color: AppColors.navyOf(context).withValues(alpha: 0.08),
+                        color: AppColors.textOf(context).withValues(alpha: 0.08),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
                         Icons.autorenew_rounded,
                         size: 44,
-                        color: AppColors.navyOf(context),
+                        color: AppColors.textOf(context),
                       ),
                     ),
                     const SizedBox(height: AppSizes.spacingMedium),
@@ -587,7 +587,7 @@ class _ReturnableOrderCard extends StatelessWidget {
     // differently at a glance from one with a day and a half left.
     final accent = order.isEndingSoon
         ? AppColors.primaryOf(context)
-        : AppColors.navyOf(context);
+        : AppColors.textOf(context);
     final warehouseName =
         (isArabic ? order.warehouseNameAr : order.warehouseNameEn) ??
         order.warehouseNameAr ??
@@ -629,7 +629,7 @@ class _ReturnableOrderCard extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    Icon(Icons.storefront_rounded, size: 18, color: AppColors.navyOf(context)),
+                    Icon(Icons.storefront_rounded, size: 18, color: AppColors.textOf(context)),
                     const SizedBox(width: AppSizes.spacingXSmall),
                     Expanded(
                       child: Text(
@@ -683,7 +683,7 @@ class _ReturnableOrderCard extends StatelessWidget {
                 Text(
                   formatSyp(order.finalPrice, l10n.currencySuffix),
                   style: context.textTheme.titleSmall?.copyWith(
-                    color: AppColors.navyOf(context),
+                    color: AppColors.textOf(context),
                     fontWeight: FontWeight.w800,
                   ),
                   maxLines: 1,
@@ -722,7 +722,10 @@ class _ReturnableOrderCard extends StatelessWidget {
                     icon: const Icon(Icons.assignment_return_rounded, size: 18),
                     label: Text(l10n.returnableRequestButton),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.navyOf(context),
+                      // Navy by day. At night navy is the card's own fill, so the button
+                      // takes the brand orange - white label either way, as on
+                      // PrimaryButton.
+                      backgroundColor: context.isDarkMode ? AppColors.primaryOf(context) : AppColors.navyOf(context),
                       foregroundColor: Colors.white,
                       elevation: 0,
                       padding: const EdgeInsets.symmetric(vertical: 12),
