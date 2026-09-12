@@ -279,9 +279,20 @@ test('isolation fixture: two warehouses and an admin are connected', async () =>
   isolationA = connectClient({ token: tokenFor(WAREHOUSE_A_USER) });
   isolationB = connectClient({ token: tokenFor(WAREHOUSE_B_USER) });
   isolationAdmin = connectClient({ token: tokenFor(ADMIN_USER_2) });
-  assert.strictEqual(await settle(isolationA), 'connected');
-  assert.strictEqual(await settle(isolationB), 'connected');
-  assert.strictEqual(await settle(isolationAdmin), 'connected');
+
+  // settle() must be *called* for all three before any of them is awaited:
+  // connectClient() starts each handshake immediately, and settle() only
+  // attaches its 'connect'/'connect_error' listeners at call time. Awaiting
+  // one before calling the next left a gap where a faster socket's one-time
+  // 'connect' event could fire - and be lost forever - before its own
+  // settle() ever attached a listener, hanging that client until the 3s
+  // fallback timeout.
+  const pendingA = settle(isolationA);
+  const pendingB = settle(isolationB);
+  const pendingAdmin = settle(isolationAdmin);
+  assert.strictEqual(await pendingA, 'connected');
+  assert.strictEqual(await pendingB, 'connected');
+  assert.strictEqual(await pendingAdmin, 'connected');
 });
 
 for (const [event, payload] of ISOLATION_CASES) {
