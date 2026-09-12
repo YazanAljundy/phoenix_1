@@ -120,7 +120,7 @@ export function AdminOffersPage() {
 
   const handleSaved = () => {
     setEditing(null);
-    load();
+    reset();
   };
 
   return (
@@ -144,7 +144,7 @@ export function AdminOffersPage() {
                 onClick={() => setStatusFilter(value)}
               >
                 {value === 'review'
-                  ? t('offers.filters.review', { count: pendingCount })
+                  ? t('offers.filters.review', { count: reviewCount })
                   : t(`offers.filters.${value}`)}
               </button>
             ))}
@@ -178,7 +178,7 @@ export function AdminOffersPage() {
             />
           </div>
 
-          {visibleOffers.length === 0 ? (
+          {offers.length === 0 ? (
             <div className="adm-empty-state">
               <div className="adm-empty-state-icon">&#10003;</div>
               <div className="adm-empty-state-title">{t('offers.admin.noOffers')}</div>
@@ -198,7 +198,7 @@ export function AdminOffersPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {visibleOffers.map((offer) => {
+                  {offers.map((offer) => {
                     const u = offer.pendingUpdate;
                     return (
                       <tr key={offer.id}>
@@ -288,6 +288,10 @@ export function AdminOffersPage() {
                 </tbody>
               </table>
             </div>
+          )}
+
+          {offers.length > 0 && (
+            <LoadMoreControl hasMore={hasMore} isLoadingMore={isLoadingMore} onLoadMore={loadMore} pageSize={PAGE_SIZE} />
           )}
         </>
       )}
