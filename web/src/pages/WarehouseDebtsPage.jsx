@@ -9,6 +9,7 @@ import { PAYMENT_METHODS, PAYMENT_CURRENCIES as CURRENCIES, newIdempotencyKey } 
 import { WarehouseGroupSubNav } from '../components/WarehouseGroupSubNav';
 
 const PAGE_SIZE = 20;
+const SEARCH_DEBOUNCE_MS = 300;
 
 // A pharmacy's balance as a single figure: > 0 owes, < 0 has paid ahead and
 // is shown as a credit rather than as a negative debt, = 0 is settled.
@@ -579,15 +580,24 @@ function WarehouseDebtDetail({ pharmacyId, onBack }) {
 export function WarehouseDebtsPage() {
   const { t } = useTranslation();
   const [selectedPharmacyId, setSelectedPharmacyId] = useState(null);
+  const [searchInput, setSearchInput] = useState('');
+  const [search, setSearch] = useState('');
+
+  // Debounced the same 300ms as every other search box in the panel, so
+  // typing doesn't fire a request per keystroke.
+  useEffect(() => {
+    const timeout = setTimeout(() => setSearch(searchInput.trim()), SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timeout);
+  }, [searchInput]);
 
   const fetchPage = useCallback(
     (cursor) =>
-      api.warehouseBalances({ limit: PAGE_SIZE, after: cursor }).then((data) => ({
+      api.warehouseBalances({ limit: PAGE_SIZE, after: cursor, search: search || undefined }).then((data) => ({
         rows: data.pharmacies,
         hasMore: data.pagination.hasMore,
         nextCursor: data.pagination.nextCursor,
       })),
-    []
+    [search]
   );
 
   const {
@@ -603,7 +613,7 @@ export function WarehouseDebtsPage() {
   useEffect(() => {
     reset();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [search]);
 
   if (selectedPharmacyId) {
     return (
@@ -628,6 +638,16 @@ export function WarehouseDebtsPage() {
         <h1>{t('nav.debts')}</h1>
       </div>
 
+      <div className="wh-filters">
+        <input
+          type="search"
+          className="wh-filter-search"
+          placeholder={t('debts.searchPlaceholder')}
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+        />
+      </div>
+
       {error && <p className="error-text">{error}</p>}
 
       {isLoading ? (
@@ -635,7 +655,7 @@ export function WarehouseDebtsPage() {
       ) : pharmacies.length === 0 ? (
         <div className="wh-empty-state">
           <div className="wh-empty-state-icon">{t('common.currencySuffix')}</div>
-          <div className="wh-empty-state-title">{t('debts.noDebts')}</div>
+          <div className="wh-empty-state-title">{search ? t('debts.noMatchingDebts') : t('debts.noDebts')}</div>
         </div>
       ) : (
         <>

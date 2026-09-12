@@ -429,10 +429,11 @@ export const api = {
   // browsing needs the second list rather than the registry.
   warehouseManufacturers: ({ inCatalog } = {}) =>
     request(`/warehouse/manufacturers${inCatalog ? '?inCatalog=true' : ''}`),
-  warehouseBalances: ({ limit, after } = {}) => {
+  warehouseBalances: ({ limit, after, search } = {}) => {
     const params = new URLSearchParams();
     if (limit) params.set('limit', limit);
     if (after) params.set('after', after);
+    if (search) params.set('search', search);
     const qs = params.toString();
     return request(`/warehouse/balances${qs ? `?${qs}` : ''}`);
   },

@@ -325,6 +325,8 @@
     "statusPending": "Pending review"
   },
   "debts": {
+    "searchPlaceholder": "Search by pharmacy name...",
+    "noMatchingDebts": "No pharmacies match this search.",
     "recordPayment": "Record a payment",
     "amount": "Amount",
     "currency": "Currency",

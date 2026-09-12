@@ -4,6 +4,7 @@ const LedgerAccount = require('../models/ledgerAccount.model');
 const Pharmacy = require('../models/pharmacy.model');
 const Warehouse = require('../models/warehouse.model');
 const ledger = require('./ledger.service');
+const { escapeRegex } = require('./productCatalog.service');
 
 // Money-Flow V2. The account statement: what a pharmacy owed, what it paid,
 // what came back, and where that leaves the balance - in order, with a running
@@ -266,22 +267,46 @@ const WAREHOUSE_ACCOUNTS_DEFAULT_LIMIT = 20;
 // something financial happened on it, which is the same set that aggregation
 // was reconstructing the long way round.
 //
+// A pharmacy's name lives on Pharmacy, not LedgerAccount, so a name search
+// is resolved to ids first, same two-step every name search across a join in
+// this app uses (see offer.service.js's buildOfferSearchOr).
+async function resolveMatchingPharmacyIds(searchTerm) {
+  const pattern = new RegExp(escapeRegex(searchTerm), 'i');
+  const matches = await Pharmacy.find({ $or: [{ nameAr: pattern }, { nameEn: pattern }] }, '_id');
+  return matches.map((p) => p._id);
+}
+
 // The cursor is the pair (balanceSyp, accountId) - balance alone is a live,
 // tie-prone value, so the id breaks ties without carrying meaning of its own.
+// `search` (pharmacy name) and the cursor each carry their own top-level $or,
+// so they are pushed as separate clauses and $and-ed together rather than
+// written into one plain object, where the second $or key would silently
+// overwrite the first - same reasoning as offer.service.js's
+// buildOfferListFilter.
 async function listAccountsForWarehouse(
   warehouseId,
-  { limit = WAREHOUSE_ACCOUNTS_DEFAULT_LIMIT, after = null } = {}
+  { limit = WAREHOUSE_ACCOUNTS_DEFAULT_LIMIT, after = null, search } = {}
 ) {
-  const filter = { warehouseId };
+  const clauses = [{ warehouseId }];
+
   if (after !== null) {
-    filter.$or = [
-      { 'balanceCache.syp': { $lt: after.balanceSyp } },
-      {
-        'balanceCache.syp': after.balanceSyp,
-        _id: { $gt: new mongoose.Types.ObjectId(String(after.id)) },
-      },
-    ];
+    clauses.push({
+      $or: [
+        { 'balanceCache.syp': { $lt: after.balanceSyp } },
+        {
+          'balanceCache.syp': after.balanceSyp,
+          _id: { $gt: new mongoose.Types.ObjectId(String(after.id)) },
+        },
+      ],
+    });
   }
+
+  if (typeof search === 'string' && search.trim()) {
+    const pharmacyIds = await resolveMatchingPharmacyIds(search.trim());
+    clauses.push({ pharmacyId: { $in: pharmacyIds } });
+  }
+
+  const filter = clauses.length === 1 ? clauses[0] : { $and: clauses };
 
   const accounts = await LedgerAccount.find(filter)
     .select('pharmacyId balanceCache lastActivityAt')

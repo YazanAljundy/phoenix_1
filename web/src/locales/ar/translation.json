@@ -337,6 +337,8 @@
     "statusPending": "قيد المراجعة"
   },
   "debts": {
+    "searchPlaceholder": "ابحث باسم الصيدلية...",
+    "noMatchingDebts": "لا توجد صيدليات مطابقة لهذا البحث.",
     "recordPayment": "تسجيل دفعة",
     "amount": "المبلغ",
     "currency": "العملة",
