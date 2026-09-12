@@ -507,8 +507,28 @@ test('setting a package to the state it is already in emits nothing', async () =
   assert.deepStrictEqual(emitted, []);
 });
 
-test('a warehouse trying to re-enable, or an invalid value, emits nothing', async () => {
+test('a warehouse re-enabling its own approved package succeeds and emits to admins', async () => {
+  // Since 3850a46, a warehouse may bring its own approved package back
+  // without an admin - see warehouseAdvertisement.service.js's
+  // updateAdvertisementAvailability. Only a non-approved package (below) or
+  // an invalid value is still refused.
   advertisementModelStub.findOne = async () => buildAdvertisement('approved', false);
+
+  const row = await warehouseAdvertisementService.updateAdvertisementAvailability(
+    ADVERTISEMENT_ID.toString(),
+    WAREHOUSE_ID,
+    true
+  );
+
+  assert.strictEqual(row.advertisement.isAvailable, true);
+  assert.strictEqual(emitted.length, 1);
+  assert.strictEqual(emitted[0].room, 'admin', 'the admins are told either direction');
+  assert.strictEqual(emitted[0].event, AVAILABILITY_EVENT);
+  assert.strictEqual(emitted[0].payload.isAvailable, true);
+});
+
+test('a warehouse cannot pause or re-enable a non-approved package, and an invalid value emits nothing', async () => {
+  advertisementModelStub.findOne = async () => buildAdvertisement('pending', false);
 
   await assert.rejects(() =>
     warehouseAdvertisementService.updateAdvertisementAvailability(ADVERTISEMENT_ID.toString(), WAREHOUSE_ID, true)
@@ -520,6 +540,11 @@ test('a warehouse trying to re-enable, or an invalid value, emits nothing', asyn
 });
 
 test('a failed availability write emits nothing, on either side', async () => {
+  // Explicit approved/available stubs - since 3850a46 gated the warehouse
+  // path on status==='approved', this can no longer rely on whatever the
+  // previous test left `findById`/`findOne` returning to reach the save().
+  advertisementModelStub.findById = async () => buildAdvertisement('approved', true);
+  advertisementModelStub.findOne = async () => buildAdvertisement('approved', true);
   advertisementSaveBehavior = async () => {
     throw new Error('mongo write failed');
   };
