@@ -356,10 +356,12 @@ export const api = {
     const qs = params.toString();
     return request(`/admin/commission/overview${qs ? `?${qs}` : ''}`);
   },
-  adminCommissionWarehouse: (warehouseId, { from, to } = {}) => {
+  adminCommissionWarehouse: (warehouseId, { from, to, limit, after } = {}) => {
     const params = new URLSearchParams();
     if (from) params.set('from', from);
     if (to) params.set('to', to);
+    if (limit) params.set('limit', limit);
+    if (after) params.set('after', after);
     const qs = params.toString();
     return request(`/admin/commission/warehouses/${warehouseId}${qs ? `?${qs}` : ''}`);
   },

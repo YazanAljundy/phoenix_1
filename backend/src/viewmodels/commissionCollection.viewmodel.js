@@ -10,6 +10,8 @@
 //   COLLECTED    what the warehouse has actually handed over for this range
 //   OUTSTANDING  owed - collected
 
+const { paginationMeta } = require('../utils/pagination');
+
 function serializeWarehouseRow(row) {
   return {
     warehouseId: row.warehouseId,
@@ -59,7 +61,15 @@ function toOverviewResponse({ period, totals, rows }) {
 
 // One warehouse: its own figures, the per-order breakdown behind them, and
 // every collection ever recorded against it.
-function toWarehouseDetailResponse({ period, warehouse, summary, orders, collections }) {
+function toWarehouseDetailResponse({
+  period,
+  warehouse,
+  summary,
+  orders,
+  collections,
+  hasMoreCollections,
+  nextCollectionsCursor,
+}) {
   return {
     detail: {
       period,
@@ -82,6 +92,7 @@ function toWarehouseDetailResponse({ period, warehouse, summary, orders, collect
         netCommissionSyp: order.netCommissionSyp,
       })),
       collections: collections.map(serializeCollection),
+      pagination: paginationMeta(hasMoreCollections, nextCollectionsCursor),
     },
   };
 }

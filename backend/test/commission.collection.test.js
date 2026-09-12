@@ -336,7 +336,9 @@ test('the reversed row is kept, not deleted, and stays in the history', async ()
   });
 
   assert.strictEqual(await CommissionCollection.countDocuments(), 1, 'nothing was deleted');
-  const [row] = await commissionService.listCollectionsForWarehouse(ids.warehouseA);
+  const {
+    rows: [row],
+  } = await commissionService.listCollectionsForWarehouse(ids.warehouseA);
   assert.strictEqual(row.status, 'reversed');
   assert.strictEqual(row.reversalReason, 'duplicate entry');
 });
