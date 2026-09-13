@@ -13,6 +13,7 @@ void main() {
           address: 'Main Street 123',
           city: 'Damascus',
           phone: '0993123456',
+          areaType: 'city',
         );
 
         expect(pharmacy.id, equals('pharm1'));
@@ -22,6 +23,7 @@ void main() {
         expect(pharmacy.address, equals('Main Street 123'));
         expect(pharmacy.city, equals('Damascus'));
         expect(pharmacy.phone, equals('0993123456'));
+        expect(pharmacy.areaType, equals('city'));
       });
     });
 
@@ -35,6 +37,7 @@ void main() {
           'address': 'Mezzeh Street',
           'city': 'Aleppo',
           'phone': '+96593456789',
+          'areaType': 'city_ring',
         };
 
         final pharmacy = PharmacyModel.fromJson(json);
@@ -46,6 +49,7 @@ void main() {
         expect(pharmacy.address, equals('Mezzeh Street'));
         expect(pharmacy.city, equals('Aleppo'));
         expect(pharmacy.phone, equals('+96593456789'));
+        expect(pharmacy.areaType, equals('city_ring'));
       });
 
       test('handles all fields from JSON', () {
@@ -57,6 +61,7 @@ void main() {
           'address': 'Some Address',
           'city': 'City Name',
           'phone': '0991234567',
+          'areaType': 'rural',
         };
 
         final pharmacy = PharmacyModel.fromJson(json);
@@ -68,6 +73,7 @@ void main() {
         expect(pharmacy.address, isNotEmpty);
         expect(pharmacy.city, isNotEmpty);
         expect(pharmacy.phone, isNotEmpty);
+        expect(pharmacy.areaType, isNotEmpty);
       });
     });
 
@@ -81,6 +87,7 @@ void main() {
           'address': 'Address',
           'city': 'City',
           'phone': '0993123456',
+          'areaType': 'city',
         };
 
         final pharmacy1 = PharmacyModel.fromJson(json);

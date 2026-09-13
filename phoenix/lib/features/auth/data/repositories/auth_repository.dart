@@ -19,6 +19,7 @@ abstract class AuthRepository {
     required String pharmacyName,
     required String phone,
     required String address,
+    required String areaType,
     required String password,
     double? latitude,
     double? longitude,

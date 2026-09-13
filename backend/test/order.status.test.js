@@ -100,7 +100,7 @@ test.before(async () => {
 
   const pharmacy = await Pharmacy.create({
     userId: pharmacyUser._id, nameAr: 'صيدلية', nameEn: 'Pharmacy', ownerName: 'Owner',
-    address: 'a', city: 'Latakia', phone: '0931111111', addedBy: 'self',
+    address: 'a', city: 'Latakia', areaType: 'city', phone: '0931111111', addedBy: 'self',
   });
   const warehouse = await Warehouse.create({
     userId: warehouseUser._id, nameAr: 'مستودع', nameEn: 'Warehouse',

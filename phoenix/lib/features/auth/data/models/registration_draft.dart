@@ -7,6 +7,7 @@ class RegistrationDraft {
     required this.pharmacyName,
     required this.phone,
     required this.address,
+    required this.areaType,
     required this.password,
   });
 
@@ -14,5 +15,6 @@ class RegistrationDraft {
   final String pharmacyName;
   final String phone;
   final String address;
+  final String areaType;
   final String password;
 }

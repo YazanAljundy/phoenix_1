@@ -44,7 +44,7 @@ async function listPendingAccounts() {
 
   const [pharmacies, warehouses] = await Promise.all([
     Pharmacy.find({ userId: { $in: pharmacyUserIds } })
-      .select('userId nameAr nameEn ownerName address city phone verificationPhoto'),
+      .select('userId nameAr nameEn ownerName address city areaType phone verificationPhoto'),
     Warehouse.find({ userId: { $in: warehouseUserIds } })
       .select('userId nameAr nameEn city phone logo'),
   ]);
@@ -95,7 +95,7 @@ async function listPaginatedPendingAccounts(role, { limit = PENDING_ACCOUNTS_DEF
   const userIds = page.map((u) => u._id);
   if (role === 'pharmacy') {
     const pharmacies = await Pharmacy.find({ userId: { $in: userIds } })
-      .select('userId nameAr nameEn ownerName address city phone verificationPhoto');
+      .select('userId nameAr nameEn ownerName address city areaType phone verificationPhoto');
     const pharmacyByUserId = new Map(pharmacies.map((p) => [p.userId.toString(), p]));
     const rows = page.map((user) => ({
       user,
@@ -133,7 +133,7 @@ const ACCOUNT_STATUSES = ['pending', 'active', 'blocked'];
 // Reuses the exact projections/serializers of listPaginatedPendingAccounts;
 // createdAt is added for the page's "Created" column (admin.viewmodel reads it).
 const ACCOUNTS_USER_SELECT = 'name phone role status lang createdAt';
-const ACCOUNTS_PHARMACY_SELECT = 'userId nameAr nameEn ownerName address city phone verificationPhoto';
+const ACCOUNTS_PHARMACY_SELECT = 'userId nameAr nameEn ownerName address city areaType phone verificationPhoto';
 const ACCOUNTS_WAREHOUSE_SELECT = 'userId nameAr nameEn city phone logo';
 
 function resolveAccountRoles(role) {

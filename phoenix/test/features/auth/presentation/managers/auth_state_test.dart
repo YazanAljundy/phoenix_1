@@ -129,6 +129,7 @@ void main() {
           address: 'Main St',
           city: 'Damascus',
           phone: '0993123456',
+          areaType: 'city',
         );
 
         const originalState = AuthState(pharmacy: null);

@@ -34,6 +34,7 @@ class _RegistrationViewState extends State<RegistrationView> {
   final _confirmPasswordController = TextEditingController();
   bool _agreedToTerms = false;
   String? _termsError;
+  String? _areaType;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   double? _latitude;
@@ -86,6 +87,7 @@ class _RegistrationViewState extends State<RegistrationView> {
       // drift apart.
       phone: phoneTextFieldFullValue(_phoneController.text),
       address: address,
+      areaType: _areaType!,
       password: _passwordController.text,
       latitude: _latitude,
       longitude: _longitude,
@@ -182,6 +184,19 @@ class _RegistrationViewState extends State<RegistrationView> {
                                 ),
                               ),
                             ],
+                            const SizedBox(height: AppSizes.spacingMedium),
+                            _AreaTypeField(
+                              label: l10n.areaTypeLabel,
+                              value: _areaType,
+                              items: {
+                                'city': l10n.areaTypeCity,
+                                'city_ring': l10n.areaTypeCityRing,
+                                'rural': l10n.areaTypeRural,
+                              },
+                              validator: (value) =>
+                                  Validators.validateRequired(value, l10n.fieldRequired),
+                              onChanged: (value) => setState(() => _areaType = value),
+                            ),
                             const SizedBox(height: AppSizes.spacingMedium),
                             AppTextField(
                               label: l10n.password,
@@ -312,6 +327,77 @@ class _Header extends StatelessWidget {
         Text(
           subtitle,
           style: context.textTheme.bodyMedium?.copyWith(color: AppColors.textSecondaryOf(context)),
+        ),
+      ],
+    );
+  }
+}
+
+// Same field shape as AppTextField (label above, matching decoration) - kept
+// local to this screen since it's the only place area type is picked.
+class _AreaTypeField extends StatelessWidget {
+  const _AreaTypeField({
+    required this.label,
+    required this.value,
+    required this.items,
+    required this.validator,
+    required this.onChanged,
+  });
+
+  final String label;
+  final String? value;
+  final Map<String, String> items;
+  final String? Function(String?)? validator;
+  final ValueChanged<String?> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: context.textTheme.bodySmall?.copyWith(
+            fontWeight: FontWeight.w700,
+            color: AppColors.textSecondaryOf(context),
+          ),
+        ),
+        const SizedBox(height: AppSizes.spacingXSmall),
+        DropdownButtonFormField<String>(
+          initialValue: value,
+          validator: validator,
+          onChanged: onChanged,
+          style: context.textTheme.bodyMedium,
+          items: items.entries
+              .map((entry) => DropdownMenuItem(value: entry.key, child: Text(entry.value)))
+              .toList(growable: false),
+          decoration: InputDecoration(
+            isDense: true,
+            contentPadding: AppPadding.input,
+            constraints: const BoxConstraints(minHeight: AppSizes.inputHeight),
+            filled: true,
+            fillColor: AppColors.surfaceOf(context),
+            border: OutlineInputBorder(
+              borderRadius: AppRadius.small,
+              borderSide: BorderSide(color: AppColors.borderOf(context)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: AppRadius.small,
+              borderSide: BorderSide(color: AppColors.borderOf(context)),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: AppRadius.small,
+              borderSide: BorderSide(color: AppColors.primaryOf(context), width: 1.5),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: AppRadius.small,
+              borderSide: BorderSide(color: AppColors.errorOf(context)),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: AppRadius.small,
+              borderSide: BorderSide(color: AppColors.errorOf(context), width: 1.5),
+            ),
+          ),
         ),
       ],
     );

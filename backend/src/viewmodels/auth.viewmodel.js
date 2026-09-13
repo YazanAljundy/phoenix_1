@@ -18,6 +18,7 @@ function serializePharmacy(pharmacy) {
     ownerName: pharmacy.ownerName,
     address: pharmacy.address,
     city: pharmacy.city,
+    areaType: pharmacy.areaType,
     phone: pharmacy.phone,
     verificationPhoto: pharmacy.verificationPhoto,
   };

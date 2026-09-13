@@ -41,6 +41,7 @@ void main() {
           address: 'Main St',
           city: 'Damascus',
           phone: '0993123456',
+          areaType: 'city',
         );
 
         const response = AuthResponse(
@@ -96,6 +97,7 @@ void main() {
             'address': 'Main St',
             'city': 'Damascus',
             'phone': '0993123456',
+            'areaType': 'city',
           },
         };
 

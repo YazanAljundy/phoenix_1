@@ -79,6 +79,7 @@ void main() {
             'address': 'Main St',
             'city': 'Damascus',
             'phone': '+96393123456',
+            'areaType': 'city',
           },
         };
 
@@ -95,6 +96,7 @@ void main() {
           pharmacyName: 'My Pharmacy',
           phone: '+96393123456',
           address: 'Main St',
+          areaType: 'city',
           password: 'Password123',
         );
 
@@ -129,6 +131,7 @@ void main() {
           pharmacyName: 'Test Pharmacy',
           phone: '+96393123456',
           address: 'Address',
+          areaType: 'city_ring',
           password: 'Pass123',
           latitude: 33.5138,
           longitude: 36.2765,
@@ -136,6 +139,42 @@ void main() {
 
         verify(
           () => mockDio.post(Endpoints.register, data: any(named: 'data')),
+        ).called(1);
+      });
+
+      test('includes areaType in request body', () async {
+        when(() => mockDio.post(any(), data: any(named: 'data'))).thenAnswer(
+          (_) async => Response(
+            data: {
+              'token': 'token',
+              'user': {
+                'id': 'user1',
+                'name': 'Test',
+                'phone': '+96393123456',
+                'role': 'pharmacy',
+                'status': 'pending',
+                'lang': 'ar',
+              },
+            },
+            statusCode: 200,
+            requestOptions: RequestOptions(path: ''),
+          ),
+        );
+
+        await authRepository.register(
+          name: 'Test',
+          pharmacyName: 'Test Pharmacy',
+          phone: '+96393123456',
+          address: 'Address',
+          areaType: 'rural',
+          password: 'Pass123',
+        );
+
+        verify(
+          () => mockDio.post(
+            Endpoints.register,
+            data: any(named: 'data', that: containsPair('areaType', 'rural')),
+          ),
         ).called(1);
       });
 
@@ -160,6 +199,7 @@ void main() {
             pharmacyName: 'Pharmacy',
             phone: '+96393123456',
             address: 'Address',
+            areaType: 'city',
             password: 'Pass123',
           ),
           throwsA(isA<ServerFailure>()),
@@ -274,6 +314,7 @@ void main() {
             'address': 'Main St',
             'city': 'Damascus',
             'phone': '+96393123456',
+            'areaType': 'city',
           },
         };
 

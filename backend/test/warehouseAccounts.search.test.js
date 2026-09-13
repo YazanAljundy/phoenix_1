@@ -36,6 +36,7 @@ async function seedAccount({ nameAr, nameEn, balanceSyp }) {
     ownerName: 'O',
     address: 'a',
     city: 'Latakia',
+    areaType: 'city',
     phone: `09${Math.floor(10000000 + Math.random() * 89999999)}`,
     addedBy: 'self',
   });
