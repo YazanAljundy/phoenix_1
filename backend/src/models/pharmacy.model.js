@@ -8,6 +8,16 @@ const pharmacySchema = new Schema(
     ownerName: { type: String, required: true },
     address: { type: String, required: true },
     city: { type: String, required: true },
+    // Collected on the registration screen's own dropdown (distinct from
+    // `city`, which is a free-text city name defaulted server-side, not
+    // user-chosen) - classifies where within its city the pharmacy sits.
+    // Required at the schema level since
+    // scripts/backfill-pharmacy-area-type.js backfilled every pre-existing
+    // row to 'city' - see that script for why 'city' specifically, and
+    // warehouseReview.service.js's createPharmacyReview for the `.save()`
+    // this backfill had to land before (it would otherwise throw on any
+    // legacy pharmacy the moment a warehouse rated it).
+    areaType: { type: String, enum: ['city', 'city_ring', 'rural'], required: true },
     phone: { type: String, required: true },
     // Photo of the pharmacy's storefront/sign, meant to help the admin verify
     // the pharmacy physically exists before approving it. Not collected at

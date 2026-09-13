@@ -68,11 +68,11 @@ test.before(async () => {
   await Pharmacy.create([
     {
       userId: PHARMACY_USER_ID, nameAr: 'ص', nameEn: 'Ph', ownerName: 'Owner',
-      address: 'addr', city: 'Latakia', phone: '0910000003', addedBy: 'self',
+      address: 'addr', city: 'Latakia', areaType: 'city', phone: '0910000003', addedBy: 'self',
     },
     {
       userId: PASSWORD_USER_ID, nameAr: 'ص2', nameEn: 'PwPh', ownerName: 'Pw Owner',
-      address: 'addr', city: 'Latakia', phone: PASSWORD_USER_PHONE, addedBy: 'self',
+      address: 'addr', city: 'Latakia', areaType: 'city', phone: PASSWORD_USER_PHONE, addedBy: 'self',
     },
   ]);
 

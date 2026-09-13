@@ -134,7 +134,7 @@ async function loadProfile(user) {
   if (user.role === 'pharmacy') {
     return {
       pharmacy: await Pharmacy.findOne({ userId: user._id })
-        .select('nameAr nameEn ownerName address city phone verificationPhoto')
+        .select('nameAr nameEn ownerName address city areaType phone verificationPhoto')
         .lean(),
       warehouse: null,
     };
@@ -177,6 +177,7 @@ async function register({
   pharmacyName,
   phone,
   address,
+  areaType,
   password,
   location,
 }) {
@@ -208,6 +209,7 @@ async function register({
     ownerName: name,
     address,
     city: 'Latakia',
+    areaType,
     phone,
     location: location || undefined,
     addedBy: 'self',

@@ -130,11 +130,11 @@ test.before(async () => {
   await Pharmacy.create([
     {
       userId: PHARMACY_USER_ID, nameAr: 'ص', nameEn: 'Pharmacy', ownerName: 'Owner',
-      address: 'a', city: 'Latakia', phone: '0935000001', addedBy: 'self',
+      address: 'a', city: 'Latakia', areaType: 'city', phone: '0935000001', addedBy: 'self',
     },
     {
       userId: CITYLESS_PHARMACY_USER_ID, nameAr: 'ص2', nameEn: 'Cityless Pharmacy', ownerName: 'Owner',
-      address: 'a', city: '   ', phone: '0935000002', addedBy: 'self',
+      address: 'a', city: '   ', areaType: 'city', phone: '0935000002', addedBy: 'self',
     },
   ]);
 });

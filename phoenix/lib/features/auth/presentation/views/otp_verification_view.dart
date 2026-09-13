@@ -81,6 +81,7 @@ class _OtpVerificationViewState extends State<OtpVerificationView> {
       pharmacyName: widget.draft.pharmacyName,
       phone: widget.draft.phone,
       address: widget.draft.address,
+      areaType: widget.draft.areaType,
       password: widget.draft.password,
     );
     if (!verified || !mounted) return;

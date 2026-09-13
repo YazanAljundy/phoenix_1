@@ -60,6 +60,7 @@ async function seedPharmacy(key, { name, nameEn, nameAr, owner, city, phone, sta
     ownerName: owner,
     address: `${city} street`,
     city,
+    areaType: 'city',
     phone,
     addedBy: 'self',
   });

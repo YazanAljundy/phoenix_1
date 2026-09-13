@@ -97,12 +97,12 @@ test.before(async () => {
   await Pharmacy.create([
     {
       _id: ids.pharmacy, userId: ids.pharmUser, nameAr: 'صيدلية', nameEn: 'Pharmacy One',
-      ownerName: 'Pharm Owner', address: '1 St', city: 'Latakia', phone: '0930000001', addedBy: 'self',
+      ownerName: 'Pharm Owner', address: '1 St', city: 'Latakia', areaType: 'city', phone: '0930000001', addedBy: 'self',
       verificationPhoto: 'https://x/verif.jpg',
     },
     {
       _id: ids.pendingPharmacy, userId: ids.pendingPharmUser, nameAr: 'صيدلية ٢', nameEn: 'Pharmacy Pending',
-      ownerName: 'Pending Pharm', address: '2 St', city: 'Latakia', phone: '0930000003', addedBy: 'self',
+      ownerName: 'Pending Pharm', address: '2 St', city: 'Latakia', areaType: 'city', phone: '0930000003', addedBy: 'self',
     },
   ]);
 
@@ -216,7 +216,7 @@ test('admin pending-accounts response keeps every serialised field', async () =>
   assert.strictEqual(pharmRow.user.lang, 'ar');
   assert.deepStrictEqual(
     Object.keys(pharmRow.pharmacy).sort(),
-    ['id', 'nameAr', 'nameEn', 'ownerName', 'address', 'city', 'phone', 'verificationPhoto'].sort()
+    ['id', 'nameAr', 'nameEn', 'ownerName', 'address', 'city', 'areaType', 'phone', 'verificationPhoto'].sort()
   );
   assert.strictEqual(pharmRow.pharmacy.nameEn, 'Pharmacy Pending');
   assert.strictEqual(pharmRow.warehouse, null);

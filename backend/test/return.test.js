@@ -84,7 +84,7 @@ test.before(async () => {
 
   const pharmacy = await Pharmacy.create({
     userId: phUser._id, nameAr: 'صيدلية', nameEn: 'Pharmacy', ownerName: 'Owner',
-    address: 'addr', city: 'Latakia', phone: '0940000001', addedBy: 'self',
+    address: 'addr', city: 'Latakia', areaType: 'city', phone: '0940000001', addedBy: 'self',
   });
   ids.pharmacy = pharmacy._id;
 

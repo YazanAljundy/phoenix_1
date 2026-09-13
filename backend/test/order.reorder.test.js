@@ -126,11 +126,11 @@ test.before(async () => {
   const [pharmacy, otherPharmacy] = await Pharmacy.create([
     {
       userId: pharmacyUser._id, nameAr: 'ص', nameEn: 'Pharmacy', ownerName: 'O',
-      address: 'a', city: 'Latakia', phone: '0932000001', addedBy: 'self',
+      address: 'a', city: 'Latakia', areaType: 'city', phone: '0932000001', addedBy: 'self',
     },
     {
       userId: otherPharmacyUser._id, nameAr: 'ص2', nameEn: 'Other Pharmacy', ownerName: 'O2',
-      address: 'a', city: 'Latakia', phone: '0932000002', addedBy: 'self',
+      address: 'a', city: 'Latakia', areaType: 'city', phone: '0932000002', addedBy: 'self',
     },
   ]);
   const warehouse = await Warehouse.create({

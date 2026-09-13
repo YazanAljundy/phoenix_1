@@ -6,12 +6,28 @@ const authService = require('../services/auth.service');
 const authViewModel = require('../viewmodels/auth.viewmodel');
 
 const MIN_PASSWORD_LENGTH = 6;
+const AREA_TYPES = ['city', 'city_ring', 'rural'];
 
 function requireNonEmptyString(value, message) {
   if (typeof value !== 'string' || !value.trim()) {
     throw ApiError.badRequest(message);
   }
   return value.trim();
+}
+
+// pharmacy.model.js's areaType is ALSO `required: true` at the schema level
+// now - this check is not redundant with it. It runs before any DB call
+// (cheap, and never touches Mongo), and it's what actually gives a bad
+// request a clean 400 with a real message: errorHandler.js only maps
+// ApiError -> a proper status code, so a bare Mongoose ValidationError
+// reaching it would fall through to a generic 500 instead. Keep both:
+// this is the API-facing fast path, the schema is the DB-level invariant
+// that holds even for a write that goes around this controller entirely.
+function requireAreaType(value) {
+  if (typeof value !== 'string' || !AREA_TYPES.includes(value)) {
+    throw ApiError.badRequest('A valid area type is required.');
+  }
+  return value;
 }
 
 function requirePassword(value, message) {
@@ -59,6 +75,7 @@ const register = asyncHandler(async (req, res) => {
   const name = requireNonEmptyString(req.body.name, 'Full name is required.');
   const pharmacyName = requireNonEmptyString(req.body.pharmacyName, 'Pharmacy name is required.');
   const address = requireNonEmptyString(req.body.address, 'Address is required.');
+  const areaType = requireAreaType(req.body.areaType);
   const password = requirePassword(req.body.password, 'Password is required.');
   const confirmPassword = requireNonEmptyString(
     req.body.confirmPassword,
@@ -75,6 +92,7 @@ const register = asyncHandler(async (req, res) => {
     pharmacyName,
     phone,
     address,
+    areaType,
     password,
     location,
   });
