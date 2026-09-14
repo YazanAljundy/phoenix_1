@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 const { ApiError } = require('../utils/ApiError');
 const { normalizePhone, isValidPhone } = require('../utils/phone');
+const { assertPasswordPolicy } = require('../utils/password');
 const User = require('../models/user.model');
 const Pharmacy = require('../models/pharmacy.model');
 const Warehouse = require('../models/warehouse.model');
@@ -9,7 +10,6 @@ const notificationService = require('./notification.service');
 const { emitToAdmins, EVENTS } = require('../realtime');
 
 const BCRYPT_SALT_ROUNDS = 10;
-const MIN_PASSWORD_LENGTH = 6;
 
 // The two account types this section manages. Admins are never listed or acted
 // on here - they have no Pharmacy/Warehouse profile and are not part of the
@@ -126,10 +126,21 @@ async function listPaginatedPendingAccounts(role, { limit = PENDING_ACCOUNTS_DEF
 // document via find*OrThrow and .save() it).
 
 const ACCOUNTS_DEFAULT_LIMIT = 20;
-// Mirrors user.model.js's status enum. Kept as a literal (not read from
-// User.schema at load time) so the module still loads under the model-stubbed
-// realtime emission tests.
+// The statuses this panel MANAGES - deliberately not the whole of
+// user.model.js's enum. Kept as a literal (not read from User.schema at load
+// time) so the module still loads under the model-stubbed realtime emission
+// tests.
+//
+// 'deleted' is excluded on purpose: it is a self-service deletion
+// (auth.service.js deleteAccount), not a step in the approval/block lifecycle
+// this page drives, and no admin action can undo it. EXCLUDED_STATUS_FILTER
+// below keeps it out of the rows as well, so the filter pills and the list
+// agree - listing accounts that have no pill and are not counted would make
+// the totals disagree with what is on screen.
 const ACCOUNT_STATUSES = ['pending', 'active', 'blocked'];
+
+// Applied to both the list and the counts, so the two can never diverge.
+const EXCLUDED_STATUS_FILTER = { $nin: ['deleted'] };
 // Reuses the exact projections/serializers of listPaginatedPendingAccounts;
 // createdAt is added for the page's "Created" column (admin.viewmodel reads it).
 const ACCOUNTS_USER_SELECT = 'name phone role status lang createdAt';
@@ -196,7 +207,7 @@ async function listAccounts({ role, status, search, limit = ACCOUNTS_DEFAULT_LIM
   const statusFilter = assertValidStatusFilter(status);
 
   const base = { role: { $in: roles } };
-  if (statusFilter) base.status = statusFilter;
+  base.status = statusFilter || EXCLUDED_STATUS_FILTER;
 
   // `_id` appears in both the search `$or` and the cursor bound, which can't
   // share one object key - collect them under `$and`.
@@ -251,7 +262,7 @@ async function listAccounts({ role, status, search, limit = ACCOUNTS_DEFAULT_LIM
 // adminComplaint.service's getStatusCounts.
 async function countAccounts({ role, search } = {}) {
   const roles = resolveAccountRoles(role);
-  const match = { role: { $in: roles } };
+  const match = { role: { $in: roles }, status: EXCLUDED_STATUS_FILTER };
   const searchOr = await buildAccountSearchOr(roles, search);
   if (searchOr) match.$and = [{ $or: searchOr }];
 
@@ -401,8 +412,16 @@ const DEFAULT_COMMISSION_RATE = 1;
 // approval step, so there's deliberately no second confirmation.
 //
 // This is the only place in the app that mints a warehouse login. There's no
-// warehouse self-registration route (auth.service.js's registerOrLogin is
-// hardcoded to role 'pharmacy'), which is what keeps the role boundary intact.
+// warehouse self-registration route: auth.service.js's `register` hardcodes
+// role 'pharmacy' AND refuses a phone that already has an account, which is
+// what keeps the role boundary intact.
+//
+// That second half used to be missing, and the boundary was not in fact intact
+// (Audit C-1): the old registerOrLogin handed back a token for whatever role
+// the existing phone belonged to, so posting THIS warehouse's phone number to
+// /auth/register returned a warehouse token. The number is not a secret - it
+// is stored on the Warehouse profile below and served to every pharmacy by
+// GET /warehouses.
 async function createWarehouseAccount({
   ownerName,
   phone,
@@ -439,13 +458,11 @@ async function createWarehouseAccount({
   const cleanCity = requiredString(city, 'City', 'INVALID_CITY');
   const cleanAddress = requiredString(address, 'Address', 'INVALID_ADDRESS');
 
-  if (typeof password !== 'string' || password.length < MIN_PASSWORD_LENGTH) {
-    throw ApiError.badRequest(
-      `Password must be at least ${MIN_PASSWORD_LENGTH} characters.`,
-      undefined,
-      'INVALID_PASSWORD'
-    );
-  }
+  // Warehouse credentials carry a higher bar than a pharmacy's: this one login
+  // controls a whole catalogue, its prices, and a ledger shared with every
+  // pharmacy that buys from it. The number lives in utils/password.js, which is
+  // now the only place any minimum is defined (Audit M-1).
+  assertPasswordPolicy(password, { role: 'warehouse', code: 'INVALID_PASSWORD' });
 
   // Optional per the admin form - the Warehouse model still requires it, so
   // it falls back to the Arabic name rather than being left unset.

@@ -34,6 +34,21 @@ String translateErrorCode(AppLocalizations l10n, String? code, String fallbackMe
     case 'HTTP_503':
       return l10n.errorServer;
 
+    // --- Auth domain codes.
+    //
+    // PHONE_ALREADY_REGISTERED is what registration now returns for a phone
+    // that already has an account (409). It used to silently log that account
+    // back in without checking the password - an authentication bypass, audit
+    // C-1 - so this message is the whole of the redirect: it tells the user to
+    // sign in, and RegistrationView already shows a link to the sign-in screen.
+    case 'PHONE_ALREADY_REGISTERED':
+      return l10n.errorPhoneAlreadyRegistered;
+    // Wrong current password on change-password / delete-account. Distinct
+    // from a failed sign-in, which stays deliberately vague (audit H-1): here
+    // the user is already authenticated, so there is nothing to enumerate.
+    case 'INVALID_CURRENT_PASSWORD':
+      return l10n.errorInvalidCurrentPassword;
+
     // --- Backend domain codes.
     case 'CART_EMPTY':
       return l10n.cartEmptyMessage;

@@ -36,4 +36,13 @@ abstract class AuthRepository {
   // but the repository call itself stays a plain throw-on-failure like
   // every other endpoint here.
   Future<void> registerDeviceToken({required String fcmToken, required String deviceType});
+
+  // Permanently deletes the signed-in account. Requires the current password:
+  // holding a valid token is not enough authority to destroy the account, so
+  // an unattended unlocked phone cannot do it.
+  //
+  // The server soft-deletes (order/ledger history stays attributable) and the
+  // current token stops working the moment this returns - AuthCubit clears the
+  // local session immediately after.
+  Future<void> deleteAccount({required String password});
 }

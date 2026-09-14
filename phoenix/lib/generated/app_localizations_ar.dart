@@ -1036,6 +1036,41 @@ class AppLocalizationsAr extends AppLocalizations {
   String get logoutConfirmMessage => 'هل أنت متأكد من تسجيل الخروج؟';
 
   @override
+  String get dangerZoneTitle => 'منطقة الخطر';
+
+  @override
+  String get deleteAccount => 'حذف الحساب';
+
+  @override
+  String get deleteAccountSubtitle => 'حذف حسابك نهائياً';
+
+  @override
+  String get deleteAccountConfirmTitle => 'حذف الحساب نهائياً؟';
+
+  @override
+  String get deleteAccountConfirmMessage =>
+      'سيتم حذف حسابك نهائياً ولن تتمكن من تسجيل الدخول مرة أخرى، ولا يمكن التراجع عن هذه الخطوة.\n\nستبقى طلباتك وسجلاتك المالية السابقة ضمن سجلّات المستودعات التي تعاملت معها.\n\nأدخل كلمة المرور للتأكيد.';
+
+  @override
+  String get deleteAccountPasswordLabel => 'كلمة المرور';
+
+  @override
+  String get deleteAccountPasswordRequired => 'أدخل كلمة المرور للمتابعة.';
+
+  @override
+  String get deleteAccountConfirmAction => 'حذف نهائي';
+
+  @override
+  String get deleteAccountSuccess => 'تم حذف حسابك.';
+
+  @override
+  String get errorPhoneAlreadyRegistered =>
+      'يوجد حساب مسجّل بهذا الرقم. سجّل الدخول بدل إنشاء حساب جديد.';
+
+  @override
+  String get errorInvalidCurrentPassword => 'كلمة المرور غير صحيحة.';
+
+  @override
   String get yourRatingTitle => 'تقييمك';
 
   @override

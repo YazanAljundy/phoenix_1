@@ -235,17 +235,33 @@ test('loginWithPassword is unaffected by the +password projection', async () => 
   await User.updateOne({ _id: PASSWORD_USER_ID }, { status: 'active' });
 });
 
-test('registerOrLogin re-entry returns the full auth shape for an existing user', async () => {
-  const result = await authService.registerOrLogin({
-    name: 'ignored', pharmacyName: 'ignored', phone: PASSWORD_USER_PHONE,
-    address: 'ignored', password: 'ignored',
+// Was 'registerOrLogin re-entry returns the full auth shape for an existing
+// user'. That re-entry is the C-1 authentication bypass and is gone: register
+// now refuses a known phone outright. The projection this suite exists to
+// guard is exercised through loginWithPassword instead, which is the path that
+// legitimately returns the full auth shape for an existing account.
+test('register refuses a phone that already has an account (Audit C-1)', async () => {
+  await assert.rejects(
+    () => authService.register({
+      name: 'attacker', pharmacyName: 'attacker', phone: PASSWORD_USER_PHONE,
+      address: 'anywhere', areaType: 'city', password: 'wrong-password',
+    }),
+    (err) => err.statusCode === 409 && err.code === 'PHONE_ALREADY_REGISTERED',
+    'an existing phone must never mint a token without a password check'
+  );
+});
+
+test('loginWithPassword returns the full auth shape for an existing user', async () => {
+  const result = await authService.loginWithPassword({
+    phone: PASSWORD_USER_PHONE,
+    password: PASSWORD_USER_SECRET,
   });
   const payload = authViewModel.toAuthResponse(result);
   assert.deepStrictEqual(
     Object.keys(payload.user).sort(),
     ['id', 'lang', 'name', 'phone', 'role', 'status'].sort()
   );
-  assert.strictEqual(payload.user.name, 'Pw Pharm', 'the stored name, not the re-typed one');
+  assert.strictEqual(payload.user.name, 'Pw Pharm');
   assert.strictEqual(payload.pharmacy.ownerName, 'Pw Owner');
   assert.ok(result.token);
 });

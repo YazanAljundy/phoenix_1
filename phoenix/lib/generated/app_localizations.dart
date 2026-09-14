@@ -1814,6 +1814,72 @@ abstract class AppLocalizations {
   /// **'Are you sure you want to log out?'**
   String get logoutConfirmMessage;
 
+  /// No description provided for @dangerZoneTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Danger zone'**
+  String get dangerZoneTitle;
+
+  /// No description provided for @deleteAccount.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete account'**
+  String get deleteAccount;
+
+  /// No description provided for @deleteAccountSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Permanently delete your account'**
+  String get deleteAccountSubtitle;
+
+  /// No description provided for @deleteAccountConfirmTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete your account permanently?'**
+  String get deleteAccountConfirmTitle;
+
+  /// No description provided for @deleteAccountConfirmMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account will be deleted permanently and you will not be able to sign in again. This cannot be undone.\n\nYour past orders and financial records will remain in the records of the warehouses you dealt with.\n\nEnter your password to confirm.'**
+  String get deleteAccountConfirmMessage;
+
+  /// No description provided for @deleteAccountPasswordLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Password'**
+  String get deleteAccountPasswordLabel;
+
+  /// No description provided for @deleteAccountPasswordRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter your password to continue.'**
+  String get deleteAccountPasswordRequired;
+
+  /// No description provided for @deleteAccountConfirmAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete permanently'**
+  String get deleteAccountConfirmAction;
+
+  /// No description provided for @deleteAccountSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Your account has been deleted.'**
+  String get deleteAccountSuccess;
+
+  /// No description provided for @errorPhoneAlreadyRegistered.
+  ///
+  /// In en, this message translates to:
+  /// **'An account already exists for this phone number. Please sign in instead.'**
+  String get errorPhoneAlreadyRegistered;
+
+  /// No description provided for @errorInvalidCurrentPassword.
+  ///
+  /// In en, this message translates to:
+  /// **'That password is incorrect.'**
+  String get errorInvalidCurrentPassword;
+
   /// No description provided for @yourRatingTitle.
   ///
   /// In en, this message translates to:

@@ -378,12 +378,16 @@ test('block/unblock on an unknown id or an admin id is rejected', async () => {
 });
 
 // --- Add Warehouse: born active + realtime signal -------------------------
+//
+// The password in these fixtures satisfies the warehouse minimum from
+// utils/password.js (10 characters, Audit M-1). It used to be 'secret1' -
+// seven characters was acceptable when every role shared a flat minimum of 6.
 
 test('createWarehouseAccount emits one account.status.updated {warehouse, active}', async () => {
   const { user, warehouse } = await adminService.createWarehouseAccount({
     ownerName: 'Fresh Owner',
     phone: '0949999999',
-    password: 'secret1',
+    password: 'warehouse-secret-1',
     nameAr: 'مستودع جديد',
     nameEn: 'Fresh Warehouse',
     city: 'Latakia',
@@ -417,7 +421,7 @@ test('createWarehouseAccount accepts the +963 form the pharmacy app sends', asyn
   const { user } = await adminService.createWarehouseAccount({
     ownerName: 'Intl Owner',
     phone: '+963945000001',
-    password: 'secret1',
+    password: 'warehouse-secret-1',
     nameAr: 'مستودع دولي',
     nameEn: 'Intl Warehouse',
     city: 'Damascus',
@@ -434,7 +438,7 @@ test('createWarehouseAccount stores the phone in the shape login will look for',
   const { user } = await adminService.createWarehouseAccount({
     ownerName: 'Spaced Owner',
     phone: ' 094 500-0002 ',
-    password: 'secret1',
+    password: 'warehouse-secret-1',
     nameAr: 'مستودع مسافات',
     nameEn: 'Spaced Warehouse',
     city: 'Homs',
@@ -463,7 +467,7 @@ for (const [label, phone] of [
         adminService.createWarehouseAccount({
           ownerName: 'Rejected Owner',
           phone,
-          password: 'secret1',
+          password: 'warehouse-secret-1',
           nameAr: 'مستودع مرفوض',
           nameEn: 'Rejected Warehouse',
           city: 'Latakia',
@@ -485,7 +489,7 @@ test('a missing phone still reports "required", not a format problem', async () 
     () =>
       adminService.createWarehouseAccount({
         ownerName: 'No Phone Owner',
-        password: 'secret1',
+        password: 'warehouse-secret-1',
         nameAr: 'مستودع بلا هاتف',
         nameEn: 'No Phone Warehouse',
         city: 'Latakia',

@@ -87,4 +87,15 @@ class AuthRepositoryImpl implements AuthRepository {
       throw ServerFailure.fromDioError(e);
     }
   }
+
+  @override
+  Future<void> deleteAccount({required String password}) async {
+    try {
+      // DELETE with a body - the password is a credential, so it belongs in
+      // the body rather than in a query string that lands in server logs.
+      await _apiClient.dio.delete(Endpoints.deleteAccount, data: {'password': password});
+    } on DioException catch (e) {
+      throw ServerFailure.fromDioError(e);
+    }
+  }
 }

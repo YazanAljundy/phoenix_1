@@ -1032,6 +1032,42 @@ class AppLocalizationsEn extends AppLocalizations {
   String get logoutConfirmMessage => 'Are you sure you want to log out?';
 
   @override
+  String get dangerZoneTitle => 'Danger zone';
+
+  @override
+  String get deleteAccount => 'Delete account';
+
+  @override
+  String get deleteAccountSubtitle => 'Permanently delete your account';
+
+  @override
+  String get deleteAccountConfirmTitle => 'Delete your account permanently?';
+
+  @override
+  String get deleteAccountConfirmMessage =>
+      'Your account will be deleted permanently and you will not be able to sign in again. This cannot be undone.\n\nYour past orders and financial records will remain in the records of the warehouses you dealt with.\n\nEnter your password to confirm.';
+
+  @override
+  String get deleteAccountPasswordLabel => 'Password';
+
+  @override
+  String get deleteAccountPasswordRequired =>
+      'Enter your password to continue.';
+
+  @override
+  String get deleteAccountConfirmAction => 'Delete permanently';
+
+  @override
+  String get deleteAccountSuccess => 'Your account has been deleted.';
+
+  @override
+  String get errorPhoneAlreadyRegistered =>
+      'An account already exists for this phone number. Please sign in instead.';
+
+  @override
+  String get errorInvalidCurrentPassword => 'That password is incorrect.';
+
+  @override
   String get yourRatingTitle => 'Your rating';
 
   @override

@@ -5,6 +5,7 @@ import 'package:feniq/core/constants/app_colors.dart';
 import 'package:feniq/core/constants/app_padding.dart';
 import 'package:feniq/core/constants/app_radius.dart';
 import 'package:feniq/core/constants/app_sizes.dart';
+import 'package:feniq/core/error/error_translator.dart';
 import 'package:feniq/core/extensions/build_context_extensions.dart';
 import 'package:feniq/core/theme/app_text_theme.dart';
 import 'package:feniq/core/widgets/app_dialog.dart';
@@ -43,6 +44,37 @@ class ProfileView extends StatelessWidget {
         if (context.mounted) context.goNamed(RouteNames.registration);
       },
     );
+  }
+
+  // Deliberately NOT AppDialog.show: that renders a plain message with a
+  // single action, and deleting an account has to re-authenticate first (the
+  // server demands the password too - a valid token alone is not authority to
+  // destroy the account). _DeleteAccountDialog is the password-carrying
+  // equivalent.
+  Future<void> _confirmDeleteAccount(BuildContext context) async {
+    final l10n = context.l10n;
+    final authCubit = context.read<AuthCubit>();
+    final messenger = ScaffoldMessenger.of(context);
+
+    final deleted = await showDialog<bool>(
+      context: context,
+      // The account is gone the moment this succeeds, so it must be a
+      // deliberate act - not something a stray tap outside the dialog can
+      // half-commit.
+      barrierDismissible: false,
+      builder: (_) => BlocProvider.value(
+        value: authCubit,
+        child: const _DeleteAccountDialog(),
+      ),
+    );
+
+    if (deleted != true) return;
+
+    messenger.showSnackBar(SnackBar(content: Text(l10n.deleteAccountSuccess)));
+    // AuthCubit.deleteAccount already cleared the session, so this is the same
+    // destination logout uses - and go() rather than push() so Back cannot
+    // return to a profile screen for an account that no longer exists.
+    if (context.mounted) context.goNamed(RouteNames.registration);
   }
 
   @override
@@ -204,6 +236,53 @@ class ProfileView extends StatelessWidget {
                       label: Text(l10n.logout),
                     ),
                   ),
+
+                  // Account deletion sits in its own labelled section at the
+                  // very bottom, below Logout and below the app name - as far
+                  // as the layout allows from anything used day to day, and
+                  // behind a dialog that demands the password. It is the only
+                  // irreversible control on the screen.
+                  const SizedBox(height: AppSizes.spacingXLarge),
+                  _SectionHeader(l10n.dangerZoneTitle),
+                  const SizedBox(height: AppSizes.spacingSmall),
+                  CustomCard(
+                    onTap: () => _confirmDeleteAccount(context),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.delete_forever_outlined,
+                          size: 22,
+                          color: AppColors.errorOf(context),
+                        ),
+                        const SizedBox(width: AppSizes.spacingMedium),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                l10n.deleteAccount,
+                                style: context.textTheme.titleSmall?.copyWith(
+                                  color: AppColors.errorOf(context),
+                                ),
+                              ),
+                              Text(
+                                l10n.deleteAccountSubtitle,
+                                style: context.textTheme.bodySmall?.copyWith(
+                                  color: AppColors.textSecondaryOf(context),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Icon(
+                          Icons.chevron_right,
+                          size: AppSizes.iconSizeSmall,
+                          color: AppColors.textSecondaryOf(context),
+                        ),
+                      ],
+                    ),
+                  ),
+
                   const SizedBox(height: AppSizes.spacingMedium),
                   Text(
                     l10n.appName,
@@ -566,6 +645,116 @@ class _SegmentButton extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+// The delete-account confirmation.
+//
+// Stateful and password-carrying, which is why it isn't an AppDialog: the
+// server re-authenticates before deleting (holding a valid token is not
+// authority to destroy the account), so the password has to be collected here
+// and the failure it can produce - a wrong password - has to be shown inline
+// rather than swallowed.
+//
+// Pops `true` only once the deletion actually succeeded; every other exit pops
+// null, so the caller navigates on success alone.
+class _DeleteAccountDialog extends StatefulWidget {
+  const _DeleteAccountDialog();
+
+  @override
+  State<_DeleteAccountDialog> createState() => _DeleteAccountDialogState();
+}
+
+class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
+  final _controller = TextEditingController();
+  bool _submitting = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _submit() async {
+    final l10n = context.l10n;
+    final password = _controller.text;
+    if (password.isEmpty) {
+      setState(() => _error = l10n.deleteAccountPasswordRequired);
+      return;
+    }
+
+    setState(() {
+      _submitting = true;
+      _error = null;
+    });
+
+    final cubit = context.read<AuthCubit>();
+    final ok = await cubit.deleteAccount(password: password);
+    if (!mounted) return;
+
+    if (ok) {
+      Navigator.of(context).pop(true);
+      return;
+    }
+
+    // The cubit publishes the reason on its state; translateErrorCode turns a
+    // wrong password (INVALID_CURRENT_PASSWORD) into a real sentence.
+    final state = cubit.state;
+    setState(() {
+      _submitting = false;
+      _error = translateErrorCode(
+        l10n,
+        state.errorCode,
+        state.errorMessage ?? l10n.errorServer,
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l10n = context.l10n;
+
+    return AlertDialog(
+      title: Text(l10n.deleteAccountConfirmTitle),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(l10n.deleteAccountConfirmMessage),
+          const SizedBox(height: AppSizes.spacingMedium),
+          TextField(
+            controller: _controller,
+            obscureText: true,
+            enabled: !_submitting,
+            autofillHints: const [AutofillHints.password],
+            decoration: InputDecoration(
+              labelText: l10n.deleteAccountPasswordLabel,
+              errorText: _error,
+              border: const OutlineInputBorder(),
+            ),
+            onSubmitted: _submitting ? null : (_) => _submit(),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: _submitting ? null : () => Navigator.of(context).pop(),
+          child: Text(l10n.cancel),
+        ),
+        TextButton(
+          onPressed: _submitting ? null : _submit,
+          style: TextButton.styleFrom(foregroundColor: AppColors.errorOf(context)),
+          child: _submitting
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : Text(l10n.deleteAccountConfirmAction),
+        ),
+      ],
     );
   }
 }

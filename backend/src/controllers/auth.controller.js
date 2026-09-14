@@ -1,11 +1,11 @@
 const { asyncHandler } = require('../utils/asyncHandler');
 const { ApiError } = require('../utils/ApiError');
 const { normalizePhone, isValidPhone } = require('../utils/phone');
+const { assertPasswordPolicy } = require('../utils/password');
 const otpService = require('../services/otp.service');
 const authService = require('../services/auth.service');
 const authViewModel = require('../viewmodels/auth.viewmodel');
 
-const MIN_PASSWORD_LENGTH = 6;
 const AREA_TYPES = ['city', 'city_ring', 'rural'];
 
 function requireNonEmptyString(value, message) {
@@ -30,12 +30,14 @@ function requireAreaType(value) {
   return value;
 }
 
-function requirePassword(value, message) {
+// Registration is the one place the role is known up front and is always
+// 'pharmacy' (auth.service.js hardcodes it) - so the policy can be applied
+// here, before any DB work. The reset/change paths cannot: their minimum
+// depends on the account's own role, so they assert it in the service, after
+// the user is loaded. utils/password.js is the single source for all three.
+function requirePassword(value, message, role = 'pharmacy') {
   const password = requireNonEmptyString(value, message);
-  if (password.length < MIN_PASSWORD_LENGTH) {
-    throw ApiError.badRequest(`Password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
-  }
-  return password;
+  return assertPasswordPolicy(password, { role, code: 'INVALID_PASSWORD' });
 }
 
 // Optional - the registration screen's map picker sends both as plain form
@@ -55,7 +57,7 @@ function parseOptionalLocation(body) {
 
 // TODO(re-enable-otp): route stays live and fully working, but no current
 // client calls it - registration/login are password-only for now. See the
-// TODO in auth.service.js's registerOrLogin.
+// TODO in auth.service.js's register.
 const sendOtp = asyncHandler(async (req, res) => {
   const phone = normalizePhone(req.body.phone);
   if (!isValidPhone(phone)) {
@@ -87,7 +89,7 @@ const register = asyncHandler(async (req, res) => {
 
   const location = parseOptionalLocation(req.body);
 
-  const result = await authService.registerOrLogin({
+  const result = await authService.register({
     name,
     pharmacyName,
     phone,
@@ -141,6 +143,78 @@ const loginWithPassword = asyncHandler(async (req, res) => {
   });
 });
 
+// Step 1 of password recovery (Audit H-3). The response is deliberately the
+// same whether or not the number has an account - see forgotPassword in
+// auth.service.js. Do not "improve" this by reporting an unknown number.
+const forgotPassword = asyncHandler(async (req, res) => {
+  const phone = normalizePhone(req.body.phone);
+  if (!isValidPhone(phone)) {
+    throw ApiError.badRequest('Please enter a valid phone number.');
+  }
+
+  await authService.forgotPassword({ phone });
+
+  res.json({
+    success: true,
+    message: 'If an account exists for this number, a verification code has been sent.',
+  });
+});
+
+// Step 2 of password recovery. The new password is NOT length-checked here:
+// the minimum depends on the account's role, so the service applies it once it
+// has loaded the user (utils/password.js).
+const resetPassword = asyncHandler(async (req, res) => {
+  const phone = normalizePhone(req.body.phone);
+  if (!isValidPhone(phone)) {
+    throw ApiError.badRequest('Please enter a valid phone number.');
+  }
+  const otpCode = requireNonEmptyString(req.body.otpCode, 'Verification code is required.');
+  const password = requireNonEmptyString(req.body.password, 'A new password is required.');
+  const confirmPassword = requireNonEmptyString(
+    req.body.confirmPassword,
+    'Please confirm your new password.'
+  );
+  if (password !== confirmPassword) {
+    throw ApiError.badRequest('Passwords do not match.', undefined, 'PASSWORD_MISMATCH');
+  }
+
+  await authService.resetPassword({ phone, otpCode, password });
+
+  res.json({ success: true, message: 'Your password has been reset. Please sign in.' });
+});
+
+// Changing a known password from inside the app - requires the current one.
+// Same note as resetPassword on where the length rule is applied.
+const changePassword = asyncHandler(async (req, res) => {
+  const currentPassword = requireNonEmptyString(
+    req.body.currentPassword,
+    'Your current password is required.'
+  );
+  const newPassword = requireNonEmptyString(req.body.newPassword, 'A new password is required.');
+  const confirmPassword = requireNonEmptyString(
+    req.body.confirmPassword,
+    'Please confirm your new password.'
+  );
+  if (newPassword !== confirmPassword) {
+    throw ApiError.badRequest('Passwords do not match.', undefined, 'PASSWORD_MISMATCH');
+  }
+
+  await authService.changePassword(req.user._id, { currentPassword, newPassword });
+
+  res.json({ success: true, message: 'Your password has been changed.' });
+});
+
+// Self-service account deletion (soft delete - see deleteAccount in
+// auth.service.js for why it cannot be a hard one). Re-authenticates with the
+// current password: a token alone must not be enough to destroy the account.
+const deleteAccount = asyncHandler(async (req, res) => {
+  const password = requireNonEmptyString(req.body.password, 'Your password is required.');
+
+  await authService.deleteAccount(req.user._id, { password });
+
+  res.json({ success: true, message: 'Your account has been deleted.' });
+});
+
 const me = asyncHandler(async (req, res) => {
   const result = await authService.getMe(req.user._id);
   res.json({ success: true, ...authViewModel.toMeResponse(result) });
@@ -172,4 +246,15 @@ const registerDeviceToken = asyncHandler(async (req, res) => {
   res.json({ success: true, message: 'Device registered.' });
 });
 
-module.exports = { sendOtp, register, login, loginWithPassword, me, registerDeviceToken };
+module.exports = {
+  sendOtp,
+  register,
+  login,
+  loginWithPassword,
+  forgotPassword,
+  resetPassword,
+  changePassword,
+  deleteAccount,
+  me,
+  registerDeviceToken,
+};
