@@ -17,6 +17,7 @@ const { startMemoryMongo, stopMemoryMongo } = require('./helpers/mongo');
 const { normalizePhone } = require('../src/utils/phone');
 
 const emitted = [];
+const forceDisconnected = [];
 
 function stubModule(relativePath, exportsValue) {
   const resolved = require.resolve(path.join(__dirname, '..', 'src', relativePath));
@@ -27,6 +28,13 @@ stubModule('realtime/index.js', {
   emitToAdmins: (event, payload) => emitted.push({ room: 'admin', event, payload }),
   emitToWarehouse: (warehouseId, event, payload) =>
     emitted.push({ room: `warehouse:${warehouseId}`, event, payload }),
+  // Audit F-10: blockAccount also cuts the account's live sockets. Recorded
+  // rather than performed - the socket behavior itself is covered against a
+  // real server in realtime.block-disconnect.test.js.
+  disconnectUser: (userId) => {
+    forceDisconnected.push(String(userId));
+    return 0;
+  },
   EVENTS: {
     ACCOUNT_PENDING: 'account.pending',
     ACCOUNT_STATUS_UPDATED: 'account.status.updated',
@@ -140,6 +148,7 @@ test.after(async () => {
 
 test.beforeEach(() => {
   emitted.length = 0;
+  forceDisconnected.length = 0;
 });
 
 // --- listAccounts: type + status filtering ---------------------------------
@@ -316,6 +325,9 @@ test('blockAccount: active pharmacy -> blocked, one admin event', async () => {
     event: 'account.status.updated',
     payload: { userId: ids.phAlphaActive.toString(), role: 'pharmacy', status: 'blocked' },
   });
+  // Audit F-10: the account's live sockets are cut as part of blocking, so the
+  // block does not wait for the client to reconnect before taking effect.
+  assert.deepStrictEqual(forceDisconnected, [ids.phAlphaActive.toString()]);
 });
 
 test('unblockAccount: blocked pharmacy -> active, one admin event', async () => {
@@ -325,6 +337,7 @@ test('unblockAccount: blocked pharmacy -> active, one admin event', async () => 
   assert.strictEqual(emitted.length, 1);
   assert.strictEqual(emitted[0].payload.status, 'active');
   assert.strictEqual(emitted[0].payload.role, 'pharmacy');
+  assert.deepStrictEqual(forceDisconnected, [], 'unblocking disconnects nobody');
 });
 
 test('blockAccount / unblockAccount work for warehouses too', async () => {
@@ -334,6 +347,7 @@ test('blockAccount / unblockAccount work for warehouses too', async () => {
   assert.strictEqual(emitted[0].payload.role, 'warehouse');
 
   emitted.length = 0;
+  forceDisconnected.length = 0;
   await adminService.unblockAccount(ids.whNorthActive.toString());
   assert.strictEqual((await User.findById(ids.whNorthActive)).status, 'active');
   assert.strictEqual(emitted[0].payload.status, 'active');
