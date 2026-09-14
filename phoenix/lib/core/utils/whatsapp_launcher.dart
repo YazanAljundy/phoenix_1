@@ -1,5 +1,10 @@
 import 'package:url_launcher/url_launcher.dart';
 
+// Manual password recovery runs through this number until self-service reset
+// over SMS is wired up - PasswordLoginView links straight to it. Stored in the
+// international form the rest of the app uses; normalized for wa.me below.
+const String supportWhatsAppPhone = '+963996230398';
+
 // Warehouse/pharmacy phone numbers are stored in either local Syrian form
 // (09XXXXXXXX) or international form (+9639XXXXXXXX) - see
 // backend/src/utils/phone.js. wa.me needs plain digits with the country

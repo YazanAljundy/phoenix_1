@@ -54,6 +54,18 @@
   "passwordLoginTitle": "Log in with password",
   "passwordLoginSubtitle": "Enter your phone number and password",
   "backToRegistrationLink": "New here? Create an account",
+  "forgotPasswordSupportLink": "Forgot your password? Contact support on WhatsApp",
+  "forgotPasswordSupportMessage": "Hello, I would like to recover the password for my account. Pharmacy/warehouse name: ___ Registered phone number: ___",
+  "whatsAppUnavailable": "Couldn't open WhatsApp. Support number: {phone}",
+  "@whatsAppUnavailable": {
+    "placeholders": {
+      "phone": {
+        "type": "String"
+      }
+    }
+  },
+  "copyAction": "Copy",
+  "phoneCopied": "Number copied.",
   "otpTitle": "Enter verification code",
   "otpInstructionsPrefix": "Enter the 6-digit code sent to",
   "otpCodeLabel": "Verification code",

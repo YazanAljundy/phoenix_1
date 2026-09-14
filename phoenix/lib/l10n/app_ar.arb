@@ -54,6 +54,18 @@
   "passwordLoginTitle": "تسجيل الدخول بكلمة السر",
   "passwordLoginSubtitle": "أدخل رقم هاتفك وكلمة السر",
   "backToRegistrationLink": "جديد هون؟ أنشئ حساب",
+  "forgotPasswordSupportLink": "نسيت كلمة المرور؟ تواصل مع الدعم عبر واتساب",
+  "forgotPasswordSupportMessage": "مرحباً، أريد استعادة كلمة المرور لحسابي. اسم الصيدلية/المستودع: ___ رقم الهاتف المسجّل: ___",
+  "whatsAppUnavailable": "تعذّر فتح واتساب. رقم الدعم: {phone}",
+  "@whatsAppUnavailable": {
+    "placeholders": {
+      "phone": {
+        "type": "String"
+      }
+    }
+  },
+  "copyAction": "نسخ",
+  "phoneCopied": "تم نسخ الرقم.",
   "otpTitle": "أدخل رمز التحقق",
   "otpInstructionsPrefix": "أدخل الرمز المكوّن من 6 أرقام المُرسل إلى",
   "otpCodeLabel": "رمز التحقق",

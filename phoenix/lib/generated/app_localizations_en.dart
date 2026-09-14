@@ -159,6 +159,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get backToRegistrationLink => 'New here? Create an account';
 
   @override
+  String get forgotPasswordSupportLink =>
+      'Forgot your password? Contact support on WhatsApp';
+
+  @override
+  String get forgotPasswordSupportMessage =>
+      'Hello, I would like to recover the password for my account. Pharmacy/warehouse name: ___ Registered phone number: ___';
+
+  @override
+  String whatsAppUnavailable(String phone) {
+    return 'Couldn\'t open WhatsApp. Support number: $phone';
+  }
+
+  @override
+  String get copyAction => 'Copy';
+
+  @override
+  String get phoneCopied => 'Number copied.';
+
+  @override
   String get otpTitle => 'Enter verification code';
 
   @override

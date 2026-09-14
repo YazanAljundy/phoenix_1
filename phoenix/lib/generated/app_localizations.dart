@@ -380,6 +380,36 @@ abstract class AppLocalizations {
   /// **'New here? Create an account'**
   String get backToRegistrationLink;
 
+  /// No description provided for @forgotPasswordSupportLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Forgot your password? Contact support on WhatsApp'**
+  String get forgotPasswordSupportLink;
+
+  /// No description provided for @forgotPasswordSupportMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Hello, I would like to recover the password for my account. Pharmacy/warehouse name: ___ Registered phone number: ___'**
+  String get forgotPasswordSupportMessage;
+
+  /// No description provided for @whatsAppUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t open WhatsApp. Support number: {phone}'**
+  String whatsAppUnavailable(String phone);
+
+  /// No description provided for @copyAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get copyAction;
+
+  /// No description provided for @phoneCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Number copied.'**
+  String get phoneCopied;
+
   /// No description provided for @otpTitle.
   ///
   /// In en, this message translates to:

@@ -29,6 +29,7 @@ class NotificationButton extends StatelessWidget {
             isLabelVisible: count > 0,
             child: Icon(
               count > 0 ? Icons.notifications : Icons.notifications_outlined,
+              size: 32,
             ),
           ),
         );

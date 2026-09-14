@@ -157,6 +157,25 @@ class AppLocalizationsAr extends AppLocalizations {
   String get backToRegistrationLink => 'جديد هون؟ أنشئ حساب';
 
   @override
+  String get forgotPasswordSupportLink =>
+      'نسيت كلمة المرور؟ تواصل مع الدعم عبر واتساب';
+
+  @override
+  String get forgotPasswordSupportMessage =>
+      'مرحباً، أريد استعادة كلمة المرور لحسابي. اسم الصيدلية/المستودع: ___ رقم الهاتف المسجّل: ___';
+
+  @override
+  String whatsAppUnavailable(String phone) {
+    return 'تعذّر فتح واتساب. رقم الدعم: $phone';
+  }
+
+  @override
+  String get copyAction => 'نسخ';
+
+  @override
+  String get phoneCopied => 'تم نسخ الرقم.';
+
+  @override
   String get otpTitle => 'أدخل رمز التحقق';
 
   @override
