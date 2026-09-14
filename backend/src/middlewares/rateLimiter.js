@@ -1,6 +1,7 @@
 const rateLimit = require('express-rate-limit');
 const jwt = require('jsonwebtoken');
 const env = require('../config/env');
+const { normalizePhone } = require('../utils/phone');
 
 const WINDOW_MS = 15 * 60 * 1000;
 
@@ -60,6 +61,25 @@ function identify(req) {
 
 const TOO_MANY_REQUESTS = { success: false, message: 'Too many requests. Please try again later.' };
 
+// An explicit, test-only opt-out for the credential limiters.
+//
+// The limiters below are keyed by address and by phone number, and an
+// automated suite is one address driving a handful of numbers - so a suite
+// that exercises the auth FLOW (auth.security.test.js: lockouts, OTP
+// ceilings, recovery) trips them on the harness itself and cannot make more
+// than 20 requests at all.
+//
+// Deliberately an explicit flag rather than a blanket `NODE_ENV === 'test'`
+// skip: ratelimit.test.js asserts the limiters by genuinely driving requests
+// through them, and a blanket skip would silently turn those regression tests
+// into no-ops that pass for the wrong reason. Only a suite that opts in loses
+// the limiter, and it says so at the top of its own file.
+//
+// Guarded on NODE_ENV as well, so setting the variable in a real deployment
+// cannot disable anything.
+const limitersDisabled = () =>
+  env.nodeEnv === 'test' && process.env.DISABLE_AUTH_RATE_LIMIT === '1';
+
 // General API-wide limiter (Section 16c).
 const apiLimiter = rateLimit({
   windowMs: WINDOW_MS,
@@ -82,6 +102,46 @@ const apiLimiter = rateLimit({
 const authLimiter = rateLimit({
   windowMs: WINDOW_MS,
   limit: 20,
+  skip: limitersDisabled,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: TOO_MANY_REQUESTS,
+});
+
+// Per-PHONE limiter for the credential endpoints (Audit H-2).
+//
+// authLimiter above is keyed by address, and that is the half of the problem
+// it can actually solve. It does nothing about the other half: an attacker
+// spread across 50 addresses gets 50 x 20 attempts per window against a single
+// account, and the pharmacies this serves sit behind carrier CGNAT where one
+// address is shared by many legitimate users anyway. Keying on the phone
+// number in the body bounds what any number of addresses can do to one
+// account.
+//
+// Deliberately ADDITIVE - authLimiter stays exactly as it was. The two answer
+// different questions ("is this address abusive?" vs "is this account under
+// attack?") and neither subsumes the other.
+//
+// skipSuccessfulRequests: a pharmacist who signs in correctly ten times in an
+// hour (app reinstall, several devices) must never be throttled. Only failures
+// count, which is also what makes the hour-long window safe to set this low.
+const PHONE_WINDOW_MS = 60 * 60 * 1000;
+const PHONE_LIMIT = 10;
+
+// Falls back to the address when the body carries no usable phone: such a
+// request is going to be rejected as a bad request anyway, and it must not get
+// an unlimited free bucket by simply omitting the field.
+function phoneKey(req) {
+  const phone = normalizePhone(req.body && req.body.phone);
+  return phone ? `ph:${phone}` : `ip:${req.ip}`;
+}
+
+const phoneAuthLimiter = rateLimit({
+  windowMs: PHONE_WINDOW_MS,
+  limit: PHONE_LIMIT,
+  keyGenerator: phoneKey,
+  skip: limitersDisabled,
+  skipSuccessfulRequests: true,
   standardHeaders: true,
   legacyHeaders: false,
   message: TOO_MANY_REQUESTS,
@@ -112,8 +172,10 @@ module.exports = {
   apiLimiter,
   authLimiter,
   refreshLimiter,
+  phoneAuthLimiter,
   // Exported for the rate-limiter tests, which assert the keying strategy
   // directly rather than by driving 300 requests through an app.
   _identify: identify,
-  _limits: { WINDOW_MS, AUTHENTICATED_LIMIT, ANONYMOUS_LIMIT },
+  _phoneKey: phoneKey,
+  _limits: { WINDOW_MS, AUTHENTICATED_LIMIT, ANONYMOUS_LIMIT, PHONE_WINDOW_MS, PHONE_LIMIT },
 };

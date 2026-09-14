@@ -7,6 +7,14 @@ const { Schema, model } = require('mongoose');
 // the record of the ACTION that produced it (including actions that produce no
 // entry at all, like rejecting a return or changing the exchange rate).
 // Nothing here is ever updated or deleted - the service exposes no such method.
+//
+// Scope note: the name says financial, and everything here was until
+// 'account.password_reset' was added. That one is a security event riding in a
+// financial log because it is the only append-only trail the project has, and
+// leaving an admin-performed password reset unrecorded was the worse of the two
+// options. If more non-financial admin actions need auditing (approve, reject,
+// block, unblock currently record nothing at all), the right move is to split
+// this into a general AuditLog rather than keep widening the enum.
 const ACTIONS = [
   'order.delivered',            // posts the charge
   'order.charge_reversed',
@@ -25,6 +33,12 @@ const ACTIONS = [
   'exchangeRate.changed',
   'account.opened',
   'migration.backfill',
+  // Not a financial mutation - the one security action recorded here, because
+  // this is the project's only append-only audit trail and an admin resetting
+  // a user's password is precisely the action that must leave one. See
+  // auth.service.js's adminResetPassword, and the note below about this
+  // model's scope.
+  'account.password_reset',
 ];
 
 const financialAuditLogSchema = new Schema(

@@ -312,6 +312,23 @@ export const api = {
   rejectAccount: (userId) => request(`/admin/accounts/${userId}/reject`, { method: 'POST' }),
   blockAccount: (userId) => request(`/admin/accounts/${userId}/block`, { method: 'POST' }),
   unblockAccount: (userId) => request(`/admin/accounts/${userId}/unblock`, { method: 'POST' }),
+  // Emergency password recovery - the manual stand-in for the pharmacy app's
+  // /auth/forgot-password while no SMS provider is wired up. Admin-only, and
+  // the server reaches pharmacies and warehouses only (never another admin).
+  //
+  // Lives under /auth, not /admin: the two audit rounds each built their own
+  // endpoint for this, and the merge kept the /auth one because it shares
+  // changePassword's hashing and session-revocation path. The field is
+  // `newPassword` for the same reason - it is that endpoint's existing
+  // contract.
+  //
+  // Returns no password: the panel keeps what it typed only for as long as the
+  // modal is open, and nothing echoes it back afterwards.
+  resetAccountPassword: (userId, { password, reason } = {}) =>
+    request(`/auth/admin/reset-password/${userId}`, {
+      method: 'POST',
+      body: { newPassword: password, reason },
+    }),
   sendAdminNotification: ({ titleAr, titleEn, bodyAr, bodyEn }) =>
     request('/admin/notifications', { method: 'POST', body: { titleAr, titleEn, bodyAr, bodyEn } }),
   warehouseOrders: ({ status, limit, after } = {}) => {

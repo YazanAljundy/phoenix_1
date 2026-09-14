@@ -1,4 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:feniq/core/constants/password_policy.dart';
+import 'package:feniq/core/extensions/string_extensions.dart';
 import 'package:feniq/core/utils/validators.dart';
 
 void main() {
@@ -210,8 +212,15 @@ void main() {
     });
 
     group('minPasswordLength', () {
-      test('minPasswordLength is 6', () {
-        expect(Validators.minPasswordLength, equals(6));
+      test('minPasswordLength is 8, matching the server pharmacy minimum', () {
+        expect(Validators.minPasswordLength, equals(8));
+      });
+
+      // The point of the change: one source, not two that drift apart.
+      test('Validators and StringExtensions share one source', () {
+        expect(Validators.minPasswordLength, equals(kMinPasswordLength));
+        expect(('a' * Validators.minPasswordLength).isValidPassword, isTrue);
+        expect(('a' * (Validators.minPasswordLength - 1)).isValidPassword, isFalse);
       });
     });
   });

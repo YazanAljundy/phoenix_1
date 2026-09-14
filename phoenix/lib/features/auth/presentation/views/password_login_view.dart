@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:feniq/core/constants/app_colors.dart';
@@ -7,6 +8,7 @@ import 'package:feniq/core/constants/app_sizes.dart';
 import 'package:feniq/core/error/error_translator.dart';
 import 'package:feniq/core/extensions/build_context_extensions.dart';
 import 'package:feniq/core/utils/validators.dart';
+import 'package:feniq/core/utils/whatsapp_launcher.dart';
 import 'package:feniq/core/widgets/app_snackbar.dart';
 import 'package:feniq/core/widgets/app_text_field.dart';
 import 'package:feniq/core/widgets/brand_logo.dart';
@@ -36,6 +38,36 @@ class _PasswordLoginViewState extends State<PasswordLoginView> {
     _phoneController.dispose();
     _passwordController.dispose();
     super.dispose();
+  }
+
+  // Password reset is still manual: there is no self-service flow, so the link
+  // hands the user to support on WhatsApp with a pre-filled message asking for
+  // the two things support needs to find the account. wa.me is an https link,
+  // so a device without WhatsApp normally falls through to the browser - the
+  // catch is for the rarer case where nothing handles it at all, and offers the
+  // number instead.
+  Future<void> _contactSupportForPassword() async {
+    final l10n = context.l10n;
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final launched = await launchWhatsApp(
+        supportWhatsAppPhone,
+        message: l10n.forgotPasswordSupportMessage,
+      );
+      if (launched || !mounted) return;
+    } catch (_) {
+      if (!mounted) return;
+    }
+    messenger.clearSnackBars();
+    AppSnackbar.show(
+      context,
+      l10n.whatsAppUnavailable(supportWhatsAppPhone),
+      actionLabel: l10n.copyAction,
+      onAction: () async {
+        await Clipboard.setData(const ClipboardData(text: supportWhatsAppPhone));
+        if (mounted) AppSnackbar.show(context, l10n.phoneCopied);
+      },
+    );
   }
 
   Future<void> _submit() async {
@@ -131,7 +163,17 @@ class _PasswordLoginViewState extends State<PasswordLoginView> {
                       onPressed: _submit,
                     ),
                   ),
-                  const SizedBox(height: AppSizes.spacingMedium),
+                  const SizedBox(height: AppSizes.spacingSmall),
+                  Center(
+                    child: TextButton.icon(
+                      onPressed: _contactSupportForPassword,
+                      icon: const Icon(Icons.support_agent_outlined, size: 18),
+                      label: Text(
+                        l10n.forgotPasswordSupportLink,
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
                   Center(
                     child: TextButton(
                       onPressed: () => context.pushReplacementNamed(RouteNames.registration),

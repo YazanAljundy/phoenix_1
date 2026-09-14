@@ -34,7 +34,7 @@ class _RegistrationViewState extends State<RegistrationView> {
   final _confirmPasswordController = TextEditingController();
   bool _agreedToTerms = false;
   String? _termsError;
-  String? _areaType;
+  String? _areaType='city';
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
   double? _latitude;

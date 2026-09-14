@@ -199,11 +199,13 @@ class AuthCubit extends Cubit<AuthState> {
   // Section 6-2/3: registers and saves directly - no OTP step (temporarily
   // disabled, see auth_repository.dart).
   //
-  // Creates NEW accounts only. This used to double as the returning-user
-  // re-entry path - a phone that already had an account was silently logged
-  // back in - but that was an authentication bypass (audit F-01) and the
-  // backend now answers an existing phone with 409 PHONE_ALREADY_REGISTERED.
-  // Returning users go through loginWithPassword / PasswordLoginView.
+  // This is registration ONLY. It used to double as the returning-user re-entry
+  // path - a phone that already had an account was simply logged back in - but
+  // that was an authentication bypass (the server never checked the password;
+  // audit C-1 and F-01 are the same finding) and has been closed. A known phone
+  // now comes back as a 409 with code PHONE_ALREADY_REGISTERED, which
+  // error_translator.dart turns into a message telling the user to sign in
+  // instead; the screen already offers a link to PasswordLoginView.
   Future<bool> register({
     required String name,
     required String pharmacyName,
@@ -286,6 +288,33 @@ class AuthCubit extends Cubit<AuthState> {
       );
       return false;
     }
+  }
+
+  // Permanently deletes the account, then tears the local session down exactly
+  // the way logout() does. The token is already dead server-side by the time
+  // this returns (the account's status refuses it), so leaving it on disk would
+  // only produce a confusing 401 on the next launch.
+  //
+  // Returns true on success; on failure the error is published on the state
+  // (errorCode 'INVALID_CURRENT_PASSWORD' for a wrong password) and the session
+  // is left untouched.
+  Future<bool> deleteAccount({required String password}) async {
+    emit(state.copyWith(isSubmitting: true, clearError: true));
+    try {
+      await _authRepository.deleteAccount(password: password);
+    } on Failure catch (f) {
+      emit(
+        state.copyWith(
+          isSubmitting: false,
+          errorMessage: f.errMessage,
+          errorCode: f.code,
+        ),
+      );
+      return false;
+    }
+
+    await logout();
+    return true;
   }
 
   Future<void> logout() async {

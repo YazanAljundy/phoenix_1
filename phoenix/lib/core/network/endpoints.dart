@@ -13,6 +13,11 @@ class Endpoints {
   /// logout so the next person on a shared phone does not receive the
   /// previous account's notifications.
   static const String deviceToken = '/auth/device-token';
+  // Self-service account deletion. Soft delete on the server: the account is
+  // permanently unusable and every token already issued for it stops working
+  // immediately, but order and financial history stays attributable (see
+  // deleteAccount in backend/src/services/auth.service.js).
+  static const String deleteAccount = '/auth/account';
 
   static const String warehouses = '/warehouses';
   static const String categories = '/categories';

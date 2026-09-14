@@ -1,3 +1,5 @@
+import '../constants/password_policy.dart';
+
 extension StringExtensions on String {
   bool get isValidEmail {
     final RegExp regex = RegExp(
@@ -6,5 +8,8 @@ extension StringExtensions on String {
     return regex.hasMatch(this);
   }
 
-  bool get isValidPassword => trim().length >= 6;
+  // Length only, and the length comes from constants/password_policy.dart -
+  // this used to hardcode its own 6 independently of Validators, so raising
+  // one left the other behind.
+  bool get isValidPassword => trim().length >= kMinPasswordLength;
 }

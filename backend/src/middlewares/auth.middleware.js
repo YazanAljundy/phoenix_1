@@ -56,6 +56,16 @@ async function authenticateToken(token) {
   if (user.status === 'blocked') {
     throw ApiError.forbidden('This account has been blocked.');
   }
+  // Self-service deletion is a soft delete, so the document is still here and
+  // any token minted before it stays cryptographically valid for the rest of
+  // its 7 days. This is what actually ends those sessions - and it has to live
+  // HERE rather than in requireActiveStatus, because /auth/me and
+  // /auth/device-token run on `authenticate` alone. Reported as a plain 401 so
+  // the client runs its normal expired-session logout (auth_interceptor.dart)
+  // instead of parking the user on an error screen.
+  if (user.status === 'deleted') {
+    throw ApiError.unauthorized('This account has been deleted.', 'ACCOUNT_DELETED');
+  }
 
   return user;
 }

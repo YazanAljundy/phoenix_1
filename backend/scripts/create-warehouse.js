@@ -9,8 +9,12 @@ const bcrypt = require('bcrypt');
 const env = require('../src/config/env');
 const User = require('../src/models/user.model');
 const Warehouse = require('../src/models/warehouse.model');
+const { minPasswordLengthFor } = require('../src/utils/password');
 
 const BCRYPT_SALT_ROUNDS = 10;
+// Same minimum the admin panel's own warehouse-creation form enforces
+// (admin.service.js). Defined once in src/utils/password.js (Audit M-1).
+const MIN_PASSWORD_LENGTH = minPasswordLengthFor('warehouse');
 
 function usage() {
   console.error(
@@ -25,8 +29,8 @@ async function main() {
     process.exitCode = 1;
     return;
   }
-  if (password.length < 6) {
-    console.error('Password must be at least 6 characters.');
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    console.error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
     process.exitCode = 1;
     return;
   }

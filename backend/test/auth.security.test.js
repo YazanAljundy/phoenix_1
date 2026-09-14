@@ -14,6 +14,13 @@ process.env.MONGODB_URI = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/
 // not whatever this particular machine has configured.
 process.env.JWT_EXPIRES_IN = '24h';
 process.env.NODE_ENV = 'test';
+// This suite drives well over 20 auth requests from one address and repeatedly
+// fails logins for the same phone, which is exactly what the credential limiters
+// added by the C-1/H-2 round exist to stop - they would fire on the harness
+// rather than on anything real. Opt out here (see rateLimiter.js); the limiters
+// themselves are still driven for real by ratelimit.test.js, which does NOT set
+// this.
+process.env.DISABLE_AUTH_RATE_LIMIT = '1';
 
 const test = require('node:test');
 const assert = require('node:assert');
@@ -80,6 +87,10 @@ function registrationBody(phone, overrides = {}) {
     pharmacyName: 'Attacker Pharmacy',
     phone,
     address: 'Anywhere',
+    // Required by pharmacy.model.js since the package-availability merge; the
+    // registration screen sends it too. Without it a genuinely-new registration
+    // fails schema validation before the assertions below can mean anything.
+    areaType: 'city',
     password: 'whatever-i-like',
     confirmPassword: 'whatever-i-like',
     ...overrides,
@@ -109,6 +120,7 @@ test.before(async () => {
     ownerName: 'Target Pharmacy',
     address: 'Anywhere',
     city: 'Latakia',
+    areaType: 'city',
     phone: ACCOUNTS.pharmacy.phone,
     addedBy: 'self',
   });
@@ -409,7 +421,11 @@ test('F-06: changing a password requires the current one', async () => {
   });
 
   assert.strictEqual(wrong.status, 401, 'a borrowed session is not enough');
-  assert.strictEqual(wrong.body.code, 'INVALID_CREDENTIALS');
+  // The merge with the C-1/H-* round narrowed this from the generic
+  // INVALID_CREDENTIALS to the more specific code, which error_translator.dart
+  // already maps: "the current password is wrong" is a different message to the
+  // user than "your sign-in failed".
+  assert.strictEqual(wrong.body.code, 'INVALID_CURRENT_PASSWORD');
 
   // And the password really is unchanged.
   const stillWorks = await loginAttempt(ACCOUNTS.warehouse.phone, PASSWORD);
