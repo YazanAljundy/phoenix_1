@@ -10,8 +10,13 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 const env = require('../src/config/env');
 const User = require('../src/models/user.model');
+const { minPasswordLengthFor } = require('../src/utils/password');
 
 const BCRYPT_SALT_ROUNDS = 10;
+// Highest bar in the system - this credential controls approvals, warehouse
+// creation, the ledger and the exchange rate. Defined once in
+// src/utils/password.js (Audit M-1), not restated here.
+const MIN_PASSWORD_LENGTH = minPasswordLengthFor('admin');
 
 async function main() {
   const [name, phone, password] = process.argv.slice(2);
@@ -20,8 +25,8 @@ async function main() {
     process.exitCode = 1;
     return;
   }
-  if (password.length < 6) {
-    console.error('Password must be at least 6 characters.');
+  if (password.length < MIN_PASSWORD_LENGTH) {
+    console.error(`Password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
     process.exitCode = 1;
     return;
   }

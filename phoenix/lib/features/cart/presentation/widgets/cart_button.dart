@@ -5,6 +5,7 @@ import 'package:feniq/core/extensions/build_context_extensions.dart';
 import 'package:feniq/features/cart/presentation/managers/cart_cubit.dart';
 import 'package:feniq/features/cart/presentation/managers/cart_state.dart';
 import 'package:feniq/routes/route_names.dart';
+import 'package:feniq/core/constants/app_colors.dart';
 
 /// The cart icon + live item-count badge for the AppBar of every screen in
 /// the shopping flow (warehouse selection, warehouse profile, manufacturers,
@@ -32,7 +33,11 @@ class CartButton extends StatelessWidget {
           icon: Badge(
             label: Text('${state.itemCount}'),
             isLabelVisible: state.itemCount > 0,
-            child: const Icon(Icons.shopping_cart_outlined),
+            child: Icon(
+              Icons.shopping_cart_outlined,
+              color: AppColors.lightPrimary,
+              size: 32,
+            ),
           ),
         );
       },

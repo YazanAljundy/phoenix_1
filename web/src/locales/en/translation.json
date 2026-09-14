@@ -582,14 +582,34 @@
       "action": {
         "view": "View",
         "block": "Block",
-        "unblock": "Unblock"
+        "unblock": "Unblock",
+        "resetPassword": "Reset password"
       },
       "confirmApprove": "Approve {{name}}?",
       "confirmReject": "Reject {{name}}? The account will be blocked.",
       "confirmBlock": "Block {{name}}? They lose access until an admin unblocks them.",
       "confirmUnblock": "Unblock {{name}}? Their access is restored.",
       "noAccounts": "No accounts match these filters.",
-      "noAccountsHint": "Try a different type, status or search term."
+      "noAccountsHint": "Try a different type, status or search term.",
+      "resetPassword": {
+        "title": "Reset password",
+        "hint": "Set a new password for {{name}}. Use this only after verifying who is asking - by phone, in person, or against the licence on file.",
+        "passwordLabel": "New password",
+        "passwordHint": "At least {{min}} characters.",
+        "show": "Show",
+        "hide": "Hide",
+        "reasonLabel": "Reason (optional)",
+        "reasonPlaceholder": "How you verified them - kept in the audit log.",
+        "sessionWarning": "This does NOT sign the user out of devices they are already logged in on. Those stay signed in until their session expires. If the account may be compromised, block it instead.",
+        "submit": "Reset password",
+        "submitting": "Resetting...",
+        "success": "Password reset for {{name}}. Pass the new password on yourself - it is not shown again.",
+        "errorTooShort": "Password must be at least {{min}} characters.",
+        "errorNotFound": "That account no longer exists. Refresh the list and try again.",
+        "errorDeleted": "This account has been deleted and cannot be recovered.",
+        "errorForbidden": "You do not have permission to reset this account's password.",
+        "errorRateLimited": "Too many requests. Wait a moment and try again."
+      }
     },
     "pendingAccounts": {
       "noAccounts": "No pending accounts right now.",

@@ -40,4 +40,13 @@ abstract class AuthRepository {
   // Detaches this device from the signed-in account on logout. Same
   // best-effort contract as registerDeviceToken above.
   Future<void> deleteDeviceToken({required String fcmToken});
+
+  // Permanently deletes the signed-in account. Requires the current password:
+  // holding a valid token is not enough authority to destroy the account, so
+  // an unattended unlocked phone cannot do it.
+  //
+  // The server soft-deletes (order/ledger history stays attributable) and the
+  // current token stops working the moment this returns - AuthCubit clears the
+  // local session immediately after.
+  Future<void> deleteAccount({required String password});
 }

@@ -123,7 +123,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get passwordTooShort =>
-      'يجب أن تتكون كلمة المرور من 6 أحرف على الأقل.';
+      'يجب أن تتكون كلمة المرور من 8 أحرف على الأقل.';
 
   @override
   String get passwordMismatch => 'كلمتا المرور غير متطابقتين.';
@@ -155,6 +155,25 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get backToRegistrationLink => 'جديد هون؟ أنشئ حساب';
+
+  @override
+  String get forgotPasswordSupportLink =>
+      'نسيت كلمة المرور؟ تواصل مع الدعم عبر واتساب';
+
+  @override
+  String get forgotPasswordSupportMessage =>
+      'مرحباً، أريد استعادة كلمة المرور لحسابي. اسم الصيدلية/المستودع: ___ رقم الهاتف المسجّل: ___';
+
+  @override
+  String whatsAppUnavailable(String phone) {
+    return 'تعذّر فتح واتساب. رقم الدعم: $phone';
+  }
+
+  @override
+  String get copyAction => 'نسخ';
+
+  @override
+  String get phoneCopied => 'تم نسخ الرقم.';
 
   @override
   String get otpTitle => 'أدخل رمز التحقق';
@@ -642,10 +661,6 @@ class AppLocalizationsAr extends AppLocalizations {
       'لا يوجد حساب مرتبط بهذا الرقم. يرجى إنشاء حساب أولاً.';
 
   @override
-  String get errorPhoneAlreadyRegistered =>
-      'هذا الرقم لديه حساب بالفعل. يرجى تسجيل الدخول.';
-
-  @override
   String get errorPharmacyNotFound =>
       'لم نتمكن من العثور على ملف صيدليتك. يرجى التواصل مع الدعم.';
 
@@ -1048,6 +1063,41 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get logoutConfirmMessage => 'هل أنت متأكد من تسجيل الخروج؟';
+
+  @override
+  String get dangerZoneTitle => 'منطقة الخطر';
+
+  @override
+  String get deleteAccount => 'حذف الحساب';
+
+  @override
+  String get deleteAccountSubtitle => 'حذف حسابك نهائياً';
+
+  @override
+  String get deleteAccountConfirmTitle => 'حذف الحساب نهائياً؟';
+
+  @override
+  String get deleteAccountConfirmMessage =>
+      'سيتم حذف حسابك نهائياً ولن تتمكن من تسجيل الدخول مرة أخرى، ولا يمكن التراجع عن هذه الخطوة.\n\nستبقى طلباتك وسجلاتك المالية السابقة ضمن سجلّات المستودعات التي تعاملت معها.\n\nأدخل كلمة المرور للتأكيد.';
+
+  @override
+  String get deleteAccountPasswordLabel => 'كلمة المرور';
+
+  @override
+  String get deleteAccountPasswordRequired => 'أدخل كلمة المرور للمتابعة.';
+
+  @override
+  String get deleteAccountConfirmAction => 'حذف نهائي';
+
+  @override
+  String get deleteAccountSuccess => 'تم حذف حسابك.';
+
+  @override
+  String get errorPhoneAlreadyRegistered =>
+      'يوجد حساب مسجّل بهذا الرقم. سجّل الدخول بدل إنشاء حساب جديد.';
+
+  @override
+  String get errorInvalidCurrentPassword => 'كلمة المرور غير صحيحة.';
 
   @override
   String get yourRatingTitle => 'تقييمك';

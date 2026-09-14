@@ -238,32 +238,50 @@ test('loginWithPassword is unaffected by the +password projection', async () => 
 });
 
 // Was 'registerOrLogin re-entry returns the full auth shape for an existing
-// user'. That re-entry branch WAS the F-01 authentication bypass - it issued a
-// token for any existing phone with no password check - so the assertion now
-// runs the other way. The full-auth-shape coverage this used to provide lives
-// on in the new-account case below and in the loginWithPassword test above.
-test('register refuses an existing phone instead of issuing a token', async () => {
+// user'. That re-entry branch WAS the authentication bypass both audit rounds
+// found (C-1 / F-01) - it issued a token for any existing phone with no
+// password check - so the assertion now runs the other way.
+test('register refuses a phone that already has an account (C-1 / F-01)', async () => {
   await assert.rejects(
     () => authService.register({
-      name: 'ignored', pharmacyName: 'ignored', phone: PASSWORD_USER_PHONE,
-      address: 'ignored', password: 'ignored',
+      name: 'attacker', pharmacyName: 'attacker', phone: PASSWORD_USER_PHONE,
+      address: 'anywhere', areaType: 'city', password: 'wrong-password-here',
     }),
-    (err) => {
-      assert.strictEqual(err.statusCode, 409, 'conflict, not a successful login');
-      assert.strictEqual(err.code, 'PHONE_ALREADY_REGISTERED');
-      return true;
-    }
+    (err) => err.statusCode === 409 && err.code === 'PHONE_ALREADY_REGISTERED',
+    'an existing phone must never mint a token without a password check'
   );
 });
 
-// The new-account branch had no coverage at all before F-01. It is the only
-// path left that mints a token from /auth/register, so its shape matters.
+// The full-auth-shape coverage the old re-entry test used to provide: this is
+// the path that legitimately returns it for an existing account.
+test('loginWithPassword returns the full auth shape for an existing user', async () => {
+  const result = await authService.loginWithPassword({
+    phone: PASSWORD_USER_PHONE,
+    password: PASSWORD_USER_SECRET,
+  });
+  const payload = authViewModel.toAuthResponse(result);
+
+  assert.deepStrictEqual(
+    Object.keys(payload.user).sort(),
+    ['id', 'lang', 'name', 'phone', 'role', 'status'].sort()
+  );
+  assert.strictEqual(payload.user.name, 'Pw Pharm');
+  assert.strictEqual(payload.pharmacy.ownerName, 'Pw Owner');
+  assert.ok(result.token);
+});
+
+// The new-account branch is the only path left that mints a token from
+// /auth/register, so its shape matters. areaType is required by
+// pharmacy.model.js as of the package-availability merge - without it this
+// registration fails schema validation before it ever reaches the projection
+// this suite exists to guard, which is why this test was red on main.
 test('register creates a pending pharmacy and returns the documented auth shape', async () => {
   const result = await authService.register({
     name: 'Fresh Owner',
     pharmacyName: 'Fresh Pharmacy',
     phone: NEW_REGISTRATION_PHONE,
     address: 'Somewhere',
+    areaType: 'city',
     password: 'fresh-password',
   });
   const payload = authViewModel.toAuthResponse(result);

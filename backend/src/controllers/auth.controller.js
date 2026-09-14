@@ -1,11 +1,11 @@
 const { asyncHandler } = require('../utils/asyncHandler');
 const { ApiError } = require('../utils/ApiError');
 const { normalizePhone, isValidPhone } = require('../utils/phone');
+const { assertPasswordPolicy } = require('../utils/password');
 const otpService = require('../services/otp.service');
 const authService = require('../services/auth.service');
 const authViewModel = require('../viewmodels/auth.viewmodel');
 
-const MIN_PASSWORD_LENGTH = 6;
 const AREA_TYPES = ['city', 'city_ring', 'rural'];
 
 function requireNonEmptyString(value, message) {
@@ -30,12 +30,14 @@ function requireAreaType(value) {
   return value;
 }
 
-function requirePassword(value, message) {
+// Registration is the one place the role is known up front and is always
+// 'pharmacy' (auth.service.js hardcodes it) - so the policy can be applied
+// here, before any DB work. The reset/change paths cannot: their minimum
+// depends on the account's own role, so they assert it in the service, after
+// the user is loaded. utils/password.js is the single source for all three.
+function requirePassword(value, message, role = 'pharmacy') {
   const password = requireNonEmptyString(value, message);
-  if (password.length < MIN_PASSWORD_LENGTH) {
-    throw ApiError.badRequest(`Password must be at least ${MIN_PASSWORD_LENGTH} characters.`);
-  }
-  return password;
+  return assertPasswordPolicy(password, { role, code: 'INVALID_PASSWORD' });
 }
 
 // Optional - the registration screen's map picker sends both as plain form
@@ -156,23 +158,88 @@ const refresh = asyncHandler(async (req, res) => {
   });
 });
 
+// Step 1 of password recovery (Audit H-3). The response is deliberately the
+// same whether or not the number has an account - see forgotPassword in
+// auth.service.js. Do not "improve" this by reporting an unknown number.
+const forgotPassword = asyncHandler(async (req, res) => {
+  const phone = normalizePhone(req.body.phone);
+  if (!isValidPhone(phone)) {
+    throw ApiError.badRequest('Please enter a valid phone number.');
+  }
+
+  await authService.forgotPassword({ phone });
+
+  res.json({
+    success: true,
+    message: 'If an account exists for this number, a verification code has been sent.',
+  });
+});
+
+// Step 2 of password recovery. The new password is NOT length-checked here:
+// the minimum depends on the account's role, so the service applies it once it
+// has loaded the user (utils/password.js).
+const resetPassword = asyncHandler(async (req, res) => {
+  const phone = normalizePhone(req.body.phone);
+  if (!isValidPhone(phone)) {
+    throw ApiError.badRequest('Please enter a valid phone number.');
+  }
+  const otpCode = requireNonEmptyString(req.body.otpCode, 'Verification code is required.');
+  const password = requireNonEmptyString(req.body.password, 'A new password is required.');
+  const confirmPassword = requireNonEmptyString(
+    req.body.confirmPassword,
+    'Please confirm your new password.'
+  );
+  if (password !== confirmPassword) {
+    throw ApiError.badRequest('Passwords do not match.', undefined, 'PASSWORD_MISMATCH');
+  }
+
+  await authService.resetPassword({ phone, otpCode, password });
+
+  res.json({ success: true, message: 'Your password has been reset. Please sign in.' });
+});
+
+// Self-service account deletion (soft delete - see deleteAccount in
+// auth.service.js for why it cannot be a hard one). Re-authenticates with the
+// current password: a token alone must not be enough to destroy the account.
+const deleteAccount = asyncHandler(async (req, res) => {
+  const password = requireNonEmptyString(req.body.password, 'Your password is required.');
+
+  await authService.deleteAccount(req.user._id, { password });
+
+  res.json({ success: true, message: 'Your account has been deleted.' });
+});
+
 const me = asyncHandler(async (req, res) => {
   const result = await authService.getMe(req.user._id);
   res.json({ success: true, ...authViewModel.toMeResponse(result) });
 });
 
-// Section F-06. Requires the current password even though the caller is
+// Section F-06 / M-1. Requires the current password even though the caller is
 // already authenticated: a borrowed unlocked laptop must not be enough to
 // take an account over.
+//
+// The new password is NOT length-checked here: the minimum depends on the
+// account's own role, which only the service knows once it has loaded the user
+// (utils/password.js). Checking a flat minimum here as well would tell a
+// warehouse "at least 8" while the server actually wants 10.
 const changePassword = asyncHandler(async (req, res) => {
   const currentPassword = requireNonEmptyString(
     req.body.currentPassword,
     'Your current password is required.'
   );
-  const newPassword = requirePassword(req.body.newPassword, 'A new password is required.');
+  const newPassword = requireNonEmptyString(req.body.newPassword, 'A new password is required.');
 
-  if (currentPassword === newPassword) {
-    throw ApiError.badRequest('The new password must be different from the current one.');
+  // Optional: the pharmacy app's change-password form posts it, the admin panel
+  // does not. Validated when sent rather than required, so neither client has to
+  // change - it is a typo guard, not a security control.
+  if (req.body.confirmPassword !== undefined) {
+    const confirmPassword = requireNonEmptyString(
+      req.body.confirmPassword,
+      'Please confirm your new password.'
+    );
+    if (newPassword !== confirmPassword) {
+      throw ApiError.badRequest('Passwords do not match.', undefined, 'PASSWORD_MISMATCH');
+    }
   }
 
   const result = await authService.changePassword(req.user._id, {
@@ -191,10 +258,22 @@ const changePassword = asyncHandler(async (req, res) => {
 });
 
 // Admin-only. The route guard enforces the role; this only validates input.
+//
+// The length rule is NOT applied here: it depends on the TARGET account's role,
+// which only the service knows once it has loaded the user (utils/password.js).
+//
+// `reason` is optional free text for the audit trail - who asked, and how the
+// admin verified them. The response deliberately carries no password: the panel
+// already holds the plaintext it typed, and echoing it back would put a live
+// credential into server logs and any proxy in between for no gain.
 const adminResetPassword = asyncHandler(async (req, res) => {
-  const newPassword = requirePassword(req.body.newPassword, 'A new password is required.');
+  const newPassword = requireNonEmptyString(req.body.newPassword, 'A new password is required.');
+  const { reason } = req.body;
 
-  await authService.adminResetPassword(req.params.userId, newPassword);
+  await authService.adminResetPassword(req.params.userId, newPassword, {
+    actorId: req.user._id,
+    reason: typeof reason === 'string' ? reason : null,
+  });
 
   res.json({ success: true, message: 'Password reset. That account has been signed out.' });
 });
@@ -241,9 +320,12 @@ module.exports = {
   login,
   loginWithPassword,
   refresh,
-  me,
+  forgotPassword,
+  resetPassword,
   changePassword,
   adminResetPassword,
+  deleteAccount,
+  me,
   registerDeviceToken,
   deleteDeviceToken,
 };

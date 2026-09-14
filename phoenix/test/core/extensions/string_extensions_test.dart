@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:feniq/core/constants/password_policy.dart';
 import 'package:feniq/core/extensions/string_extensions.dart';
 
 void main() {
@@ -46,39 +47,47 @@ void main() {
       });
     });
 
+    // The minimum is kMinPasswordLength (constants/password_policy.dart), shared
+    // with Validators - it used to be a 6 hardcoded separately in each.
+    test('isValidPassword follows the shared constant', () {
+      expect(('a' * kMinPasswordLength).isValidPassword, isTrue);
+      expect(('a' * (kMinPasswordLength - 1)).isValidPassword, isFalse);
+    });
+
     group('isValidPassword', () {
-      test('validates password with minimum 6 characters', () {
-        expect('Pass123'.isValidPassword, isTrue);
-        expect('123456'.isValidPassword, isTrue);
+      test('accepts a password at or above the minimum', () {
+        expect('Pass1234'.isValidPassword, isTrue);
+        expect('12345678'.isValidPassword, isTrue);
       });
 
-      test('rejects password with less than 6 characters', () {
+      test('rejects a password below the minimum', () {
         expect('Pass1'.isValidPassword, isFalse);
         expect('12345'.isValidPassword, isFalse);
         expect(''.isValidPassword, isFalse);
       });
 
-      test('accepts password with exactly 6 characters', () {
-        expect('pass12'.isValidPassword, isTrue);
+      test('rejects the 6-character passwords that used to pass', () {
+        expect('pass12'.isValidPassword, isFalse);
+        expect('123456'.isValidPassword, isFalse);
       });
 
-      test('accepts password with more than 6 characters', () {
+      test('accepts a password comfortably above the minimum', () {
         expect('VeryLongPassword123'.isValidPassword, isTrue);
         expect('pass1234567890'.isValidPassword, isTrue);
       });
 
       test('trims whitespace before validation', () {
-        expect('  pass123  '.isValidPassword, isTrue);
+        expect('  pass1234  '.isValidPassword, isTrue);
         expect('  12345  '.isValidPassword, isFalse);
       });
 
       test('accepts passwords with special characters', () {
         expect('Pass@123'.isValidPassword, isTrue);
-        expect('P@ss#\$%'.isValidPassword, isTrue);
+        expect('P@ss#\$%^'.isValidPassword, isTrue);
       });
 
       test('accepts passwords with only numbers', () {
-        expect('123456'.isValidPassword, isTrue);
+        expect('12345678'.isValidPassword, isTrue);
       });
 
       test('accepts passwords with only letters', () {

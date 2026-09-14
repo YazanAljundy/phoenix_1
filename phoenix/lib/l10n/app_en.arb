@@ -43,7 +43,7 @@
       }
     }
   },
-  "passwordTooShort": "Password must be at least 6 characters.",
+  "passwordTooShort": "Password must be at least 8 characters.",
   "passwordMismatch": "Passwords do not match.",
   "alreadyHaveAccountLink": "Already have an account? Log in with password",
   "sendCodeButton": "Send verification code",
@@ -54,6 +54,18 @@
   "passwordLoginTitle": "Log in with password",
   "passwordLoginSubtitle": "Enter your phone number and password",
   "backToRegistrationLink": "New here? Create an account",
+  "forgotPasswordSupportLink": "Forgot your password? Contact support on WhatsApp",
+  "forgotPasswordSupportMessage": "Hello, I would like to recover the password for my account. Pharmacy/warehouse name: ___ Registered phone number: ___",
+  "whatsAppUnavailable": "Couldn't open WhatsApp. Support number: {phone}",
+  "@whatsAppUnavailable": {
+    "placeholders": {
+      "phone": {
+        "type": "String"
+      }
+    }
+  },
+  "copyAction": "Copy",
+  "phoneCopied": "Number copied.",
   "otpTitle": "Enter verification code",
   "otpInstructionsPrefix": "Enter the 6-digit code sent to",
   "otpCodeLabel": "Verification code",
@@ -315,7 +327,6 @@
   "errorInvalidCredentials": "The phone number or password is incorrect.",
   "errorAccountBlocked": "This account has been blocked. Please contact support.",
   "errorAccountNotFound": "No account found for this phone number. Please create one first.",
-  "errorPhoneAlreadyRegistered": "This phone number already has an account. Please log in instead.",
   "errorPharmacyNotFound": "We couldn't find your pharmacy profile. Please contact support.",
   "errorWarehouseNotFound": "This warehouse is no longer available.",
   "errorExchangeRateUnavailable": "Prices can't be confirmed right now. Please try again shortly.",
@@ -516,6 +527,17 @@
   "cityLabel": "City",
   "logoutConfirmTitle": "Log out?",
   "logoutConfirmMessage": "Are you sure you want to log out?",
+  "dangerZoneTitle": "Danger zone",
+  "deleteAccount": "Delete account",
+  "deleteAccountSubtitle": "Permanently delete your account",
+  "deleteAccountConfirmTitle": "Delete your account permanently?",
+  "deleteAccountConfirmMessage": "Your account will be deleted permanently and you will not be able to sign in again. This cannot be undone.\n\nYour past orders and financial records will remain in the records of the warehouses you dealt with.\n\nEnter your password to confirm.",
+  "deleteAccountPasswordLabel": "Password",
+  "deleteAccountPasswordRequired": "Enter your password to continue.",
+  "deleteAccountConfirmAction": "Delete permanently",
+  "deleteAccountSuccess": "Your account has been deleted.",
+  "errorPhoneAlreadyRegistered": "An account already exists for this phone number. Please sign in instead.",
+  "errorInvalidCurrentPassword": "That password is incorrect.",
   "yourRatingTitle": "Your rating",
   "ratingsTitle": "Ratings",
   "viewRatingsLabel": "View Ratings",

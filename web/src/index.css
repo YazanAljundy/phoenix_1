@@ -3372,6 +3372,21 @@ a.adm-pill {
   color: var(--adm-red);
 }
 
+/* A password input with its own Show/Hide button alongside (the Accounts page's
+   emergency reset modal). The input keeps every .product-form input rule - this
+   only lays the pair out on one line and lets the field take the slack, so the
+   button stays its natural width in both directions. */
+.adm-password-field {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.adm-password-field input {
+  flex: 1;
+  min-width: 0;
+}
+
 /* — products page — */
 
 .adm-filters-row {

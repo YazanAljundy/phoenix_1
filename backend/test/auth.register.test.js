@@ -38,9 +38,10 @@ async function call(method, path, { body } = {}) {
   return { status: response.status, body: json };
 }
 
-// A fresh phone per call - registerOrLogin treats a phone that already has an
-// account as a re-entry (logs it back in, ignores the new form fields), which
-// would silently hide a validation bug this suite is trying to catch.
+// A fresh phone per call - a phone that already has an account is now refused
+// with 409 (Audit C-1), which would mask the 400 this suite is trying to
+// assert. (Before that fix it was worse: the duplicate silently succeeded as a
+// re-entry and hid the validation bug entirely.)
 function nextPayload(overrides = {}) {
   phoneCounter += 1;
   return {

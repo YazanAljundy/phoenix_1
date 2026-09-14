@@ -415,13 +415,24 @@ class PrivacyPolicyContent {
       title: '16. حذف الحساب والبيانات',
       blocks: [
         PolicyParagraph(
-          'لا يتضمّن التطبيق حالياً زرّاً ذاتياً لحذف الحساب.',
+          'يمكنك حذف حسابك بنفسك من داخل التطبيق: البروفايل ← منطقة الخطر ← '
+          'حذف الحساب. سيُطلب منك إدخال كلمة المرور للتأكيد.',
         ),
         PolicyParagraph(
-          'لحذف حسابك والبيانات الشخصية المرتبطة به، تواصل معنا عبر قناة الدعم '
-          'المتاحة في التطبيق أو عبر بيانات التواصل في القسم 19. سنعالج الطلب '
-          'خلال مدة معقولة، مع استثناء السجلّات التي يلزمنا الاحتفاظ بها '
-          'لأغراض قانونية أو ضريبية أو لحلّ النزاعات (مثل سجلّات المعاملات).',
+          'بعد الحذف يصبح حسابك غير قابل للاستخدام نهائياً: لن تتمكن من تسجيل '
+          'الدخول، وتتوقف الإشعارات فوراً، وتُلغى الجلسات المفتوحة على كل '
+          'أجهزتك. لا يمكن التراجع عن هذه الخطوة.',
+        ),
+        PolicyParagraph(
+          'لا يعني الحذف محو كل أثر للبيانات: نحتفظ بالسجلّات التي يلزمنا '
+          'الاحتفاظ بها لأغراض قانونية أو ضريبية أو لحلّ النزاعات (مثل سجلّات '
+          'المعاملات والقيود المالية)، لأنها تخصّ أيضاً الطرف الآخر في تلك '
+          'المعاملات.',
+        ),
+        PolicyParagraph(
+          'إذا أردت حذفاً أوسع للبيانات المرتبطة بك، أو حذفت حسابك عن طريق '
+          'الخطأ، تواصل معنا عبر قناة الدعم في التطبيق أو عبر بيانات التواصل '
+          'في القسم 19.',
         ),
         PolicyParagraph(
           'قد تبقى الطلبات وطلبات الإرجاع التي تخصّ مستودعاً ما ضمن سجلّات ذلك '
@@ -825,15 +836,26 @@ class PrivacyPolicyContent {
       title: '16. Account and Data Deletion',
       blocks: [
         PolicyParagraph(
-          'The app does not currently include a self-service "delete account" '
-          'button.',
+          'You can delete your account yourself from inside the app: Profile -> '
+          'Danger zone -> Delete account. You will be asked for your password '
+          'to confirm.',
         ),
         PolicyParagraph(
-          'To delete your account and the personal data associated with it, '
-          'contact us through the support channel in the app or via the '
-          'contact details in Section 19. We will process the request within a '
-          'reasonable period, except for records we must retain for legal, '
-          'tax, or dispute-resolution purposes (such as transaction records).',
+          'Once deleted, the account is permanently unusable: you cannot sign '
+          'in again, notifications stop immediately, and any sessions open on '
+          'your devices are ended. This cannot be undone.',
+        ),
+        PolicyParagraph(
+          'Deletion does not erase every trace of your data. We retain records '
+          'we are required to keep for legal, tax, or dispute-resolution '
+          'purposes (such as transaction records and financial entries), '
+          'because those records also belong to the other party to those '
+          'transactions.',
+        ),
+        PolicyParagraph(
+          'If you want a broader deletion of data associated with you, or you '
+          'deleted your account by mistake, contact us through the support '
+          'channel in the app or via the contact details in Section 19.',
         ),
         PolicyParagraph(
           'Orders and return requests that involve a warehouse may remain in '

@@ -123,7 +123,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get passwordTooShort => 'Password must be at least 6 characters.';
+  String get passwordTooShort => 'Password must be at least 8 characters.';
 
   @override
   String get passwordMismatch => 'Passwords do not match.';
@@ -157,6 +157,25 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get backToRegistrationLink => 'New here? Create an account';
+
+  @override
+  String get forgotPasswordSupportLink =>
+      'Forgot your password? Contact support on WhatsApp';
+
+  @override
+  String get forgotPasswordSupportMessage =>
+      'Hello, I would like to recover the password for my account. Pharmacy/warehouse name: ___ Registered phone number: ___';
+
+  @override
+  String whatsAppUnavailable(String phone) {
+    return 'Couldn\'t open WhatsApp. Support number: $phone';
+  }
+
+  @override
+  String get copyAction => 'Copy';
+
+  @override
+  String get phoneCopied => 'Number copied.';
 
   @override
   String get otpTitle => 'Enter verification code';
@@ -640,10 +659,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'No account found for this phone number. Please create one first.';
 
   @override
-  String get errorPhoneAlreadyRegistered =>
-      'This phone number already has an account. Please log in instead.';
-
-  @override
   String get errorPharmacyNotFound =>
       'We couldn\'t find your pharmacy profile. Please contact support.';
 
@@ -1046,6 +1061,42 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get logoutConfirmMessage => 'Are you sure you want to log out?';
+
+  @override
+  String get dangerZoneTitle => 'Danger zone';
+
+  @override
+  String get deleteAccount => 'Delete account';
+
+  @override
+  String get deleteAccountSubtitle => 'Permanently delete your account';
+
+  @override
+  String get deleteAccountConfirmTitle => 'Delete your account permanently?';
+
+  @override
+  String get deleteAccountConfirmMessage =>
+      'Your account will be deleted permanently and you will not be able to sign in again. This cannot be undone.\n\nYour past orders and financial records will remain in the records of the warehouses you dealt with.\n\nEnter your password to confirm.';
+
+  @override
+  String get deleteAccountPasswordLabel => 'Password';
+
+  @override
+  String get deleteAccountPasswordRequired =>
+      'Enter your password to continue.';
+
+  @override
+  String get deleteAccountConfirmAction => 'Delete permanently';
+
+  @override
+  String get deleteAccountSuccess => 'Your account has been deleted.';
+
+  @override
+  String get errorPhoneAlreadyRegistered =>
+      'An account already exists for this phone number. Please sign in instead.';
+
+  @override
+  String get errorInvalidCurrentPassword => 'That password is incorrect.';
 
   @override
   String get yourRatingTitle => 'Your rating';

@@ -9,7 +9,10 @@
 // including approved) during review.
 //
 // Own database, dropped at the end - same pattern as advertisement.test.js.
-process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-banner-tests';
+// Padded to 32 characters: env.js rejects a shorter JWT_SECRET outright (audit
+// F-09). Every other suite was padded when that landed; this file was added
+// afterwards and missed it, which is why it could not boot on its own.
+process.env.JWT_SECRET = process.env.JWT_SECRET || 'test-secret-for-banner-tests-pad';
 process.env.NODE_ENV = 'test';
 
 const test = require('node:test');
