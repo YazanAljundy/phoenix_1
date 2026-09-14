@@ -4,6 +4,11 @@ import { api } from '../api/client';
 import { LoadMoreControl } from '../components/LoadMoreControl';
 import { usePaginatedData } from '../hooks/usePaginatedData';
 import { REALTIME_EVENTS, useRealtimeSync } from '../realtime/useRealtimeSync';
+import {
+  canAdminResetPassword,
+  minPasswordLengthFor,
+  passwordPolicyError,
+} from '../utils/passwordPolicy';
 import { ACCOUNT_TYPES, coerceStatusForType, statusOptionsForType } from './accountsFilters';
 
 const PAGE_SIZE = 20;
@@ -212,6 +217,147 @@ function NewWarehouseSuccess({ credentials, onDismiss }) {
   );
 }
 
+// Maps the endpoint's rejections onto the panel's own strings. Everything the
+// server sends is already a sentence, but an English one - the admin panel is
+// used in Arabic, so anything predictable gets a translated message and only
+// the genuinely unexpected falls through to the raw text.
+function translateResetError(t, err, minLength) {
+  const key = 'admin.accounts.resetPassword';
+  if (err.code === 'INVALID_PASSWORD') return t(`${key}.errorTooShort`, { min: minLength });
+  if (err.code === 'ACCOUNT_DELETED') return t(`${key}.errorDeleted`);
+  if (err.code === 'ACCOUNT_NOT_FOUND' || err.status === 404) return t(`${key}.errorNotFound`);
+  if (err.status === 429) return t(`${key}.errorRateLimited`);
+  if (err.status === 403) return t(`${key}.errorForbidden`);
+  return err.message;
+}
+
+// Emergency password reset (audit H-3). The manual recovery path for a user who
+// is locked out of their own account: the pharmacy app's self-service
+// /auth/forgot-password exists on the server but cannot reach anyone until an
+// SMS provider is wired up, so until then support does this by hand.
+//
+// Two things this form is careful about, both of which the hint text says out
+// loud rather than leaving implicit:
+//
+//  - It is an identity check that happens OUTSIDE the software. Nothing here
+//    can verify the caller is who they say they are, so the modal names that as
+//    the admin's job before they type anything.
+//  - It restores access; it does not revoke it. A token issued before the reset
+//    stays valid until it expires (the JWT is stateless and carries no version
+//    to invalidate against), so it is the wrong tool for a suspected
+//    compromise - the warning points at Block instead.
+//
+// The typed password lives in this component's state and nowhere else. The
+// endpoint deliberately does not echo it back, and unlike NewWarehouseSuccess
+// there is no panel showing it afterwards: the admin types it, passes it on,
+// and it is gone.
+function ResetPasswordModal({ account, onClose, onDone }) {
+  const { t } = useTranslation();
+  const [password, setPassword] = useState('');
+  const [reason, setReason] = useState('');
+  const [revealed, setRevealed] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  const role = account.user.role;
+  const minLength = minPasswordLengthFor(role);
+
+  // Mirrors the server's per-role rule (utils/passwordPolicy.js) so a password
+  // that is too short for THIS account's role is caught in the field rather
+  // than after a round trip. The server re-checks regardless.
+  const tooShort = passwordPolicyError(password, role) !== null;
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    setError(null);
+
+    if (!password) {
+      setError(t('common.requiredFields'));
+      return;
+    }
+    if (tooShort) {
+      setError(t('admin.accounts.resetPassword.errorTooShort', { min: minLength }));
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await api.resetAccountPassword(account.user.id, {
+        password,
+        reason: reason.trim() || undefined,
+      });
+      onDone();
+    } catch (err) {
+      setError(translateResetError(t, err, minLength));
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" onClick={(event) => event.stopPropagation()}>
+        <h2>{t('admin.accounts.resetPassword.title')}</h2>
+        <p className="hint">
+          {t('admin.accounts.resetPassword.hint', { name: accountName(account) })}
+        </p>
+        <form onSubmit={handleSubmit} className="product-form">
+          <label>
+            {t('admin.accounts.resetPassword.passwordLabel')}
+            <div className="adm-password-field">
+              <input
+                type={revealed ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                dir="ltr"
+                autoComplete="new-password"
+                required
+              />
+              <button
+                type="button"
+                className="adm-row-action"
+                onClick={() => setRevealed((shown) => !shown)}
+              >
+                {revealed
+                  ? t('admin.accounts.resetPassword.hide')
+                  : t('admin.accounts.resetPassword.show')}
+              </button>
+            </div>
+          </label>
+          <p className="hint">
+            {t('admin.accounts.resetPassword.passwordHint', { min: minLength })}
+          </p>
+
+          <label>
+            {t('admin.accounts.resetPassword.reasonLabel')}
+            <input
+              value={reason}
+              onChange={(e) => setReason(e.target.value)}
+              placeholder={t('admin.accounts.resetPassword.reasonPlaceholder')}
+            />
+          </label>
+
+          <div className="adm-rate-warning">
+            {t('admin.accounts.resetPassword.sessionWarning')}
+          </div>
+
+          {error && <p className="error-text">{error}</p>}
+
+          <div className="modal-actions">
+            <button type="button" className="btn-secondary" onClick={onClose}>
+              {t('common.cancel')}
+            </button>
+            <button type="submit" className="btn-primary" disabled={isSaving || !password || tooShort}>
+              {isSaving
+                ? t('admin.accounts.resetPassword.submitting')
+                : t('admin.accounts.resetPassword.submit')}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
 // Section 3: the full Accounts management section - pharmacies and warehouses,
 // every status, with type + status + server-side search filters and the same
 // cursor "Load more" pagination the other admin lists use. Replaces the old
@@ -227,6 +373,10 @@ export function AccountsPage() {
   const [lightboxUrl, setLightboxUrl] = useState(null);
   const [showNewWarehouse, setShowNewWarehouse] = useState(false);
   const [newWarehouseCredentials, setNewWarehouseCredentials] = useState(null);
+  // The account whose password is being reset (null = modal closed), and the
+  // green line left behind afterwards.
+  const [resetTarget, setResetTarget] = useState(null);
+  const [resetSuccess, setResetSuccess] = useState(null);
   // Per-status totals for the pills - the backend returns them on every request,
   // scoped to the current type + search, independent of pagination.
   const [counts, setCounts] = useState({ all: 0, active: 0, pending: 0, blocked: 0 });
@@ -238,6 +388,15 @@ export function AccountsPage() {
     const timeout = setTimeout(() => setSearchQuery(searchInput.trim()), SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(timeout);
   }, [searchInput]);
+
+  // The success line clears itself: it confirms an action that is already
+  // finished, so leaving it pinned to the page would eventually have it
+  // describing an account the admin has long since scrolled past.
+  useEffect(() => {
+    if (!resetSuccess) return undefined;
+    const timeout = setTimeout(() => setResetSuccess(null), 8000);
+    return () => clearTimeout(timeout);
+  }, [resetSuccess]);
 
   const statusOptions = useMemo(() => statusOptionsForType(typeFilter), [typeFilter]);
 
@@ -321,6 +480,22 @@ export function AccountsPage() {
     const { id, role, status } = account.user;
     const busy = busyId === id;
 
+    // Offered in every state a listed account can be in - pending, active and
+    // blocked users can all forget a password - but never for an admin. See
+    // canAdminResetPassword for why, and note the list never carries an admin
+    // row in the first place: this is the belt to the server's braces.
+    const resetButton =
+      !canAdminResetPassword(role) ? null : (
+        <button
+          type="button"
+          className="adm-row-action"
+          disabled={busy}
+          onClick={() => setResetTarget(account)}
+        >
+          {t('admin.accounts.action.resetPassword')}
+        </button>
+      );
+
     if (role === 'pharmacy' && status === 'pending') {
       return (
         <div className="adm-row-actions">
@@ -339,6 +514,7 @@ export function AccountsPage() {
           <button className="btn-reject" disabled={busy} onClick={() => handleReject(account)}>
             {t('common.reject')}
           </button>
+          {resetButton}
         </div>
       );
     }
@@ -346,6 +522,7 @@ export function AccountsPage() {
     if (status === 'active') {
       return (
         <div className="adm-row-actions">
+          {resetButton}
           <button
             className="adm-row-action adm-row-action-danger"
             disabled={busy}
@@ -360,6 +537,7 @@ export function AccountsPage() {
     if (status === 'blocked') {
       return (
         <div className="adm-row-actions">
+          {resetButton}
           <button className="adm-row-action" disabled={busy} onClick={() => handleUnblock(account)}>
             {t('admin.accounts.action.unblock')}
           </button>
@@ -367,6 +545,9 @@ export function AccountsPage() {
       );
     }
 
+    // Everything else (a warehouse still awaiting approval) had no action at
+    // all before; it can still need a password reset.
+    if (resetButton) return <div className="adm-row-actions">{resetButton}</div>;
     return <span className="hint">&mdash;</span>;
   };
 
@@ -387,6 +568,8 @@ export function AccountsPage() {
           onDismiss={() => setNewWarehouseCredentials(null)}
         />
       )}
+
+      {resetSuccess && <p className="adm-notify-success">{resetSuccess}</p>}
 
       {(error || actionError) && <p className="error-text">{error || actionError}</p>}
 
@@ -505,6 +688,23 @@ export function AccountsPage() {
             setShowNewWarehouse(false);
             setNewWarehouseCredentials(credentials);
             reset();
+          }}
+        />
+      )}
+
+      {resetTarget && (
+        <ResetPasswordModal
+          account={resetTarget}
+          onClose={() => setResetTarget(null)}
+          onDone={() => {
+            // No reset() of the list: a password change alters nothing that is
+            // displayed - not the status, not the counts - so re-reading the
+            // page would only cost a request and lose the admin's scroll
+            // position.
+            setResetSuccess(
+              t('admin.accounts.resetPassword.success', { name: accountName(resetTarget) })
+            );
+            setResetTarget(null);
           }}
         />
       )}

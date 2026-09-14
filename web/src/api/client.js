@@ -150,6 +150,17 @@ export const api = {
   rejectAccount: (userId) => request(`/admin/accounts/${userId}/reject`, { method: 'POST' }),
   blockAccount: (userId) => request(`/admin/accounts/${userId}/block`, { method: 'POST' }),
   unblockAccount: (userId) => request(`/admin/accounts/${userId}/unblock`, { method: 'POST' }),
+  // Emergency password recovery - the manual stand-in for the pharmacy app's
+  // /auth/forgot-password while no SMS provider is wired up. Admin-only, and
+  // the server reaches pharmacies and warehouses only (never another admin).
+  //
+  // Returns no password: the panel keeps what it typed only for as long as the
+  // modal is open, and nothing echoes it back afterwards.
+  resetAccountPassword: (userId, { password, reason } = {}) =>
+    request(`/admin/accounts/${userId}/reset-password`, {
+      method: 'POST',
+      body: { password, reason },
+    }),
   sendAdminNotification: ({ titleAr, titleEn, bodyAr, bodyEn }) =>
     request('/admin/notifications', { method: 'POST', body: { titleAr, titleEn, bodyAr, bodyEn } }),
   warehouseOrders: ({ status, limit, after } = {}) => {
