@@ -101,6 +101,35 @@ const createWarehouse = asyncHandler(async (req, res) => {
   });
 });
 
+// Emergency password recovery for a pharmacy or warehouse account - the manual
+// stand-in for /auth/forgot-password until an SMS provider is wired up (see
+// resetAccountPassword in admin.service.js for the full reasoning and its two
+// scope limits).
+//
+// The response deliberately carries no password, for the same reason
+// createWarehouse's doesn't: the panel already holds the plaintext it typed, and
+// echoing it back would put a live credential into server logs and any proxy in
+// between for no gain.
+//
+// `reason` is optional free text for the audit trail - who asked, and how the
+// admin verified them. The length rule is NOT applied here: it depends on the
+// target account's role, which only the service knows once it has loaded the
+// user (utils/password.js).
+const resetAccountPassword = asyncHandler(async (req, res) => {
+  const { password, reason } = req.body;
+  if (typeof password !== 'string' || !password) {
+    throw ApiError.badRequest('A new password is required.', undefined, 'INVALID_PASSWORD');
+  }
+
+  await adminService.resetAccountPassword(req.params.userId, {
+    password,
+    actorId: req.user._id,
+    reason: typeof reason === 'string' ? reason : null,
+  });
+
+  res.json({ success: true, message: 'Password reset.' });
+});
+
 const broadcastNotification = asyncHandler(async (req, res) => {
   const { titleAr, titleEn, bodyAr, bodyEn } = req.body;
   const recipientCount = await adminService.broadcastNotification({
@@ -120,6 +149,7 @@ module.exports = {
   rejectAccount,
   blockAccount,
   unblockAccount,
+  resetAccountPassword,
   createWarehouse,
   broadcastNotification,
 };

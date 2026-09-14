@@ -7,6 +7,7 @@ const User = require('../models/user.model');
 const Pharmacy = require('../models/pharmacy.model');
 const Warehouse = require('../models/warehouse.model');
 const notificationService = require('./notification.service');
+const financialAudit = require('./financialAudit.service');
 const { emitToAdmins, EVENTS } = require('../realtime');
 
 const BCRYPT_SALT_ROUNDS = 10;
@@ -343,6 +344,86 @@ async function unblockAccount(userId) {
   return user;
 }
 
+// Emergency password recovery, performed by an admin on a pharmacy or
+// warehouse account.
+//
+// Why this exists. /auth/register used to hand back a token for any phone
+// number that already had an account without checking the password (audit
+// C-1); closing that also removed what was, in practice, the product's only
+// password recovery. The proper replacement is the OTP flow
+// (/auth/forgot-password), but that cannot reach a real user until an SMS
+// provider is chosen and wired - services/sms has the interface and only a
+// console transport. Until then this is the manual path: the user contacts
+// support, an admin verifies them out of band and sets a new password.
+//
+// Deliberately NOT an OTP or SMS path, and deliberately not self-service.
+//
+// Two scope limits worth stating plainly, because this is a full account
+// takeover primitive in an admin's hands:
+//
+//  - It goes through findManageableAccountOrThrow, so it reaches pharmacies and
+//    warehouses only. One admin cannot reset another admin's password: that
+//    would make every admin a lateral step to every other. An admin who is
+//    locked out is recovered out of band with scripts/create-admin.js, which
+//    is already how the first one is created.
+//  - It does NOT sign the account's other devices out. The JWT is stateless
+//    and carries no version to invalidate against (audit M-2, next round), so
+//    a token issued before the reset stays valid until it expires. That means
+//    this recovers access; it does not by itself evict someone who already has
+//    a stolen token. Blocking the account does that today.
+async function resetAccountPassword(userId, { password, actorId = null, reason = null } = {}) {
+  const user = await findManageableAccountOrThrow(userId);
+
+  if (user.status === 'deleted') {
+    throw ApiError.badRequest(
+      'This account has been deleted.',
+      undefined,
+      'ACCOUNT_DELETED'
+    );
+  }
+
+  // The minimum follows the TARGET account's role, not the acting admin's -
+  // resetting a warehouse login still has to clear the warehouse bar (10),
+  // otherwise this endpoint would be a way to put a weaker password on an
+  // account than its own creation path allows. utils/password.js, audit M-1.
+  assertPasswordPolicy(password, { role: user.role, code: 'INVALID_PASSWORD' });
+
+  // Snapshotted before the write below clears them - otherwise the audit's
+  // `before` would just echo the `after`.
+  const lockedUntilBefore = user.lockedUntil ?? null;
+  const failedAttemptsBefore = user.failedLoginAttempts ?? 0;
+
+  user.password = await bcrypt.hash(password, BCRYPT_SALT_ROUNDS);
+  // An admin-verified reset is proof enough of ownership to lift the lockout;
+  // leaving it would hand the user a working password they still cannot use
+  // (auth.service.js's loginWithPassword refuses while locked).
+  user.failedLoginAttempts = 0;
+  user.lockedUntil = null;
+  await user.save();
+
+  // Recorded, and deliberately NOT wrapped in a try/catch the way
+  // exchangeRate.service.js wraps its own audit write. Swallowing a failure
+  // there loses a rate-change note; swallowing it here would leave an
+  // undetectable admin password reset, which is the single thing this endpoint
+  // most needs a trail of. A 500 after the password already changed is the
+  // lesser problem: the admin retries and the same reset is applied again.
+  //
+  // `before`/`after` carry no password material in either direction - only the
+  // fact that one was replaced, and the lockout state that was cleared with it.
+  await financialAudit.record({
+    action: 'account.password_reset',
+    actorId,
+    actorRole: 'admin',
+    entityType: 'User',
+    entityId: user._id,
+    before: { lockedUntil: lockedUntilBefore, failedLoginAttempts: failedAttemptsBefore },
+    after: { passwordReset: true, lockedUntil: null, failedLoginAttempts: 0 },
+    reason,
+  });
+
+  return user;
+}
+
 async function findPendingUserOrThrow(userId) {
   if (!mongoose.Types.ObjectId.isValid(userId)) {
     throw ApiError.badRequest('Invalid account id.');
@@ -574,6 +655,7 @@ module.exports = {
   rejectAccount,
   blockAccount,
   unblockAccount,
+  resetAccountPassword,
   createWarehouseAccount,
   broadcastNotification,
 };

@@ -387,6 +387,186 @@ test('M-1: a reset cannot be used to set a password below the minimum', async ()
   assert.strictEqual(res.body.code, 'INVALID_PASSWORD');
 });
 
+// --- Admin emergency password reset -----------------------------------------
+//
+// The manual stand-in for /auth/forgot-password while no SMS provider is wired.
+
+async function adminToken() {
+  const phone = nextPhone();
+  const password = 'admin-password-1234'; // >= 12, the admin minimum
+  await User.create({
+    name: 'Reset Admin',
+    phone,
+    password: await bcrypt.hash(password, 10),
+    role: 'admin',
+    status: 'active',
+  });
+  const login = await call('POST', '/auth/login-password', { body: { phone, password } });
+  assert.strictEqual(login.status, 200, JSON.stringify(login.body));
+  return login.body.token;
+}
+
+test('admin reset: recovers a locked-out account and clears the lockout', async () => {
+  const account = await freshAccount();
+
+  // Lock it the way a real attacker would.
+  for (let i = 0; i < 5; i += 1) {
+    await call('POST', '/auth/login-password', {
+      body: { phone: account.phone, password: 'wrong-password' },
+    });
+  }
+  const locked = await call('POST', '/auth/login-password', {
+    body: { phone: account.phone, password: account.password },
+  });
+  assert.strictEqual(locked.status, 429, 'precondition: the account is locked');
+
+  const stored = await User.findOne({ phone: account.phone }).select('_id');
+  const token = await adminToken();
+  const newPassword = 'recovered-by-admin';
+
+  const res = await call('POST', `/admin/accounts/${stored._id}/reset-password`, {
+    token,
+    body: { password: newPassword, reason: 'Owner called support, verified by licence number.' },
+  });
+  assert.strictEqual(res.status, 200, JSON.stringify(res.body));
+  // The plaintext must never come back out of the server.
+  assert.ok(!JSON.stringify(res.body).includes(newPassword));
+
+  const after = await User.findById(stored._id).select('failedLoginAttempts lockedUntil');
+  assert.strictEqual(after.failedLoginAttempts, 0);
+  assert.strictEqual(after.lockedUntil, null);
+
+  // The user is genuinely back in immediately - not still serving the lockout.
+  const signIn = await call('POST', '/auth/login-password', {
+    body: { phone: account.phone, password: newPassword },
+  });
+  assert.strictEqual(signIn.status, 200, JSON.stringify(signIn.body));
+
+  // And the old password is dead.
+  const old = await call('POST', '/auth/login-password', {
+    body: { phone: account.phone, password: account.password },
+  });
+  assert.strictEqual(old.status, 401);
+});
+
+test('admin reset: writes an audit record naming the admin, with no password material', async () => {
+  const FinancialAuditLog = require('../src/models/financialAuditLog.model');
+
+  const account = await freshAccount();
+  const stored = await User.findOne({ phone: account.phone }).select('_id');
+  const token = await adminToken();
+  const actingAdmin = jwt.verify(token, process.env.JWT_SECRET);
+
+  const res = await call('POST', `/admin/accounts/${stored._id}/reset-password`, {
+    token,
+    body: { password: 'audited-new-password', reason: 'Verified in person.' },
+  });
+  assert.strictEqual(res.status, 200);
+
+  const entry = await FinancialAuditLog.findOne({
+    action: 'account.password_reset',
+    entityId: stored._id,
+  }).lean();
+
+  assert.ok(entry, 'an admin password reset must leave a trail');
+  assert.strictEqual(String(entry.actorId), actingAdmin.sub);
+  assert.strictEqual(entry.actorRole, 'admin');
+  assert.strictEqual(entry.entityType, 'User');
+  assert.strictEqual(entry.reason, 'Verified in person.');
+  assert.ok(
+    !JSON.stringify(entry).includes('audited-new-password'),
+    'the audit trail must never carry the password itself'
+  );
+});
+
+test('admin reset: enforces the TARGET role minimum, not the acting admin one', async () => {
+  const account = await freshAccount();
+  const stored = await User.findOne({ phone: account.phone }).select('_id');
+  const token = await adminToken();
+
+  // 7 characters - below the pharmacy minimum of 8.
+  const tooShort = await call('POST', `/admin/accounts/${stored._id}/reset-password`, {
+    token,
+    body: { password: 'short7c' },
+  });
+  assert.strictEqual(tooShort.status, 400);
+  assert.strictEqual(tooShort.body.code, 'INVALID_PASSWORD');
+  assert.match(tooShort.body.message, /at least 8 characters/);
+
+  // A warehouse account is held to 10 even though the same admin is acting.
+  const warehouseUser = await User.create({
+    name: 'WH Owner',
+    phone: nextPhone(),
+    password: await bcrypt.hash('warehouse-secret-1', 10),
+    role: 'warehouse',
+    status: 'active',
+  });
+  const nineChars = await call('POST', `/admin/accounts/${warehouseUser._id}/reset-password`, {
+    token,
+    body: { password: 'nine-char' },
+  });
+  assert.strictEqual(nineChars.status, 400);
+  assert.match(nineChars.body.message, /at least 10 characters/);
+});
+
+test('admin reset: refused to non-admins, and cannot target another admin', async () => {
+  const account = await freshAccount();
+  const stored = await User.findOne({ phone: account.phone }).select('_id');
+
+  // No token at all.
+  const anon = await call('POST', `/admin/accounts/${stored._id}/reset-password`, {
+    body: { password: 'anonymous-attempt' },
+  });
+  assert.strictEqual(anon.status, 401);
+
+  // A pharmacy's own token must not reach it - not even for its own account.
+  const login = await call('POST', '/auth/login-password', {
+    body: { phone: account.phone, password: account.password },
+  });
+  const asPharmacy = await call('POST', `/admin/accounts/${stored._id}/reset-password`, {
+    token: login.body.token,
+    body: { password: 'self-service-attempt' },
+  });
+  assert.strictEqual(asPharmacy.status, 403);
+
+  // An admin cannot reset another admin: that would make every admin a lateral
+  // step to every other one.
+  const token = await adminToken();
+  const otherAdmin = await User.create({
+    name: 'Other Admin',
+    phone: nextPhone(),
+    password: await bcrypt.hash('other-admin-password', 10),
+    role: 'admin',
+    status: 'active',
+  });
+  const adminOnAdmin = await call('POST', `/admin/accounts/${otherAdmin._id}/reset-password`, {
+    token,
+    body: { password: 'lateral-movement-1234' },
+  });
+  assert.strictEqual(adminOnAdmin.status, 404);
+  assert.strictEqual(adminOnAdmin.body.code, 'ACCOUNT_NOT_FOUND');
+});
+
+test('admin reset: refuses a deleted account', async () => {
+  const account = await freshAccount();
+  const login = await call('POST', '/auth/login-password', {
+    body: { phone: account.phone, password: account.password },
+  });
+  const stored = await User.findOne({ phone: account.phone }).select('_id');
+  await call('DELETE', '/auth/account', {
+    token: login.body.token,
+    body: { password: account.password },
+  });
+
+  const token = await adminToken();
+  const res = await call('POST', `/admin/accounts/${stored._id}/reset-password`, {
+    token,
+    body: { password: 'reviving-the-dead' },
+  });
+  assert.strictEqual(res.status, 400);
+  assert.strictEqual(res.body.code, 'ACCOUNT_DELETED');
+});
+
 // --- Self-service deletion --------------------------------------------------
 
 test('deletion: requires the password, then kills the account and its live tokens', async () => {

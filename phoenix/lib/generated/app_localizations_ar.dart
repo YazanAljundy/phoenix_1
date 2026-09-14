@@ -123,7 +123,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get passwordTooShort =>
-      'يجب أن تتكون كلمة المرور من 6 أحرف على الأقل.';
+      'يجب أن تتكون كلمة المرور من 8 أحرف على الأقل.';
 
   @override
   String get passwordMismatch => 'كلمتا المرور غير متطابقتين.';

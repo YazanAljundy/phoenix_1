@@ -43,7 +43,7 @@
       }
     }
   },
-  "passwordTooShort": "Password must be at least 6 characters.",
+  "passwordTooShort": "Password must be at least 8 characters.",
   "passwordMismatch": "Passwords do not match.",
   "alreadyHaveAccountLink": "Already have an account? Log in with password",
   "sendCodeButton": "Send verification code",

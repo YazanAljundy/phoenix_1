@@ -1,4 +1,5 @@
 import '../constants/app_strings.dart';
+import '../constants/password_policy.dart';
 import '../extensions/string_extensions.dart';
 
 class Validators {
@@ -47,7 +48,11 @@ class Validators {
     return null;
   }
 
-  static const int minPasswordLength = 6;
+  // Re-exported from constants/password_policy.dart, which is the one place
+  // the number is written (StringExtensions.isValidPassword reads the same
+  // constant). Kept on Validators because the registration screen reads it
+  // as Validators.minPasswordLength to build its hint text.
+  static const int minPasswordLength = kMinPasswordLength;
 
   static String? validateNewPassword(
     String? value, {

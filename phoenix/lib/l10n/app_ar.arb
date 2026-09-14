@@ -43,7 +43,7 @@
       }
     }
   },
-  "passwordTooShort": "يجب أن تتكون كلمة المرور من 6 أحرف على الأقل.",
+  "passwordTooShort": "يجب أن تتكون كلمة المرور من 8 أحرف على الأقل.",
   "passwordMismatch": "كلمتا المرور غير متطابقتين.",
   "alreadyHaveAccountLink": "عندك حساب؟ سجّل دخول بكلمة السر",
   "sendCodeButton": "إرسال رمز التحقق",
