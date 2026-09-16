@@ -21,6 +21,42 @@ const { EVENTS, warehouseRoom, ADMIN_ROOM } = require('./events');
 // layer isn't running.
 let io = null;
 
+// Live sockets per user id, so blocking an account can cut its established
+// connections instead of waiting for the client to reconnect (audit F-10).
+// The handshake authorizes once, at connect time - nothing re-checks status on
+// an already-open socket, so without this a blocked warehouse keeps receiving
+// broadcasts until it happens to drop.
+//
+// In-memory and per-process on purpose: this is a description of *this*
+// process's own open sockets, not shared state. It empties on restart, which
+// is correct rather than merely tolerable - a restart drops every socket it
+// describes, so the map and the connections it tracks cease to exist together.
+// (A multi-instance deployment would need every instance to learn about the
+// block; this project runs a single one.)
+const socketsByUserId = new Map();
+
+function trackSocket(socket) {
+  const userId = socket.data.userId;
+  if (!userId) return;
+  let sockets = socketsByUserId.get(userId);
+  if (!sockets) {
+    sockets = new Set();
+    socketsByUserId.set(userId, sockets);
+  }
+  sockets.add(socket);
+}
+
+function untrackSocket(socket) {
+  const userId = socket.data.userId;
+  if (!userId) return;
+  const sockets = socketsByUserId.get(userId);
+  if (!sockets) return;
+  sockets.delete(socket);
+  // Drop the empty Set rather than leaving it behind: otherwise the map gains
+  // one permanent entry per user who has ever connected and never shrinks.
+  if (sockets.size === 0) socketsByUserId.delete(userId);
+}
+
 function isDev() {
   return env.nodeEnv !== 'production';
 }
@@ -134,9 +170,11 @@ function registerConnection(socket) {
   for (const room of socket.data.rooms) {
     socket.join(room);
   }
+  trackSocket(socket);
   log('connected', socket.id, 'user', socket.data.userId, 'rooms', socket.data.rooms.join(','));
 
   socket.on('disconnect', (reason) => {
+    untrackSocket(socket);
     log('disconnected', socket.id, reason);
   });
 }
@@ -192,16 +230,50 @@ function emitToAdmins(event, payload) {
   emitToRoom(ADMIN_ROOM, event, payload);
 }
 
+// Cuts every open socket belonging to one user, and returns how many it closed.
+// Called when an account is blocked (audit F-10): every HTTP request re-reads
+// status through authenticate, but a socket was authorized once at handshake
+// and would otherwise keep receiving warehouse/admin broadcasts for as long as
+// the client held the connection open.
+//
+// disconnect(true) closes the underlying transport rather than just the
+// namespace, so the client cannot simply resume the session; its reconnect
+// attempt goes through handshakeAuth again and is refused there on status.
+//
+// Never throws, for the same reason emitToRoom doesn't: an account must still
+// end up blocked even if the realtime layer is unhappy or was never started.
+function disconnectUser(userId) {
+  try {
+    if (!userId) return 0;
+    const sockets = socketsByUserId.get(String(userId));
+    if (!sockets || sockets.size === 0) return 0;
+    // Snapshot first: disconnect() fires the 'disconnect' handler, and that
+    // handler mutates this very Set through untrackSocket.
+    const open = [...sockets];
+    for (const socket of open) socket.disconnect(true);
+    log('force-disconnected', open.length, 'socket(s) for user', String(userId));
+    return open.length;
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('Realtime force-disconnect failed.', String(userId), err.message);
+    return 0;
+  }
+}
+
 // Test seam: lets the socket tests drive a real server, and resets module
 // state between them. Not used by application code.
 function _setIoForTesting(instance) {
   io = instance;
+  // The socket registry is module state too - leaving last suite's entries
+  // behind would let a stale socket object leak into the next one.
+  socketsByUserId.clear();
 }
 
 module.exports = {
   initRealtime,
   emitToWarehouse,
   emitToAdmins,
+  disconnectUser,
   EVENTS,
   warehouseRoom,
   ADMIN_ROOM,
