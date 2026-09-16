@@ -222,6 +222,49 @@ class CartCubit extends Cubit<CartState> {
           : item)
       .toList();
 
+  // A PRICE_CHANGED refusal names every loose line whose price moved, with the
+  // price the server will actually charge (order.service.js). Each one lands on
+  // its own line; packages are never price-checked, so a package line is never
+  // matched. The line keeps the price the pharmacist had been shown until they
+  // confirm the new one (see submitOrder).
+  //
+  // Both prices take the new figure. The server sends only the final unit
+  // price, not the pre-discount one, so there is no knowing whether an offer
+  // still applies - and the old "was" price beside a HIGHER new price would
+  // read as a discount. A repriced line therefore shows no struck-through
+  // price.
+  //
+  // `changed` is whether a price that gets sent moved at all, which is what
+  // decides the idempotency key, exactly as for any other edit.
+  ({List<CartItem> items, bool changed}) _applyPriceChanges(Object? problems) {
+    final currentPriceByProductId = <String, num>{};
+    if (problems is List) {
+      for (final problem in problems) {
+        if (problem is! Map) continue;
+        final productId = problem['productId'];
+        final currentPriceUsd = problem['currentPriceUsd'];
+        if (productId is String && currentPriceUsd is num) {
+          currentPriceByProductId[productId] = currentPriceUsd;
+        }
+      }
+    }
+
+    var changed = false;
+    final items = state.items.map((item) {
+      final currentPriceUsd = currentPriceByProductId[item.productId];
+      if (item.isPackage || currentPriceUsd == null || currentPriceUsd == item.discountPriceUsd) {
+        return item;
+      }
+      changed = true;
+      return item.copyWith(
+        unitPriceUsd: currentPriceUsd,
+        discountPriceUsd: currentPriceUsd,
+        previousPriceUsd: item.previousPriceUsd ?? item.discountPriceUsd,
+      );
+    }).toList();
+    return (items: items, changed: changed);
+  }
+
   // Works the same for a product line and a package line: for a package the
   // number IS the copy count. There is no "breaking a package" any more - its
   // contents are not cart lines, so nothing can be taken out of one.
@@ -282,7 +325,10 @@ class CartCubit extends Cubit<CartState> {
   // stale by the time the pharmacist actually submits - the server re-checks
   // isAvailable for real (Section 7/8) and this surfaces whatever
   // human-readable message it returns.
-  Future<OrderModel?> submitOrder() async {
+  //
+  // `acceptPriceChanges`: the pharmacist has seen the prices the server
+  // changed and agreed to them. Only CartView's price-change dialog passes it.
+  Future<OrderModel?> submitOrder({bool acceptPriceChanges = false}) async {
     if (state.warehouseId == null) return null;
     // Unreachable through the normal UI (CartView swaps to its empty-cart
     // view once items.isEmpty), but a real, user-visible message here rather
@@ -292,6 +338,30 @@ class CartCubit extends Cubit<CartState> {
     if (state.items.isEmpty) {
       emit(state.copyWith(errorMessage: 'Your cart is empty.', errorCode: 'CART_EMPTY'));
       return null;
+    }
+
+    // A line the server repriced is never sent on the strength of the
+    // pharmacist's earlier confirmation - that one was for the old price.
+    if (state.hasUnconfirmedPriceChanges) {
+      if (!acceptPriceChanges) {
+        // CartView routes a submit to its price-change dialog before it gets
+        // here; this is the backstop. The error is cleared first so the
+        // listener shows that dialog even if this repeats.
+        emit(state.copyWith(clearError: true));
+        emit(state.copyWith(
+          errorMessage: 'Confirm the new prices before submitting.',
+          errorCode: 'PRICE_CHANGE_UNCONFIRMED',
+        ));
+        return null;
+      }
+      // Accepting changes nothing that is sent - the lines already carry the
+      // new prices - so the idempotency key is left as it is.
+      emit(state.copyWith(
+        items: [
+          for (final item in state.items)
+            item.hasUnconfirmedPriceChange ? item.copyWith(clearPreviousPrice: true) : item,
+        ],
+      ));
     }
 
     // Money-Flow V2 idempotency: minted on the FIRST attempt only and kept in
@@ -322,22 +392,42 @@ class CartCubit extends Cubit<CartState> {
       emit(const CartState());
       return order;
     } on Failure catch (f) {
-      // PACKAGE_UNAVAILABLE names the refused packages. Flagging those lines in
-      // this same emit puts each tile's warning on screen together with the
-      // error dialog that explains it.
-      final refusedPackageIds = f.code == 'PACKAGE_UNAVAILABLE'
-          ? ((f.details?['advertisementIds'] as List?) ?? const [])
-              .map((id) => id.toString())
-              .toSet()
-          : const <String>{};
+      // Both refusals below rewrite lines in this same emit, so the lines and
+      // the dialog explaining them reach the screen together.
+      //
+      // PACKAGE_UNAVAILABLE names the refused packages, which get flagged.
+      // PRICE_CHANGED names the lines whose price moved, which take the new
+      // price and wait for the pharmacist to confirm it.
+      List<CartItem>? updatedItems;
+      var pricesChanged = false;
+      if (f.code == 'PRICE_CHANGED') {
+        final repriced = _applyPriceChanges(f.details?['problems']);
+        updatedItems = repriced.items;
+        pricesChanged = repriced.changed;
+      } else if (f.code == 'PACKAGE_UNAVAILABLE') {
+        final refusedPackageIds = ((f.details?['advertisementIds'] as List?) ?? const [])
+            .map((id) => id.toString())
+            .toSet();
+        if (refusedPackageIds.isNotEmpty) {
+          updatedItems = _flagUnavailablePackages(refusedPackageIds);
+        }
+      }
       emit(
         state.copyWith(
-          items: refusedPackageIds.isEmpty ? null : _flagUnavailablePackages(refusedPackageIds),
-          // The server already holds an order for this key, placed from a
-          // different cart (only an app that kept its key across an edit gets
-          // here). The error tells the pharmacist; dropping the key is what
-          // lets their next tap place this cart as the new order it is.
-          clearPendingIdempotencyKey: f.code == 'IDEMPOTENCY_KEY_REUSED',
+          items: updatedItems,
+          // The same rule every edit follows: the key names one exact cart.
+          // A repriced line sends a different price, so its key goes, just as
+          // updateQuantity drops it for a different quantity. (No order holds
+          // it - a PRICE_CHANGED refusal is issued before anything is placed -
+          // so this keeps the key honest rather than being what unblocks the
+          // retry; the new prices are.)
+          //
+          // IDEMPOTENCY_KEY_REUSED: the server already holds an order for this
+          // key, placed from a different cart (only an app that kept its key
+          // across an edit gets here). The error tells the pharmacist;
+          // dropping the key is what lets their next tap place this cart as
+          // the new order it is.
+          clearPendingIdempotencyKey: pricesChanged || f.code == 'IDEMPOTENCY_KEY_REUSED',
           isSubmitting: false,
           errorMessage: f.errMessage,
           errorCode: f.code,

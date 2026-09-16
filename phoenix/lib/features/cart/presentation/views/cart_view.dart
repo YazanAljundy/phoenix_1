@@ -133,6 +133,14 @@ class _CartViewState extends State<CartView> {
   Future<void> _confirmSubmit() async {
     final l10n = context.l10n;
     final cubit = context.read<CartCubit>();
+
+    // Prices the server changed need their own confirmation - the generic one
+    // below says nothing about them.
+    if (cubit.state.hasUnconfirmedPriceChanges) {
+      await _confirmPriceChanges();
+      return;
+    }
+
     final warehouseName = cubit.state.warehouseName ?? '';
 
     await AppDialog.show(
@@ -140,26 +148,54 @@ class _CartViewState extends State<CartView> {
       title: l10n.submitOrderTitle,
       content: l10n.submitOrderConfirmation(warehouseName),
       actionLabel: l10n.submitOrderButton,
-      onAction: () async {
-        // AppDialog's own action button already pops this confirmation
-        // dialog (via dialogContext + rootNavigator) before calling here -
-        // an extra Navigator.pop(context) with this outer context popped
-        // CartView itself, which is why the screen used to never actually
-        // reach the navigation below (mounted went false mid-flight).
-        final order = await cubit.submitOrder();
-        if (!mounted) return;
-
-        // Straight to order tracking on success - no intermediate "order
-        // submitted" dialog to tap through, the tracking screen itself is
-        // the confirmation.
-        if (order != null) {
-          context.goNamed(
-            RouteNames.orderTracking,
-            pathParameters: {'orderId': order.id},
-          );
-        }
-      },
+      onAction: () => _submit(cubit),
     );
+  }
+
+  // After a PRICE_CHANGED refusal the lines already carry the new prices; this
+  // is the only way to send them. It lists each change (old -> new) and its
+  // action submits with acceptPriceChanges. "Close" sends nothing: the lines
+  // keep their new prices, and the submit button brings this dialog back until
+  // the pharmacist accepts.
+  Future<void> _confirmPriceChanges() async {
+    final l10n = context.l10n;
+    final cubit = context.read<CartCubit>();
+    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+    final usdToSyp = context.read<ExchangeRateCubit>().state.usdToSyp;
+
+    await AppDialog.show(
+      context: context,
+      title: l10n.errorPriceChangedGeneric,
+      content: describePriceProblems(
+        l10n,
+        isArabic,
+        cubit.state.unconfirmedPriceChanges,
+        cubit.state.items,
+        (amount) => formatMoneyFromUsd(amount, usdToSyp, l10n.currencySuffix),
+      ),
+      actionLabel: l10n.submitOrderButton,
+      onAction: () => _submit(cubit, acceptPriceChanges: true),
+    );
+  }
+
+  Future<void> _submit(CartCubit cubit, {bool acceptPriceChanges = false}) async {
+    // AppDialog's own action button already pops its dialog (via
+    // dialogContext + rootNavigator) before calling here - an extra
+    // Navigator.pop(context) with this outer context popped CartView itself,
+    // which is why the screen used to never actually reach the navigation
+    // below (mounted went false mid-flight).
+    final order = await cubit.submitOrder(acceptPriceChanges: acceptPriceChanges);
+    if (!mounted) return;
+
+    // Straight to order tracking on success - no intermediate "order
+    // submitted" dialog to tap through, the tracking screen itself is the
+    // confirmation.
+    if (order != null) {
+      context.goNamed(
+        RouteNames.orderTracking,
+        pathParameters: {'orderId': order.id},
+      );
+    }
   }
 
   @override
@@ -198,6 +234,15 @@ class _CartViewState extends State<CartView> {
             current.errorMessage != null &&
             previous.errorMessage != current.errorMessage,
         listener: (context, state) {
+          // Repriced lines get the dialog that can accept the new prices,
+          // rather than an error with no way forward.
+          final isPriceChange = state.errorCode == 'PRICE_CHANGED' ||
+              state.errorCode == 'PRICE_CHANGE_UNCONFIRMED';
+          if (isPriceChange && state.hasUnconfirmedPriceChanges) {
+            _confirmPriceChanges();
+            return;
+          }
+
           // A refused package gets its way out right in the dialog: one tap
           // removes every package the server turned away, instead of the
           // pharmacist hunting down each flagged line.
