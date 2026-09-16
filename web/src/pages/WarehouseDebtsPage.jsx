@@ -5,7 +5,7 @@ import { LoadMoreControl } from '../components/LoadMoreControl';
 import { usePaginatedData } from '../hooks/usePaginatedData';
 import { useExchangeRate } from '../context/ExchangeRateContext';
 import { formatSyp, formatUsd, remainingPaymentAmountFromSyp } from '../utils/currency';
-import { PAYMENT_METHODS, PAYMENT_CURRENCIES as CURRENCIES, newIdempotencyKey } from '../utils/payments';
+import { PAYMENT_METHODS, PAYMENT_CURRENCIES as CURRENCIES, createIdempotencyKeys } from '../utils/payments';
 import { WarehouseGroupSubNav } from '../components/WarehouseGroupSubNav';
 
 const PAGE_SIZE = 20;
@@ -31,11 +31,13 @@ function BalanceAmount({ balanceSyp }) {
 
 // Money-Flow V2. Records money received. The form now also captures HOW it
 // arrived and any external reference, both purely for reconciliation, and it
-// generates an idempotency key per submission so a retry after a dropped
-// response cannot credit the pharmacy twice.
+// holds one idempotency key per payment it records (createIdempotencyKeys) so
+// a retry after a dropped response cannot credit the pharmacy twice.
 function AddPaymentForm({ pharmacyId, remainingSyp, onSaved }) {
   const { t } = useTranslation();
   const usdToSyp = useExchangeRate();
+  // Created once for this form's lifetime; leaving the pharmacy's page drops it.
+  const [idempotencyKeys] = useState(createIdempotencyKeys);
   const [amount, setAmount] = useState('');
   const [currency, setCurrency] = useState('SYP');
   const [method, setMethod] = useState('cash');
@@ -60,20 +62,23 @@ function AddPaymentForm({ pharmacyId, remainingSyp, onSaved }) {
       return;
     }
 
+    const payment = {
+      pharmacyId,
+      amount: value,
+      currency,
+      method,
+      reference: reference.trim() || undefined,
+      note: note.trim() || undefined,
+    };
     setIsSaving(true);
     try {
-      await api.createPayment({
-        pharmacyId,
-        amount: value,
-        currency,
-        method,
-        reference: reference.trim() || undefined,
-        note: note.trim() || undefined,
-        // One key per submission attempt. If the response never arrives and
-        // the operator hits the button again, the server recognises the key
-        // and returns the payment it already recorded.
-        idempotencyKey: newIdempotencyKey(),
-      });
+      // The same payment keeps the same key across attempts: if the response
+      // never arrives and the operator submits again, the server recognises it
+      // and returns the payment it already recorded. Once it is recorded, the
+      // next submit is a new payment, even with these details.
+      await idempotencyKeys.submit(payment, (idempotencyKey) =>
+        api.createPayment({ ...payment, idempotencyKey })
+      );
       setAmount('');
       setReference('');
       setNote('');
@@ -172,8 +177,13 @@ function InvoiceEmpty({ icon, children }) {
 //
 // Uses the panel's existing .modal-overlay / .modal / .product-form markup, and
 // is rendered by WarehouseDebtDetail rather than from inside a table row.
+//
+// `onConfirm(reason, idempotencyKey)`: the modal owns the key, so a retry of
+// the same reversal carries the same one and the server replays it instead of
+// answering PAYMENT_ALREADY_REVERSED. Closing the modal drops the keys.
 function ReversePaymentModal({ payment, onClose, onConfirm }) {
   const { t } = useTranslation();
+  const [idempotencyKeys] = useState(createIdempotencyKeys);
   const [reason, setReason] = useState('');
   const [isBusy, setIsBusy] = useState(false);
   const [error, setError] = useState(null);
@@ -183,14 +193,18 @@ function ReversePaymentModal({ payment, onClose, onConfirm }) {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    if (!reason.trim()) {
+    const trimmedReason = reason.trim();
+    if (!trimmedReason) {
       setError(t('debts.reverseReasonRequired'));
       return;
     }
+    const reversal = { paymentId: payment.id, reason: trimmedReason };
     setIsBusy(true);
     setError(null);
     try {
-      await onConfirm(reason.trim());
+      await idempotencyKeys.submit(reversal, (idempotencyKey) =>
+        onConfirm(trimmedReason, idempotencyKey)
+      );
     } catch (err) {
       setError(err.message);
       setIsBusy(false);
@@ -554,11 +568,8 @@ function WarehouseDebtDetail({ pharmacyId, onBack }) {
         <ReversePaymentModal
           payment={reversing}
           onClose={() => setReversing(null)}
-          onConfirm={async (reason) => {
-            await api.reversePayment(reversing.id, {
-              reason,
-              idempotencyKey: newIdempotencyKey(),
-            });
+          onConfirm={async (reason, idempotencyKey) => {
+            await api.reversePayment(reversing.id, { reason, idempotencyKey });
             setReversing(null);
             await load();
           }}

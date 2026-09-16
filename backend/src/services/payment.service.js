@@ -5,6 +5,7 @@ const Pharmacy = require('../models/pharmacy.model');
 const Counter = require('../models/counter.model');
 const LedgerEntry = require('../models/ledgerEntry.model');
 const { runInTransaction } = require('../utils/transaction');
+const { requestFingerprint, idempotencyKeyReusedError } = require('../utils/idempotency');
 const ledger = require('./ledger.service');
 const financialAudit = require('./financialAudit.service');
 const { captureFxSnapshot } = require('./exchangeRate.service');
@@ -160,13 +161,77 @@ async function findOwnedPaymentOrThrow(id, warehouseId) {
   return payment;
 }
 
+// What a payment idempotency key stands for. Built from the request as it
+// arrived, after the same normalization createPayment applies (defaults,
+// trimming), so two requests that would record the same payment hash the same.
+// `paidAt` is the value SENT, not the "now" the service falls back to - that
+// would differ on every retry. The amount is kept to the cent.
+function settlementFingerprint(warehouseId, data) {
+  const allowUnlinked = data.allowUnlinked === true;
+  const paidAt =
+    data.paidAt === undefined || data.paidAt === null || data.paidAt === ''
+      ? null
+      : new Date(data.paidAt).toISOString();
+  return requestFingerprint('payment-v1', {
+    warehouseId: String(warehouseId),
+    pharmacyId: String(data.pharmacyId),
+    amountCents: Math.round(data.amount * 100),
+    currency: resolveCurrency(data.currency),
+    method: resolveMethod(data.method),
+    reference: normalizeText(data.reference),
+    note: normalizeText(data.note),
+    paidAt,
+    allowUnlinked,
+    unlinkedReason: allowUnlinked ? normalizeText(data.unlinkedReason) : null,
+  });
+}
+
+function reversalFingerprint(warehouseId, paymentId, reason) {
+  return requestFingerprint('payment-reversal-v1', {
+    warehouseId: String(warehouseId),
+    paymentId: String(paymentId),
+    reason,
+  });
+}
+
+const KEY_REUSED_MESSAGE =
+  'This payment request was already submitted with different details. Submit again to record it as a new payment.';
+
+// The idempotent-replay gate for both operations. Returns the payment this key
+// already produced when the request is a genuine retry, null when the key is
+// new, and refuses everything else:
+//
+//   - another warehouse's key: refused with no details. The key index is
+//     global, and before this check a warehouse sending another's key was
+//     handed that warehouse's payment.
+//   - a different kind of operation (a settlement key sent to reverse, or the
+//     other way round), or a different fingerprint: refused, naming the payment
+//     the key already recorded so the operator can check it.
+//
+// A payment recorded before fingerprints existed has none to compare, and
+// replays on its key alone as it always did - for its own warehouse only.
+//
 // $locals is Mongoose's per-document scratch space: never persisted, never
 // serialized - it marks a response as an idempotent replay for the controller
 // without adding a field to the schema.
-async function findByIdempotencyKey(idempotencyKey) {
+async function findReplayOrReject(idempotencyKey, { warehouseId, kind, fingerprint }) {
   if (!idempotencyKey) return null;
   const existing = await Payment.findOne({ idempotencyKey });
-  if (existing) existing.$locals.idempotentReplay = true;
+  if (!existing) return null;
+
+  if (String(existing.warehouseId) !== String(warehouseId)) {
+    throw idempotencyKeyReusedError(KEY_REUSED_MESSAGE);
+  }
+  const fingerprintDiffers =
+    existing.idempotencyFingerprint != null && existing.idempotencyFingerprint !== fingerprint;
+  if (existing.kind !== kind || fingerprintDiffers) {
+    throw idempotencyKeyReusedError(KEY_REUSED_MESSAGE, {
+      paymentId: String(existing._id),
+      paymentNumber: existing.paymentNumber,
+    });
+  }
+
+  existing.$locals.idempotentReplay = true;
   return existing;
 }
 
@@ -179,10 +244,15 @@ async function createPayment(warehouseId, recordedByUserId, data) {
   const method = resolveMethod(data.method);
   const paidAt = resolvePaidAt(data.paidAt);
   const idempotencyKey = normalizeText(data.idempotencyKey);
+  const idempotency = {
+    warehouseId,
+    kind: 'settlement',
+    fingerprint: idempotencyKey ? settlementFingerprint(warehouseId, data) : null,
+  };
 
   // Cheap path for the common retry; the unique index below is what actually
   // makes a concurrent retry safe.
-  const replay = await findByIdempotencyKey(idempotencyKey);
+  const replay = await findReplayOrReject(idempotencyKey, idempotency);
   if (replay) return replay;
 
   // Resolved before the transaction opens - see ledger.service.js's note on
@@ -227,6 +297,7 @@ async function createPayment(warehouseId, recordedByUserId, data) {
             note: normalizeText(data.note),
             recordedBy: recordedByUserId,
             idempotencyKey,
+            idempotencyFingerprint: idempotency.fingerprint,
           },
         ],
         { session }
@@ -285,9 +356,10 @@ async function createPayment(warehouseId, recordedByUserId, data) {
     });
   } catch (err) {
     // Two concurrent retries both pass the pre-check above; the loser lands
-    // here on the unique idempotencyKey index. Return what the winner created.
+    // here on the unique idempotencyKey index. Return what the winner created -
+    // or refuse, if the winner was a different request under the same key.
     if (err && err.code === 11000 && idempotencyKey) {
-      const existing = await findByIdempotencyKey(idempotencyKey);
+      const existing = await findReplayOrReject(idempotencyKey, idempotency);
       if (existing) return existing;
     }
     throw err;
@@ -306,8 +378,13 @@ async function createPayment(warehouseId, recordedByUserId, data) {
 async function reversePayment(id, warehouseId, actorUserId, { reason, idempotencyKey } = {}) {
   const trimmedReason = requireReason(reason);
   const key = normalizeText(idempotencyKey);
+  const idempotency = {
+    warehouseId,
+    kind: 'reversal',
+    fingerprint: key ? reversalFingerprint(warehouseId, id, trimmedReason) : null,
+  };
 
-  const replay = await findByIdempotencyKey(key);
+  const replay = await findReplayOrReject(key, idempotency);
   if (replay) return replay;
 
   const original = await findOwnedPaymentOrThrow(id, warehouseId);
@@ -372,6 +449,7 @@ async function reversePayment(id, warehouseId, actorUserId, { reason, idempotenc
             reversesPaymentId: claimed._id,
             reversalReason: trimmedReason,
             idempotencyKey: key,
+            idempotencyFingerprint: idempotency.fingerprint,
           },
         ],
         { session }
@@ -419,7 +497,7 @@ async function reversePayment(id, warehouseId, actorUserId, { reason, idempotenc
     });
   } catch (err) {
     if (err && err.code === 11000 && key) {
-      const existing = await findByIdempotencyKey(key);
+      const existing = await findReplayOrReject(key, idempotency);
       if (existing) return existing;
     }
     throw err;
