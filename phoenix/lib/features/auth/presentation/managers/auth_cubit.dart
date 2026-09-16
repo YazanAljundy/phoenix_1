@@ -287,6 +287,23 @@ class AuthCubit extends Cubit<AuthState> {
         ),
       );
       return false;
+    } catch (e) {
+      // Anything that is NOT a Failure - in practice a parse error on a
+      // response shape this build did not expect. Before this existed such an
+      // error escaped the cubit entirely, `isSubmitting` stayed true, and the
+      // user sat on a spinner with no message and no way back, so a whole
+      // class of accounts looked like "login is down" rather than like a bug.
+      // A response we cannot read is still a failed login and has to land on
+      // the state like any other.
+      _log('[AUTH] Unexpected error during password login ($e)');
+      emit(
+        state.copyWith(
+          isSubmitting: false,
+          errorCode: 'UNEXPECTED_ERROR',
+          errorMessage: e.toString(),
+        ),
+      );
+      return false;
     }
   }
 

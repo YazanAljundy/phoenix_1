@@ -17,9 +17,13 @@ class PharmacyModel {
   final String address;
   final String city;
   final String phone;
-  // Backend-guaranteed since pharmacy.model.js made areaType required: true
-  // (backfilled first via scripts/backfill-pharmacy-area-type.js) - every
-  // pharmacy row now has one.
+  // `required: true` in pharmacy.model.js constrains WRITES only: a row
+  // created before the field existed still has none until
+  // scripts/backfill-pharmacy-area-type.js has run on that deployment. The
+  // hard `as String` cast that used to be below threw a TypeError - which is
+  // not a Failure, so auth_cubit.dart's `on Failure catch` let it escape and
+  // the login spinner ran forever with no error shown. Never make a login
+  // response field that no screen reads a hard cast.
   final String areaType;
 
   factory PharmacyModel.fromJson(Map<String, dynamic> json) => PharmacyModel(
@@ -30,6 +34,6 @@ class PharmacyModel {
     address: json['address'] as String,
     city: json['city'] as String,
     phone: json['phone'] as String,
-    areaType: json['areaType'] as String,
+    areaType: json['areaType'] as String? ?? 'city',
   );
 }
