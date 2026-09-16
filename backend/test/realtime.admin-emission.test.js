@@ -14,6 +14,7 @@ const path = require('node:path');
 const mongoose = require('mongoose');
 
 const emitted = [];
+const forceDisconnected = [];
 
 function stubModule(relativePath, exportsValue) {
   const resolved = require.resolve(path.join(__dirname, '..', 'src', relativePath));
@@ -27,6 +28,13 @@ stubModule('realtime/index.js', {
   emitToAdmins: (event, payload) => emitted.push({ room: 'admin', event, payload }),
   emitToWarehouse: (warehouseId, event, payload) =>
     emitted.push({ room: `warehouse:${warehouseId}`, event, payload }),
+  // Audit F-10: blockAccount now also cuts the account's live sockets. Recorded
+  // rather than performed - the socket layer's own behavior is covered by
+  // realtime.block-disconnect.test.js against a real server.
+  disconnectUser: (userId) => {
+    forceDisconnected.push(String(userId));
+    return 0;
+  },
   EVENTS: {
     ACCOUNT_PENDING: 'account.pending',
     ACCOUNT_STATUS_UPDATED: 'account.status.updated',
@@ -168,6 +176,7 @@ const adminAdvertisementService = require('../src/services/adminAdvertisement.se
 
 test.beforeEach(() => {
   emitted.length = 0;
+  forceDisconnected.length = 0;
   userSaveBehavior = async () => {};
   bannerSaveBehavior = async () => {};
   advertisementSaveBehavior = async () => {};
@@ -233,6 +242,8 @@ test('blockAccount emits exactly one account.status.updated {blocked}, to admins
   assert.strictEqual(emitted[0].event, 'account.status.updated');
   assert.strictEqual(emitted[0].payload.userId, USER_ID.toString());
   assert.strictEqual(emitted[0].payload.status, 'blocked');
+  // Audit F-10: the live sockets are cut as part of blocking.
+  assert.deepStrictEqual(forceDisconnected, [USER_ID.toString()]);
 });
 
 test('unblockAccount emits exactly one account.status.updated {active}, to admins', async () => {
