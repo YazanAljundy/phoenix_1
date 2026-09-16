@@ -95,10 +95,25 @@ class PromotionHeroCard extends StatelessWidget {
 /// The compact version of the same card for the browsable list below the
 /// carousel: identical language, less of it.
 class PromotionListCard extends StatelessWidget {
-  const PromotionListCard({super.key, required this.promotion, required this.onTap});
+  const PromotionListCard({
+    super.key,
+    required this.promotion,
+    required this.onTap,
+    this.action,
+  });
 
   final Promotion promotion;
-  final VoidCallback onTap;
+
+  /// Null leaves the card inert - the state the warehouse offers list uses for
+  /// a promotion there is nothing left to do with (already in the cart, or
+  /// unavailable), where its [action] is the control instead.
+  final VoidCallback? onTap;
+
+  /// An optional control the card owns, drawn on its own full-width row under
+  /// everything else - today the warehouse offers list's add-to-cart button or
+  /// its in-cart quantity stepper. Null (the Offers & Ads tab) draws the card
+  /// exactly as it always was.
+  final Widget? action;
 
   @override
   Widget build(BuildContext context) {
@@ -155,6 +170,14 @@ class PromotionListCard extends StatelessWidget {
                       Flexible(child: PromotionPriceLine(promotion: promotion, compact: true)),
                     ],
                   ),
+                  // A row of its own rather than a trailing slot beside the
+                  // price: the in-cart stepper is 122pt wide and would squeeze
+                  // the price line (a Wrap of unbounded Texts) off the edge of
+                  // a narrow phone.
+                  if (action != null) ...[
+                    const SizedBox(height: AppSizes.spacingSmall),
+                    action!,
+                  ],
                 ],
               ),
             ),

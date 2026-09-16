@@ -9,6 +9,20 @@ function serializeUser(user) {
   };
 }
 
+// Legacy rows created before areaType existed still have no value for it -
+// pharmacy.model.js made it `required: true`, but that only constrains WRITES,
+// and scripts/backfill-pharmacy-area-type.js has not necessarily run on every
+// deployment yet. A missing value serialises to `undefined`, JSON.stringify
+// drops the key entirely, and PharmacyModel.fromJson's `json['areaType'] as
+// String` then throws a TypeError that auth_cubit.dart's `on Failure catch`
+// does not catch - so the pharmacy app hangs on the login spinner with no
+// error at all, for exactly the accounts that predate the field.
+//
+// Matches the backfill script's own choice of default for the same "we never
+// collected this from old pharmacies" case. Keep this even after the backfill
+// runs: it is what stops one un-migrated row from locking a real user out.
+const DEFAULT_AREA_TYPE = 'city';
+
 function serializePharmacy(pharmacy) {
   if (!pharmacy) return null;
   return {
@@ -18,7 +32,7 @@ function serializePharmacy(pharmacy) {
     ownerName: pharmacy.ownerName,
     address: pharmacy.address,
     city: pharmacy.city,
-    areaType: pharmacy.areaType,
+    areaType: pharmacy.areaType || DEFAULT_AREA_TYPE,
     phone: pharmacy.phone,
     verificationPhoto: pharmacy.verificationPhoto,
   };

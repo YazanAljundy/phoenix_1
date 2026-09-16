@@ -721,6 +721,13 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
     final l10n = context.l10n;
 
     return AlertDialog(
+      // An unscrolled AlertDialog caps title + content + actions at the height
+      // it has and lets the content overflow past it. The warning here is
+      // three paragraphs, which is already taller than that cap on a 360x640
+      // phone in Arabic before the keyboard is up, and the keyboard takes most
+      // of what is left - so without this the column overflows and the
+      // password field is pushed off the bottom of the dialog.
+      scrollable: true,
       title: Text(l10n.deleteAccountConfirmTitle),
       content: Column(
         mainAxisSize: MainAxisSize.min,
