@@ -77,6 +77,46 @@ void main() {
       });
     });
 
+    group('legacy rows (no areaType)', () {
+      // A pharmacy row created before areaType existed has no value for it, so
+      // the backend omits the key entirely. This used to be a hard
+      // `as String` cast: it threw a TypeError, which is not a Failure, so
+      // auth_cubit.dart let it escape and the login spinner ran forever with
+      // no error - locking every pre-areaType account out of the app while the
+      // server was answering 200 the whole time.
+      test('parses a payload with the areaType key missing', () {
+        final json = {
+          'id': 'legacy1',
+          'nameAr': 'صيدلية قديمة',
+          'nameEn': 'Old Pharmacy',
+          'ownerName': 'Old Owner',
+          'address': 'Somewhere',
+          'city': 'Latakia',
+          'phone': '0912222222',
+        };
+
+        final pharmacy = PharmacyModel.fromJson(json);
+
+        expect(pharmacy.id, equals('legacy1'));
+        expect(pharmacy.areaType, equals('city'));
+      });
+
+      test('parses a payload with an explicitly null areaType', () {
+        final json = {
+          'id': 'legacy2',
+          'nameAr': 'صيدلية',
+          'nameEn': 'Pharmacy',
+          'ownerName': 'Owner',
+          'address': 'Address',
+          'city': 'Latakia',
+          'phone': '0912222223',
+          'areaType': null,
+        };
+
+        expect(PharmacyModel.fromJson(json).areaType, equals('city'));
+      });
+    });
+
     group('equality', () {
       test('two identical pharmacies are equal', () {
         final json = {
