@@ -614,6 +614,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get errorPackageUnavailable => 'هذه الباقة لم تعد متاحة.';
 
   @override
+  String get errorIdempotencyKeyReused =>
+      'سُجّل طلب من هذه السلة في محاولة سابقة قبل أن تعدّلها. راجع طلباتي، ثم أعد الإرسال لتسجيل السلة المعدّلة كطلب جديد.';
+
+  @override
   String get removeUnavailablePackagesButton => 'حذف من السلة';
 
   @override

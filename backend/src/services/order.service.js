@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const mongoose = require('mongoose');
 const { ApiError } = require('../utils/ApiError');
 const Product = require('../models/product.model');
@@ -237,6 +238,76 @@ function deductLegacyPackageItems(rawItems, advertisements) {
   return kept;
 }
 
+function compareStrings(a, b) {
+  if (a < b) return -1;
+  return a > b ? 1 : 0;
+}
+
+// What an idempotency key stands for: a hash of everything in the request that
+// decides which order gets placed. Two requests with the same fingerprint are
+// the same order; anything else under the same key is a different order.
+//
+// Normalized before hashing, so a request that means the same thing hashes the
+// same: duplicate product lines are merged and packages folded exactly the way
+// createOrder itself does (mergeDuplicateItems / normalizePackageRequests),
+// both lists are sorted, and notes are trimmed. The displayed price is kept to
+// the cent - the PRICE_CHANGED check below already treats anything finer as
+// JSON noise.
+//
+// Left out on purpose: the key itself, the pharmacy (the unique index already
+// scopes a key to one pharmacy), and every price the server computes.
+//
+// The "order-v1:" prefix versions the format: changing what goes in here must
+// change the prefix too, or orders stored under the old format would start
+// refusing their own retries.
+function computeOrderFingerprint({ warehouseId, items, packageRequests, notes }) {
+  const lines = mergeDuplicateItems(Array.isArray(items) ? items : [])
+    .map((item) => [
+      String(item.productId),
+      item.quantity,
+      item.displayedUnitPriceUsd === null ? null : Math.round(item.displayedUnitPriceUsd * 100),
+    ])
+    .sort((a, b) => compareStrings(a[0], b[0]));
+  const packageLines = packageRequests
+    .map((request) => [String(request.advertisementId), request.copies, request.fromLegacyField])
+    .sort((a, b) => compareStrings(a[0], b[0]));
+  const trimmedNotes = typeof notes === 'string' && notes.trim() ? notes.trim() : null;
+
+  const canonical = JSON.stringify({
+    warehouseId: String(warehouseId),
+    items: lines,
+    packages: packageLines,
+    notes: trimmedNotes,
+  });
+  return crypto.createHash('sha256').update(`order-v1:${canonical}`).digest('hex');
+}
+
+// `existing` is the order a key already produced. The same request again is a
+// retry and gets that order back. A different request under the same key -
+// the cart was edited after an attempt whose response never arrived - is
+// refused: handing back the old order would have the client clear a cart the
+// pharmacist changed, as if the changes had been ordered.
+//
+// An order placed before fingerprints existed has none to compare against and
+// replays on its key alone, as it always did.
+function replayOrRejectIdempotentOrder(existing, fingerprint) {
+  if (existing.idempotencyFingerprint && existing.idempotencyFingerprint !== fingerprint) {
+    // orderId/orderNumber are safe to return: the lookup that found this order
+    // is scoped to the caller's own pharmacy.
+    throw new ApiError(
+      409,
+      'This order request was already submitted with different contents. Your cart changed after the first attempt; submit again to place it as a new order.',
+      { orderId: String(existing._id), orderNumber: existing.orderNumber },
+      'IDEMPOTENCY_KEY_REUSED'
+    );
+  }
+  // $locals is Mongoose's per-document scratch space - it is never persisted
+  // and never serialized, so this marks the response as a replay for the
+  // controller without adding a field to the schema.
+  existing.$locals.idempotentReplay = true;
+  return existing;
+}
+
 async function createOrder({
   userId,
   pharmacyId,
@@ -252,17 +323,16 @@ async function createOrder({
   // is later billed for. Checked here before any work, and enforced for real
   // by the unique partial index on (pharmacyId, idempotencyKey) inside the
   // transaction below - this read only makes the common case cheap.
+  //
+  // The packages are normalized first because the fingerprint covers them.
+  const packageRequests = normalizePackageRequests({ packages, advertisementId });
+  const idempotencyFingerprint = idempotencyKey
+    ? computeOrderFingerprint({ warehouseId, items, packageRequests, notes })
+    : null;
   if (idempotencyKey) {
     const existing = await Order.findOne({ pharmacyId, idempotencyKey });
-    // $locals is Mongoose's per-document scratch space - it is never persisted
-    // and never serialized, so this marks the response as a replay for the
-    // controller without adding a field to the schema.
-    if (existing) {
-      existing.$locals.idempotentReplay = true;
-      return existing;
-    }
+    if (existing) return replayOrRejectIdempotentOrder(existing, idempotencyFingerprint);
   }
-  const packageRequests = normalizePackageRequests({ packages, advertisementId });
 
   // Defense in depth: order.controller.js's validateItems already rejects an
   // empty/invalid cart before this is ever called from the API, and a
@@ -699,6 +769,7 @@ async function createOrder({
           finalAmountUsd: usdToSyp ? Math.round((finalPrice / usdToSyp) * 100) / 100 : null,
           notes: notes || null,
           idempotencyKey: idempotencyKey ?? null,
+          idempotencyFingerprint,
           // Section: proof-of-delivery. Seeded from the warehouse's current
           // default; from here on the order owns this flag (the warehouse can
           // still flip it per order, but changing the warehouse default won't).
@@ -719,13 +790,11 @@ async function createOrder({
   }).catch(async (err) => {
     // The unique (pharmacyId, idempotencyKey) index is the real guard against
     // a duplicate submission: two concurrent retries both pass the pre-check
-    // above, and the loser lands here. Return what the winner created.
+    // above, and the loser lands here. Return what the winner created - or
+    // refuse, if the winner was a different request under the same key.
     if (err && err.code === 11000 && idempotencyKey) {
       const existing = await Order.findOne({ pharmacyId, idempotencyKey });
-      if (existing) {
-        existing.$locals.idempotentReplay = true;
-        return existing;
-      }
+      if (existing) return replayOrRejectIdempotentOrder(existing, idempotencyFingerprint);
     }
     throw err;
   });
@@ -1192,4 +1261,5 @@ module.exports = {
   advertisementDiscountSyp,
   rollUpOrderMoney,
   normalizePackageRequests,
+  computeOrderFingerprint,
 };

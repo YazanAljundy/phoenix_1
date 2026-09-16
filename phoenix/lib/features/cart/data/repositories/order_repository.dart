@@ -16,7 +16,9 @@ abstract class OrderRepository {
     // across retries, so a resubmitted cart (flaky network, a double-tap)
     // returns the order the first attempt created rather than placing a
     // second billable one. Must NOT be generated here - a fresh key on every
-    // call is exactly the duplicate this prevents.
+    // call is exactly the duplicate this prevents. CartCubit drops it when the
+    // cart is edited: the server refuses a key sent with different contents
+    // (IDEMPOTENCY_KEY_REUSED).
     String? idempotencyKey,
   });
 

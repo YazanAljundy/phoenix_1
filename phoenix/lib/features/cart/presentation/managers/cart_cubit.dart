@@ -80,6 +80,8 @@ class CartCubit extends Cubit<CartState> {
         warehouseId: warehouseId,
         warehouseName: warehouseName,
         items: updated,
+        // A different cart now - see CartState.pendingIdempotencyKey.
+        clearPendingIdempotencyKey: true,
         clearError: true,
       ),
     );
@@ -162,6 +164,7 @@ class CartCubit extends Cubit<CartState> {
         warehouseId: warehouseId,
         warehouseName: warehouseName,
         items: updated,
+        clearPendingIdempotencyKey: true,
         clearError: true,
       ),
     );
@@ -189,6 +192,9 @@ class CartCubit extends Cubit<CartState> {
   // warehouse or an admin after they went into the cart. The lines are kept,
   // not dropped: the tile explains what happened and the pharmacist decides to
   // remove them. Nothing here blocks checkout; the server refuses them there.
+  //
+  // Keeps the idempotency key: the flag is display-only and never sent, so the
+  // request this cart would make is unchanged.
   void markPackagesUnavailable(Iterable<String> packageIds) {
     final ids = packageIds.toSet();
     final needsFlag = state.items.any(
@@ -207,7 +213,7 @@ class CartCubit extends Cubit<CartState> {
       emit(const CartState());
       return;
     }
-    emit(state.copyWith(items: updated));
+    emit(state.copyWith(items: updated, clearPendingIdempotencyKey: true));
   }
 
   List<CartItem> _flagUnavailablePackages(Set<String> packageIds) => state.items
@@ -219,13 +225,21 @@ class CartCubit extends Cubit<CartState> {
   // Works the same for a product line and a package line: for a package the
   // number IS the copy count. There is no "breaking a package" any more - its
   // contents are not cart lines, so nothing can be taken out of one.
+  //
+  // The idempotency key goes only when the quantity really moves. The stepper
+  // and its typed field can report the value a line already has (a clamped 0,
+  // a re-typed number), and dropping the key for that would let a retry after
+  // a lost response place the same order twice.
   void updateQuantity(String lineKey, int quantity) {
     final clamped = quantity < 1 ? 1 : quantity;
+    final changed = state.items.any(
+      (item) => item.lineKey == lineKey && item.quantity != clamped,
+    );
     final updated = state.items.map((item) {
       if (item.lineKey != lineKey) return item;
       return item.copyWith(quantity: clamped);
     }).toList();
-    emit(state.copyWith(items: updated));
+    emit(state.copyWith(items: updated, clearPendingIdempotencyKey: changed));
   }
 
   void removeItem(String lineKey) {
@@ -234,7 +248,12 @@ class CartCubit extends Cubit<CartState> {
       emit(const CartState());
       return;
     }
-    emit(state.copyWith(items: updated));
+    emit(
+      state.copyWith(
+        items: updated,
+        clearPendingIdempotencyKey: updated.length != state.items.length,
+      ),
+    );
   }
 
   // "Clear the cart": drops every line at once. Resets to a pristine
@@ -248,7 +267,16 @@ class CartCubit extends Cubit<CartState> {
     emit(const CartState());
   }
 
-  void updateNotes(String notes) => emit(state.copyWith(notes: notes));
+  // Called on every keystroke. Only the trimmed text is ever sent (see
+  // submitOrder), so that is what decides whether the idempotency key goes: a
+  // call that leaves it as it was (a trailing space) keeps the key. Any real
+  // change drops it, and it is not restored if the change is later undone.
+  void updateNotes(String notes) => emit(
+    state.copyWith(
+      notes: notes,
+      clearPendingIdempotencyKey: notes.trim() != state.notes.trim(),
+    ),
+  );
 
   // Client-side availability snapshots (taken when items were added) can go
   // stale by the time the pharmacist actually submits - the server re-checks
@@ -271,7 +299,10 @@ class CartCubit extends Cubit<CartState> {
     // the server returns the order the first attempt created instead of
     // placing a second one. Generating it inside the request below would give
     // each retry a fresh key and defeat the whole mechanism. It's cleared
-    // with the cart itself, on success or on any reset to a bare CartState.
+    // with the cart itself, on success or on any reset to a bare CartState,
+    // and by every edit that changes what this request would send - the key
+    // stands for one exact cart, and the server refuses it for any other
+    // (IDEMPOTENCY_KEY_REUSED).
     final idempotencyKey = state.pendingIdempotencyKey ?? _uuid.v4();
     emit(state.copyWith(
       isSubmitting: true,
@@ -302,6 +333,11 @@ class CartCubit extends Cubit<CartState> {
       emit(
         state.copyWith(
           items: refusedPackageIds.isEmpty ? null : _flagUnavailablePackages(refusedPackageIds),
+          // The server already holds an order for this key, placed from a
+          // different cart (only an app that kept its key across an edit gets
+          // here). The error tells the pharmacist; dropping the key is what
+          // lets their next tap place this cart as the new order it is.
+          clearPendingIdempotencyKey: f.code == 'IDEMPOTENCY_KEY_REUSED',
           isSubmitting: false,
           errorMessage: f.errMessage,
           errorCode: f.code,
