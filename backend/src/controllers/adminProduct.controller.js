@@ -52,7 +52,11 @@ const listWarehouses = asyncHandler(async (req, res) => {
 });
 
 const update = asyncHandler(async (req, res) => {
-  const product = await adminProductService.updateProduct(req.params.id, req.user._id, req.body);
+  // A new price was converted from SYP in the panel - it must carry the rate
+  // it used (exchangeRate.service.js's assertRateUsedIsCurrent).
+  const product = await adminProductService.updateProduct(req.params.id, req.user._id, req.body, {
+    requireRateUsed: true,
+  });
   res.json({
     success: true,
     message: 'Product updated.',

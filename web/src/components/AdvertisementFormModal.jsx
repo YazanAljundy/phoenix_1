@@ -5,6 +5,9 @@ import { LoadMoreControl } from './LoadMoreControl';
 import { usePaginatedData } from '../hooks/usePaginatedData';
 import { formatSyp, formatUsd, formatMoneyFromUsd, sypFromUsd } from '../utils/currency';
 import { withArFallback } from '../utils/displayName';
+import { submitWithRateCheck, withRateUsed } from '../utils/exchangeRate';
+import { useExchangeRateActions } from '../context/ExchangeRateContext';
+import { RateChangedNotice } from './RateChangedNotice';
 
 // This is a standalone copy, not a re-export of components/AdvertisementModal.jsx.
 // That file is separate, still-evolving work from another session (unrelated
@@ -155,19 +158,46 @@ export function AdvertisementFormModal({
   onCreated,
 }) {
   const { t } = useTranslation();
+  const rateActions = useExchangeRateActions();
   const isEdit = Boolean(advertisement);
 
+  // On edit: the stored USD total, and the SYP it was shown as. A total still
+  // showing that SYP was never touched and is re-sent as the stored USD,
+  // exactly - never re-converted, so a moved rate cannot silently re-price a
+  // package nobody edited (same rule as ProductFormModal's price).
+  const [initialTotal, setInitialTotal] = useState(() =>
+    advertisement
+      ? {
+          usd: advertisement.totalPriceUsd,
+          syp: String(sypFromUsd(advertisement.totalPriceUsd, usdToSyp) ?? ''),
+        }
+      : null
+  );
   const [form, setForm] = useState(() =>
     advertisement
       ? {
           titleAr: advertisement.titleAr,
           titleEn: advertisement.titleEn,
-          totalPrice: String(sypFromUsd(advertisement.totalPriceUsd, usdToSyp) ?? ''),
+          totalPrice: initialTotal.syp,
           startDate: toDateInputValue(advertisement.startDate),
           endDate: toDateInputValue(advertisement.endDate),
         }
       : EMPTY_FORM
   );
+  // Set by a RATE_CHANGED refusal until the next submit - see RateChangedNotice.
+  const [rateChange, setRateChange] = useState(null);
+
+  // When the rate moves, an untouched total follows it (re-derived from the
+  // stored USD, and still untouched); a total the user typed stays as typed.
+  useEffect(() => {
+    if (!initialTotal) return;
+    const nextSyp = String(sypFromUsd(initialTotal.usd, usdToSyp) ?? '');
+    if (nextSyp === initialTotal.syp) return;
+    const previousSyp = initialTotal.syp;
+    setForm((prev) => (prev.totalPrice === previousSyp ? { ...prev, totalPrice: nextSyp } : prev));
+    setInitialTotal((prev) => ({ ...prev, syp: nextSyp }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [usdToSyp]);
   // The package-price field auto-fills with the running catalog total until
   // it is typed in. On edit it starts from the stored value, so it's
   // "touched" from the outset.
@@ -261,47 +291,73 @@ export function AdvertisementFormModal({
       setError(t('common.endAfterStart'));
       return;
     }
-    // The package total is typed in SYP, so without a rate it can't be
-    // converted into the USD the API stores.
-    if (usdToSyp == null || !(Number(usdToSyp) > 0)) {
-      setError(t('advertisements.rateRequired'));
-      return;
-    }
+    // An edit whose total still shows what it opened with re-sends the stored
+    // USD and needs no rate. Anything else is converted here.
+    const totalUntouched =
+      isEdit && initialTotal.syp !== '' && String(form.totalPrice) === initialTotal.syp;
 
-    // The typed value, or the auto-filled calculated sum if the field was
-    // never touched.
-    const totalSyp = totalTouched ? Number(form.totalPrice) : Math.round(calculatedTotalSyp);
-    if (!Number.isFinite(totalSyp) || totalSyp <= 0) {
-      setError(t('advertisements.totalPositive'));
-      return;
-    }
-    const totalPriceUsd = Math.round((totalSyp / Number(usdToSyp)) * 100) / 100;
-    if (totalPriceUsd < 0.01) {
-      setError(t('advertisements.totalPositive'));
-      return;
+    let totalPriceUsd;
+    // The rate the total was converted at, sent so the server can refuse it if
+    // that rate is no longer current. None for an untouched total.
+    let rateUsed = null;
+    if (totalUntouched) {
+      totalPriceUsd = initialTotal.usd;
+    } else {
+      // The package total is typed in SYP, so without a rate it can't be
+      // converted into the USD the API stores.
+      if (usdToSyp == null || !(Number(usdToSyp) > 0)) {
+        setError(t('advertisements.rateRequired'));
+        return;
+      }
+
+      // The typed value, or the auto-filled calculated sum if the field was
+      // never touched.
+      const totalSyp = totalTouched ? Number(form.totalPrice) : Math.round(calculatedTotalSyp);
+      if (!Number.isFinite(totalSyp) || totalSyp <= 0) {
+        setError(t('advertisements.totalPositive'));
+        return;
+      }
+      rateUsed = Number(usdToSyp);
+      totalPriceUsd = Math.round((totalSyp / rateUsed) * 100) / 100;
+      if (totalPriceUsd < 0.01) {
+        setError(t('advertisements.totalPositive'));
+        return;
+      }
     }
 
     // A total at/above the products' sum is allowed - the field was warned
     // about above but is not blocked.
-    const body = {
-      titleAr: form.titleAr.trim(),
-      titleEn: form.titleEn.trim(),
-      items: selected.map((item) => ({ productId: item.productId, quantity: Number(item.quantity) })),
-      totalPriceUsd,
-      startDate: form.startDate,
-      endDate: form.endDate,
-    };
+    const body = withRateUsed(
+      {
+        titleAr: form.titleAr.trim(),
+        titleEn: form.titleEn.trim(),
+        items: selected.map((item) => ({ productId: item.productId, quantity: Number(item.quantity) })),
+        totalPriceUsd,
+        startDate: form.startDate,
+        endDate: form.endDate,
+      },
+      rateUsed
+    );
 
     setIsSaving(true);
+    setRateChange(null);
     try {
+      // Sent once. A RATE_CHANGED refusal moves the panel's rate on and comes
+      // back as `changed`; the total then waits for the user to confirm it.
+      const { result, rateChange: changed } = await submitWithRateCheck(
+        () => onSubmit(body, imageFile),
+        { rateUsed, actions: rateActions }
+      );
+      if (changed) {
+        setRateChange(changed);
+        return;
+      }
       if (isEdit) {
-        await onSubmit(body, imageFile);
         onSaved();
       } else {
-        const data = await onSubmit(body, imageFile);
         // Hand the number to the success modal - the same "step 2" the banner
         // flow shows, so the admin knows which submission the payment is for.
-        onCreated(data.advertisement.advertisementNumber);
+        onCreated(result.advertisement.advertisementNumber);
       }
     } catch (err) {
       setError(err.message);
@@ -440,6 +496,7 @@ export function AdvertisementFormModal({
             </label>
           </div>
 
+          <RateChangedNotice rateChange={rateChange} />
           {error && <p className="error-text">{error}</p>}
 
           <div className="modal-actions">
@@ -449,9 +506,11 @@ export function AdvertisementFormModal({
             <button type="submit" className="btn-primary" disabled={isSaving}>
               {isSaving
                 ? t('advertisements.submitting')
-                : isEdit
-                  ? t('advertisements.saveChanges')
-                  : t('advertisements.submitForApproval')}
+                : rateChange
+                  ? t('exchangeRateChange.confirmButton')
+                  : isEdit
+                    ? t('advertisements.saveChanges')
+                    : t('advertisements.submitForApproval')}
             </button>
           </div>
         </form>

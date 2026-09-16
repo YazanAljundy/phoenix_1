@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { api } from '../api/client';
-import { useExchangeRate } from '../context/ExchangeRateContext';
+import { useExchangeRate, useExchangeRateActions } from '../context/ExchangeRateContext';
+import { RateChangedNotice } from '../components/RateChangedNotice';
 import { sypFromUsd } from '../utils/currency';
+import { submitWithRateCheck, withRateUsed } from '../utils/exchangeRate';
 
 // Section: the warehouse's own order-size limits. Both are opt-in - an empty
 // minimum means "no minimum" (stored as 0) and an empty maximum means "no
@@ -12,9 +14,20 @@ import { sypFromUsd } from '../utils/currency';
 // USD on the server, same as product prices - converted at the live rate on
 // save. A field left untouched re-sends its exact stored USD value so a
 // moved rate can never silently shift a limit nobody edited.
+//
+// A converted limit is saved with the rate it used (`rateUsed`); the server
+// refuses it with RATE_CHANGED if that rate has moved on, and this page then
+// shows the change and waits for the user to save again.
 export function WarehouseSettingsPage() {
   const { t } = useTranslation();
   const usdToSyp = useExchangeRate();
+  const rateActions = useExchangeRateActions();
+  // The rate at the moment load() runs, without making load() - and with it the
+  // whole form - depend on the rate. See the rate effect below.
+  const rateRef = useRef(usdToSyp);
+  rateRef.current = usdToSyp;
+  // Set by a RATE_CHANGED refusal until the next save - see RateChangedNotice.
+  const [rateChange, setRateChange] = useState(null);
   const [minAmount, setMinAmount] = useState('');
   const [maxAmount, setMaxAmount] = useState('');
   // Opt-in proof-of-delivery: when on, an order can't be marked delivered
@@ -38,8 +51,8 @@ export function WarehouseSettingsPage() {
       const maxUsd = data.settings.maxOrderAmountUsd;
       // 0/null are the "no limit" states - shown as an empty field rather
       // than a literal 0, so the placeholder explains what empty means.
-      const minSyp = minUsd > 0 ? String(sypFromUsd(minUsd, usdToSyp) ?? '') : '';
-      const maxSyp = maxUsd != null ? String(sypFromUsd(maxUsd, usdToSyp) ?? '') : '';
+      const minSyp = minUsd > 0 ? String(sypFromUsd(minUsd, rateRef.current) ?? '') : '';
+      const maxSyp = maxUsd != null ? String(sypFromUsd(maxUsd, rateRef.current) ?? '') : '';
       setMinAmount(minSyp);
       setMaxAmount(maxSyp);
       setRequireSealPhoto(Boolean(data.settings.requireDeliverySealPhoto));
@@ -49,14 +62,29 @@ export function WarehouseSettingsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [usdToSyp]);
+  }, []);
 
   useEffect(() => {
     load();
   }, [load]);
 
+  // When the rate moves - it loads after the page, or a RATE_CHANGED refusal
+  // replaced it - only the fields the user has not touched are re-derived from
+  // the stored USD (and stay untouched). This used to reload the whole form,
+  // which would now wipe what the user typed just as a refusal asks them to
+  // review it.
+  useEffect(() => {
+    const previous = loaded.current;
+    const minSyp = previous.minUsd > 0 ? String(sypFromUsd(previous.minUsd, usdToSyp) ?? '') : '';
+    const maxSyp = previous.maxUsd != null ? String(sypFromUsd(previous.maxUsd, usdToSyp) ?? '') : '';
+    setMinAmount((current) => (current === previous.minSyp ? minSyp : current));
+    setMaxAmount((current) => (current === previous.maxSyp ? maxSyp : current));
+    loaded.current = { ...previous, minSyp, maxSyp };
+  }, [usdToSyp]);
+
   // Turns a SYP field into the USD figure to store: 0/null when cleared, the
-  // untouched stored value when unchanged, otherwise a rate conversion.
+  // untouched stored value when unchanged, otherwise a rate conversion
+  // (`converted`, so the save says at which rate).
   const toStoredUsd = (value, { field }) => {
     const trimmed = value.trim();
     const emptyValue = field === 'min' ? 0 : null;
@@ -73,7 +101,7 @@ export function WarehouseSettingsPage() {
     if (usdToSyp == null || !(Number(usdToSyp) > 0)) {
       return { ok: false, error: t('warehouseSettings.rateRequired') };
     }
-    return { ok: true, value: Math.round((syp / Number(usdToSyp)) * 100) / 100 };
+    return { ok: true, value: Math.round((syp / Number(usdToSyp)) * 100) / 100, converted: true };
   };
 
   const handleSubmit = async (event) => {
@@ -97,13 +125,31 @@ export function WarehouseSettingsPage() {
     const confirmed = window.confirm(t('warehouseSettings.confirmSave'));
     if (!confirmed) return;
 
-    setIsSaving(true);
-    try {
-      await api.updateWarehouseOrderLimits({
+    // Both fields are converted at this same rate, so one `rateUsed` covers
+    // either; none when neither was converted.
+    const rateUsed = min.converted || max.converted ? Number(usdToSyp) : null;
+    const limits = withRateUsed(
+      {
         minOrderAmountUsd: min.value,
         maxOrderAmountUsd: max.value,
         requireDeliverySealPhoto: requireSealPhoto,
-      });
+      },
+      rateUsed
+    );
+
+    setIsSaving(true);
+    setRateChange(null);
+    try {
+      // Sent once. A RATE_CHANGED refusal moves the panel's rate on and comes
+      // back as `changed`; the limits then wait for the user to save again.
+      const { rateChange: changed } = await submitWithRateCheck(
+        () => api.updateWarehouseOrderLimits(limits),
+        { rateUsed, actions: rateActions }
+      );
+      if (changed) {
+        setRateChange(changed);
+        return;
+      }
       await load();
       setSuccessMessage(t('warehouseSettings.saved'));
     } catch (err) {
@@ -161,11 +207,16 @@ export function WarehouseSettingsPage() {
             </label>
             <p className="hint wh-settings-hint">{t('warehouseSettings.requireSealPhotoHint')}</p>
 
+            <RateChangedNotice rateChange={rateChange} />
             {error && <p className="error-text">{error}</p>}
             {successMessage && <p className="wh-settings-success">{successMessage}</p>}
 
             <button type="submit" className="btn-primary" disabled={isSaving}>
-              {isSaving ? t('common.saving') : t('warehouseSettings.saveButton')}
+              {isSaving
+                ? t('common.saving')
+                : rateChange
+                  ? t('exchangeRateChange.confirmButton')
+                  : t('warehouseSettings.saveButton')}
             </button>
           </form>
         </div>

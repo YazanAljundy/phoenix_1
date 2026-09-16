@@ -3,6 +3,9 @@ import { useTranslation } from 'react-i18next';
 import { api } from '../api/client';
 import { withArFallback } from '../utils/displayName';
 import { sypFromUsd, formatUsd } from '../utils/currency';
+import { submitWithRateCheck, withRateUsed } from '../utils/exchangeRate';
+import { useExchangeRateActions } from '../context/ExchangeRateContext';
+import { RateChangedNotice } from './RateChangedNotice';
 
 export const EMPTY_PRODUCT_FORM = {
   masterProductId: null,
@@ -132,9 +135,32 @@ function CatalogSearchField({ onSelect }) {
 // here.
 export function ProductFormModal({ mode, initialForm, categories, usdToSyp, onClose, onSaved, onSubmit }) {
   const { t } = useTranslation();
+  const rateActions = useExchangeRateActions();
   const [form, setForm] = useState(initialForm);
+  // The form as it opened - what "the price was not touched" is measured
+  // against. Held here rather than read off the `initialForm` prop: the parent
+  // rebuilds that prop at whatever rate is current, so after the rate moves
+  // an untouched price would no longer match it and would be re-converted.
+  const [initial, setInitial] = useState(initialForm);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
+  // Set by a RATE_CHANGED refusal until the next submit - see RateChangedNotice.
+  const [rateChange, setRateChange] = useState(null);
+
+  // When the rate moves (it loads late, or a refusal replaced it), an
+  // untouched price follows it: the SYP shown is re-derived from the stored
+  // USD, and it stays "untouched" so saving still re-sends that USD exactly.
+  // A price the user typed is left as typed.
+  useEffect(() => {
+    if (mode !== 'edit' || initial.priceUsd == null) return;
+    const priceSyp = sypFromUsd(initial.priceUsd, usdToSyp);
+    const nextPrice = priceSyp != null ? String(priceSyp) : '';
+    if (nextPrice === String(initial.price)) return;
+    const previousPrice = String(initial.price);
+    setForm((prev) => (String(prev.price) === previousPrice ? { ...prev, price: nextPrice } : prev));
+    setInitial((prev) => ({ ...prev, price: nextPrice }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [usdToSyp]);
 
   const setField = (field, value) => setForm((prev) => ({ ...prev, [field]: value }));
 
@@ -195,9 +221,13 @@ export function ProductFormModal({ mode, initialForm, categories, usdToSyp, onCl
     // silently re-price it (or write a spurious priceHistory entry), and so
     // the other fields stay editable even while the rate is unavailable.
     const priceUntouched =
-      mode === 'edit' && form.priceUsd != null && String(form.price) === String(initialForm.price);
+      mode === 'edit' && form.priceUsd != null && String(form.price) === String(initial.price);
 
     let priceUsd;
+    // The rate a converted price was worked out at - sent along so the server
+    // can refuse it if that rate is no longer current. None for an untouched
+    // price: nothing was converted.
+    let rateUsed = null;
     if (priceUntouched) {
       priceUsd = form.priceUsd;
     } else {
@@ -210,27 +240,41 @@ export function ProductFormModal({ mode, initialForm, categories, usdToSyp, onCl
         setError(t('productForm.rateRequired'));
         return;
       }
-      priceUsd = Math.round((priceSyp / Number(usdToSyp)) * 100) / 100;
+      rateUsed = Number(usdToSyp);
+      priceUsd = Math.round((priceSyp / rateUsed) * 100) / 100;
       if (priceUsd < 0.01) {
         setError(t('productForm.pricePositive'));
         return;
       }
     }
 
-    const payload = {
-      masterProductId: mode === 'create' ? form.masterProductId : undefined,
-      categoryId: form.categoryId,
-      unitAr: form.unitAr.trim(),
-      unitEn: form.unitEn.trim(),
-      priceUsd,
-      description: form.description.trim() || undefined,
-      image: form.image.trim() || undefined,
-      manuallyDisabled: form.manuallyDisabled,
-    };
+    const payload = withRateUsed(
+      {
+        masterProductId: mode === 'create' ? form.masterProductId : undefined,
+        categoryId: form.categoryId,
+        unitAr: form.unitAr.trim(),
+        unitEn: form.unitEn.trim(),
+        priceUsd,
+        description: form.description.trim() || undefined,
+        image: form.image.trim() || undefined,
+        manuallyDisabled: form.manuallyDisabled,
+      },
+      rateUsed
+    );
 
     setIsSaving(true);
+    setRateChange(null);
     try {
-      await onSubmit(payload);
+      // Sent once. A RATE_CHANGED refusal moves the panel's rate on and comes
+      // back as `changed`; the price then waits for the user to confirm it.
+      const { rateChange: changed } = await submitWithRateCheck(() => onSubmit(payload), {
+        rateUsed,
+        actions: rateActions,
+      });
+      if (changed) {
+        setRateChange(changed);
+        return;
+      }
       onSaved();
     } catch (err) {
       setError(err.message);
@@ -335,6 +379,7 @@ export function ProductFormModal({ mode, initialForm, categories, usdToSyp, onCl
             {t('productForm.temporarilyPaused')}
           </label>
 
+          <RateChangedNotice rateChange={rateChange} />
           {error && <p className="error-text">{error}</p>}
 
           <div className="modal-actions">
@@ -342,7 +387,13 @@ export function ProductFormModal({ mode, initialForm, categories, usdToSyp, onCl
               {t('common.cancel')}
             </button>
             <button type="submit" className="btn-primary" disabled={isSaving}>
-              {isSaving ? t('common.saving') : mode === 'create' ? t('products.addProduct') : t('productForm.saveChanges')}
+              {isSaving
+                ? t('common.saving')
+                : rateChange
+                  ? t('exchangeRateChange.confirmButton')
+                  : mode === 'create'
+                    ? t('products.addProduct')
+                    : t('productForm.saveChanges')}
             </button>
           </div>
         </form>

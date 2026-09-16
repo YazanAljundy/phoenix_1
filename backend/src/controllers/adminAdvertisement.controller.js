@@ -92,7 +92,8 @@ const update = asyncHandler(async (req, res) => {
   if (imageUrl !== undefined) data.imageUrl = imageUrl;
 
   try {
-    await service.adminUpdateAdvertisement(req.params.id, data);
+    // A changed total must carry the rate it was converted at.
+    await service.adminUpdateAdvertisement(req.params.id, data, { requireRateUsed: true });
   } catch (err) {
     if (imageUrl) await deleteImageByUrl(imageUrl);
     throw err;

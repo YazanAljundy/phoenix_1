@@ -22,11 +22,18 @@ const get = asyncHandler(async (req, res) => {
 // from a body/param id) - a warehouse can't edit another's limits.
 const update = asyncHandler(async (req, res) => {
   const warehouse = await loadWarehouseOrThrow(req.user._id);
-  const updated = await settingsService.updateOrderLimits(warehouse._id, {
-    minOrderAmountUsd: req.body.minOrderAmountUsd,
-    maxOrderAmountUsd: req.body.maxOrderAmountUsd,
-    requireDeliverySealPhoto: req.body.requireDeliverySealPhoto,
-  });
+  // The limits are converted from SYP in the panel - a changed one must carry
+  // the rate it used (exchangeRate.service.js's assertRateUsedIsCurrent).
+  const updated = await settingsService.updateOrderLimits(
+    warehouse._id,
+    {
+      minOrderAmountUsd: req.body.minOrderAmountUsd,
+      maxOrderAmountUsd: req.body.maxOrderAmountUsd,
+      requireDeliverySealPhoto: req.body.requireDeliverySealPhoto,
+      rateUsed: req.body.rateUsed,
+    },
+    { requireRateUsed: true }
+  );
   res.json({
     success: true,
     message: 'Settings updated.',

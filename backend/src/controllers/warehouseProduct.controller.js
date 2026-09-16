@@ -66,7 +66,11 @@ const search = asyncHandler(async (req, res) => {
 
 const create = asyncHandler(async (req, res) => {
   const warehouse = await loadWarehouseOrThrow(req.user._id);
-  const product = await warehouseProductService.createProduct(warehouse._id, req.body);
+  // The price was converted from SYP in the panel - it must carry the rate it
+  // used (exchangeRate.service.js's assertRateUsedIsCurrent).
+  const product = await warehouseProductService.createProduct(warehouse._id, req.body, {
+    requireRateUsed: true,
+  });
   res.status(201).json({
     success: true,
     message: 'Product created.',
@@ -76,11 +80,13 @@ const create = asyncHandler(async (req, res) => {
 
 const update = asyncHandler(async (req, res) => {
   const warehouse = await loadWarehouseOrThrow(req.user._id);
+  // Same rate rule as create, for a price that actually changes.
   const product = await warehouseProductService.updateProduct(
     req.params.id,
     warehouse._id,
     req.user._id,
-    req.body
+    req.body,
+    { requireRateUsed: true }
   );
   res.json({
     success: true,

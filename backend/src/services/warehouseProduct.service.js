@@ -10,6 +10,7 @@ const {
   escapeRegex,
 } = require('./productCatalog.service');
 const { registerManufacturers } = require('./warehouseManufacturer.service');
+const { assertRateUsedIsCurrent } = require('./exchangeRate.service');
 
 const WAREHOUSE_PRODUCTS_DEFAULT_LIMIT = 20;
 
@@ -221,11 +222,18 @@ async function searchPaginatedProductsForWarehouse(
 // product now. image stays optional/null for now - no upload provider is
 // wired up yet (same as the pharmacist-facing catalog), though a plain URL
 // can be pasted in if the warehouse already has one hosted somewhere.
-async function createProduct(warehouseId, data) {
+//
+// `priceUsd` is converted from the SYP the warehouse typed, so the request
+// must say at which rate (`rateUsed`) and that rate must still be the current
+// one - see exchangeRate.service.js's assertRateUsedIsCurrent.
+// `requireRateUsed` is set by the HTTP controller; a direct caller that sends
+// no rate is not checked.
+async function createProduct(warehouseId, data, { requireRateUsed = false } = {}) {
   validateRequiredStrings(data);
   await validateMasterProductId(data.masterProductId);
   await validateCategoryId(data.categoryId);
   validatePrice(data.priceUsd);
+  await assertRateUsedIsCurrent(data.rateUsed, { required: requireRateUsed });
 
   const manuallyDisabled = data.manuallyDisabled === true;
 
@@ -285,7 +293,12 @@ async function findOwnedProductOrThrow(productId, warehouseId) {
 // Shared by the warehouse's own update (below) and the admin's
 // (adminProduct.service.js) - only how the target product is found differs
 // (owned-by-me vs any product), not what happens to it once found.
-async function applyProductUpdate(product, userId, changes) {
+//
+// A NEW price was converted from SYP at the panel's rate, so it carries
+// `rateUsed` and is refused if that rate is no longer current (same rule as
+// createProduct). Re-sending the stored price unchanged depends on no rate and
+// needs none - the panel does exactly that for an untouched price field.
+async function applyProductUpdate(product, userId, changes, { requireRateUsed = false } = {}) {
   for (const [field, code] of REQUIRED_STRING_FIELDS) {
     if (changes[field] !== undefined) {
       if (typeof changes[field] !== 'string' || !changes[field].trim()) {
@@ -315,6 +328,9 @@ async function applyProductUpdate(product, userId, changes) {
   if (changes.priceUsd !== undefined) {
     validatePrice(changes.priceUsd);
     if (changes.priceUsd !== product.price) {
+      // Before the history entry or anything else lands - a refusal here
+      // leaves the document unsaved.
+      await assertRateUsedIsCurrent(changes.rateUsed, { required: requireRateUsed });
       product.priceHistory.push({
         oldPrice: product.price,
         newPrice: changes.priceUsd,
@@ -346,9 +362,9 @@ async function applyProductUpdate(product, userId, changes) {
   return applyResolvedIdentity(product);
 }
 
-async function updateProduct(productId, warehouseId, userId, changes) {
+async function updateProduct(productId, warehouseId, userId, changes, options) {
   const product = await findOwnedProductOrThrow(productId, warehouseId);
-  return applyProductUpdate(product, userId, changes);
+  return applyProductUpdate(product, userId, changes, options);
 }
 
 // Section 14 Part 2: bulk-adds/updates this warehouse's own products from an
