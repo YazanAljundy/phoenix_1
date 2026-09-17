@@ -156,30 +156,77 @@ test('a failed edit write emits nothing', async () => {
   assert.deepStrictEqual(emitted, []);
 });
 
-test('deleteOffer on a queued offer emits one offer.status.updated {deleted}', async () => {
+test('deleteOffer on a queued offer emits one offer.status.updated {deleted}, to admins only', async () => {
   offerModelStub.findOne = async () => buildOffer({ status: 'pending' });
   await warehouseOfferService.deleteOffer(OFFER_ID.toString(), WAREHOUSE_ID);
   assert.strictEqual(emitted.length, 1);
+  // The warehouse made this change itself - it must not echo back to its room.
+  assert.strictEqual(emitted[0].room, 'admin');
   assert.strictEqual(emitted[0].event, 'offer.status.updated');
   assert.strictEqual(emitted[0].payload.status, 'deleted');
 });
 
-test('approveOffer (new offer) emits one offer.status.updated {approved}', async () => {
+// An admin's decision reaches every admin AND the one warehouse that owns the
+// offer (it is waiting on that decision) - exactly once each, same payload.
+function assertAdminAndOwnerOnly(expectedStatus) {
+  const statusEvents = emitted.filter((e) => e.event === 'offer.status.updated');
+  assert.deepStrictEqual(
+    statusEvents.map((e) => e.room).sort(),
+    ['admin', `warehouse:${WAREHOUSE_ID}`],
+    'one event to admins and one to the owning warehouse, nowhere else'
+  );
+  for (const e of statusEvents) {
+    assert.strictEqual(e.payload.status, expectedStatus);
+    assert.strictEqual(e.payload.offerId, OFFER_ID.toString());
+    assert.strictEqual(e.payload.warehouseId, WAREHOUSE_ID.toString());
+  }
+}
+
+test('approveOffer (new offer) emits offer.status.updated {approved} to admins and the owning warehouse', async () => {
   offerModelStub.findOne = async () => buildOffer({ status: 'pending' });
   await adminOfferService.approveOffer(OFFER_ID.toString(), ADMIN_ID);
-  const statusEvents = emitted.filter((e) => e.event === 'offer.status.updated');
-  assert.strictEqual(statusEvents.length, 1);
-  assert.strictEqual(statusEvents[0].payload.status, 'approved');
+  assertAdminAndOwnerOnly('approved');
 });
 
-test('rejectOffer on a parked edit emits {update_rejected} and does not delete', async () => {
+test('rejectOffer on a parked edit emits {update_rejected} to both rooms and does not delete', async () => {
   let deleted = false;
   offerModelStub.findOne = async () =>
     buildOffer({ pendingUpdate: { productId: PRODUCT_ID }, deleteOne: async () => { deleted = true; } });
   await adminOfferService.rejectOffer(OFFER_ID.toString());
   assert.strictEqual(deleted, false, 'the live offer is kept');
-  assert.strictEqual(emitted.length, 1);
-  assert.strictEqual(emitted[0].payload.status, 'update_rejected');
+  assert.strictEqual(emitted.length, 2);
+  assertAdminAndOwnerOnly('update_rejected');
+});
+
+test('rejectOffer on a brand-new offer emits {rejected} to both rooms', async () => {
+  offerModelStub.findOne = async () => buildOffer({ status: 'pending' });
+  await adminOfferService.rejectOffer(OFFER_ID.toString());
+  assert.strictEqual(emitted.length, 2);
+  assertAdminAndOwnerOnly('rejected');
+});
+
+test('an admin edit emits the offer\'s current status to both rooms', async () => {
+  await adminOfferService.adminUpdateOffer(OFFER_ID.toString(), CREATE_PAYLOAD);
+  assert.strictEqual(emitted.length, 2);
+  assertAdminAndOwnerOnly('approved');
+});
+
+test('an admin delete emits {deleted} to both rooms', async () => {
+  await adminOfferService.adminDeleteOffer(OFFER_ID.toString());
+  assert.strictEqual(emitted.length, 2);
+  assertAdminAndOwnerOnly('deleted');
+});
+
+test('an admin edit refused for a parked edit emits nothing', async () => {
+  offerModelStub.findById = async () => buildOffer({ pendingUpdate: { productId: PRODUCT_ID } });
+  await assert.rejects(
+    () => adminOfferService.adminUpdateOffer(OFFER_ID.toString(), CREATE_PAYLOAD),
+    (err) => {
+      assert.strictEqual(err.code, 'OFFER_HAS_PENDING_UPDATE');
+      return true;
+    }
+  );
+  assert.deepStrictEqual(emitted, []);
 });
 
 test('a failed approve write emits nothing', async () => {

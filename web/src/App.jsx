@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './auth/AuthContext';
 import { LoginPage } from './auth/LoginPage';
 import { ExchangeRateProvider } from './context/ExchangeRateContext';
 import { RealtimeProvider } from './realtime/RealtimeProvider';
+import { UnreadBadgesProvider } from './realtime/UnreadBadgesProvider';
 import { AdminPanel } from './pages/AdminPanel';
 import { WarehousePanel } from './pages/WarehousePanel';
 
@@ -52,10 +53,15 @@ function Gate() {
   //
   // It sits inside the authenticated branch only, so an unauthenticated
   // visitor never opens a socket.
+  //
+  // The unread-badge store sits above both panels, so it keeps counting while
+  // pages mount and unmount.
   return (
     <ExchangeRateProvider>
       <RealtimeProvider>
-        {user?.role === 'warehouse' ? <WarehousePanel /> : <AdminPanel />}
+        <UnreadBadgesProvider>
+          {user?.role === 'warehouse' ? <WarehousePanel /> : <AdminPanel />}
+        </UnreadBadgesProvider>
       </RealtimeProvider>
     </ExchangeRateProvider>
   );

@@ -1068,6 +1068,34 @@ h2 {
   font-weight: var(--font-weight-subheading);
 }
 
+/* A link with an unread badge (realtime/unreadBadges.js): label at the start,
+   badge at the end, in both directions. Same padding as before, and the badge
+   is shorter than the line, so the link does not grow. */
+.wh-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.warehouse-shell .nav-badge {
+  background: var(--wh-red);
+}
+
+.wh-nav-link .nav-badge {
+  margin-inline-start: auto;
+}
+
+/* A group tab stays lit (orange) while one of its children is open, and can
+   still carry the other children's count - so the badge flips to white there. */
+.wh-nav-link.active .nav-badge {
+  background: #fff;
+  color: var(--wh-red);
+}
+
+.warehouse-shell .nav-menu-dot {
+  background: var(--wh-red);
+}
+
 /* — main column + topbar — */
 
 .wh-main {
@@ -1386,6 +1414,56 @@ a.adm-pill {
   display: inline-block;
   text-decoration: none;
   cursor: pointer;
+}
+
+/* Unread-changes count on a sidebar link or sub-nav pill
+   (components/NavBadge.jsx). Shared by both shells; each shell sets its own
+   red above. The negative block margin keeps its layout height (14px) under
+   every link's and pill's line height, so a badge never changes a tab's size.
+   The badge keeps the page direction (its margin-inline-* must resolve against
+   the link's side, not its own); only the number inside is LTR. */
+.nav-badge {
+  display: inline-block;
+  box-sizing: border-box;
+  flex: none;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  margin-block: -2px;
+  margin-inline-start: 6px;
+  border-radius: 999px;
+  background: #c62828;
+  color: #fff;
+  font-size: 11px;
+  font-weight: var(--font-weight-subheading);
+  line-height: 18px;
+  text-align: center;
+  vertical-align: middle;
+  font-variant-numeric: tabular-nums;
+}
+
+/* An isolated LTR run, so "99+" does not turn into "+99" in Arabic. */
+.nav-badge-count {
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+/* "Something in the menu is new" on the phone-width hamburger, where the
+   sidebar and its badges are off-canvas. */
+.wh-hamburger,
+.adm-hamburger {
+  position: relative;
+}
+
+.nav-menu-dot {
+  position: absolute;
+  top: 4px;
+  inset-inline-end: 4px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  background: #c62828;
 }
 
 /* The group row (Promotions / Financials / Feedback) is navigation, not a
@@ -2407,6 +2485,25 @@ a.adm-pill {
   border-inline-end-color: var(--adm-orange);
   color: #fff;
   font-weight: var(--font-weight-subheading);
+}
+
+/* Same unread-badge layout as .wh-nav-link. */
+.adm-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-shell .nav-badge {
+  background: var(--adm-red);
+}
+
+.adm-nav-link .nav-badge {
+  margin-inline-start: auto;
+}
+
+.admin-shell .nav-menu-dot {
+  background: var(--adm-red);
 }
 
 /* — main column + topbar — */

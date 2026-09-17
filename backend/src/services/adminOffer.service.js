@@ -8,7 +8,7 @@ const { applyResolvedIdentity } = require('./productCatalog.service');
 const { buildOfferFields } = require('./warehouseOffer.service');
 const { buildOfferListFilter, listPaginatedOffers, OFFER_REVIEW_FILTER } = require('./offer.service');
 const notificationService = require('./notification.service');
-const { emitToAdmins, EVENTS } = require('../realtime');
+const { emitToAdmins, emitToWarehouse, EVENTS } = require('../realtime');
 
 // adminOffer.viewmodel.js's serializers read, off the offer:
 // id/titleAr/titleEn/discountPercentage/startDate/endDate/isPermanent/status/
@@ -141,6 +141,20 @@ function applyPendingUpdate(offer) {
   offer.pendingUpdate = null;
 }
 
+// An admin's decision on (or edit/delete of) an offer. Every admin's queue
+// needs it, and so does the one warehouse that owns the offer - it is the
+// party waiting on the decision. Same payload to both rooms; the warehouse
+// room is taken from the stored offer, never from the request.
+function emitOfferStatus(offer, status) {
+  const payload = {
+    offerId: offer._id.toString(),
+    warehouseId: offer.warehouseId.toString(),
+    status,
+  };
+  emitToAdmins(EVENTS.OFFER_STATUS_UPDATED, payload);
+  emitToWarehouse(offer.warehouseId, EVENTS.OFFER_STATUS_UPDATED, payload);
+}
+
 async function notifyPharmaciesOfNewOffer(offer) {
   // Never lets a notification hiccup undo the approval that already succeeded.
   // sendToAll's own per-user rate limiting caps this at one 'offer' push per
@@ -186,11 +200,7 @@ async function approveOffer(offerId, userId) {
 
   // Clears this offer from every other admin's open queue. Emitted before the
   // best-effort FCM block below - the queue shouldn't wait on a slow fan-out.
-  emitToAdmins(EVENTS.OFFER_STATUS_UPDATED, {
-    offerId: offer._id.toString(),
-    warehouseId: offer.warehouseId.toString(),
-    status: 'approved',
-  });
+  emitOfferStatus(offer, 'approved');
 
   // Only a brand-new offer is a new deal to announce - re-approving an edit to
   // an already-live offer would just burn the pharmacy's one daily 'offer'
@@ -212,20 +222,12 @@ async function rejectOffer(offerId) {
   if (offer.pendingUpdate != null) {
     offer.pendingUpdate = null;
     await offer.save();
-    emitToAdmins(EVENTS.OFFER_STATUS_UPDATED, {
-      offerId: offer._id.toString(),
-      warehouseId: offer.warehouseId.toString(),
-      status: 'update_rejected',
-    });
+    emitOfferStatus(offer, 'update_rejected');
     return;
   }
 
   await offer.deleteOne();
-  emitToAdmins(EVENTS.OFFER_STATUS_UPDATED, {
-    offerId: offer._id.toString(),
-    warehouseId: offer.warehouseId.toString(),
-    status: 'rejected',
-  });
+  emitOfferStatus(offer, 'rejected');
 }
 
 // Section 6: the admin edits any offer directly - the admin IS the approval
@@ -249,11 +251,7 @@ async function adminUpdateOffer(offerId, data) {
   Object.assign(offer, fields);
   await offer.save();
 
-  emitToAdmins(EVENTS.OFFER_STATUS_UPDATED, {
-    offerId: offer._id.toString(),
-    warehouseId: offer.warehouseId.toString(),
-    status: offer.status,
-  });
+  emitOfferStatus(offer, offer.status);
 
   return offer;
 }
@@ -263,11 +261,7 @@ async function adminDeleteOffer(offerId) {
   const offer = await findAnyOfferOrThrow(offerId);
   await offer.deleteOne();
 
-  emitToAdmins(EVENTS.OFFER_STATUS_UPDATED, {
-    offerId: offer._id.toString(),
-    warehouseId: offer.warehouseId.toString(),
-    status: 'deleted',
-  });
+  emitOfferStatus(offer, 'deleted');
 }
 
 module.exports = {

@@ -68,7 +68,14 @@
     "commission": "العمولات",
     "promotions": "الترويج",
     "financials": "الحسابات المالية",
-    "feedback": "الملاحظات"
+    "feedback": "الملاحظات",
+    "unreadBadge_zero": "لا تحديثات جديدة",
+    "unreadBadge_one": "تحديث جديد واحد",
+    "unreadBadge_two": "تحديثان جديدان",
+    "unreadBadge_few": "{{count}} تحديثات جديدة",
+    "unreadBadge_many": "{{count}} تحديثاً جديداً",
+    "unreadBadge_other": "{{count}} تحديث جديد",
+    "openMenuWithUpdates": "فتح القائمة (يوجد جديد)"
   },
   "auth": {
     "phoneLabel": "رقم الهاتف",
@@ -693,7 +700,7 @@
       "rateValue": "1 دولار = {{rate}} ل.س",
       "lastUpdated": "آخر تحديث: {{date}}",
       "manualWarning": "⚠️ السعر يدوي — آخر تحديث {{date}}",
-      "disclaimer": "سعر الـ API مصدره المصرف المركزي السوري (رسمي) وقد يختلف عن سعر السوق الفعلي. استخدم التحديث اليدوي لو أردت عرض سعر السوق الموازية.",
+      "disclaimer": "السعر التلقائي هو سعر الدولار في السوق الموازية من LiraScope، وقد يختلف عن السعر الرسمي للمصرف المركزي السوري. استخدم التحديث اليدوي لتحديد سعر مختلف.",
       "manualUpdate": "تحديث يدوي",
       "resetToApi": "رجوع للـ API التلقائي",
       "enterPositive": "أدخل رقماً موجباً.",

@@ -145,6 +145,20 @@ async function findAnyAdvertisementOrThrow(advertisementId) {
   return advertisement;
 }
 
+// An admin's decision on (or edit/delete of) a package. Every admin's queue
+// needs it, and so does the one warehouse that owns the package - same two
+// rooms, and the same stored-warehouseId rule, as setAdvertisementAvailability
+// below.
+function emitAdvertisementStatus(advertisement, status) {
+  const payload = {
+    advertisementId: advertisement._id.toString(),
+    warehouseId: advertisement.warehouseId.toString(),
+    status,
+  };
+  emitToAdmins(EVENTS.ADVERTISEMENT_STATUS_UPDATED, payload);
+  emitToWarehouse(advertisement.warehouseId, EVENTS.ADVERTISEMENT_STATUS_UPDATED, payload);
+}
+
 async function approveAdvertisement(advertisementId, userId) {
   const advertisement = await findPendingAdvertisementOrThrow(advertisementId);
   advertisement.status = 'approved';
@@ -156,11 +170,7 @@ async function approveAdvertisement(advertisementId, userId) {
   // Clears it from every other admin's open queue. Emitted before the
   // best-effort fan-out below for the same reason approveOffer does: the queue
   // shouldn't wait on a slow push to every pharmacy.
-  emitToAdmins(EVENTS.ADVERTISEMENT_STATUS_UPDATED, {
-    advertisementId: advertisement._id.toString(),
-    warehouseId: advertisement.warehouseId.toString(),
-    status: 'approved',
-  });
+  emitAdvertisementStatus(advertisement, 'approved');
 
   // Never lets a notification hiccup undo the approval that already
   // succeeded. sendToAll's own per-user rate limiting caps the fan-out.
@@ -209,11 +219,7 @@ async function rejectAdvertisement(advertisementId, rejectionNote) {
   advertisement.approvedAt = null;
   await advertisement.save();
 
-  emitToAdmins(EVENTS.ADVERTISEMENT_STATUS_UPDATED, {
-    advertisementId: advertisement._id.toString(),
-    warehouseId: advertisement.warehouseId.toString(),
-    status: 'rejected',
-  });
+  emitAdvertisementStatus(advertisement, 'rejected');
 
   return advertisement;
 }
@@ -243,11 +249,7 @@ async function adminUpdateAdvertisement(advertisementId, data) {
     deleteImageByUrl(previousImageUrl);
   }
 
-  emitToAdmins(EVENTS.ADVERTISEMENT_STATUS_UPDATED, {
-    advertisementId: advertisement._id.toString(),
-    warehouseId: advertisement.warehouseId.toString(),
-    status: advertisement.status,
-  });
+  emitAdvertisementStatus(advertisement, advertisement.status);
 
   return advertisement;
 }
@@ -262,11 +264,7 @@ async function adminDeleteAdvertisement(advertisementId) {
     deleteImageByUrl(advertisement.imageUrl);
   }
 
-  emitToAdmins(EVENTS.ADVERTISEMENT_STATUS_UPDATED, {
-    advertisementId: advertisement._id.toString(),
-    warehouseId: advertisement.warehouseId.toString(),
-    status: 'deleted',
-  });
+  emitAdvertisementStatus(advertisement, 'deleted');
 }
 
 // The admin side of the pause switch: either direction, at any time, on any

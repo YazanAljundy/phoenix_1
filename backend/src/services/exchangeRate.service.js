@@ -1,4 +1,3 @@
-const env = require('../config/env');
 const { ApiError } = require('../utils/ApiError');
 const ExchangeRate = require('../models/exchangeRate.model');
 const ExchangeRateHistory = require('../models/exchangeRateHistory.model');
@@ -7,6 +6,19 @@ const financialAudit = require('./financialAudit.service');
 const SINGLETON_ID = 'singleton';
 const REFRESH_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24h
 const DAILY_REFRESH_HOUR = 9; // 09:00 server-local time
+
+// LiraScope's public endpoint - no key. `currencies=USD` is sent as documented
+// but the live API ignores it and returns every currency, so the parser below
+// filters for USD itself.
+const LIRASCOPE_LATEST_URL = 'https://lirascope.syria-cloud.sy/api/v1/rates/latest?currencies=USD';
+// The fetch runs from the daily tick, but also inside the admin's "reset to
+// API" request, which waits on it - so it must not hang.
+const PROVIDER_TIMEOUT_MS = 10 * 1000;
+// LiraScope keeps serving a currency's last quote when its feed stops (several
+// non-USD entries are months old), so an old timestamp is how a dead USD feed
+// shows up. A week comfortably spans a weekend without market updates.
+const MAX_RATE_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+const MAX_FUTURE_SKEW_MS = 60 * 60 * 1000;
 
 function validateUsdToSyp(usdToSyp) {
   if (typeof usdToSyp !== 'number' || !Number.isFinite(usdToSyp) || usdToSyp <= 0) {
@@ -71,25 +83,86 @@ async function captureFxSnapshot({ source = null } = {}) {
   };
 }
 
-// Open Exchange Rates' rates.SYP is the pre-redenomination lira - this app
-// prices everything in the "new" lira (old ÷ 100), so that conversion
-// happens right here, once, rather than at every read site.
+// Picks the USD parallel-market rate out of a LiraScope /rates/latest body.
+// The automatic rate is the market `mid` (product decision) - never
+// cbsRates (the official rate) or effectiveRates. LiraScope already quotes the
+// "new" (post-redenomination) lira, so the value is stored as-is.
+//
+// Throws on anything unusable, so the caller's fallback keeps the last stored
+// rate rather than overwriting it with a bad one.
+function parseLiraScopeUsdRate(data, now = new Date()) {
+  if (!data || typeof data !== 'object' || !Array.isArray(data.marketRates)) {
+    throw new Error('LiraScope response did not include marketRates.');
+  }
+  const entry = data.marketRates.find((r) => r && r.currency === 'USD');
+  if (!entry) {
+    throw new Error('LiraScope response did not include a USD market rate.');
+  }
+  const { mid, buy, sell, timestampUtc } = entry;
+  if (typeof mid !== 'number' || !Number.isFinite(mid) || mid <= 0) {
+    throw new Error(`LiraScope USD market rate is not a positive number (mid=${JSON.stringify(mid)}).`);
+  }
+  const asOfMs = typeof timestampUtc === 'string' ? Date.parse(timestampUtc) : NaN;
+  if (Number.isNaN(asOfMs)) {
+    throw new Error(`LiraScope USD market rate has an invalid timestamp (${JSON.stringify(timestampUtc)}).`);
+  }
+  if (now.getTime() - asOfMs > MAX_RATE_AGE_MS) {
+    throw new Error(`LiraScope USD market rate is stale (as of ${timestampUtc}).`);
+  }
+  if (asOfMs - now.getTime() > MAX_FUTURE_SKEW_MS) {
+    throw new Error(`LiraScope USD market rate is dated in the future (${timestampUtc}).`);
+  }
+  return {
+    usdToSyp: mid,
+    mid,
+    buy,
+    sell,
+    rateAsOf: new Date(asOfMs),
+    responseTimestampUtc: data.timestampUtc ?? null,
+  };
+}
+
 async function fetchRateFromApi() {
-  const url = `https://openexchangerates.org/api/latest.json?app_id=${env.exchangeRateApiKey}&symbols=SYP`;
-  const response = await fetch(url);
+  let response;
+  try {
+    response = await fetch(LIRASCOPE_LATEST_URL, {
+      headers: { Accept: 'application/json' },
+      signal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS),
+    });
+  } catch (err) {
+    if (err && err.name === 'TimeoutError') {
+      throw new Error(`LiraScope request timed out after ${PROVIDER_TIMEOUT_MS}ms.`);
+    }
+    throw new Error(`LiraScope request failed: ${err && err.message}`);
+  }
+
   if (!response.ok) {
-    throw new Error(`Open Exchange Rates request failed with status ${response.status}.`);
+    if (response.status === 429) {
+      const body = await response.json().catch(() => null);
+      const retryAfter = body && body.retryAfter != null ? ` (retry after ${body.retryAfter}s)` : '';
+      throw new Error(`LiraScope rate limit exceeded (HTTP 429)${retryAfter}.`);
+    }
+    throw new Error(`LiraScope request failed with status ${response.status}.`);
   }
-  const data = await response.json();
-  const oldLiraPerUsd = data && data.rates && data.rates.SYP;
-  if (typeof oldLiraPerUsd !== 'number' || !Number.isFinite(oldLiraPerUsd)) {
-    throw new Error('Open Exchange Rates response did not include a usable SYP rate.');
+
+  let data;
+  try {
+    data = await response.json();
+  } catch (err) {
+    if (err && err.name === 'TimeoutError') {
+      throw new Error(`LiraScope request timed out after ${PROVIDER_TIMEOUT_MS}ms.`);
+    }
+    throw new Error('LiraScope response was not valid JSON.');
   }
-  return oldLiraPerUsd / 100;
+
+  return {
+    ...parseLiraScopeUsdRate(data),
+    rateLimitRemaining: response.headers.get('x-rate-limit-remaining'),
+  };
 }
 
 async function fetchAndStoreFromApi() {
-  const usdToSyp = await fetchRateFromApi();
+  const { usdToSyp, rateAsOf, rateLimitRemaining } = await fetchRateFromApi();
   const previous = await getRate();
   const rate = await ExchangeRate.findByIdAndUpdate(
     SINGLETON_ID,
@@ -97,8 +170,11 @@ async function fetchAndStoreFromApi() {
     { upsert: true, new: true }
   );
   await recordRateChange({ usdToSyp, source: 'api', previousUsdToSyp: previous?.usdToSyp ?? null });
+  const quota = rateLimitRemaining != null ? ` [${rateLimitRemaining} requests left in LiraScope's window]` : '';
   // eslint-disable-next-line no-console
-  console.log(`Exchange rate updated from API: 1 USD = ${usdToSyp} SYP.`);
+  console.log(
+    `Exchange rate updated from LiraScope (market mid, rate as of ${rateAsOf.toISOString()}): 1 USD = ${usdToSyp} SYP.${quota}`
+  );
   return rate;
 }
 
@@ -108,7 +184,11 @@ async function fetchAndStoreFromApi() {
 // contract as the OTP/image providers elsewhere in this codebase.
 async function refreshFromApi() {
   const current = await getRate();
-  if (current && current.manualOverride) return;
+  if (current && current.manualOverride) {
+    // eslint-disable-next-line no-console
+    console.log('Exchange rate refresh skipped - an admin-set manual rate is pinned.');
+    return;
+  }
 
   try {
     await fetchAndStoreFromApi();
@@ -140,6 +220,11 @@ async function startScheduledRefresh() {
   const existing = await getRate();
   if (!existing) {
     await refreshFromApi();
+  } else {
+    // eslint-disable-next-line no-console
+    console.log(
+      `Exchange rate already stored (1 USD = ${existing.usdToSyp} SYP, ${existing.source}) - skipping the boot-time fetch.`
+    );
   }
 
   const { delayMs, next } = msUntilNextDailyRefresh();
@@ -229,4 +314,5 @@ module.exports = {
   startScheduledRefresh,
   setManualRate,
   resetToApi,
+  parseLiraScopeUsdRate,
 };

@@ -9,6 +9,8 @@ import {
   navItemTarget,
 } from '../utils/warehouseNav';
 import { LanguageToggle } from '../components/LanguageToggle';
+import { NavBadge } from '../components/NavBadge';
+import { useUnreadBadges } from '../realtime/UnreadBadgesProvider';
 import { WarehouseOrdersPage } from './WarehouseOrdersPage';
 import { WarehouseOrderDetailPage } from './WarehouseOrderDetailPage';
 import { WarehouseProductsPage } from './WarehouseProductsPage';
@@ -41,6 +43,14 @@ export function WarehousePanel() {
   const { user, warehouse, logout } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const { pathname } = useLocation();
+  // Per-tab "new since you last looked" counts - see realtime/unreadBadges.js.
+  // A group tab shows the sum of its children, which is what its pill row
+  // (WarehouseGroupSubNav) then breaks down.
+  const { countUnder, total: unreadTotal } = useUnreadBadges();
+  const navItemUnread = (item) =>
+    item.children
+      ? item.children.reduce((sum, child) => sum + countUnder(child.path), 0)
+      : countUnder(item.path);
 
   // Closing on every route change covers both a tab click and the
   // detail-page "back" buttons/browser back - anything that changes the
@@ -81,6 +91,7 @@ export function WarehousePanel() {
                 onClick={closeSidebar}
               >
                 {t(item.labelKey)}
+                <NavBadge count={navItemUnread(item)} />
               </Link>
             );
           })}
@@ -93,10 +104,12 @@ export function WarehousePanel() {
             <button
               type="button"
               className="wh-hamburger"
-              aria-label={t('nav.openMenu')}
+              aria-label={unreadTotal > 0 ? t('nav.openMenuWithUpdates') : t('nav.openMenu')}
               onClick={() => setIsSidebarOpen((open) => !open)}
             >
               &#9776;
+              {/* The sidebar - and its badges - is off-canvas on a phone. */}
+              {unreadTotal > 0 && <span className="nav-menu-dot" aria-hidden="true" />}
             </button>
             <div className="wh-topbar-title">
               {warehouse ? warehouse.nameEn : t('nav.warehouseTitleFallback')}

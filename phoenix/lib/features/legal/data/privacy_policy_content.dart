@@ -316,7 +316,7 @@ class PrivacyPolicyContent {
               'جهازك ومحتوى الرسالة).',
           'OpenStreetMap و Nominatim — بلاطات الخريطة وتحويل الإحداثيات إلى '
               'عنوان أثناء التسجيل (يستقبلان الإحداثيات وعنوان IP).',
-          'Open Exchange Rates — أسعار صرف العملات؛ لا تُرسَل أي بيانات شخصية.',
+          'LiraScope — أسعار صرف العملات؛ لا تُرسَل أي بيانات شخصية.',
           'Google Fonts — يُنزّل التطبيق خط «Cairo» وقت التشغيل من خوادم '
               'Google، والتي تستقبل عنوان IP لجهازك.',
           'مزوّد قاعدة البيانات ومزوّد استضافة الخادم — بنية تحتية تخزّن '
@@ -726,8 +726,7 @@ class PrivacyPolicyContent {
               'your device token and the message content).',
           'OpenStreetMap and Nominatim — map tiles and address lookup during '
               'registration (receive coordinates and IP address).',
-          'Open Exchange Rates — currency exchange rates; no personal data is '
-              'sent.',
+          'LiraScope — currency exchange rates; no personal data is sent.',
           'Google Fonts — the app downloads the "Cairo" font at runtime from '
               "Google’s servers, which receive your device’s IP "
               'address.',
