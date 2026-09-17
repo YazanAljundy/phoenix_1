@@ -12,6 +12,10 @@ const EVENTS = {
   ORDER_STATUS_UPDATED: 'order.status.updated',
   RETURN_CREATED: 'return.created',
   RETURN_STATUS_UPDATED: 'return.status.updated',
+  // A pharmacy rated the warehouse on a delivered order. Pharmacy->warehouse
+  // reviews are visible immediately (review.service.js), so the warehouse's
+  // Reviews page has a new row the moment this fires.
+  REVIEW_CREATED: 'review.created',
 
   // Admin-room events. These mirror the three queues the admin panel actually
   // has a page for - accounts awaiting approval, offers awaiting moderation,
@@ -23,6 +27,13 @@ const EVENTS = {
   // routes/admin.routes.js), so there is nothing for such an event to refresh -
   // routing them to admins would push every warehouse's activity into a room
   // with no consumer.
+  //
+  // The three moderation STATUS_UPDATED events below (offer / banner /
+  // advertisement) are ALSO sent to the owning warehouse's room when an admin
+  // decides, edits or deletes that warehouse's item - the warehouse is the one
+  // waiting on that decision (see adminOffer/adminBanner/adminAdvertisement
+  // .service.js). A warehouse's own delete still goes to admins only, so it
+  // never echoes back to the warehouse that made it.
   ACCOUNT_PENDING: 'account.pending',
   ACCOUNT_STATUS_UPDATED: 'account.status.updated',
   OFFER_PENDING: 'offer.pending',

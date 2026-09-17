@@ -4,6 +4,7 @@ import { api } from '../api/client';
 import { StarRating } from '../components/StarRating';
 import { LoadMoreControl } from '../components/LoadMoreControl';
 import { usePaginatedData } from '../hooks/usePaginatedData';
+import { REALTIME_EVENTS, useRealtimeSync } from '../realtime/useRealtimeSync';
 import { WarehouseGroupSubNav } from '../components/WarehouseGroupSubNav';
 
 const PAGE_SIZE = 15;
@@ -45,6 +46,10 @@ export function WarehouseReviewsPage() {
     reset();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ratingFilter]);
+
+  // A pharmacy rating this warehouse adds a visible review at once. reset()
+  // re-reads page one, and with it the average/total/distribution.
+  useRealtimeSync([REALTIME_EVENTS.REVIEW_CREATED], () => reset());
 
   // Clicking the star row that's already active clears back to "all" -
   // a toggle, not a one-way drill-down.

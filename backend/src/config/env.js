@@ -80,5 +80,4 @@ module.exports = {
     apiSecret: process.env.CLOUDINARY_API_SECRET || '',
   },
   imageApiKey: process.env.IMAGE_API_KEY || '',
-  exchangeRateApiKey: process.env.EXCHANGE_RATE_API_KEY || '',
 };

@@ -68,7 +68,10 @@
     "commission": "Commission",
     "promotions": "Promotions",
     "financials": "Financials",
-    "feedback": "Feedback"
+    "feedback": "Feedback",
+    "unreadBadge_one": "{{count}} new update",
+    "unreadBadge_other": "{{count}} new updates",
+    "openMenuWithUpdates": "Open menu (new updates)"
   },
   "auth": {
     "phoneLabel": "Phone number",
@@ -681,7 +684,7 @@
       "rateValue": "1 USD = {{rate}} SYP",
       "lastUpdated": "Last updated: {{date}}",
       "manualWarning": "⚠️ Manual rate — last updated {{date}}",
-      "disclaimer": "The API rate is sourced from the Syrian Central Bank (official) and may differ from the actual market rate. Use the manual override to show the parallel market rate instead.",
+      "disclaimer": "The automatic rate is the parallel-market USD rate from LiraScope and may differ from the Syrian Central Bank's official rate. Use the manual override to set a different rate.",
       "manualUpdate": "Manual update",
       "resetToApi": "Back to automatic API",
       "enterPositive": "Enter a positive number.",

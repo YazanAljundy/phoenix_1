@@ -342,9 +342,9 @@ describe('admin events', () => {
     // Each event name gets its own timer: one refetch per affected page, not
     // one per event and not one shared across unrelated pages.
     expect(accounts).toHaveBeenCalledTimes(1);
-    expect(accounts).toHaveBeenCalledWith({ userId: 'u-4' }, 5);
+    expect(accounts).toHaveBeenCalledWith({ userId: 'u-4' }, 5, expect.any(Array));
     expect(offers).toHaveBeenCalledTimes(1);
-    expect(offers).toHaveBeenCalledWith({ offerId: 'of-4' }, 5);
+    expect(offers).toHaveBeenCalledWith({ offerId: 'of-4' }, 5, expect.any(Array));
   });
 });
 
@@ -377,7 +377,29 @@ describe('coalescing', () => {
 
     // Three orders arrived; the "N new orders" cue must say 3, not 1.
     expect(handler).toHaveBeenCalledTimes(1);
-    expect(handler).toHaveBeenCalledWith({ orderId: 'o3' }, 3);
+    expect(handler).toHaveBeenCalledWith({ orderId: 'o3' }, 3, expect.any(Array));
+  });
+
+  it('hands over every payload in the batch, oldest first', () => {
+    const client = new RealtimeClient({ factory, url: 'http://test', coalesceMs: 400 });
+    client.connect('token-1');
+    const handler = vi.fn();
+    client.on('order.created', handler);
+
+    sockets[0].fire('order.created', { orderId: 'o1' });
+    sockets[0].fire('order.created', { orderId: 'o2' });
+    // A duplicate is dropped before it ever joins the batch.
+    sockets[0].fire('order.created', { orderId: 'o1' });
+    sockets[0].fire('order.created', { orderId: 'o3' });
+    vi.advanceTimersByTime(400);
+
+    // The unread badges count entities, so they need all three ids - the
+    // first argument alone would only ever show o3.
+    expect(handler).toHaveBeenCalledWith({ orderId: 'o3' }, 3, [
+      { orderId: 'o1' },
+      { orderId: 'o2' },
+      { orderId: 'o3' },
+    ]);
   });
 
   it('the count resets for the next batch', () => {
@@ -392,8 +414,9 @@ describe('coalescing', () => {
     sockets[0].fire('order.created', { orderId: 'o3' });
     vi.advanceTimersByTime(400);
 
-    expect(handler).toHaveBeenNthCalledWith(1, { orderId: 'o2' }, 2);
-    expect(handler).toHaveBeenNthCalledWith(2, { orderId: 'o3' }, 1);
+    expect(handler).toHaveBeenNthCalledWith(1, { orderId: 'o2' }, 2, [{ orderId: 'o1' }, { orderId: 'o2' }]);
+    // The payload list resets with the count - o1/o2 are not carried over.
+    expect(handler).toHaveBeenNthCalledWith(2, { orderId: 'o3' }, 1, [{ orderId: 'o3' }]);
   });
 });
 

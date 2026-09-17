@@ -9,11 +9,13 @@ import 'package:feniq/core/services/storage_service.dart';
 import 'package:feniq/core/theme/dark_theme.dart';
 import 'package:feniq/core/theme/light_theme.dart';
 import 'package:feniq/core/widgets/empty_view.dart';
+import 'package:feniq/core/widgets/quantity_stepper.dart';
 import 'package:feniq/features/advertisements/data/models/advertisement_model.dart';
 import 'package:feniq/features/advertisements/data/repositories/advertisements_repository.dart';
 import 'package:feniq/features/cart/data/repositories/order_repository.dart';
 import 'package:feniq/features/cart/presentation/managers/cart_cubit.dart';
 import 'package:feniq/features/catalog/data/models/manufacturers_route_args.dart';
+import 'package:feniq/features/catalog/data/models/product_model.dart';
 import 'package:feniq/features/exchange_rate/data/models/exchange_rate_model.dart';
 import 'package:feniq/features/exchange_rate/data/repositories/exchange_rate_repository.dart';
 import 'package:feniq/features/exchange_rate/presentation/managers/exchange_rate_cubit.dart';
@@ -66,6 +68,11 @@ void main() {
 
     when(() => exchangeRateRepository.getExchangeRate())
         .thenAnswer((_) async => ExchangeRateModel(usdToSyp: 15000));
+    // CartCubit fetches the warehouse's order limits whenever the cart binds
+    // to a warehouse and swallows any failure - the limits are not what these
+    // tests are about.
+    when(() => warehouseRepository.getWarehouseProfile(any()))
+        .thenAnswer((_) async => throw Exception('limits fetch not exercised here'));
 
     cartCubit = CartCubit(
       orderRepository: _MockOrderRepository(),
@@ -206,7 +213,10 @@ void main() {
       expect(find.text('Offer Two'), findsNothing);
     });
 
-    testWidgets('a tapped offer takes the existing catalog hand-off, into this warehouse', (
+    // The add path, copied from the catalog: the pre-add quantity sheet, then
+    // CartCubit.addProduct. Tapping an offer no longer hands off to the
+    // manufacturer -> catalog flow to find the same product again.
+    testWidgets('a tapped offer goes into the cart, not into the manufacturers hand-off', (
       tester,
     ) async {
       stubOffers([
@@ -216,10 +226,136 @@ void main() {
       await pumpView(tester);
       await tester.tap(find.byType(PromotionListCard));
       await tester.pumpAndSettle();
+      // The app's existing pre-add sheet, exactly as the catalog opens it.
+      await tester.tap(find.text('Add'));
+      await tester.pumpAndSettle();
 
-      expect(find.text('MANUFACTURERS'), findsOneWidget);
-      expect(tappedWarehouseId, 'W1');
-      expect(tappedManufacturer, 'شركة الاختبار');
+      expect(find.text('MANUFACTURERS'), findsNothing);
+      expect(tappedWarehouseId, isNull);
+      expect(tappedManufacturer, isNull);
+      expect(cartCubit.state.items, hasLength(1));
+      // The PRODUCT's id, not the offer's - so the same product added from the
+      // catalog lands on this very line.
+      expect(cartCubit.state.items.single.productId, 'p-o1');
+      expect(cartCubit.state.items.single.quantity, 1);
+      expect(cartCubit.state.warehouseId, 'W1');
+      expect(cartCubit.state.warehouseName, 'Warehouse One');
+    });
+
+    testWidgets('the cart line is priced at the offer price, not the list price', (tester) async {
+      stubOffers([
+        offer(id: 'o1', warehouseId: 'W1', priceUsd: 10, discountPercentage: 20),
+      ]);
+
+      await pumpView(tester);
+      await tester.tap(find.byType(PromotionListCard));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Add'));
+      await tester.pumpAndSettle();
+
+      final line = cartCubit.state.items.single;
+      expect(line.discountPriceUsd, 8);
+      expect(line.unitPriceUsd, 10);
+      expect(line.hasOffer, isTrue);
+    });
+
+    testWidgets('the card carries the catalog\'s own add button, running the same flow', (
+      tester,
+    ) async {
+      stubOffers([offer(id: 'o1', warehouseId: 'W1')]);
+
+      await pumpView(tester);
+      expect(find.text('Add to cart'), findsOneWidget);
+
+      await tester.tap(find.text('Add to cart'));
+      await tester.pumpAndSettle();
+      // Step the sheet to 2, then confirm - the catalog's exact flow.
+      await tester.tap(find.byIcon(Icons.add));
+      await tester.pump();
+      await tester.tap(find.text('Add'));
+      await tester.pumpAndSettle();
+
+      expect(cartCubit.state.items.single.quantity, 2);
+    });
+
+    testWidgets('once in the cart the slot is a stepper and the card stops adding', (tester) async {
+      stubOffers([offer(id: 'o1', warehouseId: 'W1')]);
+
+      await pumpView(tester);
+      await tester.tap(find.byType(PromotionListCard));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Add'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(QuantityStepper), findsOneWidget);
+      expect(find.text('Add to cart'), findsNothing);
+
+      // The stepper owns the quantity from here - a tap on the card body adds
+      // nothing and opens no sheet (the catalog has no add action left either).
+      await tester.tap(find.byType(PromotionListCard));
+      await tester.pumpAndSettle();
+      expect(find.text('Add'), findsNothing);
+      expect(cartCubit.state.items.single.quantity, 1);
+
+      // ...and it is wired straight to the cart.
+      await tester.tap(find.byIcon(Icons.add));
+      await tester.pumpAndSettle();
+      expect(cartCubit.state.items.single.quantity, 2);
+    });
+
+    testWidgets('a cart from another warehouse runs the existing conflict confirmation', (
+      tester,
+    ) async {
+      stubOffers([offer(id: 'o1', warehouseId: 'W1')]);
+      cartCubit.addProduct(
+        const ProductModel(
+          id: 'p-other',
+          nameAr: 'دواء آخر',
+          nameEn: 'Other product',
+          manufacturerAr: 'شركة',
+          priceUsd: 5,
+          discountPriceUsd: 5,
+          isAvailable: true,
+          hasActiveOffer: false,
+        ),
+        warehouseId: 'W2',
+        warehouseName: 'Warehouse Two',
+        quantity: 3,
+      );
+
+      await pumpView(tester);
+      await tester.tap(find.byType(PromotionListCard));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Add'));
+      await tester.pumpAndSettle();
+
+      // The project's own cross-warehouse copy (CatalogView), not a new dialog.
+      expect(find.text('Start a new cart?'), findsOneWidget);
+      expect(find.textContaining('Warehouse Two'), findsOneWidget);
+      // Nothing is touched until it is confirmed.
+      expect(cartCubit.state.warehouseId, 'W2');
+
+      await tester.tap(find.text('Start new cart'));
+      await tester.pumpAndSettle();
+
+      expect(cartCubit.state.warehouseId, 'W1');
+      expect(cartCubit.state.items.single.productId, 'p-o1');
+    });
+
+    testWidgets('an unavailable offer is listed, faded, and cannot be added', (tester) async {
+      stubOffers([offer(id: 'o1', warehouseId: 'W1', titleEn: 'Offer One', isAvailable: false)]);
+
+      await pumpView(tester);
+
+      expect(find.text('Offer One'), findsOneWidget);
+      expect(find.text('Unavailable'), findsOneWidget);
+      expect(find.text('Add to cart'), findsNothing);
+
+      await tester.tap(find.byType(PromotionListCard));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Add'), findsNothing);
+      expect(cartCubit.state.items, isEmpty);
     });
 
     testWidgets('nothing running here shows the calm empty state', (tester) async {

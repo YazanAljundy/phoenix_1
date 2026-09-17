@@ -3,6 +3,7 @@ const { ApiError } = require('../utils/ApiError');
 const Review = require('../models/review.model');
 const Order = require('../models/order.model');
 const Warehouse = require('../models/warehouse.model');
+const { emitToWarehouse, EVENTS } = require('../realtime');
 
 // Section 8/13b: reviews a pharmacy received FROM warehouses - always
 // visible immediately (only the reverse direction, pharmacy->warehouse, is
@@ -77,6 +78,15 @@ async function createWarehouseReview(pharmacyId, userId, { orderId, rating, comm
     rating,
     comment: typeof comment === 'string' && comment.trim() ? comment.trim() : null,
     isVisible: true,
+  });
+
+  // Post-write and best-effort (emitToWarehouse never throws): the rated
+  // warehouse's Reviews page has a new visible row. Id-only, like every other
+  // realtime signal - the page re-reads the list over HTTP.
+  emitToWarehouse(review.warehouseId, EVENTS.REVIEW_CREATED, {
+    reviewId: review._id.toString(),
+    orderId: review.orderId.toString(),
+    warehouseId: review.warehouseId.toString(),
   });
 
   return review;

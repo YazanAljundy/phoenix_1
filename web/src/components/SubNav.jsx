@@ -1,4 +1,6 @@
 import { NavLink } from 'react-router-dom';
+import { useUnreadBadges } from '../realtime/UnreadBadgesProvider';
+import { NavBadge } from './NavBadge';
 
 // One row of route-driven sub-tabs, rendered with the panel's existing pill
 // styling. Extracted from AdvertisementsSubNav when the warehouse sidebar
@@ -15,8 +17,13 @@ import { NavLink } from 'react-router-dom';
 // warehouse sidebar shell, 'adm' for the admin top-tab shell. No new design
 // language: these are the classes WarehouseOrdersPage and AccountsPage already
 // use for their own pill rows.
+//
+// Each pill carries the unread badge for everything under its own URL, so every
+// row built on this (group children, General/Packages) gets badges with no code
+// of its own. Outside UnreadBadgesProvider every count is 0 and nothing renders.
 export function SubNav({ links, variant, className }) {
   const prefix = variant === 'adm' ? 'adm' : 'wh';
+  const { countUnder } = useUnreadBadges();
 
   return (
     <div className={`${prefix}-pills${className ? ` ${className}` : ''}`}>
@@ -27,6 +34,7 @@ export function SubNav({ links, variant, className }) {
           className={({ isActive }) => `${prefix}-pill${isActive ? ' active' : ''}`}
         >
           {link.label}
+          <NavBadge count={countUnder(link.to)} />
         </NavLink>
       ))}
     </div>

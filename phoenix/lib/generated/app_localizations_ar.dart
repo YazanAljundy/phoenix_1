@@ -162,7 +162,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get forgotPasswordSupportMessage =>
-      'مرحباً، أريد استعادة كلمة المرور لحسابي. اسم الصيدلية/المستودع: ___ رقم الهاتف المسجّل: ___';
+      'مرحباً، أريد استعادة كلمة المرور لحسابي. اسم الصيدلية: ___ رقم الهاتف المسجّل: ___';
 
   @override
   String whatsAppUnavailable(String phone) {

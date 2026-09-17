@@ -1,3 +1,5 @@
+import 'package:feniq/features/catalog/data/models/product_model.dart';
+
 /// One currently-running product offer, as GET /offers/active returns it.
 ///
 /// The server only ever sends approved offers inside their own date window
@@ -72,6 +74,36 @@ class OfferModel {
   }
 
   bool get hasSaving => discountPriceUsd < priceUsd;
+
+  /// The discounted product as the catalog's own [ProductModel], so an offer
+  /// can go into the cart through the very same path a catalog product does
+  /// (CartCubit.addProduct -> CartItem.fromProduct) instead of a second
+  /// offer-shaped one.
+  ///
+  /// Nothing is computed here - the offer listing already carries every field
+  /// the catalog listing does, priced by the same server function - and in
+  /// particular [discountPriceUsd] stays the price the pharmacist pays, so the
+  /// cart line is the offer price and never the list price.
+  ///
+  /// [id] is the PRODUCT's id, not the offer's: it is what identifies a cart
+  /// line (CartItem.lineKey), so the same product added from here and from the
+  /// catalog lands on one line rather than two. `categoryId` is null because
+  /// the offer listing does not carry one; nothing on the cart path reads it.
+  ProductModel toCartProduct() => ProductModel(
+    id: productId,
+    nameAr: nameAr,
+    nameEn: nameEn,
+    manufacturerAr: manufacturerAr,
+    manufacturerEn: manufacturerEn,
+    image: image,
+    unitAr: unitAr,
+    unitEn: unitEn,
+    priceUsd: priceUsd,
+    discountPriceUsd: discountPriceUsd,
+    isAvailable: isAvailable,
+    // It is an offer, by construction.
+    hasActiveOffer: true,
+  );
 
   factory OfferModel.fromJson(Map<String, dynamic> json) => OfferModel(
     id: json['id'] as String,

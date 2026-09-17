@@ -227,18 +227,22 @@ export class RealtimeClient {
       clearTimeout(existing.timer);
     }
     // How many distinct events this one refresh stands for. Subscribers get
-    // it as a third argument so a "3 new orders arrived" cue can stay honest
+    // it as a second argument so a "3 new orders arrived" cue can stay honest
     // even though the three events collapsed into a single refetch.
     const count = (existing?.count ?? 0) + 1;
+    // Every payload in the batch, oldest first - the first argument is only
+    // the last of them. The unread-badge store needs each entity id, not just
+    // the most recent one (see unreadBadges.js).
+    const payloads = [...(existing?.payloads ?? []), payload];
 
     const timer = setTimeout(() => {
       this._timers.delete(event);
       for (const handler of this._handlers.get(event) ?? []) {
-        safely(() => handler(payload, count));
+        safely(() => handler(payload, count, payloads));
       }
     }, this._coalesceMs);
 
-    this._timers.set(event, { timer, count });
+    this._timers.set(event, { timer, count, payloads });
   }
 }
 

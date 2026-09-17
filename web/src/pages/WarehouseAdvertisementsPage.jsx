@@ -84,9 +84,13 @@ export function WarehouseAdvertisementsPage() {
     load();
   }, [load]);
 
-  // An admin re-enabling (or pausing) one of this warehouse's packages is the
-  // one change to this list that happens somewhere else - re-read it then.
-  useRealtimeSync([REALTIME_EVENTS.ADVERTISEMENT_AVAILABILITY_UPDATED], () => load());
+  // The changes to this list that happen somewhere else: an admin pausing or
+  // re-enabling a package, and an admin approving, rejecting, editing or
+  // deleting one - re-read it then.
+  useRealtimeSync(
+    [REALTIME_EVENTS.ADVERTISEMENT_AVAILABILITY_UPDATED, REALTIME_EVENTS.ADVERTISEMENT_STATUS_UPDATED],
+    () => load()
+  );
 
   const statusBadge = (status) => {
     const className =

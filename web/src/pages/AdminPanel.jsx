@@ -3,6 +3,8 @@ import { Navigate, NavLink, Route, Routes } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../auth/AuthContext';
 import { LanguageToggle } from '../components/LanguageToggle';
+import { NavBadge } from '../components/NavBadge';
+import { useUnreadBadges } from '../realtime/UnreadBadgesProvider';
 import { AdminDashboardPage } from './AdminDashboardPage';
 import { AccountsPage } from './AccountsPage';
 import { AdminOffersPage } from './AdminOffersPage';
@@ -28,6 +30,8 @@ export function AdminPanel() {
   const { t } = useTranslation();
   const { user, logout } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  // Per-tab "new since you last looked" counts - see realtime/unreadBadges.js.
+  const { countUnder, total: unreadTotal } = useUnreadBadges();
 
   const TABS = [
     { path: '/admin/dashboard', label: t('nav.dashboard') },
@@ -68,6 +72,7 @@ export function AdminPanel() {
           {TABS.map((tab) => (
             <NavLink key={tab.path} to={tab.path} className={navLinkClassName} onClick={closeSidebar}>
               {tab.label}
+              <NavBadge count={countUnder(tab.path)} />
             </NavLink>
           ))}
         </nav>
@@ -79,10 +84,12 @@ export function AdminPanel() {
             <button
               type="button"
               className="adm-hamburger"
-              aria-label={t('nav.openMenu')}
+              aria-label={unreadTotal > 0 ? t('nav.openMenuWithUpdates') : t('nav.openMenu')}
               onClick={() => setIsSidebarOpen((open) => !open)}
             >
               &#9776;
+              {/* The sidebar - and its badges - is off-canvas on a phone. */}
+              {unreadTotal > 0 && <span className="nav-menu-dot" aria-hidden="true" />}
             </button>
             <div className="adm-topbar-title">{t('nav.adminTitle')}</div>
           </div>

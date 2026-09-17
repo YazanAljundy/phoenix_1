@@ -65,7 +65,8 @@ export const WAREHOUSE_NAV_GROUPS = WAREHOUSE_NAV.filter((item) => Boolean(item.
 // Whole-segment prefix match, the same rule NavLink uses without `end`: it has
 // to cover the detail routes (/orders/:id, /returns/:id, /complaints/:id,
 // /advertisements/general) without also matching "/warehouse/ordersomething".
-function isUnder(pathname, path) {
+// Also the rule realtime/unreadBadges.js uses for both panels' badges.
+export function isUnder(pathname, path) {
   return pathname === path || pathname.startsWith(`${path}/`);
 }
 

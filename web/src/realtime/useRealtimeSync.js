@@ -48,13 +48,19 @@ export const REALTIME_EVENTS = {
   ORDER_STATUS_UPDATED: 'order.status.updated',
   RETURN_CREATED: 'return.created',
   RETURN_STATUS_UPDATED: 'return.status.updated',
+  // A pharmacy rated this warehouse.
+  REVIEW_CREATED: 'review.created',
 
-  // Admin panel (room: admin). Subscribing to one of these from the warehouse
-  // panel would be harmless but pointless - the server never puts a warehouse
-  // connection in the admin room, so nothing would ever arrive.
+  // Admin panel (room: admin). Subscribing to account/offer/banner/
+  // advertisement *pending* events from the warehouse panel would be harmless
+  // but pointless - the server never puts a warehouse connection in the admin
+  // room, so nothing would ever arrive.
   ACCOUNT_PENDING: 'account.pending',
   ACCOUNT_STATUS_UPDATED: 'account.status.updated',
   OFFER_PENDING: 'offer.pending',
+  // The three moderation STATUS_UPDATED events also reach the warehouse panel:
+  // an admin's decision, edit or delete is sent to the owning warehouse's room
+  // too (never a warehouse's own change).
   OFFER_STATUS_UPDATED: 'offer.status.updated',
   BANNER_PENDING: 'banner.pending',
   BANNER_STATUS_UPDATED: 'banner.status.updated',

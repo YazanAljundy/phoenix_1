@@ -4,6 +4,7 @@ import { api } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 import { LoadMoreControl } from '../components/LoadMoreControl';
 import { usePaginatedData } from '../hooks/usePaginatedData';
+import { REALTIME_EVENTS, useRealtimeSync } from '../realtime/useRealtimeSync';
 import { AdvertisementsSubNav } from '../components/AdvertisementsSubNav';
 import { WarehouseGroupSubNav } from '../components/WarehouseGroupSubNav';
 import { withArFallback } from '../utils/displayName';
@@ -244,6 +245,10 @@ export function WarehouseBannersPage() {
     reset();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter]);
+
+  // An admin approving or rejecting one of these banners happens somewhere
+  // else - re-read the current page one when it does.
+  useRealtimeSync([REALTIME_EVENTS.BANNER_STATUS_UPDATED], () => reset());
 
   const handleBannerCreated = (bannerNumber) => {
     setShowCreateBanner(false);

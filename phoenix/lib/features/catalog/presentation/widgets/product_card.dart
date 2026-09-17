@@ -5,6 +5,7 @@ import 'package:feniq/core/constants/app_radius.dart';
 import 'package:feniq/core/constants/app_sizes.dart';
 import 'package:feniq/core/extensions/build_context_extensions.dart';
 import 'package:feniq/core/utils/currency_formatter.dart';
+import 'package:feniq/core/widgets/add_to_cart_button.dart';
 import 'package:feniq/core/widgets/app_network_image.dart';
 import 'package:feniq/core/widgets/custom_card.dart';
 import 'package:feniq/core/widgets/quantity_stepper.dart';
@@ -154,7 +155,7 @@ class _GridCard extends StatelessWidget {
                     ),
                   )
                 else
-                  _AddButton(available: product.isAvailable, onTap: onAddTap),
+                  AddToCartButton(available: product.isAvailable, onTap: onAddTap),
               ],
             ),
           ),
@@ -230,60 +231,8 @@ class _ListRow extends StatelessWidget {
               onBelowMin: onCartRemove,
             )
           else
-            _AddButton(available: true, onTap: onAddTap, compact: true),
+            AddToCartButton(available: true, onTap: onAddTap, compact: true),
         ],
-      ),
-    );
-  }
-}
-
-class _AddButton extends StatelessWidget {
-  const _AddButton({required this.available, required this.onTap, this.compact = false});
-
-  final bool available;
-  final VoidCallback onTap;
-  final bool compact;
-
-  @override
-  Widget build(BuildContext context) {
-    final l10n = context.l10n;
-    final style = FilledButton.styleFrom(
-      backgroundColor: AppColors.primaryOf(context).withValues(alpha: 0.12),
-      foregroundColor: AppColors.primaryOf(context),
-      disabledBackgroundColor: AppColors.borderOf(context),
-      shape: const RoundedRectangleBorder(borderRadius: AppRadius.small),
-      padding: compact
-          ? const EdgeInsets.symmetric(horizontal: AppSizes.spacingSmall + AppSizes.spacingXSmall)
-          : const EdgeInsets.symmetric(vertical: 8),
-      elevation: 0,
-    );
-
-    // The list row's button used to be a bare "+" icon. It now says what it
-    // does - the same button, callback and tinted style, only a labelled pill
-    // in place of the circle, about as wide as the in-cart stepper that takes
-    // its slot once the product is added.
-    if (compact) {
-      return SizedBox(
-        height: 40,
-        child: FilledButton(
-          onPressed: available ? onTap : null,
-          style: style,
-          child: Text(
-            l10n.addToCartFullButton,
-            maxLines: 1,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-          ),
-        ),
-      );
-    }
-
-    return SizedBox(
-      width: double.infinity,
-      child: FilledButton.icon(
-        onPressed: available ? onTap : null,
-        icon: const Icon(Icons.add_shopping_cart_outlined, size: 16),
-        label: Text(l10n.addToCartButton, style: const TextStyle(fontSize: 12)),
-        style: style,
       ),
     );
   }

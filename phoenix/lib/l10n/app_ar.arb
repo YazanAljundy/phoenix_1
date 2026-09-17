@@ -55,7 +55,7 @@
   "passwordLoginSubtitle": "أدخل رقم هاتفك وكلمة السر",
   "backToRegistrationLink": "جديد هون؟ أنشئ حساب",
   "forgotPasswordSupportLink": "نسيت كلمة المرور؟ تواصل مع الدعم عبر واتساب",
-  "forgotPasswordSupportMessage": "مرحباً، أريد استعادة كلمة المرور لحسابي. اسم الصيدلية/المستودع: ___ رقم الهاتف المسجّل: ___",
+  "forgotPasswordSupportMessage": "مرحباً، أريد استعادة كلمة المرور لحسابي. اسم الصيدلية: ___ رقم الهاتف المسجّل: ___",
   "whatsAppUnavailable": "تعذّر فتح واتساب. رقم الدعم: {phone}",
   "@whatsAppUnavailable": {
     "placeholders": {

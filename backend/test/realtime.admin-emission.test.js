@@ -285,7 +285,9 @@ test('block/unblock on an unknown account emits nothing', async () => {
 
 // --- Banners ---------------------------------------------------------------
 
-test('approveBanner emits exactly one banner.status.updated, to admins', async () => {
+// buildBanner() has no warehouseId - an admin-created banner - so a decision
+// on it has no warehouse to tell and must reach admins only.
+test('approveBanner on an admin banner emits exactly one banner.status.updated, to admins', async () => {
   await adminBannerService.approveBanner(BANNER_ID.toString(), ADMIN_ID);
 
   assert.strictEqual(emitted.length, 1);
@@ -295,12 +297,33 @@ test('approveBanner emits exactly one banner.status.updated, to admins', async (
   assert.strictEqual(emitted[0].payload.status, 'approved');
 });
 
-test('rejectBanner emits exactly one banner.status.updated, to admins', async () => {
+test('rejectBanner on an admin banner emits exactly one banner.status.updated, to admins', async () => {
   await adminBannerService.rejectBanner(BANNER_ID.toString(), 'wrong dimensions');
 
   assert.strictEqual(emitted.length, 1);
+  assert.strictEqual(emitted[0].room, 'admin');
   assert.strictEqual(emitted[0].payload.status, 'rejected');
 });
+
+// A warehouse-submitted banner: the warehouse is waiting on the decision, so it
+// also gets the same event in its own room - and no other warehouse does.
+for (const [action, run, expectedStatus] of [
+  ['approveBanner', () => adminBannerService.approveBanner(BANNER_ID.toString(), ADMIN_ID), 'approved'],
+  ['rejectBanner', () => adminBannerService.rejectBanner(BANNER_ID.toString(), 'wrong dimensions'), 'rejected'],
+]) {
+  test(`${action} on a warehouse banner reaches admins and that warehouse, once each`, async () => {
+    bannerModelStub.findById = async () => ({ ...buildBanner(), warehouseId: WAREHOUSE_ID });
+
+    await run();
+
+    assert.deepStrictEqual(emitted.map((e) => e.room).sort(), ['admin', `warehouse:${WAREHOUSE_ID}`]);
+    for (const e of emitted) {
+      assert.strictEqual(e.event, 'banner.status.updated');
+      assert.strictEqual(e.payload.bannerId, BANNER_ID.toString());
+      assert.strictEqual(e.payload.status, expectedStatus);
+    }
+  });
+}
 
 test('rejectBanner with no note throws before any write, and emits nothing', async () => {
   await assert.rejects(() => adminBannerService.rejectBanner(BANNER_ID.toString(), '  '));
@@ -393,21 +416,42 @@ test('a failed advertisement write emits nothing', async () => {
   assert.deepStrictEqual(emitted, []);
 });
 
-test('approveAdvertisement emits exactly one advertisement.status.updated {approved}', async () => {
+// An admin's decision reaches every admin AND the package's own warehouse -
+// exactly once each, same payload, nowhere else.
+function assertAdvertisementStatusToAdminAndOwner(expectedStatus) {
+  assert.deepStrictEqual(emitted.map((e) => e.room).sort(), ['admin', `warehouse:${WAREHOUSE_ID}`]);
+  for (const e of emitted) {
+    assert.strictEqual(e.event, 'advertisement.status.updated');
+    assert.strictEqual(e.payload.advertisementId, ADVERTISEMENT_ID.toString());
+    assert.strictEqual(e.payload.warehouseId, WAREHOUSE_ID.toString());
+    assert.strictEqual(e.payload.status, expectedStatus);
+  }
+}
+
+test('approveAdvertisement emits advertisement.status.updated {approved} to admins and the owning warehouse', async () => {
   await adminAdvertisementService.approveAdvertisement(ADVERTISEMENT_ID.toString(), ADMIN_ID);
+
+  assertAdvertisementStatusToAdminAndOwner('approved');
+});
+
+test('rejectAdvertisement emits advertisement.status.updated {rejected} to admins and the owning warehouse', async () => {
+  await adminAdvertisementService.rejectAdvertisement(ADVERTISEMENT_ID.toString(), 'prices look wrong');
+
+  assertAdvertisementStatusToAdminAndOwner('rejected');
+});
+
+test('adminDeleteAdvertisement emits {deleted} to admins and the owning warehouse', async () => {
+  await adminAdvertisementService.adminDeleteAdvertisement(ADVERTISEMENT_ID.toString());
+
+  assertAdvertisementStatusToAdminAndOwner('deleted');
+});
+
+test('a warehouse deleting its own queued package tells admins only - never its own room', async () => {
+  await warehouseAdvertisementService.deleteAdvertisement(ADVERTISEMENT_ID.toString(), WAREHOUSE_ID);
 
   assert.strictEqual(emitted.length, 1);
   assert.strictEqual(emitted[0].room, 'admin');
-  assert.strictEqual(emitted[0].event, 'advertisement.status.updated');
-  assert.strictEqual(emitted[0].payload.advertisementId, ADVERTISEMENT_ID.toString());
-  assert.strictEqual(emitted[0].payload.status, 'approved');
-});
-
-test('rejectAdvertisement emits exactly one advertisement.status.updated {rejected}', async () => {
-  await adminAdvertisementService.rejectAdvertisement(ADVERTISEMENT_ID.toString(), 'prices look wrong');
-
-  assert.strictEqual(emitted.length, 1);
-  assert.strictEqual(emitted[0].payload.status, 'rejected');
+  assert.strictEqual(emitted[0].payload.status, 'deleted');
 });
 
 test('rejectAdvertisement with no note throws before any write, and emits nothing', async () => {

@@ -6,6 +6,7 @@ import { OfferModal } from '../components/OfferModal';
 import { withArFallback } from '../utils/displayName';
 import { OFFER_FILTERS, filterOffers, offerEditSource, reviewCount } from './offersFilters';
 import { WarehouseGroupSubNav } from '../components/WarehouseGroupSubNav';
+import { REALTIME_EVENTS, useRealtimeSync } from '../realtime/useRealtimeSync';
 
 export function WarehouseOffersPage() {
   const { t } = useTranslation();
@@ -43,6 +44,17 @@ export function WarehouseOffersPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  // An admin approving, rejecting, editing or deleting one of these offers is
+  // the one change to this list that happens somewhere else. Only the offers
+  // are re-read: the product list the modal uses did not change, and the table
+  // stays on screen instead of flashing to "loading".
+  useRealtimeSync([REALTIME_EVENTS.OFFER_STATUS_UPDATED], () => {
+    api
+      .warehouseOffers()
+      .then((data) => setOffers(data.offers))
+      .catch((err) => setError(err.message));
+  });
 
   const visibleOffers = useMemo(
     () => filterOffers(offers, { status: statusFilter, search, discountMin, discountMax }),

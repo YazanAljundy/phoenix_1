@@ -6,7 +6,7 @@ const Product = require('../models/product.model');
 const Counter = require('../models/counter.model');
 const { applyResolvedIdentity } = require('./productCatalog.service');
 const { deleteImageByUrl } = require('./upload.service');
-const { emitToAdmins, EVENTS } = require('../realtime');
+const { emitToAdmins, emitToWarehouse, EVENTS } = require('../realtime');
 
 // Same atomic $inc pattern as Order's nextOrderNumber (order.service.js) -
 // shares the same 'banner_number' sequence as warehouseBanner.service.js's
@@ -187,6 +187,22 @@ async function findBannerOrThrow(bannerId) {
   return banner;
 }
 
+// A decision on a banner. Every admin's queue needs it (same multi-admin
+// reasoning as the account/offer decisions), and so does the warehouse that
+// submitted it - it is waiting on the answer. An admin-created banner has no
+// warehouse (warehouseId null), so it reaches admins only.
+function emitBannerStatus(banner) {
+  const payload = {
+    bannerId: banner._id.toString(),
+    bannerNumber: banner.bannerNumber,
+    status: banner.status,
+  };
+  emitToAdmins(EVENTS.BANNER_STATUS_UPDATED, payload);
+  if (banner.warehouseId) {
+    emitToWarehouse(banner.warehouseId, EVENTS.BANNER_STATUS_UPDATED, payload);
+  }
+}
+
 async function approveBanner(bannerId, userId) {
   const banner = await findBannerOrThrow(bannerId);
   banner.status = 'approved';
@@ -194,12 +210,7 @@ async function approveBanner(bannerId, userId) {
   banner.rejectionNote = null;
   await banner.save();
 
-  // Same multi-admin reasoning as the account/offer decisions.
-  emitToAdmins(EVENTS.BANNER_STATUS_UPDATED, {
-    bannerId: banner._id.toString(),
-    bannerNumber: banner.bannerNumber,
-    status: banner.status,
-  });
+  emitBannerStatus(banner);
 
   return banner;
 }
@@ -219,11 +230,7 @@ async function rejectBanner(bannerId, rejectionNote) {
   banner.approvedBy = null;
   await banner.save();
 
-  emitToAdmins(EVENTS.BANNER_STATUS_UPDATED, {
-    bannerId: banner._id.toString(),
-    bannerNumber: banner.bannerNumber,
-    status: banner.status,
-  });
+  emitBannerStatus(banner);
 
   return banner;
 }
