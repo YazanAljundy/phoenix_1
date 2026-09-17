@@ -11,6 +11,7 @@ import 'package:feniq/core/services/fcm_service.dart';
 import 'package:feniq/core/services/remote_config_service.dart';
 import 'package:feniq/core/services/secure_storage_service.dart';
 import 'package:feniq/core/services/storage_service.dart';
+import 'package:feniq/core/session/session_scope.dart';
 import 'package:feniq/features/app_update/presentation/app_update_gate.dart';
 import 'package:feniq/firebase_options.dart';
 import 'package:feniq/core/theme/dark_theme.dart';
@@ -83,9 +84,13 @@ Future<void> main() async {
   final apiClient = ApiClient(secureStorage: secureStorage);
   final authRepository = AuthRepositoryImpl(apiClient: apiClient);
   final notificationRepository = NotificationRepository(storageService);
+  // What a sign-out resets, besides the inbox: shared by AuthCubit (which
+  // triggers it) and every member below that registers itself.
+  final sessionScope = SessionScope();
   final fcmService = FcmService(
     authRepository: authRepository,
     notificationRepository: notificationRepository,
+    sessionScope: sessionScope,
   );
   final warehouseRepository = WarehouseRepositoryImpl(apiClient: apiClient);
   final catalogRepository = CatalogRepositoryImpl(apiClient: apiClient);
@@ -123,6 +128,7 @@ Future<void> main() async {
       offersRepository: offersRepository,
       notificationRepository: notificationRepository,
       fcmService: fcmService,
+      sessionScope: sessionScope,
       appRouter: appRouter,
     ),
   );
@@ -190,6 +196,7 @@ class MyApp extends StatelessWidget {
     required this.offersRepository,
     required this.notificationRepository,
     required this.fcmService,
+    required this.sessionScope,
     required this.appRouter,
     super.key,
   });
@@ -213,6 +220,7 @@ class MyApp extends StatelessWidget {
   final OffersRepositoryImpl offersRepository;
   final NotificationRepository notificationRepository;
   final FcmService fcmService;
+  final SessionScope sessionScope;
   final AppRouter appRouter;
   @override
   Widget build(BuildContext context) {
@@ -254,17 +262,22 @@ class MyApp extends StatelessWidget {
               secureStorage: secureStorage,
               fcmService: fcmService,
             notificationRepository: notificationRepository,
+              sessionScope: sessionScope,
             ),
           ),
+          // Global, but reset on every sign-out through sessionScope - they
+          // hold the signed-in pharmacy's warehouse list and cart.
           BlocProvider(
             create: (context) => WarehouseSelectionCubit(
               warehouseRepository: warehouseRepository,
+              sessionScope: sessionScope,
             ),
           ),
           BlocProvider(
             create: (context) => CartCubit(
               orderRepository: orderRepository,
               warehouseRepository: warehouseRepository,
+              sessionScope: sessionScope,
             ),
           ),
           BlocProvider(

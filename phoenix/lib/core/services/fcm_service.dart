@@ -7,6 +7,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:go_router/go_router.dart';
 import 'package:feniq/core/services/logger_service.dart';
 import 'package:feniq/core/services/navigation_service.dart';
+import 'package:feniq/core/session/session_scope.dart';
 import 'package:feniq/features/auth/data/repositories/auth_repository.dart';
 import 'package:feniq/features/notifications/data/models/notification_model.dart';
 import 'package:feniq/features/notifications/data/repositories/notification_repository.dart';
@@ -49,12 +50,21 @@ const _androidChannel = AndroidNotificationChannel(
 // Every public entry point here swallows its own errors - notifications are
 // a nice-to-have layered on top of an already-successful login, never a
 // reason to block or break it.
-class FcmService {
+//
+// Only one thing in here belongs to the signed-in account rather than to the
+// device: a parked cold-start deep link (see resetForSignOut). It is the only
+// part registered with SessionScope; the token handling and the listeners are
+// untouched by a sign-out.
+class FcmService implements SessionScoped {
   FcmService({
     required AuthRepository authRepository,
     required NotificationRepository notificationRepository,
+    SessionScope? sessionScope,
   }) : _authRepository = authRepository,
-       _notificationRepository = notificationRepository;
+       _notificationRepository = notificationRepository {
+    // Never unregistered: this service lives as long as the app.
+    sessionScope?.register(this);
+  }
 
   final AuthRepository _authRepository;
   final NotificationRepository _notificationRepository;
@@ -78,6 +88,33 @@ class FcmService {
   RemoteMessage? _pendingInitialMessage;
   bool _appReady = false;
   bool _initialDeepLinkHandled = false;
+
+  // Bumped by resetForSignOut, so a cold-start message still being read when
+  // the account signs out is not parked afterwards (see _setupHandlers).
+  int _session = 0;
+
+  /// A parked cold-start message was addressed to the account that was signed
+  /// in when the app was launched from it - it names that pharmacy's order or
+  /// complaint. If that session ends before the shell came up to open it,
+  /// whoever signs in next must not be taken there: the next markAppReady
+  /// would otherwise open it for them.
+  ///
+  /// Only the parked message goes. The FCM token, its registration and the
+  /// message listeners are left exactly as they are, and so are `_appReady`
+  /// and `_initialDeepLinkHandled`.
+  @override
+  void resetForSignOut() {
+    _session++;
+    _pendingInitialMessage = null;
+  }
+
+  /// Parks a cold-start message until the app shell is ready (audit P7), or
+  /// opens it straight away if the shell already is.
+  @visibleForTesting
+  void parkInitialMessage(RemoteMessage message) {
+    _pendingInitialMessage = message;
+    _maybeHandleInitialDeepLink();
+  }
 
   /// Called by the app once the authenticated shell is on screen. Safe to
   /// call more than once.
@@ -274,6 +311,7 @@ class FcmService {
     // instead of racing the splash screen's own navigation here.
     // TEMP DIAGNOSTIC LOG (see FCM_DEBUG task).
     _logger.info('FCM_DEBUG: calling getInitialMessage()');
+    final session = _session;
     final initialMessage = await _messaging.getInitialMessage();
     _logger.info(
       'FCM_DEBUG: getInitialMessage() returned null = ${initialMessage == null}',
@@ -284,9 +322,12 @@ class FcmService {
       // deep-link handling below.
       _saveToInbox(initialMessage);
     }
-    if (initialMessage != null && _deepLinkPayload(initialMessage) != null) {
-      _pendingInitialMessage = initialMessage;
-      _maybeHandleInitialDeepLink();
+    if (initialMessage != null &&
+        _deepLinkPayload(initialMessage) != null &&
+        // Not if the account signed out while it was being read - see
+        // resetForSignOut.
+        session == _session) {
+      parkInitialMessage(initialMessage);
     }
   }
 

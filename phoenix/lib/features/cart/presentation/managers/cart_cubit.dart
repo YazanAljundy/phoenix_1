@@ -1,6 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
 import 'package:feniq/core/error/failure.dart';
+import 'package:feniq/core/session/session_scope.dart';
 import 'package:feniq/features/cart/data/models/cart_item.dart';
 import 'package:feniq/features/warehouse_selection/data/repositories/warehouse_repository.dart';
 import 'package:feniq/features/cart/data/models/order_model.dart';
@@ -13,17 +14,48 @@ import 'cart_state.dart';
 // whole is scoped to one warehouseId at a time. Registered globally (like
 // AuthCubit) since it must survive navigation between the catalog and cart
 // screens, and even a trip back to warehouse selection.
-class CartCubit extends Cubit<CartState> {
+//
+// It does NOT survive the account: the cart (its lines, its warehouse, its
+// pending idempotency key) belongs to whoever built it, so a sign-out resets
+// it through SessionScope - otherwise the next pharmacist on the same phone
+// would find it, and could submit it as their own order.
+class CartCubit extends Cubit<CartState> implements SessionScoped {
   CartCubit({
     required OrderRepository orderRepository,
     required WarehouseRepository warehouseRepository,
+    SessionScope? sessionScope,
   })  : _orderRepository = orderRepository,
         _warehouseRepository = warehouseRepository,
-        super(const CartState());
+        _sessionScope = sessionScope,
+        super(const CartState()) {
+    _sessionScope?.register(this);
+  }
 
   final OrderRepository _orderRepository;
   final WarehouseRepository _warehouseRepository;
+  final SessionScope? _sessionScope;
   final Uuid _uuid = const Uuid();
+
+  // Bumped by every sign-out. A submit that was in flight when the account
+  // changed must not write its outcome into the next account's cart - see
+  // submitOrder.
+  int _session = 0;
+
+  // Back to a pristine CartState: lines, warehouse, notes, limits, errors and
+  // the pending idempotency key all go. The key named a request of the account
+  // that just left; nothing the next one sends may carry it.
+  @override
+  void resetForSignOut() {
+    _session++;
+    if (isClosed) return;
+    emit(const CartState());
+  }
+
+  @override
+  Future<void> close() {
+    _sessionScope?.unregister(this);
+    return super.close();
+  }
 
   // The warehouse's own order-size limits (backend: warehouse.model.js).
   // Fetched once per warehouse, when the cart first points at it, so the
@@ -379,6 +411,12 @@ class CartCubit extends Cubit<CartState> {
       pendingIdempotencyKey: idempotencyKey,
       clearError: true,
     ));
+    // The account this request is sent for. If it signs out before the answer
+    // arrives, the answer is dropped: a success would otherwise empty the next
+    // account's cart, and a refusal would land its error (or its repriced
+    // lines) there. The order itself, if one was placed, belongs to the
+    // account that sent it and shows up in that account's order list.
+    final session = _session;
     try {
       final order = await _orderRepository.submitOrder(
         warehouseId: state.warehouseId!,
@@ -389,9 +427,11 @@ class CartCubit extends Cubit<CartState> {
         // nothing else, and the server prices it from its own record.
         idempotencyKey: idempotencyKey,
       );
+      if (session != _session) return null;
       emit(const CartState());
       return order;
     } on Failure catch (f) {
+      if (session != _session) return null;
       // Both refusals below rewrite lines in this same emit, so the lines and
       // the dialog explaining them reach the screen together.
       //
@@ -440,6 +480,7 @@ class CartCubit extends Cubit<CartState> {
       // still land the cubit in a terminal state - otherwise isSubmitting
       // stays true forever and the submit button spins with no error ever
       // shown (the "submit order freezes" report this fixes).
+      if (session != _session) return null;
       emit(state.copyWith(isSubmitting: false, errorMessage: 'Unexpected error', errorCode: 'UNEXPECTED_ERROR'));
       return null;
     }

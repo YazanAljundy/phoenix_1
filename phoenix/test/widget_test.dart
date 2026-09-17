@@ -11,6 +11,7 @@ import 'package:feniq/core/services/fcm_service.dart';
 import 'package:feniq/core/services/remote_config_service.dart';
 import 'package:feniq/core/services/secure_storage_service.dart';
 import 'package:feniq/core/services/storage_service.dart';
+import 'package:feniq/core/session/session_scope.dart';
 import 'package:feniq/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:feniq/features/auth/presentation/views/password_login_view.dart';
 import 'package:feniq/features/auth/presentation/views/splash_view.dart';
@@ -52,9 +53,11 @@ Future<AppRouter> _pumpApp(WidgetTester tester) async {
   final advertisementsRepository = AdvertisementsRepositoryImpl(apiClient: apiClient);
   final offersRepository = OffersRepositoryImpl(apiClient: apiClient);
   final notificationRepository = NotificationRepository(storageService);
+  final sessionScope = SessionScope();
   final fcmService = FcmService(
     authRepository: authRepository,
     notificationRepository: notificationRepository,
+    sessionScope: sessionScope,
   );
   // Remote Config is never initialised in the widget test - checkForUpdate()
   // catches the resulting error and returns `none`, so no dialog appears.
@@ -86,6 +89,7 @@ Future<AppRouter> _pumpApp(WidgetTester tester) async {
       offersRepository: offersRepository,
       notificationRepository: notificationRepository,
       fcmService: fcmService,
+      sessionScope: sessionScope,
       appRouter: appRouter,
     ),
   );

@@ -33,8 +33,9 @@ class CartState {
   // (order.service.js). It names one exact order request, so it lives only
   // as long as the cart's contents stay the same: every path that resets the
   // cart to a fresh CartState (a successful submit, clearCart, removing the
-  // last line, switching warehouse) drops it, and so does every edit that
-  // changes what would be sent (CartCubit passes clearPendingIdempotencyKey).
+  // last line, switching warehouse, signing out) drops it, and so does every
+  // edit that changes what would be sent (CartCubit passes
+  // clearPendingIdempotencyKey).
   // A kept key on an edited cart used to make the server hand back the order
   // the unedited cart had already placed.
   final String? pendingIdempotencyKey;
