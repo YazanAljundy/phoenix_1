@@ -801,5 +801,9 @@
     "kindMigrationAdjustment": "Opening adjustment",
     "kindOpeningBalance": "Opening balance",
     "kindOther": "Adjustment"
+  },
+  "exchangeRateChange": {
+    "notice": "The exchange rate changed while you were editing: $1 was {{from}} and is now {{to}}. Amounts in USD are now worked out at the new rate — review them, then confirm to save.",
+    "confirmButton": "Confirm and save at the new rate"
   }
 }

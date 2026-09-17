@@ -62,7 +62,9 @@ const create = asyncHandler(async (req, res) => {
   let row;
   try {
     const warehouse = await loadWarehouseOrThrow(req.user._id);
-    row = await service.createAdvertisement(warehouse._id, data);
+    // The total was converted from SYP in the panel - it must carry the rate
+    // it used (exchangeRate.service.js's assertRateUsedIsCurrent).
+    row = await service.createAdvertisement(warehouse._id, data, { requireRateUsed: true });
   } catch (err) {
     if (imageUrl) await deleteImageByUrl(imageUrl);
     throw err;
@@ -85,7 +87,7 @@ const update = asyncHandler(async (req, res) => {
   let row;
   try {
     const warehouse = await loadWarehouseOrThrow(req.user._id);
-    row = await service.updateAdvertisement(req.params.id, warehouse._id, data);
+    row = await service.updateAdvertisement(req.params.id, warehouse._id, data, { requireRateUsed: true });
   } catch (err) {
     if (imageUrl) await deleteImageByUrl(imageUrl);
     throw err;

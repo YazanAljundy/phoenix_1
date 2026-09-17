@@ -228,9 +228,15 @@ async function rejectAdvertisement(advertisementId, rejectionNote) {
 // `status`/`rejectionNote`/`approvedBy`/`approvedAt`/`isAvailable` are
 // deliberately left untouched: a content edit is not itself a moderation or
 // availability decision.
-async function adminUpdateAdvertisement(advertisementId, data) {
+//
+// A changed total must carry the exchange rate it was converted at - the same
+// rule the warehouse's own edit follows, in buildAdvertisementFields.
+async function adminUpdateAdvertisement(advertisementId, data, { requireRateUsed = false } = {}) {
   const advertisement = await findAnyAdvertisementOrThrow(advertisementId);
-  const fields = await buildAdvertisementFields(advertisement.warehouseId, data);
+  const fields = await buildAdvertisementFields(advertisement.warehouseId, data, {
+    existing: advertisement,
+    requireRateUsed,
+  });
   const previousImageUrl = advertisement.imageUrl;
 
   Object.assign(advertisement, fields);

@@ -1,5 +1,6 @@
 const { ApiError } = require('../utils/ApiError');
 const Warehouse = require('../models/warehouse.model');
+const { assertRateUsedIsCurrent } = require('./exchangeRate.service');
 
 // Section: the warehouse's own settings it is allowed to change itself -
 // currently the order-size limits (warehouse.model.js's minOrderAmountUsd/
@@ -32,9 +33,14 @@ async function getSettings(warehouseId) {
   return warehouse;
 }
 
+// A limit the panel sets to a new amount was converted from SYP, so it comes
+// with `rateUsed`, which must still be the current rate. Clearing a limit (0 /
+// null) or re-sending the stored value converts nothing and needs no rate -
+// so the seal-photo toggle on its own never trips this.
 async function updateOrderLimits(
   warehouseId,
-  { minOrderAmountUsd, maxOrderAmountUsd, requireDeliverySealPhoto }
+  { minOrderAmountUsd, maxOrderAmountUsd, requireDeliverySealPhoto, rateUsed },
+  { requireRateUsed = false } = {}
 ) {
   const warehouse = await getSettings(warehouseId);
 
@@ -56,6 +62,13 @@ async function updateOrderLimits(
       undefined,
       'INVALID_ORDER_LIMITS'
     );
+  }
+
+  const minConverted = nextMin !== undefined && nextMin > 0 && nextMin !== warehouse.minOrderAmountUsd;
+  const maxConverted =
+    nextMax !== undefined && nextMax !== null && nextMax !== (warehouse.maxOrderAmountUsd ?? null);
+  if (minConverted || maxConverted) {
+    await assertRateUsedIsCurrent(rateUsed, { required: requireRateUsed });
   }
 
   if (nextMin !== undefined) warehouse.minOrderAmountUsd = nextMin;
