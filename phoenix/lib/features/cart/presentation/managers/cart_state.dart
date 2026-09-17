@@ -55,6 +55,25 @@ class CartState {
 
   bool get hasPackage => packageLines.isNotEmpty;
 
+  /// Whether any line carries a server price change the pharmacist has not
+  /// confirmed yet (CartItem.previousPriceUsd). CartCubit.submitOrder will not
+  /// send the cart until it is confirmed.
+  bool get hasUnconfirmedPriceChanges => items.any((item) => item.hasUnconfirmedPriceChange);
+
+  /// Those changes in the shape of the server's PRICE_CHANGED
+  /// `details.problems`, so CartView describes them with the very
+  /// describePriceProblems it used for the refusal itself.
+  List<Map<String, dynamic>> get unconfirmedPriceChanges => [
+    for (final item in items)
+      if (item.hasUnconfirmedPriceChange)
+        {
+          'code': 'PRICE_CHANGED',
+          'productId': item.productId,
+          'displayedPriceUsd': item.previousPriceUsd,
+          'currentPriceUsd': item.discountPriceUsd,
+        },
+  ];
+
   /// What the pharmacist pays before the platform discount. A package line is
   /// already priced at its package price, so this is simply the subtotal -
   /// there is no separate package discount to subtract any more.

@@ -55,6 +55,7 @@ class CartItem {
     this.packageId,
     this.packageContents = const [],
     this.isAvailable = true,
+    this.previousPriceUsd,
   });
 
   /// A product's id on an ordinary line; the PACKAGE's id on a package line.
@@ -89,7 +90,15 @@ class CartItem {
   /// blocks checkout: the server is what refuses it (PACKAGE_UNAVAILABLE).
   final bool isAvailable;
 
+  /// The unit price the pharmacist was looking at before the server repriced
+  /// this line (a PRICE_CHANGED refusal - see CartCubit). Non-null means the
+  /// new price has not been confirmed yet, and CartCubit will not send the
+  /// cart until it is. Null on every line the server has not repriced.
+  final num? previousPriceUsd;
+
   bool get isPackage => packageId != null;
+
+  bool get hasUnconfirmedPriceChange => previousPriceUsd != null;
 
   /// A package has no "was" price to strike through - its price IS the offer.
   bool get hasOffer => !isPackage && discountPriceUsd != unitPriceUsd;
@@ -147,7 +156,17 @@ class CartItem {
     );
   }
 
-  CartItem copyWith({int? quantity, bool? isAvailable}) {
+  /// The prices are settable so the server's PRICE_CHANGED figures can reach a
+  /// line (CartCubit); `clearPreviousPrice` drops [previousPriceUsd] once the
+  /// pharmacist has confirmed the new price.
+  CartItem copyWith({
+    int? quantity,
+    bool? isAvailable,
+    num? unitPriceUsd,
+    num? discountPriceUsd,
+    num? previousPriceUsd,
+    bool clearPreviousPrice = false,
+  }) {
     return CartItem(
       productId: productId,
       nameAr: nameAr,
@@ -157,12 +176,13 @@ class CartItem {
       image: image,
       unitAr: unitAr,
       unitEn: unitEn,
-      unitPriceUsd: unitPriceUsd,
-      discountPriceUsd: discountPriceUsd,
+      unitPriceUsd: unitPriceUsd ?? this.unitPriceUsd,
+      discountPriceUsd: discountPriceUsd ?? this.discountPriceUsd,
       quantity: quantity ?? this.quantity,
       packageId: packageId,
       packageContents: packageContents,
       isAvailable: isAvailable ?? this.isAvailable,
+      previousPriceUsd: clearPreviousPrice ? null : (previousPriceUsd ?? this.previousPriceUsd),
     );
   }
 }

@@ -5,6 +5,7 @@ import 'package:feniq/features/cart/data/models/cart_item.dart';
 import 'package:feniq/features/cart/data/models/order_model.dart';
 import 'package:feniq/features/cart/data/repositories/order_repository.dart';
 import 'package:feniq/features/cart/presentation/managers/cart_cubit.dart';
+import 'package:feniq/features/cart/presentation/managers/cart_state.dart';
 import 'package:feniq/features/catalog/data/models/product_model.dart';
 import 'package:feniq/features/warehouse_selection/data/repositories/warehouse_repository.dart';
 
@@ -511,6 +512,227 @@ void main() {
       await cubit.submitOrder();
 
       expect(cubit.state.pendingIdempotencyKey, firstKey);
+    });
+  });
+
+  // A PRICE_CHANGED refusal used to leave the cart's price snapshot alone, so
+  // every resubmit sent the same stale displayedUnitPriceUsd and was refused
+  // again. The refused lines now take the server's price - and are not sent
+  // until the pharmacist confirms it.
+  group('PRICE_CHANGED refreshes the cart prices', () {
+    late List<String?> sentKeys;
+    late List<List<CartItem>> sentItems;
+    late List<Failure> nextFailures;
+
+    CartItem packageLine(String id) => CartItem.fromPackage(
+      packageId: id,
+      titleAr: 'باقة',
+      warehouseName: 'Warehouse A',
+      pricePerCopyUsd: 8,
+      copies: 1,
+      contents: const [],
+    );
+
+    // The server's shape - order.service.js's priceProblems entries.
+    Map<String, dynamic> problem(String productId, num displayed, num current) => {
+      'code': 'PRICE_CHANGED',
+      'productId': productId,
+      'displayedPriceUsd': displayed,
+      'currentPriceUsd': current,
+    };
+
+    ServerFailure priceChanged(List<Map<String, dynamic>> problems) => ServerFailure(
+      'Some prices changed.',
+      code: 'PRICE_CHANGED',
+      details: {'problems': problems},
+      statusCode: 400,
+    );
+
+    CartItem line(String productId) =>
+        cubit.state.items.firstWhere((item) => item.productId == productId);
+
+    setUp(() {
+      sentKeys = [];
+      sentItems = [];
+      nextFailures = [];
+      when(
+        () => orderRepo.submitOrder(
+          warehouseId: any(named: 'warehouseId'),
+          items: any(named: 'items'),
+          notes: any(named: 'notes'),
+          idempotencyKey: any(named: 'idempotencyKey'),
+        ),
+      ).thenAnswer((invocation) async {
+        sentKeys.add(invocation.namedArguments[#idempotencyKey] as String?);
+        sentItems.add(List.of(invocation.namedArguments[#items] as List<CartItem>));
+        if (nextFailures.isNotEmpty) throw nextFailures.removeAt(0);
+        return _fakeOrder;
+      });
+
+      // Every product lists at 10 USD with no offer (see _product).
+      cubit.addProduct(_product('p1'), warehouseId: 'A', warehouseName: 'Warehouse A', quantity: 2);
+      cubit.addProduct(_product('p2'), warehouseId: 'A', warehouseName: 'Warehouse A', quantity: 1);
+      cubit.addProduct(_product('p3'), warehouseId: 'A', warehouseName: 'Warehouse A', quantity: 3);
+    });
+
+    test('a single-line refusal reprices that line and no other', () async {
+      nextFailures.add(priceChanged([problem('p1', 10, 12)]));
+
+      final order = await cubit.submitOrder();
+
+      expect(order, isNull);
+      expect(cubit.state.errorCode, 'PRICE_CHANGED');
+      expect(line('p1').discountPriceUsd, 12);
+      expect(line('p1').previousPriceUsd, 10, reason: 'what the pharmacist had been shown');
+      expect(line('p1').lineTotalUsd, 24, reason: 'derived from the new price');
+      for (final untouched in ['p2', 'p3']) {
+        expect(line(untouched).discountPriceUsd, 10, reason: untouched);
+        expect(line(untouched).hasUnconfirmedPriceChange, isFalse, reason: untouched);
+      }
+      expect(cubit.state.subtotalUsd, 12 * 2 + 10 * 1 + 10 * 3);
+      expect(cubit.state.items.map((i) => i.quantity).toList(), [2, 1, 3], reason: 'only prices move');
+    });
+
+    test('a multi-line refusal reprices every affected line', () async {
+      nextFailures.add(priceChanged([problem('p1', 10, 12), problem('p3', 10, 8.5)]));
+
+      await cubit.submitOrder();
+
+      expect(line('p1').discountPriceUsd, 12);
+      expect(line('p3').discountPriceUsd, 8.5);
+      expect(line('p1').previousPriceUsd, 10);
+      expect(line('p3').previousPriceUsd, 10);
+      expect(line('p2').hasUnconfirmedPriceChange, isFalse);
+      expect(cubit.state.unconfirmedPriceChanges.map((p) => p['productId']).toList(), ['p1', 'p3']);
+      expect(cubit.state.subtotalUsd, 12 * 2 + 10 * 1 + 8.5 * 3);
+    });
+
+    test('a repriced line shows no struck-through "was" price', () async {
+      // A price rise with the old 10 kept as unitPriceUsd would render as
+      // "10 struck through, 12" - an offer that does not exist.
+      nextFailures.add(priceChanged([problem('p1', 10, 12)]));
+
+      await cubit.submitOrder();
+
+      expect(line('p1').unitPriceUsd, 12);
+      expect(line('p1').hasOffer, isFalse);
+    });
+
+    test('package lines and products not in the cart are never matched', () async {
+      cubit.addPackage(packageLine('ad1'), warehouseId: 'A', warehouseName: 'Warehouse A');
+      nextFailures.add(priceChanged([problem('ad1', 8, 99), problem('ghost', 1, 2), problem('p2', 10, 11)]));
+
+      await cubit.submitOrder();
+
+      final package = cubit.state.items.firstWhere((item) => item.isPackage);
+      expect(package.discountPriceUsd, 8);
+      expect(package.hasUnconfirmedPriceChange, isFalse);
+      expect(cubit.state.items, hasLength(4), reason: 'nothing added for the unknown product');
+      expect(line('p2').discountPriceUsd, 11);
+    });
+
+    test('nothing is resent until the pharmacist confirms the new prices', () async {
+      nextFailures.add(priceChanged([problem('p1', 10, 12)]));
+      await cubit.submitOrder();
+      expect(sentItems, hasLength(1), reason: 'the refusal triggers no automatic retry');
+
+      // A plain submit - the confirmation the pharmacist gave was for the old
+      // price - is refused locally, without a request.
+      final unconfirmed = await cubit.submitOrder();
+
+      expect(unconfirmed, isNull);
+      expect(sentItems, hasLength(1));
+      expect(cubit.state.errorCode, 'PRICE_CHANGE_UNCONFIRMED');
+      expect(line('p1').hasUnconfirmedPriceChange, isTrue);
+      expect(cubit.state.isSubmitting, isFalse);
+
+      // Accepting sends the cart, at the new price.
+      final order = await cubit.submitOrder(acceptPriceChanges: true);
+
+      expect(order, same(_fakeOrder));
+      expect(sentItems, hasLength(2));
+      final resentP1 = sentItems.last.firstWhere((item) => item.productId == 'p1');
+      expect(resentP1.discountPriceUsd, 12, reason: 'the price the server asked for');
+      expect(sentItems.last.every((item) => !item.hasUnconfirmedPriceChange), isTrue);
+    });
+
+    test('accepting with nothing to accept is an ordinary submit', () async {
+      final order = await cubit.submitOrder(acceptPriceChanges: true);
+
+      expect(order, same(_fakeOrder));
+      expect(sentItems, hasLength(1));
+    });
+
+    test('an accepted change stays accepted across a network retry', () async {
+      nextFailures.add(priceChanged([problem('p1', 10, 12)]));
+      await cubit.submitOrder();
+
+      nextFailures.add(ServerFailure('No Internet Connection', code: FailureCode.network));
+      await cubit.submitOrder(acceptPriceChanges: true);
+      expect(cubit.state.hasUnconfirmedPriceChanges, isFalse);
+
+      // The retry is a plain submit: nothing left to confirm.
+      final order = await cubit.submitOrder();
+
+      expect(order, same(_fakeOrder));
+      expect(sentItems, hasLength(3));
+    });
+
+    group('and the idempotency key', () {
+      test('repricing drops the key in the same emit, via the edit rule', () async {
+        final emitted = <CartState>[];
+        final subscription = cubit.stream.listen(emitted.add);
+
+        nextFailures.add(priceChanged([problem('p1', 10, 12)]));
+        await cubit.submitOrder();
+        await Future<void>.delayed(Duration.zero);
+        await subscription.cancel();
+
+        // No state ever showed the new price next to the old key.
+        final repriced = emitted.where((s) => s.items.first.discountPriceUsd == 12).toList();
+        expect(repriced, isNotEmpty);
+        expect(repriced.every((s) => s.pendingIdempotencyKey == null), isTrue);
+        expect(cubit.state.pendingIdempotencyKey, isNull);
+      });
+
+      test('the confirmed submit carries a new key', () async {
+        nextFailures.add(priceChanged([problem('p1', 10, 12)]));
+        await cubit.submitOrder();
+
+        await cubit.submitOrder(acceptPriceChanges: true);
+
+        expect(sentKeys, hasLength(2));
+        expect(sentKeys[1], isNotNull);
+        expect(sentKeys[1], isNot(sentKeys[0]));
+      });
+
+      test('confirming is not an edit: a retry after it reuses the confirmed key', () async {
+        nextFailures.add(priceChanged([problem('p1', 10, 12)]));
+        await cubit.submitOrder();
+
+        nextFailures.add(ServerFailure('No Internet Connection', code: FailureCode.network));
+        await cubit.submitOrder(acceptPriceChanges: true);
+        final confirmedKey = cubit.state.pendingIdempotencyKey;
+        expect(confirmedKey, isNotNull, reason: 'kept for the retry');
+
+        await cubit.submitOrder();
+
+        expect(sentKeys.sublist(1), [confirmedKey, confirmedKey]);
+      });
+
+      test('a refusal that reprices nothing keeps the key, like any no-op edit', () async {
+        nextFailures.add(ServerFailure('No Internet Connection', code: FailureCode.network));
+        await cubit.submitOrder();
+        final keptKey = cubit.state.pendingIdempotencyKey;
+
+        // Names a product that is not in the cart, and one already at the
+        // quoted price.
+        nextFailures.add(priceChanged([problem('ghost', 1, 2), problem('p2', 9, 10)]));
+        await cubit.submitOrder();
+
+        expect(cubit.state.hasUnconfirmedPriceChanges, isFalse);
+        expect(cubit.state.pendingIdempotencyKey, keptKey);
+      });
     });
   });
 }
