@@ -82,6 +82,13 @@ const paymentSchema = new Schema(
     // Client-supplied UUID. A retried request with the same key returns the
     // payment the first attempt created instead of crediting the pharmacy twice.
     idempotencyKey: { type: String, default: null },
+    // What that key was first used for - payment.service.js's fingerprint of
+    // the request (utils/idempotency.js). A retry must match it, from the same
+    // warehouse, to get this payment back; anything else under the same key is
+    // refused (IDEMPOTENCY_KEY_REUSED). Null on payments recorded without a
+    // key and on those recorded before the fingerprint existed, which still
+    // replay on their key alone - for their own warehouse only.
+    idempotencyFingerprint: { type: String, default: null },
   },
   { timestamps: true }
 );
