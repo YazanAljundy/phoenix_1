@@ -68,6 +68,25 @@ void main() {
           ar.errorPhoneAlreadyRegistered);
     });
 
+    // POST /orders refusing a key that already placed an order from a
+    // different cart. The body's English message must not reach an Arabic
+    // pharmacist.
+    test('the 409 IDEMPOTENCY_KEY_REUSED body resolves to localized copy', () {
+      final failure = ServerFailure.fromResponse(409, {
+        'success': false,
+        'message': 'This order request was already submitted with different contents.',
+        'code': 'IDEMPOTENCY_KEY_REUSED',
+        'details': {'orderId': 'o1', 'orderNumber': 1042},
+      });
+
+      expect(failure.code, 'IDEMPOTENCY_KEY_REUSED');
+      expect(failure.details?['orderNumber'], 1042);
+      expect(translateErrorCode(en, failure.code, failure.errMessage),
+          en.errorIdempotencyKeyReused);
+      expect(translateErrorCode(ar, failure.code, failure.errMessage),
+          ar.errorIdempotencyKeyReused);
+    });
+
     test('HTTP 500 / 502 / 503 all map to the same server-error copy', () {
       expect(translateErrorCode(en, 'HTTP_500', 'x'), en.errorServer);
       expect(translateErrorCode(en, 'HTTP_502', 'x'), en.errorServer);

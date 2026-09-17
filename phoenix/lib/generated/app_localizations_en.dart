@@ -609,6 +609,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get errorPackageUnavailable => 'This package is no longer available.';
 
   @override
+  String get errorIdempotencyKeyReused =>
+      'An earlier attempt already placed an order from this cart before you changed it. Check My Orders, then submit again to place your updated cart as a new order.';
+
+  @override
   String get removeUnavailablePackagesButton => 'Remove from cart';
 
   @override

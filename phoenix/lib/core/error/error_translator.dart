@@ -75,6 +75,11 @@ String translateErrorCode(AppLocalizations l10n, String? code, String fallbackMe
       return l10n.errorStockCheckFailedGeneric;
     case 'PACKAGE_UNAVAILABLE':
       return l10n.errorPackageUnavailable;
+    // 409 from POST /orders: the idempotency key already placed an order from
+    // a different cart (order.service.js). CartCubit drops the key with it, so
+    // submitting again places the edited cart as a new order.
+    case 'IDEMPOTENCY_KEY_REUSED':
+      return l10n.errorIdempotencyKeyReused;
     case 'ORDER_NOT_FOUND':
       return l10n.errorOrderNotFound;
     case 'ORDER_NOT_CANCELLABLE':

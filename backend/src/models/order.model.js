@@ -175,6 +175,13 @@ const orderSchema = new Schema(
     // Client-supplied UUID. A retried submission with the same key returns the
     // original order instead of creating a second one.
     idempotencyKey: { type: String, default: null },
+    // What that key was first used for - order.service.js's
+    // computeOrderFingerprint over the request's contents. A retry must match
+    // it to get this order back; the same key with different contents is
+    // refused (IDEMPOTENCY_KEY_REUSED). Null on orders placed without a key,
+    // and on orders placed before the fingerprint existed, which still replay
+    // on their key alone.
+    idempotencyFingerprint: { type: String, default: null },
   },
   { timestamps: true }
 );

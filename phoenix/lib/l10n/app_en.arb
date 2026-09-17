@@ -306,6 +306,7 @@
     }
   },
   "errorPackageUnavailable": "This package is no longer available.",
+  "errorIdempotencyKeyReused": "An earlier attempt already placed an order from this cart before you changed it. Check My Orders, then submit again to place your updated cart as a new order.",
   "removeUnavailablePackagesButton": "Remove from cart",
   "advertisementIncompleteMessage": "Some products in this package are no longer sold by this warehouse, so it can't be added: {names}",
   "@advertisementIncompleteMessage": {

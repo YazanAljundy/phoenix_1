@@ -1112,6 +1112,12 @@ abstract class AppLocalizations {
   /// **'This package is no longer available.'**
   String get errorPackageUnavailable;
 
+  /// No description provided for @errorIdempotencyKeyReused.
+  ///
+  /// In en, this message translates to:
+  /// **'An earlier attempt already placed an order from this cart before you changed it. Check My Orders, then submit again to place your updated cart as a new order.'**
+  String get errorIdempotencyKeyReused;
+
   /// No description provided for @removeUnavailablePackagesButton.
   ///
   /// In en, this message translates to:
