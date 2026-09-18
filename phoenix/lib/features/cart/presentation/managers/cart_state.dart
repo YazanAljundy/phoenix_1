@@ -6,6 +6,7 @@ class CartState {
     this.warehouseName,
     this.minOrderAmountUsd = 0,
     this.maxOrderAmountUsd,
+    this.isRefreshingLimits = false,
     this.items = const [],
     this.notes = '',
     this.isSubmitting = false,
@@ -23,6 +24,14 @@ class CartState {
   // hiccup can never block ordering: order.service.js re-checks anyway.
   final num minOrderAmountUsd;
   final num? maxOrderAmountUsd;
+
+  // A limits re-read is in the air (CartCubit.refreshWarehouseLimits). The
+  // cart keeps rendering its lines, its subtotal and the limits it already
+  // has throughout - this only drives a small indicator beside the limit
+  // line, and never gates the submit button: the values on screen are the
+  // last ones the server gave, and order.service.js is the real gate.
+  final bool isRefreshingLimits;
+
   final List<CartItem> items;
   final String notes;
   final bool isSubmitting;
@@ -106,6 +115,7 @@ class CartState {
     num? minOrderAmountUsd,
     num? maxOrderAmountUsd,
     bool clearMaxOrderAmount = false,
+    bool? isRefreshingLimits,
     List<CartItem>? items,
     String? notes,
     bool? isSubmitting,
@@ -121,6 +131,7 @@ class CartState {
       warehouseName: warehouseName ?? this.warehouseName,
       minOrderAmountUsd: minOrderAmountUsd ?? this.minOrderAmountUsd,
       maxOrderAmountUsd: clearMaxOrderAmount ? null : (maxOrderAmountUsd ?? this.maxOrderAmountUsd),
+      isRefreshingLimits: isRefreshingLimits ?? this.isRefreshingLimits,
       items: items ?? this.items,
       notes: notes ?? this.notes,
       isSubmitting: isSubmitting ?? this.isSubmitting,

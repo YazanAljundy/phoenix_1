@@ -38,6 +38,15 @@ class _CartViewState extends State<CartView> {
     _notesController = TextEditingController(
       text: context.read<CartCubit>().state.notes,
     );
+    // The limits gate the submit button, and the warehouse can change them
+    // while a cart sits open - so they are re-read every time this screen is
+    // opened, not just when the cart first pointed at the warehouse. Nothing
+    // waits on it: the cart renders from what it already has and the limit
+    // line picks up the new figures when they land.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      context.read<CartCubit>().refreshWarehouseLimits();
+    });
   }
 
   @override
@@ -463,14 +472,36 @@ class _CartViewState extends State<CartView> {
                       if (state.minOrderAmountUsd > 0 || state.maxOrderAmountUsd != null) ...[
                         const SizedBox(height: AppSizes.spacingXSmall),
                         if (state.minOrderAmountUsd > 0)
-                          Text(
-                            l10n.minOrderLabel(limitText(state.minOrderAmountUsd)),
-                            style: context.textTheme.bodySmall?.copyWith(
-                              color: state.isBelowMinimum
-                                  ? AppColors.primaryOf(context)
-                                  : AppColors.textSecondaryOf(context),
-                              fontWeight: state.isBelowMinimum ? AppTextTheme.semiBold : null,
-                            ),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  l10n.minOrderLabel(limitText(state.minOrderAmountUsd)),
+                                  style: context.textTheme.bodySmall?.copyWith(
+                                    color: state.isBelowMinimum
+                                        ? AppColors.primaryOf(context)
+                                        : AppColors.textSecondaryOf(context),
+                                    fontWeight: state.isBelowMinimum ? AppTextTheme.semiBold : null,
+                                  ),
+                                ),
+                              ),
+                              // Only ever beside the limit itself: the lines,
+                              // the subtotal and the submit button carry on
+                              // with the figures already on screen while the
+                              // re-read is in the air.
+                              if (state.isRefreshingLimits) ...[
+                                const SizedBox(width: AppSizes.spacingXSmall),
+                                SizedBox(
+                                  width: AppSizes.iconSizeSmall,
+                                  height: AppSizes.iconSizeSmall,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 1.5,
+                                    color: AppColors.textSecondaryOf(context),
+                                  ),
+                                ),
+                              ],
+                            ],
                           ),
                         if (state.maxOrderAmountUsd != null)
                           Text(
