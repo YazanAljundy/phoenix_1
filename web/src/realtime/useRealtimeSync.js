@@ -12,7 +12,15 @@ import { useRealtime } from './RealtimeProvider';
 // The callback is held in a ref so a page can pass an inline arrow without
 // re-subscribing on every render - the effect depends only on the event names,
 // which are stable. Every subscription is torn down on unmount.
-export function useRealtimeSync(events, onSync) {
+//
+// `grouped: true` collapses a burst spanning SEVERAL of the event names into
+// one call instead of one per name (see RealtimeClient.onGroup) - what a page
+// whose whole screen comes from the same queues wants, since `onSync` is then
+// its single refetch. It is opt-in because the callback then sees only the
+// LAST payload of the batch: a caller that filters on the payload (`if
+// (payload.orderId !== orderId) return`) must keep the default, one timer per
+// event name.
+export function useRealtimeSync(events, onSync, { grouped = false } = {}) {
   const { client } = useRealtime();
   const callbackRef = useRef(onSync);
   callbackRef.current = onSync;
@@ -25,18 +33,26 @@ export function useRealtimeSync(events, onSync) {
     if (!client) return undefined;
 
     const names = key ? key.split('|') : [];
-    const unsubscribes = names.map((event) =>
-      // `count` is how many events this one callback stands for (see
-      // RealtimeClient's coalescing) - relevant only to callers showing a
-      // count; everyone else ignores it.
-      client.on(event, (payload, count) => callbackRef.current?.(payload, event, count))
-    );
+    // `count` is how many events this one callback stands for (see
+    // RealtimeClient's coalescing) - relevant only to callers showing a
+    // count; everyone else ignores it.
+    const unsubscribes = grouped
+      ? [
+          client.onGroup(names, (payload, count, _payloads, batchEvents) =>
+            // The event name reported is the last one in the batch, matching
+            // the payload that is handed over.
+            callbackRef.current?.(payload, batchEvents[batchEvents.length - 1], count)
+          ),
+        ]
+      : names.map((event) =>
+          client.on(event, (payload, count) => callbackRef.current?.(payload, event, count))
+        );
     unsubscribes.push(client.onReconnect(() => callbackRef.current?.(null, 'reconnect', 0)));
 
     return () => {
       for (const unsubscribe of unsubscribes) unsubscribe();
     };
-  }, [client, key]);
+  }, [client, key, grouped]);
 }
 
 // The event names the dashboards listen for. Mirrors

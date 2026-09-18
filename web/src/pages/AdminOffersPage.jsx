@@ -82,7 +82,11 @@ export function AdminOffersPage() {
 
   // A warehouse submitting/editing an offer, and another admin deciding one,
   // both change this list - re-read page one, which also refreshes reviewCount.
-  useRealtimeSync([REALTIME_EVENTS.OFFER_PENDING, REALTIME_EVENTS.OFFER_STATUS_UPDATED], () => reset());
+  useRealtimeSync(
+    [REALTIME_EVENTS.OFFER_PENDING, REALTIME_EVENTS.OFFER_STATUS_UPDATED],
+    () => reset(),
+    { grouped: true }
+  );
 
   const runAction = async (offerId, fn) => {
     setBusyId(offerId);
