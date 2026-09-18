@@ -89,7 +89,8 @@ export function WarehouseAdvertisementsPage() {
   // deleting one - re-read it then.
   useRealtimeSync(
     [REALTIME_EVENTS.ADVERTISEMENT_AVAILABILITY_UPDATED, REALTIME_EVENTS.ADVERTISEMENT_STATUS_UPDATED],
-    () => load()
+    () => load(),
+    { grouped: true }
   );
 
   const statusBadge = (status) => {

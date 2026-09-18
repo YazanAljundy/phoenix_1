@@ -9,7 +9,7 @@ const Pharmacy = require('../models/pharmacy.model');
 const Warehouse = require('../models/warehouse.model');
 const notificationService = require('./notification.service');
 const financialAudit = require('./financialAudit.service');
-const { emitToAdmins, EVENTS } = require('../realtime');
+const { emitToAdmins, disconnectUser, EVENTS } = require('../realtime');
 
 const BCRYPT_SALT_ROUNDS = 10;
 
@@ -318,6 +318,17 @@ async function blockAccount(userId) {
   user.tokenVersion = (user.tokenVersion ?? 0) + 1;
   await user.save();
   await RefreshToken.deleteMany({ userId: user._id });
+
+  // The third door out (audit F-10). The two above only close HTTP: an already
+  // open Socket.IO connection was authorized at handshake time and is never
+  // re-checked, so it would keep streaming this warehouse its live order and
+  // return traffic until the client itself dropped. Cut it here, after the
+  // write is durable, so the block takes effect on every channel at once.
+  //
+  // Deliberately only on this path: rejectAccount also lands in 'blocked', but
+  // it acts on a *pending* account, and handshakeAuth refuses anything that is
+  // not already active - so a rejected account has no socket to cut.
+  disconnectUser(user._id.toString());
 
   emitToAdmins(EVENTS.ACCOUNT_STATUS_UPDATED, {
     userId: user._id.toString(),

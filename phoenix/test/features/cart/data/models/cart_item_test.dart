@@ -223,5 +223,62 @@ void main() {
         expect(cartItem.quantity, equals(100));
       });
     });
+
+    // copyWith used to have no way to take a price at all, so nothing could
+    // ever refresh a line's snapshot (the PRICE_CHANGED loop).
+    group('copyWith prices', () {
+      const original = CartItem(
+        productId: 'prod1',
+        nameAr: 'دواء',
+        nameEn: 'Medicine',
+        manufacturerAr: 'شركة',
+        unitPriceUsd: 12.0,
+        discountPriceUsd: 10.0,
+        quantity: 3,
+      );
+
+      test('a line starts with no unconfirmed price change', () {
+        expect(original.previousPriceUsd, isNull);
+        expect(original.hasUnconfirmedPriceChange, isFalse);
+      });
+
+      test('takes new prices and the previous one, keeping everything else', () {
+        final repriced = original.copyWith(
+          unitPriceUsd: 11.0,
+          discountPriceUsd: 11.0,
+          previousPriceUsd: 10.0,
+        );
+
+        expect(repriced.unitPriceUsd, 11.0);
+        expect(repriced.discountPriceUsd, 11.0);
+        expect(repriced.previousPriceUsd, 10.0);
+        expect(repriced.hasUnconfirmedPriceChange, isTrue);
+        expect(repriced.lineTotalUsd, 33.0);
+        expect(repriced.productId, 'prod1');
+        expect(repriced.nameEn, 'Medicine');
+        expect(repriced.quantity, 3);
+      });
+
+      test('keeps the prices and the previous price when not given', () {
+        final repriced = original.copyWith(discountPriceUsd: 11.0, previousPriceUsd: 10.0);
+
+        final requantified = repriced.copyWith(quantity: 5);
+
+        expect(requantified.unitPriceUsd, 12.0);
+        expect(requantified.discountPriceUsd, 11.0);
+        expect(requantified.previousPriceUsd, 10.0, reason: 'still unconfirmed');
+        expect(requantified.quantity, 5);
+      });
+
+      test('clearPreviousPrice marks the change as confirmed', () {
+        final confirmed = original
+            .copyWith(discountPriceUsd: 11.0, previousPriceUsd: 10.0)
+            .copyWith(clearPreviousPrice: true);
+
+        expect(confirmed.previousPriceUsd, isNull);
+        expect(confirmed.hasUnconfirmedPriceChange, isFalse);
+        expect(confirmed.discountPriceUsd, 11.0, reason: 'the new price stays');
+      });
+    });
   });
 }

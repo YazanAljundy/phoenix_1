@@ -16,8 +16,16 @@ abstract class OrderRepository {
     // across retries, so a resubmitted cart (flaky network, a double-tap)
     // returns the order the first attempt created rather than placing a
     // second billable one. Must NOT be generated here - a fresh key on every
-    // call is exactly the duplicate this prevents.
+    // call is exactly the duplicate this prevents. CartCubit drops it when the
+    // cart is edited: the server refuses a key sent with different contents
+    // (IDEMPOTENCY_KEY_REUSED).
     String? idempotencyKey,
+    // The USD->SYP rate this cart's displayed total was converted with. The
+    // order is priced in USD regardless, so this changes nothing about what
+    // is ordered - it is what lets the server refuse (409 RATE_CHANGED) when
+    // the pharmacist agreed to a lira figure computed at a rate that has
+    // since moved. Null is accepted by the server and simply not checked.
+    double? rateUsed,
   });
 
   Future<OrderModel> getOrder(String orderId);

@@ -265,6 +265,9 @@ function advertisementFormData(data, imageFile) {
   formData.append('titleEn', data.titleEn);
   formData.append('items', JSON.stringify(data.items));
   formData.append('totalPriceUsd', String(data.totalPriceUsd));
+  // The rate the total was converted at, when it was (see
+  // utils/exchangeRate.js). Absent for a total re-sent unchanged.
+  if (data.rateUsed != null) formData.append('rateUsed', String(data.rateUsed));
   formData.append('startDate', data.startDate);
   formData.append('endDate', data.endDate);
   formData.append('image', imageFile);
@@ -678,10 +681,10 @@ export const api = {
   warehouseSettings: () => request('/warehouse/settings'),
   // `requireDeliverySealPhoto` is optional - omitted keys are left untouched
   // server-side (warehouseSettings.service.js).
-  updateWarehouseOrderLimits: ({ minOrderAmountUsd, maxOrderAmountUsd, requireDeliverySealPhoto }) =>
+  updateWarehouseOrderLimits: ({ minOrderAmountUsd, maxOrderAmountUsd, requireDeliverySealPhoto, rateUsed }) =>
     request('/warehouse/settings', {
       method: 'PATCH',
-      body: { minOrderAmountUsd, maxOrderAmountUsd, requireDeliverySealPhoto },
+      body: { minOrderAmountUsd, maxOrderAmountUsd, requireDeliverySealPhoto, rateUsed },
     }),
   warehouseBanners: ({ status, limit, after } = {}) => {
     const params = new URLSearchParams();

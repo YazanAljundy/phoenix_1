@@ -56,6 +56,7 @@ export function WarehouseComplaintsPage() {
   useRealtimeSync(
     [REALTIME_EVENTS.COMPLAINT_CREATED, REALTIME_EVENTS.COMPLAINT_UPDATED],
     () => reset(),
+    { grouped: true },
   );
 
   return (

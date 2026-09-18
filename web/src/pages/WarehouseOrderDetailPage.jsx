@@ -6,7 +6,7 @@ import { withArFallback } from '../utils/displayName';
 import { useExchangeRate } from '../context/ExchangeRateContext';
 import { REALTIME_EVENTS, useRealtimeSync } from '../realtime/useRealtimeSync';
 import { formatUsdAsSyp, formatSyp, formatMoneyFromUsd, remainingPaymentAmountFromSyp } from '../utils/currency';
-import { PAYMENT_METHODS, PAYMENT_CURRENCIES as CURRENCIES, newIdempotencyKey } from '../utils/payments';
+import { PAYMENT_METHODS, PAYMENT_CURRENCIES as CURRENCIES, createIdempotencyKeys } from '../utils/payments';
 import { mayAdvance } from './orderStatusFlow';
 
 function statusKeySuffix(status) {
@@ -37,6 +37,9 @@ const REASON_KEYS = {
 function RecordPaymentModal({ pharmacyId, onClose, onRecorded }) {
   const { t } = useTranslation();
   const usdToSyp = useExchangeRate();
+  // One idempotency key per payment this modal records (createIdempotencyKeys).
+  // The modal unmounts when closed, so reopening it starts from fresh keys.
+  const [idempotencyKeys] = useState(createIdempotencyKeys);
   const [amount, setAmount] = useState('');
   const [currency, setCurrency] = useState('SYP');
   const [method, setMethod] = useState('cash');
@@ -79,19 +82,21 @@ function RecordPaymentModal({ pharmacyId, onClose, onRecorded }) {
       return;
     }
 
+    const payment = {
+      pharmacyId,
+      amount: value,
+      currency,
+      method,
+      note: note.trim() || undefined,
+    };
     setIsSaving(true);
     try {
-      await api.createPayment({
-        pharmacyId,
-        amount: value,
-        currency,
-        method,
-        note: note.trim() || undefined,
-        // One key per submission attempt: if the response never arrives and
-        // the operator submits again, the server returns the payment it
-        // already recorded instead of crediting the pharmacy twice.
-        idempotencyKey: newIdempotencyKey(),
-      });
+      // The same payment keeps the same key across attempts: if the response
+      // never arrives and the operator submits again, the server returns the
+      // payment it already recorded instead of crediting the pharmacy twice.
+      await idempotencyKeys.submit(payment, (idempotencyKey) =>
+        api.createPayment({ ...payment, idempotencyKey })
+      );
       onRecorded();
     } catch (err) {
       setError(err.message);

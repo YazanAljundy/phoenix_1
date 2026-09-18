@@ -9,6 +9,7 @@ import 'package:feniq/core/services/auth_event_bus.dart';
 import 'package:feniq/core/services/fcm_service.dart';
 import 'package:feniq/core/services/navigation_service.dart';
 import 'package:feniq/core/services/secure_storage_service.dart';
+import 'package:feniq/core/session/session_scope.dart';
 import 'package:feniq/features/auth/data/models/auth_response.dart';
 import 'package:feniq/features/auth/data/models/user_model.dart';
 import 'package:feniq/features/auth/data/repositories/auth_repository_impl.dart';
@@ -23,10 +24,12 @@ class AuthCubit extends Cubit<AuthState> {
     required SecureStorageService secureStorage,
     required FcmService fcmService,
     required NotificationRepository notificationRepository,
+    SessionScope? sessionScope,
   }) : _authRepository = authRepository,
        _secureStorage = secureStorage,
        _fcmService = fcmService,
        _notificationRepository = notificationRepository,
+       _sessionScope = sessionScope,
        super(const AuthState()) {
     // A single app-wide place reacts to "an authenticated request got 401"
     // (emitted by AuthInterceptor). Re-entrancy is guarded inside
@@ -44,6 +47,12 @@ class AuthCubit extends Cubit<AuthState> {
   // logout paths - the deliberate one and the forced 401 one - clear the
   // inbox from the same place, instead of each caller having to remember.
   final NotificationRepository _notificationRepository;
+
+  // Everything else that belongs to the signed-in account (the cart, the
+  // warehouse list, a parked notification deep link), reset from the same
+  // place as the inbox for the same reason. Optional so a test can build this
+  // cubit without one.
+  final SessionScope? _sessionScope;
 
   late final StreamSubscription<void> _unauthorizedSubscription;
 
@@ -364,7 +373,16 @@ class AuthCubit extends Cubit<AuthState> {
   // SharedPreferences key, so without this the next person to sign in on a
   // shared phone would read the previous pharmacist's notifications
   // (audit F-08).
+  //
+  // Both sign-out paths come through here (logout, and so deleteAccount, and
+  // _handleUnauthorized) and no sign-in path does, which is what keeps a
+  // successful login from clearing anything.
   Future<void> _clearLocalUserData() async {
+    // First, and synchronous: the session's cart, warehouse list and parked
+    // deep link are gone before anything below awaits, and so before the
+    // `unauthenticated` state or the move to Login. SessionScope.resetAll
+    // never throws.
+    _sessionScope?.resetAll();
     try {
       await _notificationRepository.clear();
     } catch (_) {

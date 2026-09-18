@@ -5,6 +5,7 @@ const Product = require('../models/product.model');
 const Counter = require('../models/counter.model');
 const { applyResolvedIdentity } = require('./productCatalog.service');
 const { deleteImageByUrl } = require('./upload.service');
+const { assertRateUsedIsCurrent } = require('./exchangeRate.service');
 const { emitToAdmins, EVENTS } = require('../realtime');
 
 // Same atomic $inc pattern as Banner's nextBannerNumber (warehouseBanner.service.js).
@@ -106,7 +107,13 @@ async function validateItems(rawItems, warehouseId) {
 // deliberately NOT constrained against the sum of the products' catalog prices:
 // a total that isn't below that sum just means "no saving", which the panel
 // warns about but is allowed to save.
-async function buildAdvertisementFields(warehouseId, data) {
+//
+// The total is converted from the SYP typed in the panel, so a new one carries
+// `rateUsed`, which must still be the current rate (exchangeRate.service.js's
+// assertRateUsedIsCurrent). `existing` is the advertisement being edited: a
+// total re-sent unchanged converts nothing and needs no rate. Every caller -
+// the warehouse's create and edit, the admin's edit - goes through here.
+async function buildAdvertisementFields(warehouseId, data, { existing = null, requireRateUsed = false } = {}) {
   validateTitle(data.titleAr, 'titleAr');
   validateTitle(data.titleEn, 'titleEn');
 
@@ -116,6 +123,9 @@ async function buildAdvertisementFields(warehouseId, data) {
 
   const items = await validateItems(data.items, warehouseId);
   validatePriceUsd(data.totalPriceUsd, 'INVALID_TOTAL_PRICE');
+  if (!existing || data.totalPriceUsd !== existing.totalPriceUsd) {
+    await assertRateUsedIsCurrent(data.rateUsed, { required: requireRateUsed });
+  }
 
   const fields = {
     titleAr: data.titleAr.trim(),
@@ -170,8 +180,8 @@ async function attachProducts(advertisements) {
 // An advertisement always starts 'pending' - only an admin can move it to
 // 'approved' (adminAdvertisement.service.js). The warehouse never puts its own
 // package live, same rule Offers and Banners follow.
-async function createAdvertisement(warehouseId, data) {
-  const fields = await buildAdvertisementFields(warehouseId, data);
+async function createAdvertisement(warehouseId, data, { requireRateUsed = false } = {}) {
+  const fields = await buildAdvertisementFields(warehouseId, data, { requireRateUsed });
 
   const advertisement = await Advertisement.create({
     warehouseId,
@@ -193,9 +203,12 @@ async function createAdvertisement(warehouseId, data) {
 // particular must stay editable after the fact. An edit to an advertisement
 // that is already live (or was rejected) sends it back through moderation:
 // its content has changed, so the previous decision no longer applies to it.
-async function updateAdvertisement(advertisementId, warehouseId, data) {
+async function updateAdvertisement(advertisementId, warehouseId, data, { requireRateUsed = false } = {}) {
   const advertisement = await findOwnedAdvertisementOrThrow(advertisementId, warehouseId);
-  const fields = await buildAdvertisementFields(warehouseId, data);
+  const fields = await buildAdvertisementFields(warehouseId, data, {
+    existing: advertisement,
+    requireRateUsed,
+  });
   const previousImageUrl = advertisement.imageUrl;
 
   Object.assign(advertisement, fields);

@@ -614,6 +614,10 @@ class AppLocalizationsAr extends AppLocalizations {
   String get errorPackageUnavailable => 'هذه الباقة لم تعد متاحة.';
 
   @override
+  String get errorIdempotencyKeyReused =>
+      'سُجّل طلب من هذه السلة في محاولة سابقة قبل أن تعدّلها. راجع طلباتي، ثم أعد الإرسال لتسجيل السلة المعدّلة كطلب جديد.';
+
+  @override
   String get removeUnavailablePackagesButton => 'حذف من السلة';
 
   @override
@@ -696,6 +700,18 @@ class AppLocalizationsAr extends AppLocalizations {
   @override
   String get priceChangedConfirmHint =>
       'أرسل الطلب مرة أخرى لتأكيده بالأسعار الجديدة.';
+
+  @override
+  String get errorRateChangedTitle => 'تغيّر سعر الصرف';
+
+  @override
+  String rateChangedTotals(String newTotal, String oldTotal) {
+    return 'مجموع طلبك بالسعر الجديد $newTotal بدل $oldTotal.';
+  }
+
+  @override
+  String get rateChangedConfirmHint =>
+      'أرسل الطلب مرة أخرى لتأكيده بالسعر الجديد.';
 
   @override
   String get thisItemFallback => 'هذا العنصر';

@@ -305,6 +305,7 @@
     }
   },
   "errorPackageUnavailable": "هذه الباقة لم تعد متاحة.",
+  "errorIdempotencyKeyReused": "سُجّل طلب من هذه السلة في محاولة سابقة قبل أن تعدّلها. راجع طلباتي، ثم أعد الإرسال لتسجيل السلة المعدّلة كطلب جديد.",
   "removeUnavailablePackagesButton": "حذف من السلة",
   "advertisementIncompleteMessage": "بعض منتجات هذه الباقة لم يعد المستودع يبيعها، لذلك لا يمكن إضافتها: {names}",
   "@advertisementIncompleteMessage": {
@@ -362,6 +363,19 @@
     }
   },
   "priceChangedConfirmHint": "أرسل الطلب مرة أخرى لتأكيده بالأسعار الجديدة.",
+  "errorRateChangedTitle": "تغيّر سعر الصرف",
+  "rateChangedTotals": "مجموع طلبك بالسعر الجديد {newTotal} بدل {oldTotal}.",
+  "@rateChangedTotals": {
+    "placeholders": {
+      "newTotal": {
+        "type": "String"
+      },
+      "oldTotal": {
+        "type": "String"
+      }
+    }
+  },
+  "rateChangedConfirmHint": "أرسل الطلب مرة أخرى لتأكيده بالسعر الجديد.",
   "thisItemFallback": "هذا العنصر",
   "loading": "جارِ التحميل...",
   "orderTrackingTitle": "تتبع الطلب",

@@ -73,7 +73,10 @@ export function AdminDashboardPage() {
       REALTIME_EVENTS.BANNER_PENDING,
       REALTIME_EVENTS.BANNER_STATUS_UPDATED,
     ],
-    load
+    load,
+    // Six events, one aggregate: every card here comes from the three admin
+    // queues, so a burst across them is one load(), not one per event name.
+    { grouped: true }
   );
 
   const stats = [

@@ -28,13 +28,16 @@ class CartState {
   final bool isSubmitting;
 
   // Money-Flow V2 idempotency. Minted by CartCubit on the FIRST submit
-  // attempt and deliberately kept across failed ones, so a retry reuses the
-  // same key and the server can recognise it (order.service.js). It lives
-  // here rather than as a cubit field so it survives exactly as long as the
-  // cart does: every path that resets the cart to a fresh CartState - a
-  // successful submit, clearCart, removing the last line, switching
-  // warehouse - drops it too, which is precisely when a new order should get
-  // a new key.
+  // attempt and deliberately kept across failed ones, so a retry of the SAME
+  // cart reuses the same key and the server can recognise it
+  // (order.service.js). It names one exact order request, so it lives only
+  // as long as the cart's contents stay the same: every path that resets the
+  // cart to a fresh CartState (a successful submit, clearCart, removing the
+  // last line, switching warehouse, signing out) drops it, and so does every
+  // edit that changes what would be sent (CartCubit passes
+  // clearPendingIdempotencyKey).
+  // A kept key on an edited cart used to make the server hand back the order
+  // the unedited cart had already placed.
   final String? pendingIdempotencyKey;
 
   // Raw error pieces from the last failed action, kept separate rather than
@@ -52,6 +55,25 @@ class CartState {
   List<CartItem> get packageLines => items.where((item) => item.isPackage).toList();
 
   bool get hasPackage => packageLines.isNotEmpty;
+
+  /// Whether any line carries a server price change the pharmacist has not
+  /// confirmed yet (CartItem.previousPriceUsd). CartCubit.submitOrder will not
+  /// send the cart until it is confirmed.
+  bool get hasUnconfirmedPriceChanges => items.any((item) => item.hasUnconfirmedPriceChange);
+
+  /// Those changes in the shape of the server's PRICE_CHANGED
+  /// `details.problems`, so CartView describes them with the very
+  /// describePriceProblems it used for the refusal itself.
+  List<Map<String, dynamic>> get unconfirmedPriceChanges => [
+    for (final item in items)
+      if (item.hasUnconfirmedPriceChange)
+        {
+          'code': 'PRICE_CHANGED',
+          'productId': item.productId,
+          'displayedPriceUsd': item.previousPriceUsd,
+          'currentPriceUsd': item.discountPriceUsd,
+        },
+  ];
 
   /// What the pharmacist pays before the platform discount. A package line is
   /// already priced at its package price, so this is simply the subtotal -
@@ -88,6 +110,7 @@ class CartState {
     String? notes,
     bool? isSubmitting,
     String? pendingIdempotencyKey,
+    bool clearPendingIdempotencyKey = false,
     String? errorMessage,
     String? errorCode,
     Map<String, dynamic>? errorDetails,
@@ -101,7 +124,9 @@ class CartState {
       items: items ?? this.items,
       notes: notes ?? this.notes,
       isSubmitting: isSubmitting ?? this.isSubmitting,
-      pendingIdempotencyKey: pendingIdempotencyKey ?? this.pendingIdempotencyKey,
+      pendingIdempotencyKey: clearPendingIdempotencyKey
+          ? null
+          : (pendingIdempotencyKey ?? this.pendingIdempotencyKey),
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
       errorCode: clearError ? null : (errorCode ?? this.errorCode),
       errorDetails: clearError ? null : (errorDetails ?? this.errorDetails),

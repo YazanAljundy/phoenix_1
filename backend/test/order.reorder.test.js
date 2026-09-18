@@ -34,6 +34,11 @@ stubModule('realtime/index.js', {
 });
 stubModule('services/exchangeRate.service.js', {
   getRate: async () => ({ usdToSyp: 15000 }),
+  // createOrder also runs the rateUsed check (order.rateUsed.test.js covers
+  // what it does). Reorder sends no rate, which is the "not checked" path -
+  // the real function returns null for that, and createOrder falls back to
+  // getRate above.
+  assertRateUsedIsCurrent: async (rateUsed) => (rateUsed == null ? null : { usdToSyp: 15000 }),
   // Money-Flow V2: createOrder freezes the rate it priced through onto the
   // order, so the stub has to supply the snapshot too - not just the number.
   captureFxSnapshot: async () => ({

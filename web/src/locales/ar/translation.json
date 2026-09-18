@@ -820,5 +820,9 @@
     "kindMigrationAdjustment": "تسوية افتتاحية",
     "kindOpeningBalance": "الرصيد الافتتاحي",
     "kindOther": "تسوية"
+  },
+  "exchangeRateChange": {
+    "notice": "تغيّر سعر الصرف أثناء التعديل: كان 1$ = {{from}} وأصبح {{to}}. القيم بالدولار تُحسب الآن بالسعر الجديد — راجعها ثم أكّد الحفظ.",
+    "confirmButton": "تأكيد وحفظ بالسعر الجديد"
   }
 }

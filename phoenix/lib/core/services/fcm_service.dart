@@ -7,6 +7,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:go_router/go_router.dart';
 import 'package:feniq/core/services/logger_service.dart';
 import 'package:feniq/core/services/navigation_service.dart';
+import 'package:feniq/core/session/session_scope.dart';
 import 'package:feniq/features/auth/data/repositories/auth_repository.dart';
 import 'package:feniq/features/notifications/data/models/notification_model.dart';
 import 'package:feniq/features/notifications/data/repositories/notification_repository.dart';
@@ -49,15 +50,29 @@ const _androidChannel = AndroidNotificationChannel(
 // Every public entry point here swallows its own errors - notifications are
 // a nice-to-have layered on top of an already-successful login, never a
 // reason to block or break it.
-class FcmService {
+//
+// Only one thing in here belongs to the signed-in account rather than to the
+// device: a parked cold-start deep link (see resetForSignOut). It is the only
+// part registered with SessionScope; the token handling and the listeners are
+// untouched by a sign-out.
+class FcmService implements SessionScoped {
   FcmService({
     required AuthRepository authRepository,
     required NotificationRepository notificationRepository,
+    SessionScope? sessionScope,
+    // Tests only: stands in for FirebaseMessaging.getInitialMessage, which
+    // needs a real Firebase app. Production leaves it null.
+    Future<RemoteMessage?> Function()? initialMessageReader,
   }) : _authRepository = authRepository,
-       _notificationRepository = notificationRepository;
+       _notificationRepository = notificationRepository,
+       _initialMessageReader = initialMessageReader {
+    // Never unregistered: this service lives as long as the app.
+    sessionScope?.register(this);
+  }
 
   final AuthRepository _authRepository;
   final NotificationRepository _notificationRepository;
+  final Future<RemoteMessage?> Function()? _initialMessageReader;
   // Accessed lazily (not as a field initializer) - FcmService itself is
   // constructed in main() before Firebase.initializeApp() has necessarily
   // resolved (and unconditionally in test setup, which never calls it at
@@ -78,6 +93,34 @@ class FcmService {
   RemoteMessage? _pendingInitialMessage;
   bool _appReady = false;
   bool _initialDeepLinkHandled = false;
+
+  // Bumped by resetForSignOut, so a cold-start message still being read when
+  // the account signs out is dropped once it arrives (see
+  // handleInitialMessage).
+  int _session = 0;
+
+  /// A parked cold-start message was addressed to the account that was signed
+  /// in when the app was launched from it - it names that pharmacy's order or
+  /// complaint. If that session ends before the shell came up to open it,
+  /// whoever signs in next must not be taken there: the next markAppReady
+  /// would otherwise open it for them.
+  ///
+  /// Only the parked message goes. The FCM token, its registration and the
+  /// message listeners are left exactly as they are, and so are `_appReady`
+  /// and `_initialDeepLinkHandled`.
+  @override
+  void resetForSignOut() {
+    _session++;
+    _pendingInitialMessage = null;
+  }
+
+  /// Parks a cold-start message until the app shell is ready (audit P7), or
+  /// opens it straight away if the shell already is.
+  @visibleForTesting
+  void parkInitialMessage(RemoteMessage message) {
+    _pendingInitialMessage = message;
+    _maybeHandleInitialDeepLink();
+  }
 
   /// Called by the app once the authenticated shell is on screen. Safe to
   /// call more than once.
@@ -269,24 +312,44 @@ class FcmService {
 
     // Terminated -> tapping a notification is what launches the app fresh,
     // rather than resuming it - onMessageOpenedApp never fires for this
-    // case, only getInitialMessage does. Audit P7: park the order id and let
-    // _maybeHandleInitialDeepLink navigate once the app shell is ready,
-    // instead of racing the splash screen's own navigation here.
+    // case, only getInitialMessage does.
+    await handleInitialMessage();
+  }
+
+  /// The cold-start message: the notification whose tap launched the app, if
+  /// any. Stored in the inbox, and its deep link parked (audit P7) so
+  /// _maybeHandleInitialDeepLink navigates once the app shell is ready,
+  /// instead of racing the splash screen's own navigation here.
+  ///
+  /// The read is async and starts while an account is signed in. If that
+  /// account signs out (logout, a 401) before the answer arrives, the message
+  /// was addressed to it and is dropped entirely - neither stored in the inbox
+  /// the sign-out just emptied, nor parked - so the next account never sees
+  /// it, listed or opened.
+  @visibleForTesting
+  Future<void> handleInitialMessage() async {
     // TEMP DIAGNOSTIC LOG (see FCM_DEBUG task).
     _logger.info('FCM_DEBUG: calling getInitialMessage()');
-    final initialMessage = await _messaging.getInitialMessage();
+    // The session the read starts in, taken before the await.
+    final session = _session;
+    final initialMessage =
+        await (_initialMessageReader?.call() ?? _messaging.getInitialMessage());
     _logger.info(
       'FCM_DEBUG: getInitialMessage() returned null = ${initialMessage == null}',
     );
-    if (initialMessage != null) {
-      // Additive: ensure the cold-start message is in the inbox (deduped
-      // against the background-isolate copy). This does NOT touch the P7
-      // deep-link handling below.
-      _saveToInbox(initialMessage);
+    if (initialMessage == null) return;
+    if (session != _session) {
+      _logger.info(
+        'FCM_DEBUG: signed out while the initial message was read - dropped',
+      );
+      return;
     }
-    if (initialMessage != null && _deepLinkPayload(initialMessage) != null) {
-      _pendingInitialMessage = initialMessage;
-      _maybeHandleInitialDeepLink();
+    // Additive: ensure the cold-start message is in the inbox (deduped
+    // against the background-isolate copy). This does NOT touch the P7
+    // deep-link handling below.
+    _saveToInbox(initialMessage);
+    if (_deepLinkPayload(initialMessage) != null) {
+      parkInitialMessage(initialMessage);
     }
   }
 

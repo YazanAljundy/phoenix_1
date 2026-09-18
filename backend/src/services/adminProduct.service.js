@@ -167,9 +167,10 @@ async function findAnyProductOrThrow(productId) {
 // Section 13c: admin can edit any warehouse's product - same validation and
 // price-history/isAvailable rules as the warehouse's own edit
 // (warehouseProduct.service.js), just without the ownership scoping.
-async function updateProduct(productId, userId, changes) {
+// That includes the exchange-rate check on a new price (`options`).
+async function updateProduct(productId, userId, changes, options) {
   const product = await findAnyProductOrThrow(productId);
-  return applyProductUpdate(product, userId, changes);
+  return applyProductUpdate(product, userId, changes, options);
 }
 
 // Section 13c: admin can deactivate (not hard-delete) any product - the

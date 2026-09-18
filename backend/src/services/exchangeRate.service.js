@@ -66,6 +66,59 @@ async function recordRateChange({ usdToSyp, source, previousUsdToSyp, changedBy 
   }
 }
 
+// Far below any real rate move; only absorbs floating-point noise from the
+// rate's JSON round trip through the panel.
+const RATE_EPSILON = 1e-6;
+
+// The panel converts the SYP a user types into the USD the catalog stores, at
+// the rate it loaded - which can be hours old by the time it saves (the daily
+// 09:00 refresh and an admin's manual change never reach an open tab). So a
+// write whose USD figure came out of that conversion carries `rateUsed`, and
+// is refused here unless that is still the rate on record: RATE_CHANGED names
+// both, and the panel re-checks the amount at the new rate before saving again.
+//
+// The one check for every such write - product create/price edit,
+// the warehouse's order limits, advertisement totals. Each caller decides
+// whether its write depends on the rate at all (an unchanged stored value
+// does not). `required` is set at the HTTP boundary: a panel request that
+// converted something must say at which rate. A direct service caller that
+// passes no rate is not checked. Returns the current rate row when checked.
+//
+// Not atomic with the write that follows: a rate that moves in the few
+// milliseconds between this read and that write is not caught.
+async function assertRateUsedIsCurrent(rateUsed, { required = true } = {}) {
+  if (rateUsed === undefined || rateUsed === null || rateUsed === '') {
+    if (!required) return null;
+    throw ApiError.badRequest(
+      'This amount was converted from SYP without the exchange rate it used. Reload the page and try again.',
+      undefined,
+      'RATE_USED_REQUIRED'
+    );
+  }
+  const used = Number(rateUsed);
+  if (!Number.isFinite(used) || used <= 0) {
+    throw ApiError.badRequest('Invalid exchange rate.', undefined, 'INVALID_RATE_USED');
+  }
+
+  const current = await getRate();
+  if (!current) {
+    throw ApiError.badRequest(
+      'Exchange rate is not available yet - this amount cannot be checked.',
+      undefined,
+      'EXCHANGE_RATE_UNAVAILABLE'
+    );
+  }
+  if (Math.abs(current.usdToSyp - used) > RATE_EPSILON) {
+    throw new ApiError(
+      409,
+      'The exchange rate changed since this amount was converted. Review the new amount and save again.',
+      { rateUsed: used, currentUsdToSyp: current.usdToSyp },
+      'RATE_CHANGED'
+    );
+  }
+  return current;
+}
+
 // Money-Flow V2. THE place a money event gets its exchange rate.
 //
 // Every Order, Payment and LedgerEntry freezes what this returns, so the
@@ -308,6 +361,7 @@ async function resetToApi() {
 module.exports = {
   getRate,
   captureFxSnapshot,
+  assertRateUsedIsCurrent,
   recordRateChange,
   listRateHistory,
   refreshFromApi,

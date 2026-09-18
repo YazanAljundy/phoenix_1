@@ -1112,6 +1112,12 @@ abstract class AppLocalizations {
   /// **'This package is no longer available.'**
   String get errorPackageUnavailable;
 
+  /// No description provided for @errorIdempotencyKeyReused.
+  ///
+  /// In en, this message translates to:
+  /// **'An earlier attempt already placed an order from this cart before you changed it. Check My Orders, then submit again to place your updated cart as a new order.'**
+  String get errorIdempotencyKeyReused;
+
   /// No description provided for @removeUnavailablePackagesButton.
   ///
   /// In en, this message translates to:
@@ -1249,6 +1255,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Submit again to place the order at the new prices.'**
   String get priceChangedConfirmHint;
+
+  /// No description provided for @errorRateChangedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'The exchange rate changed'**
+  String get errorRateChangedTitle;
+
+  /// No description provided for @rateChangedTotals.
+  ///
+  /// In en, this message translates to:
+  /// **'Your order comes to {newTotal} at the new rate, instead of {oldTotal}.'**
+  String rateChangedTotals(String newTotal, String oldTotal);
+
+  /// No description provided for @rateChangedConfirmHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit again to place the order at the new rate.'**
+  String get rateChangedConfirmHint;
 
   /// No description provided for @thisItemFallback.
   ///

@@ -1,15 +1,44 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:feniq/core/error/failure.dart';
+import 'package:feniq/core/session/session_scope.dart';
 import 'package:feniq/features/warehouse_selection/data/repositories/warehouse_repository.dart';
 
 import 'warehouse_selection_state.dart';
 
-class WarehouseSelectionCubit extends Cubit<WarehouseSelectionState> {
-  WarehouseSelectionCubit({required WarehouseRepository warehouseRepository})
-    : _warehouseRepository = warehouseRepository,
-      super(const WarehouseSelectionState());
+// Global (main.dart), but scoped to one sign-in: the list is the one the
+// server narrowed to THIS pharmacy's city, and the city scope (the "my city /
+// all cities" choice and the sticky cityScopeAvailable) is this pharmacy's
+// too. A sign-out resets it through SessionScope, so the next account starts
+// from its own city with no toggle it may not be entitled to.
+class WarehouseSelectionCubit extends Cubit<WarehouseSelectionState> implements SessionScoped {
+  WarehouseSelectionCubit({
+    required WarehouseRepository warehouseRepository,
+    SessionScope? sessionScope,
+  }) : _warehouseRepository = warehouseRepository,
+       _sessionScope = sessionScope,
+       super(const WarehouseSelectionState()) {
+    _sessionScope?.register(this);
+  }
 
   final WarehouseRepository _warehouseRepository;
+  final SessionScope? _sessionScope;
+
+  // Bumped by every sign-out, so a list requested for the previous account
+  // can't land after the reset.
+  int _session = 0;
+
+  @override
+  void resetForSignOut() {
+    _session++;
+    if (isClosed) return;
+    emit(const WarehouseSelectionState());
+  }
+
+  @override
+  Future<void> close() {
+    _sessionScope?.unregister(this);
+    return super.close();
+  }
 
   /// Loads the list at the scope currently selected - which on a first load is
   /// the pharmacy's own city, so the screen opens pre-filtered without the
@@ -34,8 +63,10 @@ class WarehouseSelectionCubit extends Cubit<WarehouseSelectionState> {
         onlyMyCity: onlyMyCity,
       ),
     );
+    final session = _session;
     try {
       final result = await _warehouseRepository.getWarehouses(onlyMyCity: onlyMyCity);
+      if (session != _session) return;
       emit(
         state.copyWith(
           status: WarehouseListStatus.loaded,
@@ -50,6 +81,7 @@ class WarehouseSelectionCubit extends Cubit<WarehouseSelectionState> {
         ),
       );
     } on Failure catch (f) {
+      if (session != _session) return;
       emit(
         state.copyWith(
           status: WarehouseListStatus.error,

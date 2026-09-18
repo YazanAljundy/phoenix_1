@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -133,6 +135,14 @@ class _CartViewState extends State<CartView> {
   Future<void> _confirmSubmit() async {
     final l10n = context.l10n;
     final cubit = context.read<CartCubit>();
+
+    // Prices the server changed need their own confirmation - the generic one
+    // below says nothing about them.
+    if (cubit.state.hasUnconfirmedPriceChanges) {
+      await _confirmPriceChanges();
+      return;
+    }
+
     final warehouseName = cubit.state.warehouseName ?? '';
 
     await AppDialog.show(
@@ -140,26 +150,94 @@ class _CartViewState extends State<CartView> {
       title: l10n.submitOrderTitle,
       content: l10n.submitOrderConfirmation(warehouseName),
       actionLabel: l10n.submitOrderButton,
-      onAction: () async {
-        // AppDialog's own action button already pops this confirmation
-        // dialog (via dialogContext + rootNavigator) before calling here -
-        // an extra Navigator.pop(context) with this outer context popped
-        // CartView itself, which is why the screen used to never actually
-        // reach the navigation below (mounted went false mid-flight).
-        final order = await cubit.submitOrder();
-        if (!mounted) return;
-
-        // Straight to order tracking on success - no intermediate "order
-        // submitted" dialog to tap through, the tracking screen itself is
-        // the confirmation.
-        if (order != null) {
-          context.goNamed(
-            RouteNames.orderTracking,
-            pathParameters: {'orderId': order.id},
-          );
-        }
-      },
+      onAction: () => _submit(cubit),
     );
+  }
+
+  // After a PRICE_CHANGED refusal the lines already carry the new prices; this
+  // is the only way to send them. It lists each change (old -> new) and its
+  // action submits with acceptPriceChanges. "Close" sends nothing: the lines
+  // keep their new prices, and the submit button brings this dialog back until
+  // the pharmacist accepts.
+  Future<void> _confirmPriceChanges() async {
+    final l10n = context.l10n;
+    final cubit = context.read<CartCubit>();
+    final isArabic = Localizations.localeOf(context).languageCode == 'ar';
+    final usdToSyp = context.read<ExchangeRateCubit>().state.usdToSyp;
+
+    await AppDialog.show(
+      context: context,
+      title: l10n.errorPriceChangedGeneric,
+      content: describePriceProblems(
+        l10n,
+        isArabic,
+        cubit.state.unconfirmedPriceChanges,
+        cubit.state.items,
+        (amount) => formatMoneyFromUsd(amount, usdToSyp, l10n.currencySuffix),
+      ),
+      actionLabel: l10n.submitOrderButton,
+      onAction: () => _submit(cubit, acceptPriceChanges: true),
+    );
+  }
+
+  // After a RATE_CHANGED refusal: the rate the pharmacist agreed to had
+  // already moved on the server. The refusal carries both rates, so the totals
+  // below are computed without waiting for anything; the rate itself is
+  // re-read in the background so every other screen stops showing the old one.
+  // Nothing is resent until the action here is tapped - "Close" sends nothing
+  // and the submit button brings this dialog back.
+  Future<void> _confirmRateChange(Map<String, dynamic> details) async {
+    final l10n = context.l10n;
+    final cubit = context.read<CartCubit>();
+    final currentRate = (details['currentUsdToSyp'] as num?)?.toDouble();
+    final oldRate = (details['rateUsed'] as num?)?.toDouble();
+    if (currentRate == null || currentRate <= 0) return;
+
+    // The rate this cart would now be converted at, everywhere in the app.
+    unawaited(context.read<ExchangeRateCubit>().load());
+
+    final payable = cubit.state.payableUsd;
+    await AppDialog.show(
+      context: context,
+      title: l10n.errorRateChangedTitle,
+      content: '${l10n.rateChangedTotals(
+        formatMoneyFromUsd(payable, currentRate, l10n.currencySuffix),
+        formatMoneyFromUsd(payable, oldRate, l10n.currencySuffix),
+      )}\n\n${l10n.rateChangedConfirmHint}',
+      actionLabel: l10n.submitOrderButton,
+      onAction: () => _submit(cubit, rateUsed: currentRate),
+    );
+  }
+
+  Future<void> _submit(
+    CartCubit cubit, {
+    bool acceptPriceChanges = false,
+    double? rateUsed,
+  }) async {
+    // AppDialog's own action button already pops its dialog (via
+    // dialogContext + rootNavigator) before calling here - an extra
+    // Navigator.pop(context) with this outer context popped CartView itself,
+    // which is why the screen used to never actually reach the navigation
+    // below (mounted went false mid-flight).
+    //
+    // The rate goes with the request: the totals on this screen were converted
+    // with it, and the server refuses the order rather than billing a total
+    // the pharmacist never saw (order.service.js).
+    final order = await cubit.submitOrder(
+      acceptPriceChanges: acceptPriceChanges,
+      rateUsed: rateUsed ?? context.read<ExchangeRateCubit>().state.usdToSyp,
+    );
+    if (!mounted) return;
+
+    // Straight to order tracking on success - no intermediate "order
+    // submitted" dialog to tap through, the tracking screen itself is the
+    // confirmation.
+    if (order != null) {
+      context.goNamed(
+        RouteNames.orderTracking,
+        pathParameters: {'orderId': order.id},
+      );
+    }
   }
 
   @override
@@ -198,6 +276,22 @@ class _CartViewState extends State<CartView> {
             current.errorMessage != null &&
             previous.errorMessage != current.errorMessage,
         listener: (context, state) {
+          // Repriced lines get the dialog that can accept the new prices,
+          // rather than an error with no way forward.
+          final isPriceChange = state.errorCode == 'PRICE_CHANGED' ||
+              state.errorCode == 'PRICE_CHANGE_UNCONFIRMED';
+          if (isPriceChange && state.hasUnconfirmedPriceChanges) {
+            _confirmPriceChanges();
+            return;
+          }
+
+          // A rate that moved gets the same treatment as a price that moved:
+          // the new figure and a fresh confirmation, not a dead-end error.
+          if (state.errorCode == 'RATE_CHANGED' && state.errorDetails != null) {
+            _confirmRateChange(state.errorDetails!);
+            return;
+          }
+
           // A refused package gets its way out right in the dialog: one tap
           // removes every package the server turned away, instead of the
           // pharmacist hunting down each flagged line.
