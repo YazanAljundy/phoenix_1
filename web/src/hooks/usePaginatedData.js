@@ -1,4 +1,5 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useReducer, useRef } from 'react';
+import { initialPaginatedDataState, paginatedDataReducer } from './usePaginatedDataReducer';
 
 // Shared cursor-pagination hook for every "Load more" list in the admin and
 // warehouse panels (mirrors the cursor/hasMore/nextCursor shape the backend
@@ -13,38 +14,26 @@ import { useCallback, useRef, useState } from 'react';
 // changes (Sections 5+6 of the pagination spec), with a single code path
 // instead of special-casing "is this the first render".
 export function usePaginatedData(fetchPage) {
-  const [data, setData] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [hasMore, setHasMore] = useState(false);
-  const [nextCursor, setNextCursor] = useState(null);
-  const [error, setError] = useState(null);
+  const [state, dispatch] = useReducer(paginatedDataReducer, initialPaginatedDataState);
+  const { data, isLoading, isLoadingMore, hasMore, nextCursor, error } = state;
 
   const fetchPageRef = useRef(fetchPage);
   fetchPageRef.current = fetchPage;
   // Guards against a slow page-1 response landing after a later reset/
   // loadMore already resolved (e.g. the user switches filters twice fast) -
-  // only the most recent request is allowed to commit its result.
+  // only the most recent request is allowed to commit its result. See
+  // usePaginatedDataReducer.js for why both loading flags are set on every
+  // `start` rather than just the one this call owns.
   const requestIdRef = useRef(0);
 
   const run = useCallback(async (cursor, append) => {
     const requestId = ++requestIdRef.current;
-    if (append) setIsLoadingMore(true);
-    else setIsLoading(true);
-    setError(null);
+    dispatch({ type: 'start', requestId, append });
     try {
       const result = await fetchPageRef.current(cursor);
-      if (requestId !== requestIdRef.current) return;
-      setData((prev) => (append ? [...prev, ...result.rows] : result.rows));
-      setHasMore(result.hasMore);
-      setNextCursor(result.nextCursor);
+      dispatch({ type: 'success', requestId, append, result });
     } catch (err) {
-      if (requestId === requestIdRef.current) setError(err.message);
-    } finally {
-      if (requestId === requestIdRef.current) {
-        if (append) setIsLoadingMore(false);
-        else setIsLoading(false);
-      }
+      dispatch({ type: 'fail', requestId, append, error: err.message });
     }
   }, []);
 
