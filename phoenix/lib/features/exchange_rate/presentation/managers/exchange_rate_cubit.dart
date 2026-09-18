@@ -1,6 +1,3 @@
-import 'dart:async';
-
-import 'package:flutter/widgets.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:feniq/core/services/storage_service.dart';
 import 'package:feniq/features/exchange_rate/data/repositories/exchange_rate_repository.dart';
@@ -31,11 +28,15 @@ const Duration kExchangeRateTtl = Duration(minutes: 10);
 // a refreshed rate reaches the catalog, the cart, the package cards and the
 // order invoice at once.
 //
-// It is refreshed on two triggers, and no others: that screen opening, and the
-// app coming back to the foreground with an expired rate (see
-// [kExchangeRateTtl]). There is no polling, and deliberately no fetch on
-// checkout - the cost of a request on every submit is not worth the
-// milliseconds it would shave off an already-bounded staleness window.
+// It is refreshed on two triggers, and no others: that screen opening
+// (WarehouseSelectionView.load), and the app coming back to the foreground
+// with an expired rate (see [kExchangeRateTtl] / [refreshIfStale]) - the
+// latter called from main.dart's single app-resume observer, alongside
+// AuthCubit.revalidateOnResume and NotificationCubit.refresh, rather than
+// from a listener this cubit owns itself. There is no polling, and
+// deliberately no fetch on checkout - the cost of a request on every submit
+// is not worth the milliseconds it would shave off an already-bounded
+// staleness window.
 //
 // Note what a stale rate does and does not cost: prices are STORED in USD and
 // the cart sends USD, so a stale rate never changes what is ordered or what
@@ -55,21 +56,13 @@ class ExchangeRateCubit extends Cubit<ExchangeRateState> {
            usdToSyp: _readCachedRate(storageService),
            fetchedAt: _readCachedFetchedAt(storageService),
          ),
-       ) {
-    // The app's own lifecycle hook for this cubit's data, rather than a line
-    // in main.dart's session observer: it belongs with the value it refreshes,
-    // and it is disposed with the cubit. Fires on every return to the
-    // foreground - isStale is what decides whether that costs a request, so a
-    // glance at another app never does.
-    _lifecycle = AppLifecycleListener(onResume: () => unawaited(refreshIfStale()));
-  }
+       );
 
   final ExchangeRateRepository _exchangeRateRepository;
   // Optional: tests build this cubit with a repository alone. Without it the
   // cubit simply doesn't remember the rate between launches.
   final StorageService? _storageService;
   final DateTime Function() _now;
-  late final AppLifecycleListener _lifecycle;
 
   // The fetch currently in the air, so two triggers landing together (the
   // shell opening as the app resumes) make one request and share its result -
@@ -156,11 +149,5 @@ class ExchangeRateCubit extends Cubit<ExchangeRateState> {
     } catch (_) {
       // See method comment - the cached rate stands, no error surfaced.
     }
-  }
-
-  @override
-  Future<void> close() {
-    _lifecycle.dispose();
-    return super.close();
   }
 }

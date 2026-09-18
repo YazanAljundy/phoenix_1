@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:feniq/core/network/api_client.dart';
@@ -22,6 +23,8 @@ import 'package:feniq/features/cart/data/repositories/order_repository_impl.dart
 import 'package:feniq/features/catalog/data/repositories/catalog_repository_impl.dart';
 import 'package:feniq/features/complaints/data/repositories/complaint_repository_impl.dart';
 import 'package:feniq/features/debts/data/repositories/debt_repository_impl.dart';
+import 'package:feniq/features/exchange_rate/data/models/exchange_rate_model.dart';
+import 'package:feniq/features/exchange_rate/data/repositories/exchange_rate_repository.dart';
 import 'package:feniq/features/exchange_rate/data/repositories/exchange_rate_repository_impl.dart';
 import 'package:feniq/features/notifications/data/repositories/notification_repository.dart';
 import 'package:feniq/features/offers/data/repositories/offers_repository_impl.dart';
@@ -33,16 +36,20 @@ import 'package:feniq/features/warehouse_selection/data/repositories/warehouse_r
 import 'package:feniq/main.dart';
 import 'package:feniq/routes/app_router.dart';
 
-Future<AppRouter> _pumpApp(WidgetTester tester) async {
+class _MockExchangeRateRepository extends Mock implements ExchangeRateRepository {}
+
+Future<AppRouter> _pumpApp(
+  WidgetTester tester, {
+  ExchangeRateRepository? exchangeRateRepository,
+}) async {
   final storageService = StorageService(await SharedPreferences.getInstance());
   final secureStorage = SecureStorageService();
   final apiClient = ApiClient(secureStorage: secureStorage);
   final authRepository = AuthRepositoryImpl(apiClient: apiClient);
   final warehouseRepository = WarehouseRepositoryImpl(apiClient: apiClient);
   final catalogRepository = CatalogRepositoryImpl(apiClient: apiClient);
-  final exchangeRateRepository = ExchangeRateRepositoryImpl(
-    apiClient: apiClient,
-  );
+  final resolvedExchangeRateRepository =
+      exchangeRateRepository ?? ExchangeRateRepositoryImpl(apiClient: apiClient);
   final orderRepository = OrderRepositoryImpl(apiClient: apiClient);
   final savingsRepository = SavingsRepositoryImpl(apiClient: apiClient);
   final returnRepository = ReturnRepositoryImpl(apiClient: apiClient);
@@ -77,7 +84,7 @@ Future<AppRouter> _pumpApp(WidgetTester tester) async {
       authRepository: authRepository,
       warehouseRepository: warehouseRepository,
       catalogRepository: catalogRepository,
-      exchangeRateRepository: exchangeRateRepository,
+      exchangeRateRepository: resolvedExchangeRateRepository,
       orderRepository: orderRepository,
       savingsRepository: savingsRepository,
       returnRepository: returnRepository,
@@ -141,5 +148,68 @@ void main() {
     );
     expect(identical(routerBefore, routerAfter), isTrue);
     expect(identical(appRouter.router, routerAfter), isTrue);
+  });
+
+  // ExchangeRateCubit used to own its own AppLifecycleListener; that call now
+  // lives in main.dart's single _SessionLifecycleObserver, alongside
+  // AuthCubit.revalidateOnResume and NotificationCubit.refresh. This is the
+  // end-to-end proof that the OS resume event still reaches the cubit through
+  // that shared observer.
+  testWidgets('coming back to the foreground re-reads a stale exchange rate through the central observer', (
+    tester,
+  ) async {
+    final rateRepository = _MockExchangeRateRepository();
+    when(() => rateRepository.getExchangeRate())
+        .thenAnswer((_) async => const ExchangeRateModel(usdToSyp: 12500));
+
+    await _pumpApp(tester, exchangeRateRepository: rateRepository);
+    await tester.pumpAndSettle();
+
+    // Nothing has read the rate yet: the app never reached
+    // WarehouseSelectionView (no token -> the login screen), so the cubit's
+    // state is still at its just-constructed default - stale by definition
+    // (no rate, no fetchedAt).
+    verifyNever(() => rateRepository.getExchangeRate());
+
+    // The OS transitions of putting the app away and coming back, one step at
+    // a time - AppLifecycleListener-derived observers assert on a skipped
+    // step, and stepping through them is what the phone actually does.
+    final binding = WidgetsBinding.instance;
+    for (final state in const [
+      AppLifecycleState.inactive,
+      AppLifecycleState.hidden,
+      AppLifecycleState.paused,
+      AppLifecycleState.hidden,
+      AppLifecycleState.inactive,
+      AppLifecycleState.resumed,
+    ]) {
+      binding.handleAppLifecycleStateChanged(state);
+    }
+    await tester.pumpAndSettle();
+
+    verify(() => rateRepository.getExchangeRate()).called(1);
+  });
+
+  // A system dialog, the camera, or the task switcher briefly takes focus
+  // without the app ever truly leaving the foreground: resumed -> inactive
+  // -> resumed, never touching paused. That must NOT be treated as a real
+  // return from the background - this is the case the central observer's
+  // "only a full round trip" guard exists for.
+  testWidgets('a momentary inactive blip that never reaches paused does not trigger a resume refresh', (
+    tester,
+  ) async {
+    final rateRepository = _MockExchangeRateRepository();
+    when(() => rateRepository.getExchangeRate())
+        .thenAnswer((_) async => const ExchangeRateModel(usdToSyp: 12500));
+
+    await _pumpApp(tester, exchangeRateRepository: rateRepository);
+    await tester.pumpAndSettle();
+
+    final binding = WidgetsBinding.instance;
+    binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+    binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+    await tester.pumpAndSettle();
+
+    verifyNever(() => rateRepository.getExchangeRate());
   });
 }

@@ -208,7 +208,7 @@ class MyApp extends StatelessWidget {
   final AuthRepositoryImpl authRepository;
   final WarehouseRepositoryImpl warehouseRepository;
   final CatalogRepositoryImpl catalogRepository;
-  final ExchangeRateRepositoryImpl exchangeRateRepository;
+  final ExchangeRateRepository exchangeRateRepository;
   final OrderRepositoryImpl orderRepository;
   final SavingsRepositoryImpl savingsRepository;
   final ReturnRepositoryImpl returnRepository;
@@ -353,11 +353,32 @@ class MyApp extends StatelessWidget {
 }
 
 // Watches the OS app-lifecycle and asks AuthCubit to re-check the session
-// when the app returns from the background (audit P5). Only a full
-// paused -> resumed transition counts, so a brief permission dialog / camera
-// / app-switcher glance does not trigger a network call; AuthCubit adds a
-// time-based throttle and never signs the user out on a resume network
-// failure.
+// when the app returns from the background (audit P5), and re-reads the
+// exchange rate if it has gone stale while the app was away
+// (ExchangeRateCubit.isStale / kExchangeRateTtl - moved in from a listener
+// the cubit used to own itself, so there is one place watching app-resume,
+// not two). Only a full backgrounding -> resume round trip counts, so a
+// brief permission dialog / camera / app-switcher glance does not trigger a
+// network call; AuthCubit adds its own time-based throttle on top and never
+// signs the user out on a resume network failure, and refreshIfStale is
+// itself the 'only when it matters' gate for the rate.
+//
+// 'A full round trip' means the app actually reached
+// AppLifecycleState.paused, not just that the previous callback happened to
+// report it: per Flutter's own transition graph (see
+// AppLifecycleListener.didChangeAppLifecycleState in the framework),
+// [AppLifecycleState.resumed] is only ever reached FROM
+// [AppLifecycleState.inactive] (or [AppLifecycleState.detached]) - never
+// directly from [AppLifecycleState.paused]. The real backgrounding round
+// trip is paused -> hidden -> inactive -> resumed, so the state immediately
+// before every resumed event is inactive, always - whether the app was
+// truly backgrounded or just glanced away from for a moment. A naive
+// "was the previous state paused?" check can therefore never be true, on
+// any device, under any circumstance - the two calls below did not fire on
+// a real resume event before this was found and fixed here. [_wasPaused]
+// instead remembers whether [AppLifecycleState.paused] was reached at any
+// point since the last resume, which is exactly the 'was truly backgrounded'
+// signal the check was meant to capture.
 class _SessionLifecycleObserver extends StatefulWidget {
   const _SessionLifecycleObserver({required this.child});
 
@@ -370,7 +391,7 @@ class _SessionLifecycleObserver extends StatefulWidget {
 
 class _SessionLifecycleObserverState extends State<_SessionLifecycleObserver>
     with WidgetsBindingObserver {
-  AppLifecycleState? _previous;
+  bool _wasPaused = false;
 
   @override
   void initState() {
@@ -386,14 +407,17 @@ class _SessionLifecycleObserverState extends State<_SessionLifecycleObserver>
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state == AppLifecycleState.resumed &&
-        _previous == AppLifecycleState.paused) {
-      context.read<AuthCubit>().revalidateOnResume();
-      // Pick up any notification the FCM background isolate saved while the
-      // app was away, so the badge is right the moment the user is back.
-      context.read<NotificationCubit>().refresh();
+    if (state == AppLifecycleState.paused) {
+      _wasPaused = true;
+      return;
     }
-    _previous = state;
+    if (state != AppLifecycleState.resumed || !_wasPaused) return;
+    _wasPaused = false;
+    context.read<AuthCubit>().revalidateOnResume();
+    // Pick up any notification the FCM background isolate saved while the
+    // app was away, so the badge is right the moment the user is back.
+    context.read<NotificationCubit>().refresh();
+    context.read<ExchangeRateCubit>().refreshIfStale();
   }
 
   @override
