@@ -66,7 +66,8 @@ export function AdminAdvertisementsPage() {
       REALTIME_EVENTS.ADVERTISEMENT_STATUS_UPDATED,
       REALTIME_EVENTS.ADVERTISEMENT_AVAILABILITY_UPDATED,
     ],
-    () => reset()
+    () => reset(),
+    { grouped: true }
   );
 
   const handleApprove = async (advertisement) => {

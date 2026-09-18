@@ -42,9 +42,15 @@ export class RealtimeClient {
     this._attached = new Set();
     this._reconnectHandlers = new Set();
     this._statusHandlers = new Set();
+    // Delivery target -> pending trailing-edge refresh. A target is either one
+    // event name (`event:order.created`) or one onGroup subscription
+    // (`group:3`), so a page listening to six events waits on one timer.
     this._timers = new Map();
-    // Ids already delivered for a given event, so a replayed/duplicated event
-    // never reaches a subscriber twice.
+    // Groups registered through onGroup: id -> { events, handler }.
+    this._groups = new Map();
+    this._groupSeq = 0;
+    // eventIds already delivered for a given event name, so a re-delivery of
+    // the very same emit never reaches a subscriber twice.
     this._seen = new Map();
     this._connected = false;
     // True once a connection has been established at least once, so the very
@@ -155,6 +161,37 @@ export class RealtimeClient {
     };
   }
 
+  // Subscribe one handler to SEVERAL events with a single shared refresh. Use
+  // this when the handler is "re-read this screen": a page whose every card
+  // comes from the same few queues (the admin dashboard listens to six events)
+  // would otherwise run its refetch once per event name, since `on` gives each
+  // name its own timer. Here the whole group shares one, so a burst spanning
+  // several event names is still one refetch.
+  //
+  // The handler gets (lastPayload, count, payloads, events) - `events` names
+  // the event each payload came from, oldest first. Same unsubscribe contract
+  // as `on`.
+  onGroup(events, handler) {
+    const names = [...new Set(events)].filter(Boolean);
+    if (names.length === 0) return () => {};
+    const id = `group:${(this._groupSeq += 1)}`;
+    this._groups.set(id, { events: new Set(names), handler });
+    for (const event of names) {
+      // The socket-level listener is per event name and shared with `on`;
+      // _dispatch is what fans an event out to groups as well as handlers.
+      if (!this._handlers.has(event)) this._handlers.set(event, new Set());
+      this._attachSocketListener(event);
+    }
+    return () => {
+      this._groups.delete(id);
+      const pending = this._timers.get(id);
+      if (pending) {
+        clearTimeout(pending.timer);
+        this._timers.delete(id);
+      }
+    };
+  }
+
   // One socket-level listener per event name, fanned out to subscribers by
   // _dispatch. Guarded so re-attaching is a no-op.
   _attachSocketListener(event) {
@@ -182,26 +219,21 @@ export class RealtimeClient {
     }
   }
 
-  // Drops a repeat of an event we've already delivered. The entity id is the
-  // stable key - the same order.created arriving twice is one logical event,
-  // so the second is discarded rather than refreshing (or double-counting) a
-  // second time.
+  // Drops a re-delivery of one emit we have already handed to subscribers.
+  //
+  // The key is the server's per-emit `eventId` (realtime/index.js), NOT the
+  // entity: two real changes to one entity are indistinguishable by id, and by
+  // id + status as well. Keyed that way, a package paused after a re-enable, a
+  // second edit re-queueing an offer, an account blocked -> unblocked ->
+  // blocked and a second admin reply at the same status all looked like
+  // repeats, so the panel dropped them and kept showing stale state.
+  //
+  // A payload with no eventId is never deduped - an older server, or an event
+  // that doesn't come through emitToRoom. That costs at most one extra
+  // refetch, which is idempotent, where a wrong key costs a missed change.
   _isDuplicate(event, payload) {
-    // One id field per entity kind across both dashboards. An event carrying
-    // none of them simply isn't deduped (it still coalesces) rather than being
-    // silently collapsed against unrelated events.
-    const id =
-      payload?.orderId ??
-      payload?.returnId ??
-      payload?.userId ??
-      payload?.offerId ??
-      payload?.bannerId ??
-      payload?.complaintId;
-    if (!id) return false;
-    // A status change legitimately repeats for one id (pending -> confirmed
-    // -> preparing), so the status is part of the key; a pure "created" never
-    // repeats for the same id.
-    const key = payload?.status ? `${id}:${payload.status}` : id;
+    const key = payload?.eventId;
+    if (!key) return false;
 
     if (!this._seen.has(event)) this._seen.set(event, new Set());
     const seen = this._seen.get(event);
@@ -222,7 +254,32 @@ export class RealtimeClient {
       return;
     }
 
-    const existing = this._timers.get(event);
+    // Per-event subscribers (`on`): one timer per event name, as before. An
+    // event only a group listens to has an (empty) handler set, so that
+    // connect() attaches its socket listener - no timer is opened for it.
+    const handlers = this._handlers.get(event);
+    if (handlers?.size) {
+      this._schedule(`event:${event}`, event, payload, (last, count, payloads) => {
+        for (const handler of handlers) {
+          safely(() => handler(last, count, payloads));
+        }
+      });
+    }
+
+    // Group subscribers (`onGroup`): one timer for the whole group, so an
+    // event on any of its names extends the same pending refresh.
+    for (const [id, group] of this._groups) {
+      if (!group.events.has(event)) continue;
+      this._schedule(id, event, payload, (last, count, payloads, events) => {
+        safely(() => group.handler(last, count, payloads, events));
+      });
+    }
+  }
+
+  // Extends (or opens) one target's trailing-edge refresh and remembers what
+  // the batch holds.
+  _schedule(key, event, payload, deliver) {
+    const existing = this._timers.get(key);
     if (existing) {
       clearTimeout(existing.timer);
     }
@@ -234,15 +291,16 @@ export class RealtimeClient {
     // the last of them. The unread-badge store needs each entity id, not just
     // the most recent one (see unreadBadges.js).
     const payloads = [...(existing?.payloads ?? []), payload];
+    // Which event each of those payloads arrived as, same order. Only a group
+    // can see more than one name here.
+    const events = [...(existing?.events ?? []), event];
 
     const timer = setTimeout(() => {
-      this._timers.delete(event);
-      for (const handler of this._handlers.get(event) ?? []) {
-        safely(() => handler(payload, count, payloads));
-      }
+      this._timers.delete(key);
+      deliver(payload, count, payloads, events);
     }, this._coalesceMs);
 
-    this._timers.set(event, { timer, count, payloads });
+    this._timers.set(key, { timer, count, payloads, events });
   }
 }
 

@@ -445,7 +445,10 @@ export function AccountsPage() {
   // fires this again after a reconnect.
   useRealtimeSync(
     [REALTIME_EVENTS.ACCOUNT_PENDING, REALTIME_EVENTS.ACCOUNT_STATUS_UPDATED],
-    () => reset()
+    () => reset(),
+    // One list, two events - a pending registration and a decision arriving
+    // together are one reset().
+    { grouped: true }
   );
 
   const handleTypeChange = (nextType) => {

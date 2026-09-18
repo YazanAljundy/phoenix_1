@@ -309,7 +309,8 @@ export function AdminBannersPage() {
   // looking at a row that's already been handled.
   useRealtimeSync(
     [REALTIME_EVENTS.BANNER_PENDING, REALTIME_EVENTS.BANNER_STATUS_UPDATED],
-    () => reset()
+    () => reset(),
+    { grouped: true }
   );
 
   const handleApprove = async (banner) => {

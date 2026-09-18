@@ -1,3 +1,4 @@
+const { randomUUID } = require('node:crypto');
 const { Server } = require('socket.io');
 const env = require('../config/env');
 const { authenticateToken } = require('../middlewares/auth.middleware');
@@ -205,10 +206,28 @@ function initRealtime(httpServer) {
 // Never throws: a realtime hiccup must not roll back or fail an HTTP request
 // that already succeeded. Same defensive contract the FCM calls in these same
 // services already follow.
+// `eventId` identifies this one emit, and is what the dashboard dedupes on.
+// It has to be per-emit rather than derived from the entity, because two real
+// changes to one entity can look identical otherwise: a package paused then
+// paused again after a re-enable, a second edit that re-queues an offer, an
+// account blocked -> unblocked -> blocked. Keyed on the entity (or entity +
+// status) the client dropped the later ones as "duplicates" and the panel
+// silently kept showing the old state. See realtimeClient._isDuplicate.
+//
+// Two rooms receiving the same logical change (an admin decision goes to the
+// admin room and to the owning warehouse's) get an id each - no client is ever
+// in both rooms, and a single socket only ever needs to recognise a
+// re-delivery of the very same emit.
 function emitToRoom(room, event, payload) {
   try {
     if (!io || !room) return;
-    io.to(room).emit(event, { ...payload, eventType: event });
+    io.to(room).emit(event, {
+      ...payload,
+      eventType: event,
+      eventId: randomUUID(),
+      // Debugging aid: which emit an operator is looking at in a log.
+      emittedAt: new Date().toISOString(),
+    });
     log('emit', event, '->', room, JSON.stringify(payload));
   } catch (err) {
     // eslint-disable-next-line no-console
