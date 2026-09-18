@@ -479,6 +479,12 @@ class CartCubit extends Cubit<CartState> implements SessionScoped {
     // account's cart, and a refusal would land its error (or its repriced
     // lines) there. The order itself, if one was placed, belongs to the
     // account that sent it and shows up in that account's order list.
+    //
+    // Dropping it is silent on purpose, and was accepted as such: this returns
+    // null with nothing on screen, so a pharmacist who signed out mid-submit is
+    // never told whether that last tap placed an order. Telling them would mean
+    // surfacing another account's result on this one's session, which is the
+    // leak the reset exists to prevent.
     final session = _session;
     try {
       final order = await _orderRepository.submitOrder(
