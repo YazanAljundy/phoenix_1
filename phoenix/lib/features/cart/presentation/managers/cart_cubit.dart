@@ -57,18 +57,69 @@ class CartCubit extends Cubit<CartState> implements SessionScoped {
     return super.close();
   }
 
-  // The warehouse's own order-size limits (backend: warehouse.model.js).
-  // Fetched once per warehouse, when the cart first points at it, so the
-  // cart can show the limit and gate the submit button locally instead of
+  // The limits read currently in the air, so the cart screen opening while
+  // the warehouse's own fetch is still running makes one request, not two.
+  Future<void>? _limitsInFlight;
+
+  /// Re-reads this warehouse's order-size limits.
+  ///
+  /// Called when the cart screen opens (CartView), on top of the read that
+  /// happens when the cart first points at a warehouse. The limits gate the
+  /// submit button, and a warehouse can change them while a cart sits open:
+  /// with only the original read, a cart that no longer clears a raised
+  /// minimum still offered a submit the server would refuse, and one that a
+  /// lowered minimum had made valid stayed blocked for no reason.
+  ///
+  /// A no-op when the cart is not bound to a warehouse yet.
+  ///
+  /// This is also the only path that raises [CartState.isRefreshingLimits]:
+  /// the indicator belongs to the open cart screen asking, not to the silent
+  /// read the cart kicks off when it first points at a warehouse - nothing is
+  /// on screen to show it then, and every mutation would emit two extra
+  /// states for nobody.
+  Future<void> refreshWarehouseLimits() async {
+    final warehouseId = state.warehouseId;
+    if (warehouseId == null) return;
+    if (!isClosed) emit(state.copyWith(isRefreshingLimits: true));
+    final session = _session;
+    try {
+      await _loadWarehouseLimits(warehouseId);
+    } finally {
+      // Down on every path, including a failed read and a cart that moved on.
+      if (!isClosed && session == _session && state.isRefreshingLimits) {
+        emit(state.copyWith(isRefreshingLimits: false));
+      }
+    }
+  }
+
+  // The warehouse's own order-size limits (backend: warehouse.model.js), so
+  // the cart can show the limit and gate the submit button locally instead of
   // only finding out on a rejected submit.
   //
-  // Deliberately silent on failure: leaving the limits at their "none"
-  // defaults means a lookup problem can never block an otherwise valid
-  // order - order.service.js enforces the real rule either way.
-  Future<void> _loadWarehouseLimits(String warehouseId) async {
+  // Deliberately silent on failure: leaving the limits as they were means a
+  // lookup problem can never block an otherwise valid order - order.service.js
+  // enforces the real rule either way.
+  //
+  // Nothing but the limits (and the indicator flag) is touched: the lines, the
+  // subtotal, the notes and the pending idempotency key all stay exactly as
+  // they are, so a re-read can never disturb a cart being worked on.
+  Future<void> _loadWarehouseLimits(String warehouseId) {
+    final inFlight = _limitsInFlight;
+    if (inFlight != null) return inFlight;
+    final request = _readWarehouseLimits(warehouseId).whenComplete(() {
+      _limitsInFlight = null;
+    });
+    _limitsInFlight = request;
+    return request;
+  }
+
+  Future<void> _readWarehouseLimits(String warehouseId) async {
+    final session = _session;
     try {
       final profile = await _warehouseRepository.getWarehouseProfile(warehouseId);
-      if (isClosed || state.warehouseId != warehouseId) return;
+      // Dropped when the cart moved on while this was in the air: a sign-out,
+      // or a switch to another warehouse (whose own read is already running).
+      if (isClosed || session != _session || state.warehouseId != warehouseId) return;
       emit(
         state.copyWith(
           minOrderAmountUsd: profile.minOrderAmountUsd,
@@ -77,7 +128,8 @@ class CartCubit extends Cubit<CartState> implements SessionScoped {
         ),
       );
     } catch (_) {
-      // See above - intentionally ignored.
+      // See above - intentionally ignored; whatever limits the state already
+      // holds stand.
     }
   }
 
@@ -464,9 +516,23 @@ class CartCubit extends Cubit<CartState> implements SessionScoped {
           updatedItems = _flagUnavailablePackages(refusedPackageIds);
         }
       }
+      // The same principle the repriced lines follow: when the server refuses
+      // on a limit it names the limit it applied, so the cart adopts it rather
+      // than keeping the figure that let this submit through. The banner and
+      // the submit button then tell the truth immediately, without waiting for
+      // the next re-read. Only the limit the refusal names is touched - the
+      // other one is not in the refusal and must keep its value.
+      final num? refusedMinimum = f.code == 'ORDER_BELOW_MINIMUM'
+          ? (f.details?['minOrderAmountUsd'] as num?)
+          : null;
+      final num? refusedMaximum = f.code == 'ORDER_ABOVE_MAXIMUM'
+          ? (f.details?['maxOrderAmountUsd'] as num?)
+          : null;
       emit(
         state.copyWith(
           items: updatedItems,
+          minOrderAmountUsd: refusedMinimum,
+          maxOrderAmountUsd: refusedMaximum,
           // The same rule every edit follows: the key names one exact cart.
           // A repriced line sends a different price, so its key goes, just as
           // updateQuantity drops it for a different quantity. (No order holds

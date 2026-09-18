@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:feniq/core/error/failure.dart';
@@ -7,6 +9,7 @@ import 'package:feniq/features/cart/data/repositories/order_repository.dart';
 import 'package:feniq/features/cart/presentation/managers/cart_cubit.dart';
 import 'package:feniq/features/cart/presentation/managers/cart_state.dart';
 import 'package:feniq/features/catalog/data/models/product_model.dart';
+import 'package:feniq/features/warehouse_selection/data/models/warehouse_profile_model.dart';
 import 'package:feniq/features/warehouse_selection/data/repositories/warehouse_repository.dart';
 
 class MockOrderRepository extends Mock implements OrderRepository {}
@@ -829,6 +832,278 @@ void main() {
 
       // One attempt, and it stops there until something asks again.
       expect(sentRates, hasLength(1));
+    });
+  });
+
+  // The limits gate the submit button, and a warehouse can change them while a
+  // cart sits open. Read once per warehouse, the cart offered a submit the
+  // server would refuse (a raised minimum), or kept refusing one the server
+  // would now accept (a lowered one).
+  group('Order-size limits are re-read when the cart is opened', () {
+    late List<Failure> nextLimitFailures;
+    late List<Completer<WarehouseProfileModel>> pendingProfiles;
+    late int profileCalls;
+
+    WarehouseProfileModel profile({num min = 0, num? max}) => WarehouseProfileModel(
+      id: 'A',
+      nameAr: 'مستودع',
+      nameEn: 'Warehouse A',
+      address: 'a',
+      city: 'Latakia',
+      phone: '0940000000',
+      deliveryType: 'self',
+      minOrderAmountUsd: min,
+      maxOrderAmountUsd: max,
+      averageRating: 0,
+      reviewsCount: 0,
+      recentReviews: const [],
+    );
+
+    // Each call answers with the next queued profile; a queued Completer lets
+    // a test hold the read open and look at the cart mid-flight.
+    late List<WarehouseProfileModel> nextProfiles;
+
+    setUp(() {
+      profileCalls = 0;
+      nextProfiles = [];
+      nextLimitFailures = [];
+      pendingProfiles = [];
+      when(() => warehouseRepo.getWarehouseProfile(any())).thenAnswer((_) {
+        profileCalls += 1;
+        if (nextLimitFailures.isNotEmpty) throw nextLimitFailures.removeAt(0);
+        if (pendingProfiles.isNotEmpty) return pendingProfiles.removeAt(0).future;
+        return Future.value(
+          nextProfiles.isNotEmpty ? nextProfiles.removeAt(0) : profile(),
+        );
+      });
+      when(
+        () => orderRepo.submitOrder(
+          warehouseId: any(named: 'warehouseId'),
+          items: any(named: 'items'),
+          notes: any(named: 'notes'),
+          idempotencyKey: any(named: 'idempotencyKey'),
+          rateUsed: any(named: 'rateUsed'),
+        ),
+      ).thenAnswer((_) async => _fakeOrder);
+    });
+
+    // A cart worth $20 at a warehouse that had no limits when it was built.
+    Future<void> buildCart() async {
+      nextProfiles.add(profile());
+      cubit.addProduct(_product('p1'), warehouseId: 'A', warehouseName: 'Warehouse A', quantity: 2);
+      await pumpEventQueue();
+      expect(cubit.state.subtotalUsd, 20);
+      profileCalls = 0;
+    }
+
+    test('opening the cart reads the limits again', () async {
+      await buildCart();
+      nextProfiles.add(profile(min: 5));
+
+      await cubit.refreshWarehouseLimits();
+
+      expect(profileCalls, 1);
+      expect(cubit.state.minOrderAmountUsd, 5);
+    });
+
+    test('a raised minimum turns the submit button off', () async {
+      await buildCart();
+      expect(cubit.state.canSubmit, isTrue);
+
+      // The warehouse raised its minimum to $50 while this cart sat open.
+      nextProfiles.add(profile(min: 50));
+      await cubit.refreshWarehouseLimits();
+
+      expect(cubit.state.isBelowMinimum, isTrue);
+      expect(cubit.state.canSubmit, isFalse);
+      expect(cubit.state.amountToReachMinimum, 30);
+    });
+
+    test('a lowered minimum turns it back on', () async {
+      await buildCart();
+      nextProfiles.add(profile(min: 50));
+      await cubit.refreshWarehouseLimits();
+      expect(cubit.state.canSubmit, isFalse);
+
+      nextProfiles.add(profile(min: 5));
+      await cubit.refreshWarehouseLimits();
+
+      expect(cubit.state.isBelowMinimum, isFalse);
+      expect(cubit.state.canSubmit, isTrue);
+    });
+
+    test('a lowered maximum turns it off, and a raised one back on', () async {
+      await buildCart();
+
+      nextProfiles.add(profile(max: 10));
+      await cubit.refreshWarehouseLimits();
+      expect(cubit.state.isAboveMaximum, isTrue);
+      expect(cubit.state.canSubmit, isFalse);
+
+      nextProfiles.add(profile(max: 100));
+      await cubit.refreshWarehouseLimits();
+      expect(cubit.state.isAboveMaximum, isFalse);
+      expect(cubit.state.canSubmit, isTrue);
+    });
+
+    test('a maximum that was removed is cleared, not left behind', () async {
+      await buildCart();
+      nextProfiles.add(profile(max: 10));
+      await cubit.refreshWarehouseLimits();
+      expect(cubit.state.maxOrderAmountUsd, 10);
+
+      nextProfiles.add(profile());
+      await cubit.refreshWarehouseLimits();
+
+      expect(cubit.state.maxOrderAmountUsd, isNull);
+    });
+
+    test('the cart itself is untouched while the read is in the air', () async {
+      await buildCart();
+      cubit.updateNotes('leave at the back door');
+      final itemsBefore = cubit.state.items;
+      final keyBefore = cubit.state.pendingIdempotencyKey;
+
+      final pending = Completer<WarehouseProfileModel>();
+      pendingProfiles.add(pending);
+      final refreshing = cubit.refreshWarehouseLimits();
+      await pumpEventQueue();
+
+      // Mid-flight: the lines, the subtotal, the notes and the limits already
+      // on screen are all still there, and only the indicator is up.
+      expect(cubit.state.isRefreshingLimits, isTrue);
+      expect(cubit.state.items, same(itemsBefore));
+      expect(cubit.state.subtotalUsd, 20);
+      expect(cubit.state.notes, 'leave at the back door');
+      expect(cubit.state.minOrderAmountUsd, 0);
+      expect(cubit.state.pendingIdempotencyKey, keyBefore);
+      expect(cubit.state.canSubmit, isTrue);
+
+      pending.complete(profile(min: 5));
+      await refreshing;
+
+      expect(cubit.state.isRefreshingLimits, isFalse);
+      expect(cubit.state.items, same(itemsBefore));
+      expect(cubit.state.minOrderAmountUsd, 5);
+    });
+
+    test('two triggers at once make ONE request', () async {
+      await buildCart();
+      final pending = Completer<WarehouseProfileModel>();
+      pendingProfiles.add(pending);
+
+      // The screen opening while the warehouse's own read is still running.
+      final first = cubit.refreshWarehouseLimits();
+      final second = cubit.refreshWarehouseLimits();
+      pending.complete(profile(min: 5));
+      await Future.wait([first, second]);
+
+      expect(profileCalls, 1);
+      expect(cubit.state.minOrderAmountUsd, 5);
+      expect(cubit.state.isRefreshingLimits, isFalse);
+    });
+
+    test('a failed read keeps the limits already on screen', () async {
+      await buildCart();
+      nextProfiles.add(profile(min: 5));
+      await cubit.refreshWarehouseLimits();
+
+      nextLimitFailures.add(ServerFailure('No Internet Connection', code: FailureCode.network));
+      await cubit.refreshWarehouseLimits();
+
+      expect(cubit.state.minOrderAmountUsd, 5);
+      expect(cubit.state.isRefreshingLimits, isFalse);
+      expect(cubit.state.errorCode, isNull, reason: 'a limits hiccup is never an error on screen');
+    });
+
+    test('an empty cart has no warehouse to ask about', () async {
+      await cubit.refreshWarehouseLimits();
+
+      expect(profileCalls, 0);
+    });
+
+    test('submitting reads the order endpoint only - no limits request', () async {
+      await buildCart();
+
+      await cubit.submitOrder();
+
+      expect(profileCalls, 0);
+    });
+
+    test('a refusal on the minimum adopts the limit the server named', () async {
+      await buildCart();
+      expect(cubit.state.canSubmit, isTrue);
+      when(
+        () => orderRepo.submitOrder(
+          warehouseId: any(named: 'warehouseId'),
+          items: any(named: 'items'),
+          notes: any(named: 'notes'),
+          idempotencyKey: any(named: 'idempotencyKey'),
+          rateUsed: any(named: 'rateUsed'),
+        ),
+      ).thenThrow(ServerFailure(
+        'The minimum order from this warehouse is \$50.',
+        code: 'ORDER_BELOW_MINIMUM',
+        details: {'minOrderAmountUsd': 50, 'subtotalUsd': 20},
+        statusCode: 400,
+      ));
+
+      await cubit.submitOrder();
+
+      // The button tells the truth straight away, without waiting for the next
+      // re-read.
+      expect(cubit.state.minOrderAmountUsd, 50);
+      expect(cubit.state.isBelowMinimum, isTrue);
+      expect(cubit.state.canSubmit, isFalse);
+      expect(cubit.state.errorCode, 'ORDER_BELOW_MINIMUM');
+      expect(profileCalls, 0, reason: 'adopted from the refusal, not re-fetched');
+    });
+
+    test('a refusal on the maximum adopts that limit, and leaves the minimum alone', () async {
+      await buildCart();
+      nextProfiles.add(profile(min: 5));
+      await cubit.refreshWarehouseLimits();
+      when(
+        () => orderRepo.submitOrder(
+          warehouseId: any(named: 'warehouseId'),
+          items: any(named: 'items'),
+          notes: any(named: 'notes'),
+          idempotencyKey: any(named: 'idempotencyKey'),
+          rateUsed: any(named: 'rateUsed'),
+        ),
+      ).thenThrow(ServerFailure(
+        'The maximum order from this warehouse is \$10.',
+        code: 'ORDER_ABOVE_MAXIMUM',
+        details: {'maxOrderAmountUsd': 10, 'subtotalUsd': 20},
+        statusCode: 400,
+      ));
+
+      await cubit.submitOrder();
+
+      expect(cubit.state.maxOrderAmountUsd, 10);
+      expect(cubit.state.minOrderAmountUsd, 5, reason: 'not named by this refusal');
+      expect(cubit.state.isAboveMaximum, isTrue);
+      expect(cubit.state.canSubmit, isFalse);
+    });
+
+    test('any other refusal leaves the limits alone', () async {
+      await buildCart();
+      nextProfiles.add(profile(min: 5, max: 100));
+      await cubit.refreshWarehouseLimits();
+      when(
+        () => orderRepo.submitOrder(
+          warehouseId: any(named: 'warehouseId'),
+          items: any(named: 'items'),
+          notes: any(named: 'notes'),
+          idempotencyKey: any(named: 'idempotencyKey'),
+          rateUsed: any(named: 'rateUsed'),
+        ),
+      ).thenThrow(ServerFailure('No Internet Connection', code: FailureCode.network));
+
+      await cubit.submitOrder();
+
+      expect(cubit.state.minOrderAmountUsd, 5);
+      expect(cubit.state.maxOrderAmountUsd, 100);
     });
   });
 }
