@@ -49,6 +49,26 @@ export async function submitWithRateCheck(send, { rateUsed = null, actions = nul
   }
 }
 
+// Moves the panel onto the rate an admin endpoint just reported.
+//
+// GET/PATCH /admin/exchange-rate and its /reset all answer with the rate now
+// in effect (`{ exchangeRate: { usdToSyp, ... } }`), so the admin's own tab
+// learns the new rate from the response it already has - no second request.
+// Without this, the admin who set the rate was the one person whose panel did
+// not know: the next product or package they saved still converted at the old
+// one and came back refused with RATE_CHANGED.
+//
+// The response is the source, never what was typed: "back to automatic"
+// resolves to whatever the provider returned, which is nobody's input. A
+// payload with no usable rate (none has ever been set) is ignored, as is a
+// missing `actions` (outside the provider).
+export function applyRateFromAdminResponse(actions, data) {
+  const rate = positiveNumber(data?.exchangeRate?.usdToSyp);
+  if (rate === null) return null;
+  actions?.applyServerRate?.(rate);
+  return rate;
+}
+
 // "13,500.25 ل.س" - a rate, which unlike an amount keeps its decimals: the
 // API's rate is fractional, and two rates rounding to the same whole lira
 // would otherwise read as no change at all.
