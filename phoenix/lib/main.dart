@@ -206,7 +206,7 @@ class MyApp extends StatelessWidget {
   final AppUpdateService appUpdateService;
   final SecureStorageService secureStorage;
   final AuthRepositoryImpl authRepository;
-  final WarehouseRepositoryImpl warehouseRepository;
+  final WarehouseRepository warehouseRepository;
   final CatalogRepositoryImpl catalogRepository;
   final ExchangeRateRepository exchangeRateRepository;
   final OrderRepositoryImpl orderRepository;
@@ -418,6 +418,10 @@ class _SessionLifecycleObserverState extends State<_SessionLifecycleObserver>
     // app was away, so the badge is right the moment the user is back.
     context.read<NotificationCubit>().refresh();
     context.read<ExchangeRateCubit>().refreshIfStale();
+    // Same idea for the cart's order-size limits, if a cart happens to be
+    // open (CartCubit.refreshLimitsIfStale is itself a no-op with no
+    // warehouse bound, so this is safe to call unconditionally too).
+    context.read<CartCubit>().refreshLimitsIfStale();
   }
 
   @override

@@ -6,6 +6,7 @@ class CartState {
     this.warehouseName,
     this.minOrderAmountUsd = 0,
     this.maxOrderAmountUsd,
+    this.limitsFetchedAt,
     this.isRefreshingLimits = false,
     this.items = const [],
     this.notes = '',
@@ -24,6 +25,13 @@ class CartState {
   // hiccup can never block ordering: order.service.js re-checks anyway.
   final num minOrderAmountUsd;
   final num? maxOrderAmountUsd;
+
+  // When the limits above were last confirmed current, so a cart left open
+  // can tell whether they are worth re-reading on its own (see
+  // CartCubit.limitsAreStale) rather than only when the cart screen itself
+  // is opened. Null until the first successful read - a cart just bound to a
+  // warehouse (or one whose only read has failed) counts as stale.
+  final DateTime? limitsFetchedAt;
 
   // A limits re-read is in the air (CartCubit.refreshWarehouseLimits). The
   // cart keeps rendering its lines, its subtotal and the limits it already
@@ -115,6 +123,7 @@ class CartState {
     num? minOrderAmountUsd,
     num? maxOrderAmountUsd,
     bool clearMaxOrderAmount = false,
+    DateTime? limitsFetchedAt,
     bool? isRefreshingLimits,
     List<CartItem>? items,
     String? notes,
@@ -131,6 +140,7 @@ class CartState {
       warehouseName: warehouseName ?? this.warehouseName,
       minOrderAmountUsd: minOrderAmountUsd ?? this.minOrderAmountUsd,
       maxOrderAmountUsd: clearMaxOrderAmount ? null : (maxOrderAmountUsd ?? this.maxOrderAmountUsd),
+      limitsFetchedAt: limitsFetchedAt ?? this.limitsFetchedAt,
       isRefreshingLimits: isRefreshingLimits ?? this.isRefreshingLimits,
       items: items ?? this.items,
       notes: notes ?? this.notes,
