@@ -583,6 +583,7 @@
   "removeToMeetMaximum": "تجاوزت الحد الأقصى {amount}، احذف بعض الأصناف",
   "orderBelowMinimum": "الحد الأدنى للطلب من هذا المستودع هو {amount}.",
   "orderAboveMaximum": "الحد الأقصى للطلب من هذا المستودع هو {amount}.",
+  "loadingOrderLimits": "جارٍ تحديث حدود الطلب",
   "returnableSectionTitle": "طلبات مؤهلة للإرجاع",
   "returnableSectionSubtitle": "يمكنك تقديم طلب إرجاع خلال 24 ساعة من التسليم",
   "returnableDeliveredOnLabel": "سُلّم بتاريخ {date}",

@@ -490,6 +490,11 @@ class _CartViewState extends State<CartView> {
                               // the subtotal and the submit button carry on
                               // with the figures already on screen while the
                               // re-read is in the air.
+                              //
+                              // The spinner is the only thing saying the limit
+                              // beside it may be about to move, so it carries
+                              // that in words too - to a screen reader it is
+                              // otherwise an unlabelled, unexplained control.
                               if (state.isRefreshingLimits) ...[
                                 const SizedBox(width: AppSizes.spacingXSmall),
                                 SizedBox(
@@ -498,6 +503,7 @@ class _CartViewState extends State<CartView> {
                                   child: CircularProgressIndicator(
                                     strokeWidth: 1.5,
                                     color: AppColors.textSecondaryOf(context),
+                                    semanticsLabel: l10n.loadingOrderLimits,
                                   ),
                                 ),
                               ],

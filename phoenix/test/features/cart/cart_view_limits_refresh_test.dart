@@ -118,7 +118,7 @@ void main() {
     rateCubit.close();
   });
 
-  Future<void> pumpCart(WidgetTester tester) async {
+  Future<void> pumpCart(WidgetTester tester, {Locale locale = const Locale('en')}) async {
     final router = GoRouter(
       initialLocation: '/cart',
       routes: [
@@ -138,7 +138,7 @@ void main() {
           BlocProvider<ExchangeRateCubit>.value(value: rateCubit),
         ],
         child: MaterialApp.router(
-          locale: const Locale('en'),
+          locale: locale,
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
           routerConfig: router,
@@ -183,6 +183,29 @@ void main() {
     // ...and the indicator goes when the answer lands, with the cart intact.
     expect(find.byType(CircularProgressIndicator), findsNothing);
     expect(find.byType(CartItemTile), findsOneWidget);
+  });
+
+  // The spinner is the only sign that the limit beside it may be about to
+  // move. Without a label a screen reader announces nothing at all for it, so
+  // the one user who cannot see it spinning is the one told the least.
+  testWidgets('the indicator says what it is waiting for, in both languages', (tester) async {
+    await pumpCart(tester);
+
+    expect(find.bySemanticsLabel('Updating the order limits'), findsOneWidget);
+
+    reads.removeAt(0).complete(_profile(min: 5));
+    await tester.pumpAndSettle();
+
+    // Gone with the spinner - a label left behind would announce a wait that
+    // is over.
+    expect(find.bySemanticsLabel('Updating the order limits'), findsNothing);
+
+    await pumpCart(tester, locale: const Locale('ar'));
+
+    expect(find.bySemanticsLabel('جارٍ تحديث حدود الطلب'), findsOneWidget);
+    reads.removeAt(0).complete(_profile(min: 5));
+    await tester.pumpAndSettle();
+    expect(find.bySemanticsLabel('جارٍ تحديث حدود الطلب'), findsNothing);
   });
 
   testWidgets('a raised minimum disables the button, a lowered one re-enables it', (tester) async {
