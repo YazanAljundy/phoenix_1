@@ -16,7 +16,11 @@ const {
   findDeliveredAt,
   hoursRemainingFor,
 } = require('./return.service');
-const { getRate, captureFxSnapshot } = require('./exchangeRate.service');
+const {
+  getRate,
+  captureFxSnapshot,
+  assertRateUsedIsCurrent,
+} = require('./exchangeRate.service');
 const { runInTransaction } = require('../utils/transaction');
 const { deleteImageByUrl } = require('./upload.service');
 const { applyResolvedIdentity } = require('./productCatalog.service');
@@ -317,6 +321,11 @@ async function createOrder({
   advertisementId = null,
   packages = null,
   idempotencyKey = null,
+  // The exchange rate the client converted the displayed total with, when it
+  // sent one. Never part of the idempotency fingerprint: it does not change
+  // which order this is, and a retry after the rate moved must still replay
+  // the order it already placed rather than be refused as a different one.
+  rateUsed = null,
 }) {
   // Money-Flow V2 idempotency. A retried submission (flaky network, a
   // double-tap on "Place order") must not become a second order the pharmacy
@@ -480,7 +489,22 @@ async function createOrder({
   // two different rates. No rate at all (API never configured, no admin
   // manual entry) means there's nothing to charge in SYP - fail clearly
   // rather than order at a made-up rate.
-  const rate = await getRate();
+  //
+  // `rateUsed` is the rate the app converted with to show the pharmacist a
+  // total in lira. The order is priced in USD either way, so a stale rate
+  // never changes what is ordered - but it does change the figure they
+  // agreed to, and the PRICE_CHANGED check below compares USD prices, so it
+  // catches none of that. The same assertion the web panel uses does:
+  // 409 RATE_CHANGED with { rateUsed, currentUsdToSyp }, and the app asks
+  // for a fresh confirmation at the new rate.
+  //
+  // `required: false` on purpose, unlike the panel: an installed app build
+  // that predates this field must keep ordering (it cannot be reloaded the
+  // way a browser tab can), and approveReturn builds its order server-side
+  // with no rate of its own. Both simply aren't checked. The assertion hands
+  // back the very rate row getRate() would have, so a checked order reads the
+  // rate once, not twice.
+  const rate = (await assertRateUsedIsCurrent(rateUsed, { required: false })) ?? (await getRate());
   if (!rate) {
     throw ApiError.badRequest(
       'Exchange rate is not available yet - orders cannot be priced.',

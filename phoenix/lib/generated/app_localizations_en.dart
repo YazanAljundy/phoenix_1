@@ -701,6 +701,18 @@ class AppLocalizationsEn extends AppLocalizations {
       'Submit again to place the order at the new prices.';
 
   @override
+  String get errorRateChangedTitle => 'The exchange rate changed';
+
+  @override
+  String rateChangedTotals(String newTotal, String oldTotal) {
+    return 'Your order comes to $newTotal at the new rate, instead of $oldTotal.';
+  }
+
+  @override
+  String get rateChangedConfirmHint =>
+      'Submit again to place the order at the new rate.';
+
+  @override
   String get thisItemFallback => 'This item';
 
   @override

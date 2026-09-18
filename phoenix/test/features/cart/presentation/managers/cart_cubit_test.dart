@@ -147,6 +147,7 @@ void main() {
           items: any(named: 'items'),
           notes: any(named: 'notes'),
           idempotencyKey: any(named: 'idempotencyKey'),
+          rateUsed: any(named: 'rateUsed'),
         ),
       ).thenAnswer((_) async => _fakeOrder);
 
@@ -158,6 +159,7 @@ void main() {
           items: captureAny(named: 'items'),
           notes: any(named: 'notes'),
           idempotencyKey: any(named: 'idempotencyKey'),
+          rateUsed: any(named: 'rateUsed'),
         ),
       ).captured;
       expect(captured[0], 'A');
@@ -366,6 +368,7 @@ void main() {
           items: any(named: 'items'),
           notes: any(named: 'notes'),
           idempotencyKey: any(named: 'idempotencyKey'),
+          rateUsed: any(named: 'rateUsed'),
         ),
       ).thenAnswer((invocation) async {
         sentKeys.add(invocation.namedArguments[#idempotencyKey] as String?);
@@ -561,6 +564,7 @@ void main() {
           items: any(named: 'items'),
           notes: any(named: 'notes'),
           idempotencyKey: any(named: 'idempotencyKey'),
+          rateUsed: any(named: 'rateUsed'),
         ),
       ).thenAnswer((invocation) async {
         sentKeys.add(invocation.namedArguments[#idempotencyKey] as String?);
@@ -733,6 +737,98 @@ void main() {
         expect(cubit.state.hasUnconfirmedPriceChanges, isFalse);
         expect(cubit.state.pendingIdempotencyKey, keptKey);
       });
+    });
+  });
+
+  // The rate the screen converted the total with rides along with the order,
+  // so the server can refuse one agreed to at a rate that has since moved
+  // (409 RATE_CHANGED - order.service.js). CartView turns that into its own
+  // confirmation dialog; here is what the cubit itself does with it.
+  group('The exchange rate the order was agreed at', () {
+    late List<double?> sentRates;
+    late List<String?> sentKeys;
+    late List<Failure> nextFailures;
+
+    ServerFailure rateChanged({num rateUsed = 1000, num current = 1200}) => ServerFailure(
+      'The exchange rate changed since this amount was converted.',
+      code: 'RATE_CHANGED',
+      details: {'rateUsed': rateUsed, 'currentUsdToSyp': current},
+      statusCode: 409,
+    );
+
+    setUp(() {
+      sentRates = [];
+      sentKeys = [];
+      nextFailures = [];
+      when(
+        () => orderRepo.submitOrder(
+          warehouseId: any(named: 'warehouseId'),
+          items: any(named: 'items'),
+          notes: any(named: 'notes'),
+          idempotencyKey: any(named: 'idempotencyKey'),
+          rateUsed: any(named: 'rateUsed'),
+        ),
+      ).thenAnswer((invocation) async {
+        sentRates.add(invocation.namedArguments[#rateUsed] as double?);
+        sentKeys.add(invocation.namedArguments[#idempotencyKey] as String?);
+        if (nextFailures.isNotEmpty) throw nextFailures.removeAt(0);
+        return _fakeOrder;
+      });
+      cubit.addProduct(_product('p1'), warehouseId: 'A', warehouseName: 'Warehouse A', quantity: 2);
+    });
+
+    test('is sent with the order when the caller has one', () async {
+      await cubit.submitOrder(rateUsed: 1000);
+
+      expect(sentRates, [1000.0]);
+    });
+
+    test('is simply absent when the app has no rate yet', () async {
+      await cubit.submitOrder();
+
+      // An app that has never fetched a rate still orders; the server skips
+      // the check rather than refusing.
+      expect(sentRates, [null]);
+    });
+
+    test('a RATE_CHANGED refusal leaves the cart exactly as it was', () async {
+      nextFailures.add(rateChanged());
+
+      final order = await cubit.submitOrder(rateUsed: 1000);
+
+      expect(order, isNull);
+      expect(cubit.state.items.single.productId, 'p1');
+      expect(cubit.state.items.single.quantity, 2);
+      expect(cubit.state.items.single.discountPriceUsd, 10);
+      expect(cubit.state.hasUnconfirmedPriceChanges, isFalse);
+      expect(cubit.state.isSubmitting, isFalse);
+      // Published for CartView, which answers it with a confirmation dialog.
+      expect(cubit.state.errorCode, 'RATE_CHANGED');
+      expect(cubit.state.errorDetails, {'rateUsed': 1000, 'currentUsdToSyp': 1200});
+    });
+
+    test('the idempotency key survives it: the same cart is still the same order', () async {
+      nextFailures.add(rateChanged());
+      await cubit.submitOrder(rateUsed: 1000);
+      final key = cubit.state.pendingIdempotencyKey;
+      expect(key, isNotNull);
+
+      // The pharmacist confirmed the new rate. Nothing about what is ordered
+      // changed, so the server must see the same key and the same request -
+      // rateUsed is deliberately not part of its fingerprint.
+      await cubit.submitOrder(rateUsed: 1200);
+
+      expect(sentKeys, [key, key]);
+      expect(sentRates, [1000.0, 1200.0]);
+    });
+
+    test('nothing is resent on its own after the refusal', () async {
+      nextFailures.add(rateChanged());
+
+      await cubit.submitOrder(rateUsed: 1000);
+
+      // One attempt, and it stops there until something asks again.
+      expect(sentRates, hasLength(1));
     });
   });
 }

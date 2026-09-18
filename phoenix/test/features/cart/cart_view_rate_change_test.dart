@@ -45,22 +45,23 @@ const _placedOrder = OrderModel(
   finalPrice: 0,
 );
 
-// The cart screen after a PRICE_CHANGED refusal: the new prices are shown in a
-// dialog whose button is the only way to send them, and closing it sends
-// nothing.
+// The cart screen after a RATE_CHANGED refusal: the order was converted at a
+// rate that has since moved, so the pharmacist is shown what the same cart now
+// comes to and asked again. Nothing is resent on its own.
 void main() {
   late CartCubit cartCubit;
   late ExchangeRateCubit rateCubit;
   late _MockOrderRepository orderRepo;
-  // Every submit's lines, in order.
-  late List<List<CartItem>> sentItems;
+  late _MockExchangeRateRepository rateRepo;
+  // The rate each submit carried, in order.
+  late List<double?> sentRates;
 
   setUpAll(() {
     registerFallbackValue(<CartItem>[]);
   });
 
   setUp(() async {
-    sentItems = [];
+    sentRates = [];
     orderRepo = _MockOrderRepository();
     var calls = 0;
     when(
@@ -72,18 +73,15 @@ void main() {
         rateUsed: any(named: 'rateUsed'),
       ),
     ).thenAnswer((invocation) async {
-      sentItems.add(List.of(invocation.namedArguments[#items] as List<CartItem>));
+      sentRates.add(invocation.namedArguments[#rateUsed] as double?);
       calls += 1;
       if (calls == 1) {
+        // The server's refusal, exactly as exchangeRate.service.js builds it.
         throw ServerFailure(
-          'Product p1 is now \$12 (was \$10).',
-          code: 'PRICE_CHANGED',
-          details: {
-            'problems': [
-              {'code': 'PRICE_CHANGED', 'productId': 'p1', 'displayedPriceUsd': 10, 'currentPriceUsd': 12},
-            ],
-          },
-          statusCode: 400,
+          'The exchange rate changed since this amount was converted.',
+          code: 'RATE_CHANGED',
+          details: {'rateUsed': 1000, 'currentUsdToSyp': 1200},
+          statusCode: 409,
         );
       }
       return _placedOrder;
@@ -95,14 +93,14 @@ void main() {
     ).thenAnswer((_) async => throw Exception('limits fetch not exercised here'));
     cartCubit = CartCubit(orderRepository: orderRepo, warehouseRepository: warehouseRepo);
 
-    // A real rate, so the dialog quotes real SYP figures (1 USD = 1,000 SYP).
-    final rateRepo = _MockExchangeRateRepository();
-    when(() => rateRepo.getExchangeRate()).thenAnswer((_) async => const ExchangeRateModel(usdToSyp: 1000));
+    // The rate the screen is showing: 1 USD = 1,000 SYP.
+    rateRepo = _MockExchangeRateRepository();
+    when(() => rateRepo.getExchangeRate())
+        .thenAnswer((_) async => const ExchangeRateModel(usdToSyp: 1000));
     rateCubit = ExchangeRateCubit(exchangeRateRepository: rateRepo);
     await rateCubit.load();
 
-    cartCubit.addProduct(_product('p1'), warehouseId: 'A', warehouseName: 'Warehouse A', quantity: 1);
-    cartCubit.addProduct(_product('p2'), warehouseId: 'A', warehouseName: 'Warehouse A', quantity: 1);
+    cartCubit.addProduct(_product('p1'), warehouseId: 'A', warehouseName: 'Warehouse A', quantity: 2);
   });
 
   tearDown(() {
@@ -148,7 +146,6 @@ void main() {
   Finder inDialog(String text) =>
       find.descendant(of: find.byType(AlertDialog), matching: find.text(text));
 
-  // The cart's own submit button - the only "Submit order" outside a dialog.
   Future<void> tapSubmitButton(WidgetTester tester) async {
     final button = find.text('Submit order').first;
     await tester.ensureVisible(button);
@@ -156,78 +153,121 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  // Submit through the ordinary confirmation, which the server refuses.
-  Future<void> submitIntoPriceChange(WidgetTester tester) async {
+  // Submit through the ordinary confirmation, which the server refuses on the
+  // rate.
+  Future<void> submitIntoRateChange(WidgetTester tester) async {
     await tapSubmitButton(tester);
     expect(find.text('Submit order?'), findsOneWidget);
     await tester.tap(inDialog('Submit order'));
     await tester.pumpAndSettle();
   }
 
-  testWidgets('the refusal opens a dialog listing the new price, with a submit button', (tester) async {
+  testWidgets('the submit carries the rate the screen is showing', (tester) async {
     await pumpCart(tester);
 
-    await submitIntoPriceChange(tester);
+    await submitIntoRateChange(tester);
 
-    expect(sentItems, hasLength(1));
-    expect(find.text('Some prices in your cart have changed.'), findsOneWidget);
+    expect(sentRates, [1000.0]);
+  });
+
+  testWidgets('the refusal opens a dialog with both totals, not a plain error', (tester) async {
+    await pumpCart(tester);
+
+    await submitIntoRateChange(tester);
+
+    expect(find.text('The exchange rate changed'), findsOneWidget);
+    // 2 x $10: 24,000 SYP at the new rate, against the 20,000 on screen.
     expect(
       find.text(
-        'Product p1 is now 12,000 SYP (was 10,000 SYP). '
-        'Submit again to place the order at the new prices.',
+        'Your order comes to 24,000 SYP at the new rate, instead of 20,000 SYP.\n\n'
+        'Submit again to place the order at the new rate.',
       ),
       findsOneWidget,
     );
     expect(inDialog('Submit order'), findsOneWidget);
     expect(inDialog('Close'), findsOneWidget);
-    // The cart itself already shows the new subtotal: 12 + 10 USD.
-    expect(find.text('22,000 SYP'), findsOneWidget);
+  });
+
+  testWidgets('the refusal re-reads the rate, so every screen stops showing the old one', (tester) async {
+    await pumpCart(tester);
+    // Once for the setUp load; the refusal is what triggers the second.
+    verify(() => rateRepo.getExchangeRate()).called(1);
+
+    await submitIntoRateChange(tester);
+
+    verify(() => rateRepo.getExchangeRate()).called(1);
   });
 
   testWidgets('closing the dialog sends nothing, and the submit button brings it back', (tester) async {
     await pumpCart(tester);
-    await submitIntoPriceChange(tester);
+    await submitIntoRateChange(tester);
 
     await tester.tap(inDialog('Close'));
     await tester.pumpAndSettle();
 
-    expect(sentItems, hasLength(1), reason: 'nothing resent on its own');
-    expect(cartCubit.state.hasUnconfirmedPriceChanges, isTrue);
+    expect(sentRates, hasLength(1), reason: 'nothing resent on its own');
 
     await tapSubmitButton(tester);
-
-    // The price-change dialog again, not the generic confirmation that said
-    // nothing about prices.
-    expect(find.text('Some prices in your cart have changed.'), findsOneWidget);
-    expect(find.text('Submit order?'), findsNothing);
-    expect(sentItems, hasLength(1));
+    // The ordinary confirmation again - the cart itself is unchanged, so this
+    // is the normal path, and it is still the pharmacist who decides.
+    expect(find.text('Submit order?'), findsOneWidget);
+    expect(sentRates, hasLength(1));
   });
 
-  testWidgets('its submit button sends the cart at the new prices', (tester) async {
+  testWidgets('confirming resends once, at the new rate, and the order goes through', (tester) async {
     await pumpCart(tester);
-    await submitIntoPriceChange(tester);
+    await submitIntoRateChange(tester);
 
     await tester.tap(inDialog('Submit order'));
     await tester.pumpAndSettle();
 
-    expect(sentItems, hasLength(2));
-    final p1 = sentItems.last.firstWhere((item) => item.productId == 'p1');
-    expect(p1.discountPriceUsd, 12);
-    expect(find.text('tracking o1'), findsOneWidget, reason: 'on to order tracking');
+    expect(sentRates, [1000.0, 1200.0]);
+    expect(find.text('tracking o1'), findsOneWidget);
   });
 
-  testWidgets('the dialog is localised in Arabic', (tester) async {
+  testWidgets('the cart and its idempotency key survive the refusal', (tester) async {
+    await pumpCart(tester);
+
+    await submitIntoRateChange(tester);
+
+    // Nothing about what is ordered changed, so the cart is untouched and the
+    // key stands - the confirmed resubmit is still the same order to the
+    // server (order.service.js keeps rateUsed out of the fingerprint).
+    expect(cartCubit.state.items.single.productId, 'p1');
+    expect(cartCubit.state.items.single.quantity, 2);
+    expect(cartCubit.state.hasUnconfirmedPriceChanges, isFalse);
+    expect(cartCubit.state.pendingIdempotencyKey, isNotNull);
+
+    final key = cartCubit.state.pendingIdempotencyKey;
+    await tester.tap(inDialog('Submit order'));
+    await tester.pumpAndSettle();
+
+    verify(
+      () => orderRepo.submitOrder(
+        warehouseId: any(named: 'warehouseId'),
+        items: any(named: 'items'),
+        notes: any(named: 'notes'),
+        idempotencyKey: key,
+        rateUsed: 1200.0,
+      ),
+    ).called(1);
+  });
+
+  testWidgets('in Arabic too', (tester) async {
     await pumpCart(tester, locale: const Locale('ar'));
 
-    final button = find.text('إرسال الطلب').first;
-    await tester.ensureVisible(button);
-    await tester.tap(button);
+    await tester.tap(find.text('إرسال الطلب').first);
     await tester.pumpAndSettle();
     await tester.tap(inDialog('إرسال الطلب'));
     await tester.pumpAndSettle();
 
-    expect(find.text('تغيّرت بعض الأسعار في سلتك.'), findsOneWidget);
-    expect(inDialog('إرسال الطلب'), findsOneWidget);
-    expect(inDialog('إغلاق'), findsOneWidget);
+    expect(find.text('تغيّر سعر الصرف'), findsOneWidget);
+    expect(
+      find.text(
+        'مجموع طلبك بالسعر الجديد 24,000 ل.س بدل 20,000 ل.س.\n\n'
+        'أرسل الطلب مرة أخرى لتأكيده بالسعر الجديد.',
+      ),
+      findsOneWidget,
+    );
   });
 }

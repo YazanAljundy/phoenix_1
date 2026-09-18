@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -178,13 +180,53 @@ class _CartViewState extends State<CartView> {
     );
   }
 
-  Future<void> _submit(CartCubit cubit, {bool acceptPriceChanges = false}) async {
+  // After a RATE_CHANGED refusal: the rate the pharmacist agreed to had
+  // already moved on the server. The refusal carries both rates, so the totals
+  // below are computed without waiting for anything; the rate itself is
+  // re-read in the background so every other screen stops showing the old one.
+  // Nothing is resent until the action here is tapped - "Close" sends nothing
+  // and the submit button brings this dialog back.
+  Future<void> _confirmRateChange(Map<String, dynamic> details) async {
+    final l10n = context.l10n;
+    final cubit = context.read<CartCubit>();
+    final currentRate = (details['currentUsdToSyp'] as num?)?.toDouble();
+    final oldRate = (details['rateUsed'] as num?)?.toDouble();
+    if (currentRate == null || currentRate <= 0) return;
+
+    // The rate this cart would now be converted at, everywhere in the app.
+    unawaited(context.read<ExchangeRateCubit>().load());
+
+    final payable = cubit.state.payableUsd;
+    await AppDialog.show(
+      context: context,
+      title: l10n.errorRateChangedTitle,
+      content: '${l10n.rateChangedTotals(
+        formatMoneyFromUsd(payable, currentRate, l10n.currencySuffix),
+        formatMoneyFromUsd(payable, oldRate, l10n.currencySuffix),
+      )}\n\n${l10n.rateChangedConfirmHint}',
+      actionLabel: l10n.submitOrderButton,
+      onAction: () => _submit(cubit, rateUsed: currentRate),
+    );
+  }
+
+  Future<void> _submit(
+    CartCubit cubit, {
+    bool acceptPriceChanges = false,
+    double? rateUsed,
+  }) async {
     // AppDialog's own action button already pops its dialog (via
     // dialogContext + rootNavigator) before calling here - an extra
     // Navigator.pop(context) with this outer context popped CartView itself,
     // which is why the screen used to never actually reach the navigation
     // below (mounted went false mid-flight).
-    final order = await cubit.submitOrder(acceptPriceChanges: acceptPriceChanges);
+    //
+    // The rate goes with the request: the totals on this screen were converted
+    // with it, and the server refuses the order rather than billing a total
+    // the pharmacist never saw (order.service.js).
+    final order = await cubit.submitOrder(
+      acceptPriceChanges: acceptPriceChanges,
+      rateUsed: rateUsed ?? context.read<ExchangeRateCubit>().state.usdToSyp,
+    );
     if (!mounted) return;
 
     // Straight to order tracking on success - no intermediate "order
@@ -240,6 +282,13 @@ class _CartViewState extends State<CartView> {
               state.errorCode == 'PRICE_CHANGE_UNCONFIRMED';
           if (isPriceChange && state.hasUnconfirmedPriceChanges) {
             _confirmPriceChanges();
+            return;
+          }
+
+          // A rate that moved gets the same treatment as a price that moved:
+          // the new figure and a fresh confirmation, not a dead-end error.
+          if (state.errorCode == 'RATE_CHANGED' && state.errorDetails != null) {
+            _confirmRateChange(state.errorDetails!);
             return;
           }
 

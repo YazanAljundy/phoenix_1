@@ -132,6 +132,12 @@ const create = asyncHandler(async (req, res) => {
     packages,
     notes: typeof notes === 'string' && notes.trim() ? notes.trim() : null,
     idempotencyKey,
+    // Passed through as sent: exchangeRate.service.js's
+    // assertRateUsedIsCurrent is the one place that decides what a valid rate
+    // is (INVALID_RATE_USED) and whether it is still current (RATE_CHANGED),
+    // for this endpoint and the panel's alike. An app build that sends none
+    // is not checked - see createOrder.
+    rateUsed: req.body.rateUsed,
   });
 
   // A replayed idempotent request gets 200 + the header rather than a second

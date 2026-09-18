@@ -293,6 +293,7 @@ void main() {
           items: any(named: 'items'),
           notes: any(named: 'notes'),
           idempotencyKey: any(named: 'idempotencyKey'),
+          rateUsed: any(named: 'rateUsed'),
         ),
       ).thenAnswer((_) async => _fakeOrder);
     }
@@ -303,6 +304,7 @@ void main() {
             items: captureAny(named: 'items'),
             notes: any(named: 'notes'),
             idempotencyKey: any(named: 'idempotencyKey'),
+            rateUsed: any(named: 'rateUsed'),
           ),
         ).captured.single as List<CartItem>;
 
@@ -338,6 +340,7 @@ void main() {
           items: any(named: 'items'),
           notes: any(named: 'notes'),
           idempotencyKey: any(named: 'idempotencyKey'),
+          rateUsed: any(named: 'rateUsed'),
         ),
       ).thenThrow(failure);
     }
