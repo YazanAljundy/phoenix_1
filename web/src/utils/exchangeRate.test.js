@@ -38,6 +38,60 @@ describe('submitWithRateCheck', () => {
     expect(actions.refresh).not.toHaveBeenCalled();
   });
 
+  // A save that converted nothing (an edited description, a cleared limit) is
+  // never checked against a rate, so the panel keeps whatever it loaded at
+  // sign-in - and the list it returns to goes on converting stored USD with
+  // that. The save is the one moment it is worth putting right.
+  it('re-reads the rate after a save that carried none', async () => {
+    const actions = fakeActions(150);
+    const send = vi.fn(async () => ({ product: { id: 'p1' } }));
+
+    const outcome = await submitWithRateCheck(send, { rateUsed: null, actions });
+
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(actions.refresh).toHaveBeenCalledTimes(1);
+    expect(outcome).toEqual({ result: { product: { id: 'p1' } }, rateChange: null });
+    expect(actions.applyServerRate).not.toHaveBeenCalled();
+  });
+
+  it('waits for that read to FINISH before handing back, so the list renders at the new rate first time', async () => {
+    const order = [];
+    const actions = {
+      applyServerRate: vi.fn(),
+      // A real read takes a turn or two to come back; the point of this test
+      // is that the caller - which closes the modal and reloads its list the
+      // moment this resolves - does not get there first.
+      refresh: vi.fn(async () => {
+        order.push('refresh-start');
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        order.push('refresh-done');
+        return 150;
+      }),
+    };
+    const send = vi.fn(async () => {
+      order.push('send');
+      return { ok: true };
+    });
+
+    await submitWithRateCheck(send, { actions });
+    order.push('resolved');
+
+    expect(order).toEqual(['send', 'refresh-start', 'refresh-done', 'resolved']);
+  });
+
+  it('a failed re-read never costs the save', async () => {
+    const actions = {
+      applyServerRate: vi.fn(),
+      // What ExchangeRateContext's refresh does on a network failure.
+      refresh: vi.fn(async () => null),
+    };
+    const send = vi.fn(async () => ({ product: { id: 'p1' } }));
+
+    const outcome = await submitWithRateCheck(send, { actions });
+
+    expect(outcome).toEqual({ result: { product: { id: 'p1' } }, rateChange: null });
+  });
+
   it('does not resend after RATE_CHANGED, and moves the panel to the server rate', async () => {
     const actions = fakeActions();
     const send = vi.fn(async () => {
