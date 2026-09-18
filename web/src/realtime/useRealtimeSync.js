@@ -17,9 +17,18 @@ import { useRealtime } from './RealtimeProvider';
 // one call instead of one per name (see RealtimeClient.onGroup) - what a page
 // whose whole screen comes from the same queues wants, since `onSync` is then
 // its single refetch. It is opt-in because the callback then sees only the
-// LAST payload of the batch: a caller that filters on the payload (`if
-// (payload.orderId !== orderId) return`) must keep the default, one timer per
-// event name.
+// LAST payload of the batch.
+//
+// The ungrouped (default) path hands the callback a 4th argument too:
+// `payloads`, every payload in that event name's own coalesced batch, oldest
+// first (undefined for the `reconnect` call, which has no batch). A caller
+// that filters on a field (`if (payload.orderId !== orderId) return`) should
+// check the WHOLE batch, not just the last payload that happens to be handed
+// as the first argument - two different orders' events landing in the same
+// coalescing window would otherwise let the last one's mismatch skip a
+// refresh the first one's match should have triggered. See
+// pages/warehouseOrderDetailRealtime.js for the extracted, testable version
+// of that check.
 export function useRealtimeSync(events, onSync, { grouped = false } = {}) {
   const { client } = useRealtime();
   const callbackRef = useRef(onSync);
@@ -45,7 +54,9 @@ export function useRealtimeSync(events, onSync, { grouped = false } = {}) {
           ),
         ]
       : names.map((event) =>
-          client.on(event, (payload, count) => callbackRef.current?.(payload, event, count))
+          client.on(event, (payload, count, payloads) =>
+            callbackRef.current?.(payload, event, count, payloads)
+          )
         );
     unsubscribes.push(client.onReconnect(() => callbackRef.current?.(null, 'reconnect', 0)));
 
