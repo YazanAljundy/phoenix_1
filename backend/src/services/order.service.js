@@ -1,4 +1,3 @@
-const crypto = require('crypto');
 const mongoose = require('mongoose');
 const { ApiError } = require('../utils/ApiError');
 const Product = require('../models/product.model');
@@ -22,6 +21,7 @@ const {
   assertRateUsedIsCurrent,
 } = require('./exchangeRate.service');
 const { runInTransaction } = require('../utils/transaction');
+const { requestFingerprint } = require('../utils/idempotency');
 const { deleteImageByUrl } = require('./upload.service');
 const { applyResolvedIdentity } = require('./productCatalog.service');
 const { getDiscountMapForWarehouse, computeDiscountedPriceUsd } = require('./manufacturerDiscount.service');
@@ -277,13 +277,20 @@ function computeOrderFingerprint({ warehouseId, items, packageRequests, notes })
     .sort((a, b) => compareStrings(a[0], b[0]));
   const trimmedNotes = typeof notes === 'string' && notes.trim() ? notes.trim() : null;
 
-  const canonical = JSON.stringify({
+  // Moved onto the shared requestFingerprint helper
+  // (backend/src/utils/idempotency.js), which hashes the exact same
+  // `${scope}:${JSON.stringify(payload)}` shape this used to build by hand -
+  // verified byte-for-byte identical for every stored fingerprint before this
+  // changed (see backend/test/order.fingerprintMigration.test.js). Every
+  // Order written under the old inline version still replays correctly: the
+  // scope stays 'order-v1', and payment.service.js's fingerprints already use
+  // this same helper.
+  return requestFingerprint('order-v1', {
     warehouseId: String(warehouseId),
     items: lines,
     packages: packageLines,
     notes: trimmedNotes,
   });
-  return crypto.createHash('sha256').update(`order-v1:${canonical}`).digest('hex');
 }
 
 // `existing` is the order a key already produced. The same request again is a
