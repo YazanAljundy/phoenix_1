@@ -71,6 +71,11 @@ String translateErrorCode(AppLocalizations l10n, String? code, String fallbackMe
       return l10n.errorWarehouseNotFound;
     case 'EXCHANGE_RATE_UNAVAILABLE':
       return l10n.errorExchangeRateUnavailable;
+    // 409 from POST /orders: the order was converted at a rate that has since
+    // moved. CartView answers this with its own dialog (the new total and a
+    // fresh confirmation); this is the fallback for any other caller.
+    case 'RATE_CHANGED':
+      return l10n.errorRateChangedTitle;
     case 'STOCK_CHECK_FAILED':
       return l10n.errorStockCheckFailedGeneric;
     case 'PACKAGE_UNAVAILABLE':

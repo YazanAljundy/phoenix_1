@@ -1256,6 +1256,24 @@ abstract class AppLocalizations {
   /// **'Submit again to place the order at the new prices.'**
   String get priceChangedConfirmHint;
 
+  /// No description provided for @errorRateChangedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'The exchange rate changed'**
+  String get errorRateChangedTitle;
+
+  /// No description provided for @rateChangedTotals.
+  ///
+  /// In en, this message translates to:
+  /// **'Your order comes to {newTotal} at the new rate, instead of {oldTotal}.'**
+  String rateChangedTotals(String newTotal, String oldTotal);
+
+  /// No description provided for @rateChangedConfirmHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Submit again to place the order at the new rate.'**
+  String get rateChangedConfirmHint;
+
   /// No description provided for @thisItemFallback.
   ///
   /// In en, this message translates to:

@@ -364,6 +364,19 @@
     }
   },
   "priceChangedConfirmHint": "Submit again to place the order at the new prices.",
+  "errorRateChangedTitle": "The exchange rate changed",
+  "rateChangedTotals": "Your order comes to {newTotal} at the new rate, instead of {oldTotal}.",
+  "@rateChangedTotals": {
+    "placeholders": {
+      "newTotal": {
+        "type": "String"
+      },
+      "oldTotal": {
+        "type": "String"
+      }
+    }
+  },
+  "rateChangedConfirmHint": "Submit again to place the order at the new rate.",
   "thisItemFallback": "This item",
   "loading": "Loading...",
   "orderTrackingTitle": "Order Tracking",

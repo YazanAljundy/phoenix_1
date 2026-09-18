@@ -21,6 +21,7 @@ class OrderRepositoryImpl implements OrderRepository {
     required List<CartItem> items,
     String? notes,
     String? idempotencyKey,
+    double? rateUsed,
   }) async {
     // The cart holds product lines and package lines in one list; the API
     // takes them as two. A package crosses the wire as nothing but its id and
@@ -56,6 +57,11 @@ class OrderRepositoryImpl implements OrderRepository {
               .toList(),
           if (notes != null && notes.isNotEmpty) 'notes': notes,
           if (idempotencyKey != null) 'idempotencyKey': idempotencyKey,
+          // The rate the totals on screen were converted at. Omitted rather
+          // than sent as null when the app has no rate at all - the server
+          // treats "no rate sent" as "nothing to check" either way, and this
+          // keeps the body identical to an older build's.
+          if (rateUsed != null) 'rateUsed': rateUsed,
         },
       );
       final data = response.data as Map<String, dynamic>;

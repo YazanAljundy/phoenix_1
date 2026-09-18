@@ -363,6 +363,19 @@
     }
   },
   "priceChangedConfirmHint": "أرسل الطلب مرة أخرى لتأكيده بالأسعار الجديدة.",
+  "errorRateChangedTitle": "تغيّر سعر الصرف",
+  "rateChangedTotals": "مجموع طلبك بالسعر الجديد {newTotal} بدل {oldTotal}.",
+  "@rateChangedTotals": {
+    "placeholders": {
+      "newTotal": {
+        "type": "String"
+      },
+      "oldTotal": {
+        "type": "String"
+      }
+    }
+  },
+  "rateChangedConfirmHint": "أرسل الطلب مرة أخرى لتأكيده بالسعر الجديد.",
   "thisItemFallback": "هذا العنصر",
   "loading": "جارِ التحميل...",
   "orderTrackingTitle": "تتبع الطلب",

@@ -20,6 +20,12 @@ abstract class OrderRepository {
     // cart is edited: the server refuses a key sent with different contents
     // (IDEMPOTENCY_KEY_REUSED).
     String? idempotencyKey,
+    // The USD->SYP rate this cart's displayed total was converted with. The
+    // order is priced in USD regardless, so this changes nothing about what
+    // is ordered - it is what lets the server refuse (409 RATE_CHANGED) when
+    // the pharmacist agreed to a lira figure computed at a rate that has
+    // since moved. Null is accepted by the server and simply not checked.
+    double? rateUsed,
   });
 
   Future<OrderModel> getOrder(String orderId);

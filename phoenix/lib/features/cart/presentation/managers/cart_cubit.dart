@@ -328,7 +328,18 @@ class CartCubit extends Cubit<CartState> {
   //
   // `acceptPriceChanges`: the pharmacist has seen the prices the server
   // changed and agreed to them. Only CartView's price-change dialog passes it.
-  Future<OrderModel?> submitOrder({bool acceptPriceChanges = false}) async {
+  //
+  // `rateUsed`: the USD->SYP rate the totals on screen were converted at, read
+  // from ExchangeRateCubit by the view that submits. It is sent so the server
+  // can refuse an order agreed to at a rate that has since moved (409
+  // RATE_CHANGED, handled by CartView's own confirmation dialog). It is
+  // deliberately not part of what identifies this cart: the idempotency key
+  // survives a rate change, because nothing about what is being ordered
+  // changed.
+  Future<OrderModel?> submitOrder({
+    bool acceptPriceChanges = false,
+    double? rateUsed,
+  }) async {
     if (state.warehouseId == null) return null;
     // Unreachable through the normal UI (CartView swaps to its empty-cart
     // view once items.isEmpty), but a real, user-visible message here rather
@@ -388,6 +399,7 @@ class CartCubit extends Cubit<CartState> {
         // a package crosses the wire as { advertisementId, copies } and
         // nothing else, and the server prices it from its own record.
         idempotencyKey: idempotencyKey,
+        rateUsed: rateUsed,
       );
       emit(const CartState());
       return order;

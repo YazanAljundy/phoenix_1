@@ -702,6 +702,18 @@ class AppLocalizationsAr extends AppLocalizations {
       'أرسل الطلب مرة أخرى لتأكيده بالأسعار الجديدة.';
 
   @override
+  String get errorRateChangedTitle => 'تغيّر سعر الصرف';
+
+  @override
+  String rateChangedTotals(String newTotal, String oldTotal) {
+    return 'مجموع طلبك بالسعر الجديد $newTotal بدل $oldTotal.';
+  }
+
+  @override
+  String get rateChangedConfirmHint =>
+      'أرسل الطلب مرة أخرى لتأكيده بالسعر الجديد.';
+
+  @override
   String get thisItemFallback => 'هذا العنصر';
 
   @override
