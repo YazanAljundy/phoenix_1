@@ -217,6 +217,21 @@ async function fetchRateFromApi() {
 async function fetchAndStoreFromApi() {
   const { usdToSyp, rateAsOf, rateLimitRemaining } = await fetchRateFromApi();
   const previous = await getRate();
+  // The fetch above is a network round trip - several seconds, sometimes the
+  // full PROVIDER_TIMEOUT_MS - during which an admin's setManualRate can land.
+  // `previous` is read right after it returns, so it already reflects
+  // whichever one won; applying this fetch's result on top of a pin that was
+  // set while it was in flight would silently undo the admin's change. (Not
+  // this path's job to react to a *deliberate* reset, either - that's
+  // resetToApi, which clears manualOverride itself before ever reaching here,
+  // so `previous` correctly reads false for it once that clear has landed.)
+  if (previous && previous.manualOverride) {
+    // eslint-disable-next-line no-console
+    console.log(
+      'Exchange rate API write skipped - a manual override was set while this fetch was in flight.'
+    );
+    return previous;
+  }
   const rate = await ExchangeRate.findByIdAndUpdate(
     SINGLETON_ID,
     { usdToSyp, source: 'api', lastUpdated: new Date(), manualOverride: false },
