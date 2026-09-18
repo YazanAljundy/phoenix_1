@@ -304,11 +304,25 @@ async function postReversal({ targetEntry, createdBy, reason, idempotencyKey, so
   );
 }
 
-// Recomputes an account's balance from its entries, in sequence order. This is
-// the DEFINITION of the balance; balanceCache is only ever "what this would
-// return". Used by the verifier, the migration backfill and the admin rebuild
-// action - never on the normal write path, which moves the cache incrementally.
-async function replayAccount(accountId, { persist = true, session = null } = {}) {
+// A full scan of a busy account's entries takes long enough for a real
+// postEntry to land mid-scan; each retry costs one more scan of the same
+// account, so this is generous headroom rather than a tight budget.
+const MAX_REPLAY_ATTEMPTS = 5;
+
+// One replay attempt. `guardSeq` is the account's seqCounter as read right
+// before the scan below started; persisting is conditioned on it still being
+// that value, so a postEntry that lands during the scan - which is a plain
+// read, not a snapshot, and can take a while on a busy account - can't have
+// its contribution silently overwritten by a sum that was already stale by
+// the time it finished. `persisted` tells the caller whether that guard held:
+// null means there was nothing to guard (persist:false, or no such account),
+// true means the write landed, false means seqCounter had already moved and
+// nothing was written - the caller's job is to rescan, not reuse this sum.
+async function replayAccountOnce(accountId, { persist, session }) {
+  const account = persist
+    ? await LedgerAccount.findById(accountId).select('seqCounter').session(session).lean()
+    : null;
+
   let syp = 0;
   let usd = 0;
   let lastEntrySeq = 0;
@@ -329,22 +343,45 @@ async function replayAccount(accountId, { persist = true, session = null } = {})
 
   const result = { syp: Math.round(syp), usd: round2(usd), lastEntrySeq, entryCount: count };
 
-  if (persist) {
-    await LedgerAccount.updateOne(
-      { _id: accountId },
-      {
-        $set: {
-          'balanceCache.syp': result.syp,
-          'balanceCache.usd': result.usd,
-          'balanceCache.lastEntrySeq': result.lastEntrySeq,
-          'balanceCache.rebuiltAt': new Date(),
-        },
-      },
-      { session }
-    );
+  if (!persist || !account) {
+    // persist:false is a read-only comparison (verifyAccount); a missing
+    // account has nothing to guard or write, same as today.
+    return { result, persisted: null };
   }
 
-  return result;
+  const update = await LedgerAccount.updateOne(
+    { _id: accountId, seqCounter: account.seqCounter },
+    {
+      $set: {
+        'balanceCache.syp': result.syp,
+        'balanceCache.usd': result.usd,
+        'balanceCache.lastEntrySeq': result.lastEntrySeq,
+        'balanceCache.rebuiltAt': new Date(),
+      },
+    },
+    { session }
+  );
+
+  return { result, persisted: update.matchedCount > 0 };
+}
+
+// Recomputes an account's balance from its entries, in sequence order. This is
+// the DEFINITION of the balance; balanceCache is only ever "what this would
+// return". Used by the verifier, the migration backfill and the admin rebuild
+// action - never on the normal write path, which moves the cache incrementally.
+async function replayAccount(accountId, { persist = true, session = null } = {}) {
+  for (let attempt = 1; attempt <= MAX_REPLAY_ATTEMPTS; attempt += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    const { result, persisted } = await replayAccountOnce(accountId, { persist, session });
+    if (persisted !== false) return result;
+    // seqCounter moved under us: something posted while this scan was
+    // running. That sum is already missing whatever just landed, so it is
+    // rescanned from scratch rather than retried as-is.
+  }
+  throw new Error(
+    `replayAccount: gave up after ${MAX_REPLAY_ATTEMPTS} attempts - account ${accountId} kept being ` +
+      'posted to faster than it could be replayed.'
+  );
 }
 
 // Compares the cache against a replay without writing anything. A mismatch is
