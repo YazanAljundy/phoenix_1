@@ -551,6 +551,19 @@ async function createOrder({
   // the package is named by id), so there is nothing to compare against.
   // Lines that sent no price at all (an older app build, or approveReturn's
   // internally-built items) skip it too.
+  //
+  // assertRateUsedIsCurrent above already threw RATE_CHANGED before we ever
+  // get here, so today the two never surface together - a considered choice,
+  // not an oversight: merging them into one combined dialog was evaluated and
+  // rejected. The cost (restructuring this function so both checks run and
+  // report before either throws, then teaching every client - Flutter and
+  // web - to render a combined confirmation) outweighs the benefit (avoiding
+  // a second round trip in the rare case both happen to have moved at once,
+  // with no financial risk either way: the server price always wins
+  // regardless of which dialog the pharmacist sees first), and a partial fix
+  // would not even cover every path (approveReturn's server-built orders
+  // carry no rateUsed to check against). Revisit only if the two really do
+  // start colliding often enough in practice to justify it.
   const priceProblems = [];
   const priceFallbackText = [];
   for (const item of merged) {

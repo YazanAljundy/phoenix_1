@@ -263,6 +263,16 @@ async function createPayment(warehouseId, recordedByUserId, data) {
     reason: data.unlinkedReason,
   });
 
+  // No rateUsed/assertRateUsedIsCurrent check here, unlike product prices,
+  // order limits and advertisement totals - considered and deliberately left
+  // out, not missed. Those all trust a CLIENT conversion (SYP typed, USD
+  // computed locally at a cached rate) that this rate check exists to
+  // validate. A payment carries no such thing: `data.amount`/`currency` is
+  // exactly what the operator typed, in the currency they chose, and
+  // freezeAmounts always converts the OTHER currency itself from a fresh
+  // captureFxSnapshot() right below - the client's rate, even if stale, never
+  // reaches the stored record. There is nothing for RATE_CHANGED to protect
+  // against here.
   const fx = await captureFxSnapshot();
   const frozen = freezeAmounts(data.amount, currency, fx);
   if (frozen.amountSyp === null) {
