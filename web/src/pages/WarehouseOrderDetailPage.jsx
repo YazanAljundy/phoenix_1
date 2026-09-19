@@ -8,6 +8,7 @@ import { REALTIME_EVENTS, useRealtimeSync } from '../realtime/useRealtimeSync';
 import { formatUsdAsSyp, formatSyp, formatMoneyFromUsd, remainingPaymentAmountFromSyp } from '../utils/currency';
 import { PAYMENT_METHODS, PAYMENT_CURRENCIES as CURRENCIES, createIdempotencyKeys } from '../utils/payments';
 import { mayAdvance } from './orderStatusFlow';
+import { realtimeBatchMatchesOrder } from './warehouseOrderDetailRealtime';
 
 function statusKeySuffix(status) {
   return status
@@ -640,8 +641,8 @@ export function WarehouseOrderDetailPage() {
       REALTIME_EVENTS.RETURN_CREATED,
       REALTIME_EVENTS.RETURN_STATUS_UPDATED,
     ],
-    (payload) => {
-      if (payload && payload.orderId !== orderId) return;
+    (_payload, _event, _count, payloads) => {
+      if (!realtimeBatchMatchesOrder(orderId, payloads)) return;
       load();
       loadPendingReturn();
     }
