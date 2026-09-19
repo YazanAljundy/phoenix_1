@@ -3072,6 +3072,16 @@ a.adm-pill {
   color: #e65100;
 }
 
+/* An automatic rate stuck for days is a real failure (LiraScope down, retries
+   exhausted) rather than a deliberate admin choice like manualOverride above
+   - red, not the same orange/amber, so the two are never mistaken for each
+   other at a glance. */
+.adm-rate-warning-stale {
+  background: #fdecea;
+  border-inline-start-color: var(--adm-red);
+  color: var(--adm-red);
+}
+
 .adm-rate-section-title {
   font-weight: var(--font-weight-subheading);
   font-size: 14px;

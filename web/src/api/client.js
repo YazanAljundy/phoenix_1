@@ -107,6 +107,39 @@ export class ApiError extends Error {
   }
 }
 
+// Matches the Flutter app's own Dio timeout (api_client.dart) for a plain
+// JSON call.
+const DEFAULT_TIMEOUT_MS = 15 * 1000;
+// File transfer endpoints (download/upload/import) need more room than a
+// JSON round trip - Cloudinary and Excel parsing both take longer than 15s
+// is comfortable for.
+const TRANSFER_TIMEOUT_MS = 60 * 1000;
+
+// Every fetch() in this file used to have no timeout at all, so a hung
+// connection (dead network, a server that never answers) waited on nothing
+// shorter than the browser's own default - which can be minutes. This wraps
+// fetch with an AbortController on a fixed clock instead, and turns the
+// resulting AbortError into the same ApiError shape every caller already
+// knows how to handle (none of them expect a raw AbortError).
+async function fetchWithTimeout(url, options, timeoutMs) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } catch (err) {
+    if (err?.name === 'AbortError') {
+      throw new ApiError(
+        'The request took too long and was cancelled. Check your connection and try again.',
+        0,
+        'REQUEST_TIMEOUT'
+      );
+    }
+    throw err;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // The single in-flight refresh. A dashboard page can fire half a dozen
 // requests at once and, at expiry, get half a dozen 401s back together.
 // Because the backend rotates the refresh token on every use, letting them
@@ -119,11 +152,15 @@ async function performRefresh() {
   if (!refreshToken) return false;
 
   try {
-    const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refreshToken }),
-    });
+    const response = await fetchWithTimeout(
+      `${API_BASE_URL}/auth/refresh`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken }),
+      },
+      DEFAULT_TIMEOUT_MS
+    );
     if (!response.ok) return false;
 
     const data = await response.json().catch(() => null);
@@ -155,11 +192,15 @@ function buildHeaders(extra = {}) {
 }
 
 async function request(path, { method = 'GET', body, _retried = false } = {}) {
-  const response = await fetch(`${API_BASE_URL}${path}`, {
-    method,
-    headers: buildHeaders({ 'Content-Type': 'application/json' }),
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  const response = await fetchWithTimeout(
+    `${API_BASE_URL}${path}`,
+    {
+      method,
+      headers: buildHeaders({ 'Content-Type': 'application/json' }),
+      body: body ? JSON.stringify(body) : undefined,
+    },
+    DEFAULT_TIMEOUT_MS
+  );
 
   // Since F-03 an access token expires every 24h, so a 401 is routine rather
   // than session-ending: spend the refresh token and replay once. Only if
@@ -196,7 +237,7 @@ async function request(path, { method = 'GET', body, _retried = false } = {}) {
 // load expiring together still refresh once between them.
 async function requestBlob(path, { _retried = false } = {}) {
   const headers = buildHeaders();
-  const response = await fetch(`${API_BASE_URL}${path}`, { headers });
+  const response = await fetchWithTimeout(`${API_BASE_URL}${path}`, { headers }, TRANSFER_TIMEOUT_MS);
 
   if (response.status === 401 && !_retried) {
     const refreshed = await refreshSession();
@@ -216,7 +257,11 @@ async function requestUpload(path, file, { _retried = false } = {}) {
   const headers = buildHeaders();
   const formData = new FormData();
   formData.append('file', file);
-  const response = await fetch(`${API_BASE_URL}${path}`, { method: 'POST', headers, body: formData });
+  const response = await fetchWithTimeout(
+    `${API_BASE_URL}${path}`,
+    { method: 'POST', headers, body: formData },
+    TRANSFER_TIMEOUT_MS
+  );
 
   if (response.status === 401 && !_retried) {
     const refreshed = await refreshSession();
@@ -239,7 +284,11 @@ async function requestUpload(path, file, { _retried = false } = {}) {
 // existing banner/advertisement) needs PATCH.
 async function requestFormData(path, formData, method = 'POST', { _retried = false } = {}) {
   const headers = buildHeaders();
-  const response = await fetch(`${API_BASE_URL}${path}`, { method, headers, body: formData });
+  const response = await fetchWithTimeout(
+    `${API_BASE_URL}${path}`,
+    { method, headers, body: formData },
+    TRANSFER_TIMEOUT_MS
+  );
 
   if (response.status === 401 && !_retried) {
     const refreshed = await refreshSession();

@@ -684,6 +684,7 @@
       "rateValue": "1 USD = {{rate}} SYP",
       "lastUpdated": "Last updated: {{date}}",
       "manualWarning": "⚠️ Manual rate — last updated {{date}}",
+      "staleWarning": "⚠️ The automatic rate hasn't updated in {{hours}}h (last updated {{date}}) - LiraScope may be down. Consider setting a manual rate until it recovers.",
       "disclaimer": "The automatic rate is the parallel-market USD rate from LiraScope and may differ from the Syrian Central Bank's official rate. Use the manual override to set a different rate.",
       "manualUpdate": "Manual update",
       "resetToApi": "Back to automatic API",
