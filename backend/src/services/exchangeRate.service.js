@@ -246,24 +246,72 @@ async function fetchAndStoreFromApi() {
   return rate;
 }
 
-// The 24h cron tick (see startScheduledRefresh below): skips entirely once
-// an admin has pinned a manual rate, and never lets a failed request
-// disturb whatever rate is already stored - same "degrade, don't break"
-// contract as the OTP/image providers elsewhere in this codebase.
-async function refreshFromApi() {
+// One refresh attempt: skips entirely once an admin has pinned a manual
+// rate, and never lets a failed request disturb whatever rate is already
+// stored - same "degrade, don't break" contract as the OTP/image providers
+// elsewhere in this codebase. `true` on success or a manual-pin skip (either
+// way, nothing left to do); `false` only when the LiraScope call itself
+// failed - that is the caller's cue to decide whether to retry.
+async function attemptRefresh() {
   const current = await getRate();
   if (current && current.manualOverride) {
     // eslint-disable-next-line no-console
     console.log('Exchange rate refresh skipped - an admin-set manual rate is pinned.');
-    return;
+    return true;
   }
 
   try {
     await fetchAndStoreFromApi();
+    return true;
   } catch (err) {
     // eslint-disable-next-line no-console
     console.error('Exchange rate refresh failed - keeping the last known rate.', err.message);
+    return false;
   }
+}
+
+// The 24h cron tick's single attempt, and the exact shape every existing
+// test drives directly - one LiraScope call, no retry of its own.
+// refreshFromApiWithRetry (below) is what the boot/daily paths actually use.
+async function refreshFromApi() {
+  await attemptRefresh();
+}
+
+// A failed boot/daily fetch used to sit on the last known rate for a full 24h
+// until the next scheduled tick. Retrying hourly instead - capped well short
+// of that same 24h window - means a transient LiraScope outage self-heals in
+// about an hour instead of a day.
+const REFRESH_RETRY_INTERVAL_MS = 60 * 60 * 1000; // 1 hour
+const MAX_REFRESH_RETRY_ATTEMPTS = 20; // ~20h - stays inside the 24h daily cycle
+
+// Retries attemptRefresh hourly after a failure, up to MAX_REFRESH_RETRY_ATTEMPTS
+// times, and schedules nothing further the moment attemptRefresh reports
+// success OR a pinned manual rate - both mean there is nothing left to do.
+// An admin pinning a manual rate while a retry is pending is not a race to
+// guard against separately: the next attempt's own manual-pin check (above)
+// sees it first and ends the chain right there, before ever calling
+// LiraScope again - the same pin fetchAndStoreFromApi's in-flight check
+// already protects.
+async function refreshFromApiWithRetry(attempt = 1) {
+  const ok = await attemptRefresh();
+  if (ok) return true;
+
+  if (attempt >= MAX_REFRESH_RETRY_ATTEMPTS) {
+    // eslint-disable-next-line no-console
+    console.error(
+      `Exchange rate refresh: giving up after ${attempt} failed attempts - the next scheduled tick will try again.`
+    );
+    return false;
+  }
+
+  // The `return` here is inert for a real setTimeout (its callback's return
+  // value is always discarded) - it only lets a test invoke this callback
+  // directly and await the retry it kicks off, the same way the daily
+  // interval callback below is invoked in tests.
+  setTimeout(function refreshFromApiRetry() {
+    return refreshFromApiWithRetry(attempt + 1);
+  }, REFRESH_RETRY_INTERVAL_MS);
+  return false;
 }
 
 // Milliseconds until the next 09:00 server-local time (today if it hasn't
@@ -287,7 +335,7 @@ function msUntilNextDailyRefresh() {
 async function startScheduledRefresh() {
   const existing = await getRate();
   if (!existing) {
-    await refreshFromApi();
+    await refreshFromApiWithRetry();
   } else {
     // eslint-disable-next-line no-console
     console.log(
@@ -300,8 +348,8 @@ async function startScheduledRefresh() {
   console.log(`Next rate update scheduled for 09:00 on ${next.toDateString()}.`);
 
   setTimeout(() => {
-    refreshFromApi();
-    setInterval(refreshFromApi, REFRESH_INTERVAL_MS);
+    refreshFromApiWithRetry();
+    setInterval(refreshFromApiWithRetry, REFRESH_INTERVAL_MS);
   }, delayMs);
 }
 
@@ -380,6 +428,7 @@ module.exports = {
   recordRateChange,
   listRateHistory,
   refreshFromApi,
+  refreshFromApiWithRetry,
   startScheduledRefresh,
   setManualRate,
   resetToApi,

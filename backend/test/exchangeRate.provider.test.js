@@ -142,7 +142,10 @@ function captureRefreshTimers() {
     return realSetTimeout(fn, ms, ...rest);
   });
   mock.method(globalThis, 'setInterval', (fn, ms, ...rest) => {
-    if (fn === exchangeRateService.refreshFromApi) {
+    // String-matched like the setTimeout mock above (not a strict reference
+    // check against exchangeRateService.refreshFromApi) - the daily tick
+    // schedules refreshFromApiWithRetry now, not refreshFromApi itself.
+    if (String(fn).includes('refreshFromApi')) {
       intervals.push({ fn, ms });
       return { unref() {} };
     }
@@ -315,7 +318,13 @@ test('fallback: a first-ever boot with LiraScope down stores nothing and keeps t
   await exchangeRateService.startScheduledRefresh();
 
   assert.strictEqual(fetchCalls.length, 1);
-  assert.strictEqual(timeouts.length, 1, 'the 09:00 tick is still scheduled to retry');
+  // Two timeouts now: the failed boot attempt schedules its own hourly retry
+  // (refreshFromApiWithRetry), on top of the unconditional next-09:00 tick
+  // startScheduledRefresh always schedules regardless of how the boot fetch
+  // went.
+  assert.strictEqual(timeouts.length, 2, 'both the hourly retry and the 09:00 tick are scheduled');
+  assert.strictEqual(timeouts[0].ms, 60 * 60 * 1000, 'the first timeout is the hourly retry');
+  assert.ok(timeouts[1].ms > 0 && timeouts[1].ms <= DAY_MS, 'the second timeout is the 09:00 tick');
   assert.strictEqual(await storedRate(), null);
   await assert.rejects(callPublicRate(), (err) => {
     assert.strictEqual(err.code, 'EXCHANGE_RATE_UNAVAILABLE');
@@ -407,6 +416,56 @@ test('cache: an empty boot fetches once, reads never fetch, the daily tick refre
     (await ExchangeRateHistory.find().sort({ _id: 1 }).lean()).map((r) => r.usdToSyp),
     [MARKET_MID, 137.5, 138]
   );
+});
+
+// --- Retry on failure ---------------------------------------------------------
+
+test('refreshFromApiWithRetry: a failed attempt retries in an hour, and success stops the chain', async () => {
+  const { timeouts } = captureRefreshTimers();
+
+  let shouldFail = true;
+  respondWith(() =>
+    shouldFail
+      ? new Response('', { status: 503 })
+      : jsonResponse(liraScopeBody({ marketUsd: usdEntry({ mid: 141 }) }))
+  );
+
+  await exchangeRateService.refreshFromApiWithRetry();
+
+  assert.strictEqual(fetchCalls.length, 1, 'the first attempt ran once');
+  assert.strictEqual(await storedRate(), null, 'nothing stored yet - the first attempt failed');
+  assert.strictEqual(timeouts.length, 1, 'a retry in an hour is scheduled after the failure');
+  assert.strictEqual(timeouts[0].ms, 60 * 60 * 1000);
+
+  // The hourly retry fires, and this time LiraScope answers.
+  shouldFail = false;
+  await timeouts[0].fn();
+
+  assert.strictEqual(fetchCalls.length, 2, 'the retry made a second attempt');
+  assert.strictEqual((await storedRate()).usdToSyp, 141);
+  assert.strictEqual(timeouts.length, 1, 'no further retry is scheduled once it succeeds');
+});
+
+test('refreshFromApiWithRetry: a manual override pinned while a retry is pending stops the chain instead of being overwritten', async () => {
+  const { timeouts } = captureRefreshTimers();
+  respondWith(() => new Response('', { status: 503 }));
+
+  await exchangeRateService.refreshFromApiWithRetry();
+  assert.strictEqual(fetchCalls.length, 1);
+  assert.strictEqual(timeouts.length, 1, 'a retry in an hour is scheduled after the failure');
+
+  // An admin pins a manual rate before that pending retry ever fires.
+  await exchangeRateService.setManualRate(999);
+
+  // The pending hourly retry now fires.
+  await timeouts[0].fn();
+
+  assert.strictEqual(fetchCalls.length, 1, 'the retry never called LiraScope - the pin was seen first');
+  const rate = await storedRate();
+  assert.strictEqual(rate.usdToSyp, 999, 'the manual pin stands, not wiped by the pending retry');
+  assert.strictEqual(rate.manualOverride, true);
+  assert.strictEqual(timeouts.length, 1, 'the retry chain stopped - no further attempt is scheduled');
+  assert.ok(logs.some((l) => l.includes('manual rate is pinned')));
 });
 
 // --- Snapshot ---------------------------------------------------------------
