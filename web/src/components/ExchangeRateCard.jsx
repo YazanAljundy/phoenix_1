@@ -6,6 +6,19 @@ import { usePaginatedData } from '../hooks/usePaginatedData';
 
 const HISTORY_PAGE_SIZE = 20;
 
+// The retry-with-backoff in exchangeRate.service.js gives up after ~20
+// hourly attempts, so a genuinely dead LiraScope feed still shows an
+// unmoving `lastUpdated` a full day later. This threshold sits a day past
+// that worst case, giving room before flagging the automatic rate as stale
+// while still catching an outage that drags on for days.
+const STALE_RATE_THRESHOLD_MS = 48 * 60 * 60 * 1000;
+
+// How often the "is the automatic rate stale" check re-evaluates itself
+// against the wall clock, with no network call - so a card left open for
+// hours surfaces the warning on its own instead of waiting for a manual
+// refresh.
+const STALE_CHECK_INTERVAL_MS = 5 * 60 * 1000;
+
 // Section: USD display - the platform-wide USD -> new-SYP rate the Flutter
 // app converts every price with. Now rendered on its own page
 // (AdminExchangeRatePage, mockup frame 1h) rather than embedded on Pending
@@ -16,6 +29,26 @@ export function ExchangeRateCard({ rate, onChanged }) {
   const [input, setInput] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState(null);
+
+  // Live wall-clock reference for the staleness check below - re-rendering
+  // the card every few minutes is the only way "how long has it been" can
+  // change while the admin just leaves the page open, since nothing else
+  // here re-fetches on its own.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), STALE_CHECK_INTERVAL_MS);
+    return () => clearInterval(id);
+  }, []);
+
+  // Independent of the manualOverride warning below: that one says "you set
+  // this rate on purpose", this one says "the automatic rate stopped
+  // updating and nobody has noticed yet" - a real gap, not a deliberate
+  // admin choice, so it gets its own warning rather than reusing that one.
+  const lastUpdatedMs = rate.lastUpdated ? new Date(rate.lastUpdated).getTime() : null;
+  const staleForMs = lastUpdatedMs != null ? now - lastUpdatedMs : null;
+  const isRateStale =
+    !rate.manualOverride && staleForMs != null && staleForMs > STALE_RATE_THRESHOLD_MS;
+  const staleHours = isRateStale ? Math.floor(staleForMs / (60 * 60 * 1000)) : null;
 
   const fetchHistoryPage = useCallback(
     (cursor) =>
@@ -115,6 +148,15 @@ export function ExchangeRateCard({ rate, onChanged }) {
         {rate.manualOverride && (
           <div className="adm-rate-warning">
             {t('admin.exchangeRate.manualWarning', { date: new Date(rate.lastUpdated).toLocaleString() })}
+          </div>
+        )}
+
+        {isRateStale && (
+          <div className="adm-rate-warning adm-rate-warning-stale">
+            {t('admin.exchangeRate.staleWarning', {
+              hours: staleHours,
+              date: new Date(rate.lastUpdated).toLocaleString(),
+            })}
           </div>
         )}
       </div>
