@@ -30,11 +30,28 @@ function positiveNumber(value) {
 // `rateChange: { from, to }` for the form to show. Saving again, at the new
 // rate, is the user's to confirm.
 //
+// A write that carried no rate is also what leaves the panel's own figure
+// unchecked, so this re-reads it once on that path - see below.
+//
 // Resolves to { result, rateChange }: `result` is what `send` resolved to
 // (null after a refusal). Any other error is rethrown untouched.
 export async function submitWithRateCheck(send, { rateUsed = null, actions = null } = {}) {
   try {
-    return { result: await send(), rateChange: null };
+    const result = await send();
+    // An accepted write that carried a rate has just had it compared against
+    // the server's (assertRateUsedIsCurrent), so the panel's figure is proven
+    // current and there is nothing to read.
+    //
+    // One that carried none was never checked against anything: nothing in it
+    // was converted, so the server had no reason to look at a rate - and the
+    // list this save returns to still renders its stored USD through whatever
+    // rate this tab loaded at sign-in, which can be hours old (the daily
+    // refresh, an admin's change). Editing a product's description therefore
+    // used to leave the price column converted at yesterday's rate with no
+    // way to notice. One read fixes the whole list; refresh swallows its own
+    // failure, so the save stands either way.
+    if (rateUsed == null) await actions?.refresh?.();
+    return { result, rateChange: null };
   } catch (err) {
     if (!isRateChangedError(err)) throw err;
 
