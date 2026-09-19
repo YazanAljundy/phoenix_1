@@ -1,5 +1,11 @@
 import { describe, expect, it, vi } from 'vitest';
-import { formatRate, isRateChangedError, submitWithRateCheck, withRateUsed } from './exchangeRate';
+import {
+  applyRateFromAdminResponse,
+  formatRate,
+  isRateChangedError,
+  submitWithRateCheck,
+  withRateUsed,
+} from './exchangeRate';
 
 // The panel converted SYP to USD at a rate loaded once per session, and saved
 // the result with no check, so a rate that moved (the daily refresh, an admin's
@@ -143,6 +149,57 @@ describe('submitWithRateCheck', () => {
       { priceUsd: 10, rateUsed: 130 },
       { priceUsd: 8.67, rateUsed: 150 },
     ]);
+  });
+});
+
+// The admin who changes the rate is the one whose own panel used to miss it:
+// their next converted save carried the old rate and came back refused. The
+// admin endpoints answer with the rate now in effect, so the tab can adopt it
+// from a response it already has.
+describe('applyRateFromAdminResponse', () => {
+  it('moves the panel onto the rate the response reports', () => {
+    const actions = fakeActions();
+
+    const applied = applyRateFromAdminResponse(actions, {
+      exchangeRate: { usdToSyp: 13500, source: 'manual', manualOverride: true },
+    });
+
+    expect(applied).toBe(13500);
+    expect(actions.applyServerRate).toHaveBeenCalledWith(13500);
+    expect(actions.refresh).not.toHaveBeenCalled();
+  });
+
+  it('takes the server figure, which after "back to automatic" is nobody\'s input', () => {
+    const actions = fakeActions();
+
+    // The admin typed nothing here; the provider's own rate came back.
+    const applied = applyRateFromAdminResponse(actions, {
+      exchangeRate: { usdToSyp: 13712.5, source: 'api', manualOverride: false },
+    });
+
+    expect(applied).toBe(13712.5);
+    expect(actions.applyServerRate).toHaveBeenCalledWith(13712.5);
+  });
+
+  it('ignores a payload with no usable rate', () => {
+    const actions = fakeActions();
+
+    // No rate has ever been set; a malformed or empty answer.
+    expect(applyRateFromAdminResponse(actions, { exchangeRate: { usdToSyp: null } })).toBeNull();
+    expect(applyRateFromAdminResponse(actions, { exchangeRate: { usdToSyp: 0 } })).toBeNull();
+    expect(applyRateFromAdminResponse(actions, { exchangeRate: { usdToSyp: -5 } })).toBeNull();
+    expect(applyRateFromAdminResponse(actions, { exchangeRate: {} })).toBeNull();
+    expect(applyRateFromAdminResponse(actions, {})).toBeNull();
+    expect(applyRateFromAdminResponse(actions, null)).toBeNull();
+
+    expect(actions.applyServerRate).not.toHaveBeenCalled();
+  });
+
+  it('works without the rate actions (outside the provider)', () => {
+    expect(() =>
+      applyRateFromAdminResponse(null, { exchangeRate: { usdToSyp: 13500 } })
+    ).not.toThrow();
+    expect(applyRateFromAdminResponse(null, { exchangeRate: { usdToSyp: 13500 } })).toBe(13500);
   });
 });
 
