@@ -1217,6 +1217,9 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
+  String get loadingOrderLimits => 'جارٍ تحديث حدود الطلب';
+
+  @override
   String get returnableSectionTitle => 'طلبات مؤهلة للإرجاع';
 
   @override

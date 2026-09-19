@@ -597,6 +597,7 @@
   "removeToMeetMaximum": "Over the {amount} maximum — remove some items",
   "orderBelowMinimum": "The minimum order from this warehouse is {amount}.",
   "orderAboveMaximum": "The maximum order from this warehouse is {amount}.",
+  "loadingOrderLimits": "Updating the order limits",
   "@minOrderLabel": {
     "placeholders": {
       "amount": {

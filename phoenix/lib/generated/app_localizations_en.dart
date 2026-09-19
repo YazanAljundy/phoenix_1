@@ -1216,6 +1216,9 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get loadingOrderLimits => 'Updating the order limits';
+
+  @override
   String get returnableSectionTitle => 'Orders eligible for return';
 
   @override

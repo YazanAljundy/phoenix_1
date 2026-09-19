@@ -2120,6 +2120,12 @@ abstract class AppLocalizations {
   /// **'The maximum order from this warehouse is {amount}.'**
   String orderAboveMaximum(String amount);
 
+  /// No description provided for @loadingOrderLimits.
+  ///
+  /// In en, this message translates to:
+  /// **'Updating the order limits'**
+  String get loadingOrderLimits;
+
   /// No description provided for @returnableSectionTitle.
   ///
   /// In en, this message translates to:
