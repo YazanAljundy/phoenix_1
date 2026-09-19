@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -128,24 +127,6 @@ void main() {
           .thenAnswer((_) async => const ExchangeRateModel(usdToSyp: 12500));
     });
 
-    // The OS transitions of putting the app away and coming back, one step at
-    // a time - AppLifecycleListener asserts on a skipped step, and stepping
-    // through them is what the phone actually does.
-    Future<void> backgroundAndResume() async {
-      final binding = WidgetsBinding.instance;
-      for (final state in const [
-        AppLifecycleState.inactive,
-        AppLifecycleState.hidden,
-        AppLifecycleState.paused,
-        AppLifecycleState.hidden,
-        AppLifecycleState.inactive,
-        AppLifecycleState.resumed,
-      ]) {
-        binding.handleAppLifecycleStateChanged(state);
-      }
-      await Future<void>.delayed(Duration.zero);
-    }
-
     test('a successful fetch stamps and stores when it happened', () async {
       final storage = await storageWith({});
       final cubit = cubitWith(storage);
@@ -230,33 +211,6 @@ void main() {
 
       expect(cubit.isStale, isTrue);
       await cubit.close();
-    });
-
-    test('coming back to the foreground drives the refresh through the real lifecycle hook', () async {
-      final fetchedAt = clock;
-      final storage = await storageWith({
-        kExchangeRateStorageKey: '15000.0',
-        kExchangeRateFetchedAtStorageKey: fetchedAt.millisecondsSinceEpoch.toString(),
-      });
-      final cubit = cubitWith(storage);
-      clock = fetchedAt.add(kExchangeRateTtl + const Duration(minutes: 5));
-
-      // Not a direct call to refreshIfStale: this is the OS transition the
-      // cubit's own AppLifecycleListener listens for.
-      await backgroundAndResume();
-
-      expect(cubit.state.usdToSyp, equals(12500));
-      verify(() => repository.getExchangeRate()).called(1);
-      await cubit.close();
-    });
-
-    test('a closed cubit no longer reacts to a resume', () async {
-      final cubit = cubitWith(await storageWith({}));
-      await cubit.close();
-
-      await backgroundAndResume();
-
-      verifyNever(() => repository.getExchangeRate());
     });
 
     test('two triggers at once make ONE request and share its answer', () async {

@@ -10,6 +10,20 @@ import 'package:feniq/features/catalog/data/models/product_model.dart';
 
 import 'cart_state.dart';
 
+/// How long the warehouse's own order-size limits (CartState.minOrderAmountUsd
+/// / maxOrderAmountUsd) are treated as current before an app-resume is worth
+/// spending a request on.
+///
+/// Shorter than ExchangeRateCubit's 10 minutes on purpose: a warehouse
+/// changes its own limits by hand, at any moment, and the effect is immediate
+/// and binary on this one screen - the submit button is either wrongly
+/// enabled (the server then refuses the order) or wrongly disabled (blocked
+/// for no reason) - rather than a figure elsewhere in the app being a little
+/// off. The cart screen opening still re-reads unconditionally
+/// (refreshWarehouseLimits); this only bounds how wrong a cart left open
+/// through a background/resume can get.
+const Duration kCartLimitsTtl = Duration(minutes: 5);
+
 // Section 6.6: every order belongs to exactly one warehouse, so the cart as a
 // whole is scoped to one warehouseId at a time. Registered globally (like
 // AuthCubit) since it must survive navigation between the catalog and cart
@@ -24,9 +38,12 @@ class CartCubit extends Cubit<CartState> implements SessionScoped {
     required OrderRepository orderRepository,
     required WarehouseRepository warehouseRepository,
     SessionScope? sessionScope,
+    // Test seam for the TTL clock; production uses the wall clock.
+    DateTime Function()? now,
   })  : _orderRepository = orderRepository,
         _warehouseRepository = warehouseRepository,
         _sessionScope = sessionScope,
+        _now = now ?? DateTime.now,
         super(const CartState()) {
     _sessionScope?.register(this);
   }
@@ -34,6 +51,7 @@ class CartCubit extends Cubit<CartState> implements SessionScoped {
   final OrderRepository _orderRepository;
   final WarehouseRepository _warehouseRepository;
   final SessionScope? _sessionScope;
+  final DateTime Function() _now;
   final Uuid _uuid = const Uuid();
 
   // Bumped by every sign-out. A submit that was in flight when the account
@@ -92,6 +110,36 @@ class CartCubit extends Cubit<CartState> implements SessionScoped {
     }
   }
 
+  /// Whether the limits on hand are old enough to be worth re-reading.
+  ///
+  /// No warehouse bound yet, or no successful read yet ([CartState.
+  /// limitsFetchedAt] null), counts as stale - there is nothing current to
+  /// protect by waiting. So does a timestamp in the future (the device clock
+  /// moved).
+  bool get limitsAreStale {
+    if (state.warehouseId == null) return false;
+    final fetchedAt = state.limitsFetchedAt;
+    if (fetchedAt == null) return true;
+    final age = _now().difference(fetchedAt);
+    return age.isNegative || age >= kCartLimitsTtl;
+  }
+
+  /// The app-resume path: re-reads the limits only if they have gone stale
+  /// (see [limitsAreStale] / [kCartLimitsTtl]) while the cart sat open with
+  /// the app in the background. Called from main.dart's single app-resume
+  /// observer, alongside ExchangeRateCubit.refreshIfStale - not a listener of
+  /// its own, for the same reason.
+  ///
+  /// Deliberately does NOT raise [CartState.isRefreshingLimits]: unlike
+  /// [refreshWarehouseLimits], this can fire with no cart screen anywhere in
+  /// view, and raising a flag nothing is showing would be pointless - if the
+  /// cart screen does happen to be the one in front, the limits simply
+  /// update once the read lands, same as any other background refresh.
+  Future<void> refreshLimitsIfStale() {
+    if (!limitsAreStale) return Future<void>.value();
+    return _loadWarehouseLimits(state.warehouseId!);
+  }
+
   // The warehouse's own order-size limits (backend: warehouse.model.js), so
   // the cart can show the limit and gate the submit button locally instead of
   // only finding out on a rejected submit.
@@ -125,11 +173,14 @@ class CartCubit extends Cubit<CartState> implements SessionScoped {
           minOrderAmountUsd: profile.minOrderAmountUsd,
           maxOrderAmountUsd: profile.maxOrderAmountUsd,
           clearMaxOrderAmount: profile.maxOrderAmountUsd == null,
+          limitsFetchedAt: _now(),
         ),
       );
     } catch (_) {
       // See above - intentionally ignored; whatever limits the state already
-      // holds stand.
+      // holds stand. limitsFetchedAt is untouched too, so the next resume (or
+      // screen open) tries again rather than waiting out another TTL on
+      // figures that were never actually confirmed.
     }
   }
 

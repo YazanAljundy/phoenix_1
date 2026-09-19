@@ -1106,4 +1106,165 @@ void main() {
       expect(cubit.state.maxOrderAmountUsd, 100);
     });
   });
+
+  // The limits could go stale while a cart sat open in the background too -
+  // refreshLimitsIfStale is the app-resume half (main.dart's central
+  // observer), on the same TTL principle as ExchangeRateCubit.
+  group('The limits go stale on their own TTL too (app-resume refresh)', () {
+    late MockOrderRepository ttlOrderRepo;
+    late MockWarehouseRepository ttlWarehouseRepo;
+    late List<WarehouseProfileModel> nextProfiles;
+    late int profileCalls;
+    DateTime clock = DateTime(2026, 9, 18, 9);
+
+    WarehouseProfileModel profile({num min = 0, num? max}) => WarehouseProfileModel(
+      id: 'A',
+      nameAr: 'مستودع',
+      nameEn: 'Warehouse A',
+      address: 'a',
+      city: 'Latakia',
+      phone: '0940000000',
+      deliveryType: 'self',
+      minOrderAmountUsd: min,
+      maxOrderAmountUsd: max,
+      averageRating: 0,
+      reviewsCount: 0,
+      recentReviews: const [],
+    );
+
+    CartCubit cubitWith() => CartCubit(
+      orderRepository: ttlOrderRepo,
+      warehouseRepository: ttlWarehouseRepo,
+      now: () => clock,
+    );
+
+    setUp(() {
+      clock = DateTime(2026, 9, 18, 9);
+      ttlOrderRepo = MockOrderRepository();
+      ttlWarehouseRepo = MockWarehouseRepository();
+      profileCalls = 0;
+      nextProfiles = [];
+      when(() => ttlWarehouseRepo.getWarehouseProfile(any())).thenAnswer((_) async {
+        profileCalls += 1;
+        return nextProfiles.isNotEmpty ? nextProfiles.removeAt(0) : profile();
+      });
+    });
+
+    test('an empty cart has nothing stale to refresh', () async {
+      final cubit = cubitWith();
+
+      expect(cubit.limitsAreStale, isFalse);
+      await cubit.refreshLimitsIfStale();
+
+      expect(profileCalls, 0);
+      await cubit.close();
+    });
+
+    test('a freshly-bound warehouse with no confirmed read yet is stale', () async {
+      final cubit = cubitWith();
+      cubit.addProduct(_product('p1'), warehouseId: 'A', warehouseName: 'Warehouse A', quantity: 1);
+
+      expect(cubit.limitsAreStale, isTrue);
+      await cubit.close();
+    });
+
+    test('an expired read is re-read on resume', () async {
+      final cubit = cubitWith();
+      cubit.addProduct(_product('p1'), warehouseId: 'A', warehouseName: 'Warehouse A', quantity: 1);
+      await pumpEventQueue();
+      expect(cubit.limitsAreStale, isFalse);
+      profileCalls = 0;
+
+      clock = clock.add(kCartLimitsTtl + const Duration(seconds: 1));
+      expect(cubit.limitsAreStale, isTrue);
+      nextProfiles.add(profile(min: 5));
+      await cubit.refreshLimitsIfStale();
+
+      expect(profileCalls, 1);
+      expect(cubit.state.minOrderAmountUsd, 5);
+      expect(cubit.limitsAreStale, isFalse);
+      await cubit.close();
+    });
+
+    test('a read that is still current is NOT re-read on resume', () async {
+      final cubit = cubitWith();
+      cubit.addProduct(_product('p1'), warehouseId: 'A', warehouseName: 'Warehouse A', quantity: 1);
+      await pumpEventQueue();
+      profileCalls = 0;
+
+      clock = clock.add(kCartLimitsTtl - const Duration(seconds: 1));
+      expect(cubit.limitsAreStale, isFalse);
+      await cubit.refreshLimitsIfStale();
+
+      expect(profileCalls, 0);
+      await cubit.close();
+    });
+
+    test('the resume path never raises the refreshing indicator', () async {
+      final cubit = cubitWith();
+      cubit.addProduct(_product('p1'), warehouseId: 'A', warehouseName: 'Warehouse A', quantity: 1);
+      await pumpEventQueue();
+      clock = clock.add(kCartLimitsTtl + const Duration(seconds: 1));
+
+      final refreshing = cubit.refreshLimitsIfStale();
+      // Unlike refreshWarehouseLimits (the cart-screen path), nothing here
+      // should ever flip isRefreshingLimits - there may be no cart screen in
+      // view at all to show it.
+      expect(cubit.state.isRefreshingLimits, isFalse);
+      await refreshing;
+      expect(cubit.state.isRefreshingLimits, isFalse);
+      await cubit.close();
+    });
+
+    test('a failed read leaves the limits stale, so the next resume retries', () async {
+      final cubit = cubitWith();
+      cubit.addProduct(_product('p1'), warehouseId: 'A', warehouseName: 'Warehouse A', quantity: 1);
+      await pumpEventQueue();
+      clock = clock.add(kCartLimitsTtl + const Duration(seconds: 1));
+      when(() => ttlWarehouseRepo.getWarehouseProfile(any()))
+          .thenThrow(Exception('offline'));
+
+      await cubit.refreshLimitsIfStale();
+
+      expect(cubit.limitsAreStale, isTrue);
+      await cubit.close();
+    });
+
+    test('submitOrder triggers no limits request of its own', () async {
+      final cubit = cubitWith();
+      cubit.addProduct(_product('p1'), warehouseId: 'A', warehouseName: 'Warehouse A', quantity: 1);
+      await pumpEventQueue();
+      profileCalls = 0;
+      when(
+        () => ttlOrderRepo.submitOrder(
+          warehouseId: any(named: 'warehouseId'),
+          items: any(named: 'items'),
+          notes: any(named: 'notes'),
+          idempotencyKey: any(named: 'idempotencyKey'),
+          rateUsed: any(named: 'rateUsed'),
+        ),
+      ).thenAnswer((_) async => _fakeOrder);
+
+      await cubit.submitOrder();
+
+      expect(profileCalls, 0);
+      await cubit.close();
+    });
+
+    test('the cart screen still forces a read through refreshWarehouseLimits, expired or not', () async {
+      final cubit = cubitWith();
+      cubit.addProduct(_product('p1'), warehouseId: 'A', warehouseName: 'Warehouse A', quantity: 1);
+      await pumpEventQueue();
+      profileCalls = 0;
+
+      // Well inside the TTL.
+      clock = clock.add(const Duration(seconds: 30));
+      nextProfiles.add(profile(min: 5));
+      await cubit.refreshWarehouseLimits();
+
+      expect(profileCalls, 1);
+      expect(cubit.state.minOrderAmountUsd, 5);
+      await cubit.close();
+    });
+  });
 }
