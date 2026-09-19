@@ -1003,6 +1003,39 @@ void main() {
       expect(cubit.state.isRefreshingLimits, isFalse);
     });
 
+    // The screen can open while the read the cart started when it bound to
+    // this warehouse is still in the air. That read is silent - nothing was on
+    // screen to show an indicator for - but the moment the cart screen asks,
+    // there is, and joining the existing request must not cost the indicator.
+    //
+    // This pins where the flag is raised: in refreshWarehouseLimits, BEFORE
+    // _loadWarehouseLimits decides whether to start a request or join one.
+    // Moving the raise inside _loadWarehouseLimits (past its in-flight guard)
+    // reads like tidying and would silently leave this case with no indicator
+    // at all - the case below only checks the flag once the read is over.
+    test('the indicator shows even when the cart screen joins a read already running', () async {
+      final pending = Completer<WarehouseProfileModel>();
+      pendingProfiles.add(pending);
+      // The silent read: binding the cart to a warehouse starts one.
+      cubit.addProduct(_product('p1'), warehouseId: 'A', warehouseName: 'Warehouse A', quantity: 2);
+      await pumpEventQueue();
+      expect(cubit.state.isRefreshingLimits, isFalse, reason: 'nothing on screen to show it for');
+      expect(profileCalls, 1);
+
+      // ...and now the cart screen opens on top of it.
+      final refreshing = cubit.refreshWarehouseLimits();
+      await pumpEventQueue();
+
+      expect(cubit.state.isRefreshingLimits, isTrue);
+      expect(profileCalls, 1, reason: 'joined the read in the air, did not start a second');
+
+      pending.complete(profile(min: 5));
+      await refreshing;
+
+      expect(cubit.state.isRefreshingLimits, isFalse);
+      expect(cubit.state.minOrderAmountUsd, 5);
+    });
+
     test('a failed read keeps the limits already on screen', () async {
       await buildCart();
       nextProfiles.add(profile(min: 5));
