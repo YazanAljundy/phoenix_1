@@ -240,6 +240,18 @@ export class RealtimeClient {
     if (seen.has(key)) return true;
     seen.add(key);
     // Bounded so a long-lived dashboard session can't grow this without end.
+    // Re-evaluated after eventId replaced the old id:status composite keys
+    // (which had naturally small cardinality) with one unique id per emit:
+    // still adequate, no change made. The server (realtime/index.js's
+    // emitToRoom) never retries a send - it emits once, catches, and logs on
+    // failure - so a genuine re-delivery of the same eventId would only ever
+    // come from a transport-level hiccup, landing within the same coalescing
+    // window as the original, not hundreds of events later. Evicting the
+    // OLDEST key when this fills up is therefore safe: whatever gets evicted
+    // is already far too old to be the near-term duplicate this guards
+    // against. Cross-reconnect duplicates are handled separately (`_seen` is
+    // cleared entirely on reconnect; see connect()'s isReconnect branch), so
+    // this cache was never relied on to span a connection drop either.
     if (seen.size > 500) {
       const oldest = seen.values().next().value;
       seen.delete(oldest);
